@@ -2,7 +2,8 @@
 
 Host-only companion bundle for **[Workspace Files](../dsh-web-filebrowser-plugin)** — part of
 [DSH Web Filebrowser](../README.md). It adds Git operations to the workspace panel: status,
-staging, commits, diffs, branches, comparison, and explicit fetch/pull/push.
+staging, commits, diffs, branches, comparison, a commit graph, and explicit
+fetch/pull/push.
 
 > Git runs on the **Harness host** with the host's permissions. Network commands
 > use the host's existing SSH key or credential helper; the bundle never collects
@@ -23,8 +24,8 @@ Manager:
 
 3. Install and enable it.
 
-The main plugin's Git button appears in the explorer header. If this bundle is
-missing, that panel shows an install hint instead of failing silently.
+The main plugin's **Git** tab appears at the bottom of the sidebar. If this bundle
+is missing, that panel shows an install hint instead of failing silently.
 
 ## Requirements
 
@@ -51,6 +52,9 @@ missing, that panel shows an install hint instead of failing silently.
 | `stage` | `root`, optional `paths` | `git add -A` for the paths, or the whole root |
 | `unstage` | `root`, optional `paths` | `git reset`/`git rm --cached` for staged paths |
 | `commit` | `root`, `message` | `git commit -m <message>` |
+| `history` | `root`, optional `limit` | Commit-graph rows for all refs (Git lane characters, hash, parents, refs, author, date, subject) |
+| `commit-detail` | `root`, `commit` | Commit metadata and first-parent changed files |
+| `commit-diff` | `root`, `commit`, `path` | Unified diff of one file in a commit against its first parent |
 | `diff` | `root`, `path`, `staged`, `untracked` | Unified diff for a changed/untracked file |
 | `branches` | `root` | Local branches and current branch |
 | `checkout` | `root`, `branch` | Switches to an existing local branch |
@@ -71,7 +75,7 @@ interactive editors and askpass prompts are disabled.
 - The root must be a registered workspace (or the deployment default) **and** the
   repository top level. Paths, refs and remotes are validated before use.
 - Output is capped: up to 2000 status entries, 2 MiB tracked diffs, 512 KiB
-  generated untracked diffs, 100 commits per compare side.
+  generated untracked diffs, 100 commits per compare side and 200 graph rows.
 - Git runs inside the selected repository; its local config, hooks (commit/push) or
   fsmonitor can execute code. Only use Git in repositories you trust.
 - No credentials are read or stored; authentication is delegated to the Host's SSH

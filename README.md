@@ -138,9 +138,12 @@ it for you.
 ### Git source control
 
 - A **Git** tab at the bottom of the sidebar switches between the file tree and a
-  source-control view for the selected workspace.
+  source-control view for the selected workspace. Inside Git, **Changes** and
+  **Commit graph** are separate views.
 - Shows the current branch, upstream, ahead/behind counts, unborn/detached state,
   staged changes, working-tree changes and untracked files.
+- The commit graph renders Git lanes for all refs (including branches and merges);
+  click a commit to see its changed files and click a file for that commit's diff.
 - Stage/unstage individual files or everything, write a commit message and commit
   (`Ctrl/⌘+Enter`); diff any changed or untracked text file in a read-only editor
   tab that defaults to a centered side-by-side view; one horizontal scrollbar at
@@ -375,7 +378,9 @@ repository root, not a subdirectory).
 ### Git workflow
 
 1. Click the **Git** tab at the bottom of the sidebar. The file tree is replaced
-   by the source-control view; click **Explorer** to return.
+   by the source-control view; click **Explorer** to return. Inside Git, switch
+   between **Changes** and **Commit graph**; click a commit to expand its files
+   and a file to open that commit's diff.
 2. If the workspace is not a repository, choose **Initialize repository**. If it
    is a subdirectory of a larger repository, open the repository root instead.
 3. Use **+** on a changed file to stage it, or **Stage all**; use **−** / **Unstage

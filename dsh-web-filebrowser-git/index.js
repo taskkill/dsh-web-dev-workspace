@@ -44,6 +44,12 @@ const MAX_ENTRIES = 2000
 /** Maximum number of commits returned by one compare side. */
 const MAX_COMMITS = 100
 
+/** Maximum rows returned by the commit graph. */
+const MAX_GRAPH_COMMITS = 200
+
+/** Git's well-known empty tree, used to diff a root commit. */
+const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
+
 /** Maximum number of files returned by one compare. */
 const MAX_COMPARE_FILES = 2000
 
@@ -126,6 +132,12 @@ async function dispatch(root, body) {
   switch (body.op) {
     case 'status':
       return status(root)
+    case 'history':
+      return history(root, body)
+    case 'commit-detail':
+      return commitDetail(root, body)
+    case 'commit-diff':
+      return commitDiff(root, body)
     case 'init':
       return initRepository(root)
     case 'diff':
@@ -395,6 +407,134 @@ function parseBranchHeader(header) {
   const ahead = match === null ? 0 : Number(match[1] ?? match[4] ?? 0)
   const behind = match === null ? 0 : Number(match[2] ?? match[3] ?? 0)
   return { ...empty, branch, upstream, ahead, behind, gone }
+}
+
+/* -------------------------------------------------------------------------- */
+/* History and commit details                                                 */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Commit graph rows for all refs. Git renders the lane characters; this keeps
+ * merges and multiple branches intact without reimplementing graph layout.
+ */
+async function history(root, body) {
+  await requireRepo(root)
+  if (!(await hasHead(root))) return { rows: [], empty: true, truncated: false }
+  const requested = Number.parseInt(String(body.limit ?? '150'), 10)
+  const limit = Number.isFinite(requested) ? Math.min(Math.max(requested, 1), MAX_GRAPH_COMMITS) : 150
+  const format = '%x1e' + ['%H', '%h', '%P', '%an', '%aI', '%s', '%D'].join('%x1f')
+  const raw = await runGit(root, [
+    'log',
+    '--all',
+    '--graph',
+    '--decorate=short',
+    '--date-order',
+    '--no-color',
+    `--max-count=${String(limit)}`,
+    `--format=${format}`,
+    '--',
+  ])
+  const rows = []
+  let commits = 0
+  for (const line of raw.split('\n')) {
+    const marker = line.indexOf('\u001e')
+    if (marker < 0) {
+      if (line.trim().length > 0) rows.push({ type: 'graph', graph: line })
+      continue
+    }
+    const graph = line.slice(0, marker)
+    const fields = line.slice(marker + 1).split('\u001f')
+    if (fields.length < 7) continue
+    commits += 1
+    rows.push({
+      type: 'commit',
+      graph,
+      hash: fields[0],
+      short: fields[1],
+      parents: fields[2].split(' ').filter((value) => value.length > 0),
+      author: fields[3],
+      date: fields[4],
+      subject: fields[5],
+      refs: fields[6]
+        .split(',')
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0),
+    })
+  }
+  return { rows, empty: commits === 0, truncated: commits >= limit }
+}
+
+/** One commit with its first-parent changed-file list. */
+async function commitDetail(root, body) {
+  await requireRepo(root)
+  const hash = normalizeRef(body.commit)
+  await verifyRef(root, hash)
+  const metaRaw = await runGit(root, [
+    'show',
+    '-s',
+    '--no-color',
+    '--format=%H%x1f%h%x1f%P%x1f%an%x1f%ae%x1f%aI%x1f%s%x1f%D',
+    hash,
+  ])
+  const fields = metaRaw.trim().split('\u001f')
+  if (fields.length < 8) throw new GitError('bad-commit', '无法读取提交信息')
+  const parents = fields[2].split(' ').filter((value) => value.length > 0)
+  let filesRaw
+  if (parents.length > 0) {
+    filesRaw = await runGit(root, ['diff', '--name-status', '-z', '--find-renames', parents[0], hash, '--'])
+  } else {
+    filesRaw = await runGit(root, [
+      'diff-tree',
+      '--root',
+      '-r',
+      '--no-commit-id',
+      '--name-status',
+      '-z',
+      '--find-renames',
+      hash,
+      '--',
+    ])
+  }
+  return {
+    hash: fields[0],
+    short: fields[1],
+    parents,
+    author: fields[3],
+    email: fields[4],
+    date: fields[5],
+    subject: fields[6],
+    refs: fields[7]
+      .split(',')
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0),
+    files: parseNameStatus(filesRaw),
+  }
+}
+
+/** Unified diff of one file in a commit, against its first parent. */
+async function commitDiff(root, body) {
+  await requireRepo(root)
+  const hash = normalizeRef(body.commit)
+  await verifyRef(root, hash)
+  const relative = normalizeRepoPath(root, body.path)
+  const parentsRaw = await runGit(root, ['show', '-s', '--no-color', '--format=%P', hash])
+  const parents = parentsRaw.trim().split(' ').filter((value) => value.length > 0)
+  const base = parents.length > 0 ? parents[0] : EMPTY_TREE
+  const text = await runGit(root, [
+    'diff',
+    '--no-ext-diff',
+    '--no-color',
+    '--unified=3',
+    '--find-renames',
+    base,
+    hash,
+    '--',
+    relative,
+  ])
+  if (Buffer.byteLength(text, 'utf8') > MAX_DIFF_BYTES) {
+    throw new GitError('diff-too-large', '差异内容过大，无法在面板中显示')
+  }
+  return { commit: hash, path: relative, diff: text }
 }
 
 /* -------------------------------------------------------------------------- */

@@ -297,6 +297,15 @@ window.__ModuleLoader__.load({
       'git.gone': '上游分支已消失',
       'git.staged': '已暂存的更改',
       'git.changes': '更改',
+      'git.history': '提交路线图',
+      'git.commitGraph': '提交路线图',
+      'git.loadingHistory': '正在读取提交历史…',
+      'git.loadingCommit': '正在读取提交…',
+      'git.noCommits': '还没有提交',
+      'git.commitNoFiles': '该提交没有文件变更',
+      'git.mergeCommit': '合并提交（{n} 个父提交）',
+      'git.graphTruncated': '仅显示最近 200 条',
+      'git.retry': '重试',
       'git.clean': '工作区干净',
       'git.stage': '暂存',
       'git.unstage': '取消暂存',
@@ -582,6 +591,15 @@ window.__ModuleLoader__.load({
       'git.gone': 'Upstream is gone',
       'git.staged': 'Staged changes',
       'git.changes': 'Changes',
+      'git.history': 'Commit graph',
+      'git.commitGraph': 'Commit graph',
+      'git.loadingHistory': 'Loading commit history…',
+      'git.loadingCommit': 'Loading commit…',
+      'git.noCommits': 'No commits yet',
+      'git.commitNoFiles': 'This commit changed no files',
+      'git.mergeCommit': 'Merge commit ({n} parents)',
+      'git.graphTruncated': 'Showing the latest 200 rows',
+      'git.retry': 'Retry',
       'git.clean': 'Working tree clean',
       'git.stage': 'Stage',
       'git.unstage': 'Unstage',
@@ -2892,6 +2910,56 @@ window.__ModuleLoader__.load({
       const [compareData, setCompareData] = useState(null)
       const [compareLoading, setCompareLoading] = useState(false)
       const [compareError, setCompareError] = useState(null)
+      const [view, setView] = useState('changes')
+      const [history, setHistory] = useState(null)
+      const [historyLoading, setHistoryLoading] = useState(false)
+      const [historyError, setHistoryError] = useState(null)
+      const [expandedCommit, setExpandedCommit] = useState(null)
+      const [commitDetail, setCommitDetail] = useState(null)
+      const [commitDetailLoading, setCommitDetailLoading] = useState(false)
+      const [commitDetailError, setCommitDetailError] = useState(null)
+
+      async function loadHistory(silent = false) {
+        if (root === null) {
+          setHistory(null)
+          return
+        }
+        if (!silent) setHistoryLoading(true)
+        setHistoryError(null)
+        try {
+          setHistory(await callGit('history', { root, limit: 150 }))
+        } catch (failure) {
+          setHistoryError(failure)
+          setHistory(null)
+        } finally {
+          if (!silent) setHistoryLoading(false)
+        }
+      }
+
+      async function openHistory() {
+        setView('graph')
+        if (history === null && !historyLoading) await loadHistory()
+      }
+
+      async function toggleCommit(commit) {
+        if (expandedCommit === commit.hash) {
+          setExpandedCommit(null)
+          setCommitDetail(null)
+          setCommitDetailError(null)
+          return
+        }
+        setExpandedCommit(commit.hash)
+        setCommitDetail(null)
+        setCommitDetailError(null)
+        setCommitDetailLoading(true)
+        try {
+          setCommitDetail(await callGit('commit-detail', { root, commit: commit.hash }))
+        } catch (failure) {
+          setCommitDetailError(failure)
+        } finally {
+          setCommitDetailLoading(false)
+        }
+      }
 
       async function loadStatus(silent = false) {
         if (root === null) {
@@ -2918,6 +2986,12 @@ window.__ModuleLoader__.load({
         setCompareOpen(false)
         setCompareData(null)
         setCompareError(null)
+        setView('changes')
+        setHistory(null)
+        setHistoryError(null)
+        setExpandedCommit(null)
+        setCommitDetail(null)
+        setCommitDetailError(null)
         if (root !== null) void loadStatus()
         // eslint-disable-next-line react-hooks/exhaustive-deps
       }, [root])
@@ -2940,6 +3014,7 @@ window.__ModuleLoader__.load({
         try {
           await action()
           await loadStatus(true)
+          if (view === 'graph') await loadHistory(true)
         } catch (failure) {
           setError(failure)
         } finally {
@@ -3153,6 +3228,7 @@ window.__ModuleLoader__.load({
           showToast(t('git.checkoutOk'))
           if (typeof onFilesChanged === 'function') onFilesChanged()
           await loadStatus(true)
+          if (view === 'graph') await loadHistory(true)
         } catch (failure) {
           setError(failure)
         } finally {
@@ -3576,9 +3652,174 @@ window.__ModuleLoader__.load({
         toolButton('compare', CompareIcon, t('git.compare'), t('git.compareHint'), !canCompare, () => void openCompare()),
       )
 
+      function commitDate(value) {
+        const date = new Date(value)
+        return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString()
+      }
+
+      function renderHistoryDetail(commit) {
+        const detail = commitDetail !== null && commitDetail.hash === commit.hash ? commitDetail : null
+        const files = Array.isArray(detail?.files) ? detail.files : []
+        return h(
+          'div',
+          { className: 'ds-git-commit-detail' },
+          commitDetailLoading
+            ? h('div', { className: 'ds-git-hint' }, h('span', { className: 'ds-spinner' }), t('git.loadingCommit'))
+            : commitDetailError !== null
+              ? h('div', { className: 'ds-git-error' }, h('span', { className: 'ds-git-error-text' }, gitFailureText(commitDetailError)))
+              : detail === null
+                ? h('div', { className: 'ds-git-hint' }, t('git.loadingCommit'))
+                : h(
+                    React.Fragment,
+                    null,
+                    h(
+                      'div',
+                      { className: 'ds-git-commit-detail-head' },
+                      h('code', { className: 'ds-git-commit-detail-hash' }, detail.short),
+                      h('span', { className: 'ds-git-commit-detail-subject' }, detail.subject),
+                    ),
+                    h(
+                      'div',
+                      { className: 'ds-git-commit-detail-meta' },
+                      `${detail.author} · ${commitDate(detail.date)}`,
+                      detail.parents.length > 1 ? ` · ${t('git.mergeCommit', { n: String(detail.parents.length) })}` : null,
+                    ),
+                    detail.refs.length > 0
+                      ? h(
+                          'div',
+                          { className: 'ds-git-graph-refs' },
+                          detail.refs.map((ref) => h('span', { key: ref, className: 'ds-git-tag' }, ref)),
+                        )
+                      : null,
+                    h(
+                      'div',
+                      { className: 'ds-git-commit-files' },
+                      files.length === 0
+                        ? h('div', { className: 'ds-git-hint' }, t('git.commitNoFiles'))
+                        : files.map((file) =>
+                            h(
+                              'button',
+                              {
+                                key: `${file.status}:${file.path}`,
+                                type: 'button',
+                                className: 'ds-git-commit-file',
+                                title: file.oldPath === null ? file.path : `${file.oldPath} → ${file.path}`,
+                                onClick: () =>
+                                  onOpenDiff({
+                                    commit: detail.hash,
+                                    path: file.path,
+                                    tag: detail.short,
+                                  }),
+                              },
+                              h('span', { className: 'ds-git-file-status', 'data-status': file.status }, file.status),
+                              h('span', { className: 'ds-git-commit-file-path' }, file.path),
+                              file.oldPath === null ? null : h('span', { className: 'ds-git-commit-file-old' }, `← ${file.oldPath}`),
+                            ),
+                          ),
+                    ),
+                  ),
+        )
+      }
+
+      function renderHistory() {
+        if (historyLoading) {
+          return h('div', { className: 'ds-git-history-empty' }, h('span', { className: 'ds-spinner' }), t('git.loadingHistory'))
+        }
+        if (historyError !== null) {
+          return h(
+            'div',
+            { className: 'ds-git-history-empty ds-git-error' },
+            h('span', { className: 'ds-git-error-text' }, gitFailureText(historyError)),
+            h('button', { type: 'button', className: 'ds-btn', onClick: () => void loadHistory() }, t('git.retry')),
+          )
+        }
+        if (history === null) return h('div', { className: 'ds-git-history-empty' }, t('git.loadingHistory'))
+        if (history.empty === true) {
+          return h('div', { className: 'ds-git-history-empty' }, t('git.noCommits'))
+        }
+        return h(
+          'div',
+          { className: 'ds-git-graph' },
+          h(
+            'div',
+            { className: 'ds-git-graph-head' },
+            h('span', { className: 'ds-git-section-title' }, t('git.commitGraph')),
+            history.truncated === true ? h('span', { className: 'ds-git-tag' }, t('git.graphTruncated')) : null,
+          ),
+          (history.rows ?? []).map((row, index) => {
+            if (row.type === 'graph') {
+              return h('div', { key: `graph:${String(index)}`, className: 'ds-git-graph-only' }, row.graph)
+            }
+            const expanded = expandedCommit === row.hash
+            const refs = Array.isArray(row.refs) ? row.refs : []
+            return h(
+              'div',
+              { key: row.hash, className: 'ds-git-graph-entry' },
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-git-graph-row',
+                  'data-active': expanded ? 'true' : undefined,
+                  onClick: () => void toggleCommit(row),
+                },
+                h('span', { className: 'ds-git-graph-prefix' }, row.graph),
+                h(
+                  'span',
+                  { className: 'ds-git-graph-body' },
+                  h('span', { className: 'ds-git-graph-subject' }, row.subject),
+                  h(
+                    'span',
+                    { className: 'ds-git-graph-meta' },
+                    `${row.short} · ${row.author} · ${commitDate(row.date)}`,
+                  ),
+                  refs.length > 0
+                    ? h(
+                        'span',
+                        { className: 'ds-git-graph-refs' },
+                        refs.slice(0, 4).map((ref) => h('span', { key: ref, className: 'ds-git-tag' }, ref)),
+                        refs.length > 4 ? h('span', { className: 'ds-git-tag' }, `+${String(refs.length - 4)}`) : null,
+                      )
+                    : null,
+                ),
+              ),
+              expanded ? renderHistoryDetail(row) : null,
+            )
+          }),
+        )
+      }
+
       return h(
         'div',
         { className: 'ds-git' },
+        h(
+          'div',
+          { className: 'ds-git-viewtabs', role: 'tablist' },
+          h(
+            'button',
+            {
+              type: 'button',
+              role: 'tab',
+              className: 'ds-git-viewtab',
+              'data-active': view === 'graph' ? undefined : 'true',
+              'aria-selected': view !== 'graph',
+              onClick: () => setView('changes'),
+            },
+            t('git.changes'),
+          ),
+          h(
+            'button',
+            {
+              type: 'button',
+              role: 'tab',
+              className: 'ds-git-viewtab',
+              'data-active': view === 'graph' ? 'true' : undefined,
+              'aria-selected': view === 'graph',
+              onClick: () => void openHistory(),
+            },
+            t('git.history'),
+          ),
+        ),
         h(
           'div',
           { className: 'ds-git-head' },
@@ -3609,14 +3850,19 @@ window.__ModuleLoader__.load({
               type: 'button',
               className: 'ds-iconbtn ds-iconbtn-sm',
               title: t('git.refresh'),
-              disabled: busy || loading,
-              onClick: () => void loadStatus(),
+              disabled: busy || loading || (view === 'graph' && historyLoading),
+              onClick: () => void (view === 'graph' ? loadHistory() : loadStatus()),
             },
             h(RefreshIcon),
           ),
         ),
         toolbar,
-        h(
+        view === 'graph'
+          ? h('div', { className: 'ds-git-history' }, renderHistory())
+          : h(
+              React.Fragment,
+              null,
+              h(
           'div',
           { className: 'ds-git-commit' },
           h('textarea', {
@@ -3704,6 +3950,7 @@ window.__ModuleLoader__.load({
               ? h('div', { className: 'ds-git-hint' }, t('git.clean'))
               : changes.map((entry) => renderRow(entry, false)),
           ),
+        ),
         ),
         compareModal,
         branchModal,
@@ -4998,6 +5245,9 @@ window.__ModuleLoader__.load({
         }
 
         function diffTabKey(request) {
+          if (typeof request.commit === 'string' && request.commit.length > 0) {
+            return `diff:commit:${request.commit}:${request.path}`
+          }
           if (typeof request.base === 'string' && request.base.length > 0) {
             return `diff:${request.base}:${request.path}`
           }
@@ -5010,7 +5260,9 @@ window.__ModuleLoader__.load({
           patchTab(key, { loading: true, error: null, code: null })
           try {
             const value =
-              typeof request.base === 'string' && request.base.length > 0
+              typeof request.commit === 'string' && request.commit.length > 0
+                ? await callGit('commit-diff', { root, commit: request.commit, path: request.path })
+                : typeof request.base === 'string' && request.base.length > 0
                 ? await callGit('compare-diff', { root, base: request.base, path: request.path })
                 : await callGit('diff', {
                     root,
@@ -7790,6 +8042,118 @@ window.__ModuleLoader__.load({
   background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent);
 }
 .ds-git { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
+.ds-git-viewtabs {
+  display: flex;
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+}
+.ds-git-viewtab {
+  flex: 1 1 0;
+  height: 26px;
+  padding: 0 6px;
+  border: 0;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.ds-git-viewtab:hover { color: var(--dsw-alias-label-primary); background: color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent); }
+.ds-git-viewtab[data-active="true"] {
+  color: var(--dsw-alias-brand-primary);
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 9%, transparent);
+  box-shadow: inset 0 -2px 0 var(--dsw-alias-brand-primary);
+}
+.ds-git-history { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.ds-git-history-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 120px; padding: 18px; color: var(--dsw-alias-label-secondary); font-size: 12px; text-align: center; }
+.ds-git-graph { padding-bottom: 12px; }
+.ds-git-graph-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--dsw-alias-bg-layer-1);
+}
+.ds-git-graph-head .ds-git-section-title { flex: 1 1 auto; padding: 0; }
+.ds-git-graph-entry { border-bottom: 1px solid color-mix(in srgb, var(--dsw-alias-border-l1) 55%, transparent); }
+.ds-git-graph-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  padding: 4px 6px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ds-git-graph-row:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent); }
+.ds-git-graph-row[data-active="true"] { background: color-mix(in srgb, var(--dsw-alias-brand-primary) 9%, transparent); }
+.ds-git-graph-prefix {
+  flex: 0 0 auto;
+  white-space: pre;
+  color: var(--dsw-alias-brand-primary);
+  font-family: var(--ds-mono);
+  font-size: 11px;
+  line-height: 1.4;
+  opacity: 0.85;
+}
+.ds-git-graph-only {
+  white-space: pre;
+  padding: 0 6px;
+  color: var(--dsw-alias-label-secondary);
+  font-family: var(--ds-mono);
+  font-size: 11px;
+  line-height: 1.4;
+  opacity: 0.7;
+}
+.ds-git-graph-body { display: flex; flex: 1 1 auto; flex-direction: column; gap: 1px; min-width: 0; }
+.ds-git-graph-subject { overflow: hidden; color: var(--dsw-alias-label-primary); font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
+.ds-git-graph-meta { overflow: hidden; color: var(--dsw-alias-label-secondary); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.ds-git-graph-refs { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 1px; }
+.ds-git-graph-refs .ds-git-tag { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9.5px; }
+.ds-git-commit-detail {
+  margin: 2px 6px 7px 12px;
+  padding: 6px 8px;
+  border-left: 2px solid var(--dsw-alias-brand-primary);
+  border-radius: 0 5px 5px 0;
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 5%, transparent);
+}
+.ds-git-commit-detail-head { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.ds-git-commit-detail-hash { flex: 0 0 auto; color: var(--dsw-alias-brand-primary); font-family: var(--ds-mono); font-size: 10.5px; }
+.ds-git-commit-detail-subject { min-width: 0; overflow: hidden; font-size: 11.5px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.ds-git-commit-detail-meta { margin-top: 2px; color: var(--dsw-alias-label-secondary); font-size: 10px; }
+.ds-git-commit-files { display: flex; flex-direction: column; gap: 1px; margin-top: 6px; }
+.ds-git-commit-file {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+.ds-git-commit-file:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent); }
+.ds-git-commit-file-path { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-git-commit-file-old { flex: 0 0 auto; max-width: 42%; overflow: hidden; color: var(--dsw-alias-label-secondary); font-size: 9.5px; text-overflow: ellipsis; white-space: nowrap; }
+.ds-git-file-status { flex: 0 0 14px; color: var(--dsw-alias-label-secondary); font-family: var(--ds-mono); font-size: 10px; text-align: center; }
+.ds-git-file-status[data-status="A"] { color: var(--dsw-alias-state-success-primary); }
+.ds-git-file-status[data-status="D"] { color: var(--dsw-alias-state-error-primary); }
+.ds-git-file-status[data-status="M"] { color: var(--dsw-alias-state-warn-primary); }
+.ds-git-file-status[data-status="R"] { color: var(--dsw-alias-brand-primary); }
 .ds-git-head {
   display: flex;
   align-items: center;

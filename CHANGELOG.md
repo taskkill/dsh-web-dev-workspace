@@ -44,6 +44,9 @@ All notable changes to this project are documented here.
 
 ### Git
 
+- Add a commit graph inside the Git view (Changes / Commit graph tabs). It shows
+  Git lanes for all refs, ref labels and merge parents; clicking a commit expands
+  its changed files and clicking a file opens that commit's diff in the editor.
 - Fetch, pull and push from the Git panel, with ahead/behind badges on the
   toolbar; the first push sets `origin/<branch>` as the upstream.
 - Pull is fast-forward only by default and explains a diverged branch instead of
