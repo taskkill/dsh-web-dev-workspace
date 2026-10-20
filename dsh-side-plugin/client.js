@@ -30,6 +30,7 @@ window.__ModuleLoader__.load({
     const FAVORITES_OPEN_KEY = 'dsh-side:favorites-open'
     const HIDDEN_ROOTS_KEY = 'dsh-side:hidden-roots'
     const WRAP_KEY = 'dsh-side:word-wrap'
+    const DRAG_TYPE = 'application/x-dsh-side-path'
 
     /** Stable empty list for a slot without the workspaces hook. */
     const EMPTY_WORKSPACES = []
@@ -68,6 +69,10 @@ window.__ModuleLoader__.load({
       'action.rename': '重命名',
       'action.delete': '删除',
       'action.copyPath': '复制相对路径',
+      'action.copy': '复制',
+      'action.cut': '剪切',
+      'action.paste': '粘贴',
+      'action.pasteHere': '粘贴到此目录',
       'action.copyAll': '复制全文',
       'action.upload': '上传文件',
       'action.uploadHere': '上传文件到此处',
@@ -124,6 +129,8 @@ window.__ModuleLoader__.load({
       'error.removeWorkspaceFailed': '移除工作区失败：{message}',
       'error.workspaceRecord': '没有找到这个工作区的记录，请刷新工作区列表后重试。',
       'error.uploadFailed': '上传「{name}」失败：{message}',
+      'error.transferFailed': '操作失败：{message}',
+      'error.intoItself': '不能把目录移动到它自身内部',
       'error.fileTooLarge': '文件「{name}」超过 {size} 上限，未上传。',
       'error.needRoot': '请先选择或输入一个工作区目录。',
       'error.read': '读取文件失败：{message}',
@@ -162,6 +169,9 @@ window.__ModuleLoader__.load({
       'toast.workspaceRemoved': '已移除工作区',
       'toast.uploading': '正在上传 {count} 个文件…',
       'toast.uploaded': '已上传 {count} 个文件',
+      'toast.itemCopied': '已复制「{name}」',
+      'toast.itemCut': '已剪切「{name}」',
+      'toast.itemMoved': '已移动「{name}」',
       'title.newFile': '新建文件',
       'title.newFolder': '新建文件夹',
       'title.rename': '重命名',
@@ -300,6 +310,10 @@ window.__ModuleLoader__.load({
       'action.rename': 'Rename',
       'action.delete': 'Delete',
       'action.copyPath': 'Copy relative path',
+      'action.copy': 'Copy',
+      'action.cut': 'Cut',
+      'action.paste': 'Paste',
+      'action.pasteHere': 'Paste into this folder',
       'action.copyAll': 'Copy all',
       'action.upload': 'Upload files',
       'action.uploadHere': 'Upload files here',
@@ -356,6 +370,8 @@ window.__ModuleLoader__.load({
       'error.removeWorkspaceFailed': 'Could not remove the workspace: {message}',
       'error.workspaceRecord': 'Could not find this workspace record; refresh the workspace list and retry.',
       'error.uploadFailed': 'Could not upload “{name}”: {message}',
+      'error.transferFailed': 'Operation failed: {message}',
+      'error.intoItself': 'A folder cannot be moved inside itself',
       'error.fileTooLarge': '“{name}” exceeds the {size} upload limit.',
       'error.needRoot': 'Choose or enter a workspace directory first.',
       'error.read': 'Could not read the file: {message}',
@@ -394,6 +410,9 @@ window.__ModuleLoader__.load({
       'toast.workspaceRemoved': 'Workspace removed',
       'toast.uploading': 'Uploading {count} file(s)…',
       'toast.uploaded': 'Uploaded {count} file(s)',
+      'toast.itemCopied': 'Copied “{name}”',
+      'toast.itemCut': 'Cut “{name}”',
+      'toast.itemMoved': 'Moved “{name}”',
       'title.newFile': 'New file',
       'title.newFolder': 'New folder',
       'title.rename': 'Rename',
@@ -1784,6 +1803,24 @@ window.__ModuleLoader__.load({
         h('path', { d: 'M10.5 5.5V3.25a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1H5.5' }),
         h('path', { d: 'M7.5 8.5h4' }),
         h('path', { d: 'M7.5 10.75h2.75' }),
+      )
+    }
+
+    function CutIcon() {
+      return icon(15,
+        h('circle', { cx: 4, cy: 3.5, r: 1.5 }),
+        h('circle', { cx: 4, cy: 11.5, r: 1.5 }),
+        h('path', { d: 'M5.2 4.6 12.5 12' }),
+        h('path', { d: 'M5.2 10.4 12.5 3' }),
+      )
+    }
+
+    function PasteIcon() {
+      return icon(15,
+        h('rect', { x: 3.25, y: 3.25, width: 9.5, height: 10, rx: 1.3 }),
+        h('path', { d: 'M6 3.25V2.25h4v1' }),
+        h('path', { d: 'M6 7h4.5' }),
+        h('path', { d: 'M6 10h3' }),
       )
     }
 
@@ -3468,11 +3505,14 @@ window.__ModuleLoader__.load({
         const [pickerOpen, setPickerOpen] = useState(false)
         const [moreOpen, setMoreOpen] = useState(false)
         const [moreAt, setMoreAt] = useState({ top: 0, left: 0 })
+        const [clipboard, setClipboard] = useState(null)
+        const [dropTarget, setDropTarget] = useState(null)
         const [paneView, setPaneView] = useState('files')
         const [uploading, setUploading] = useState(false)
         const rootRef = useRef(null)
         const uploadInputRef = useRef(null)
         const uploadTargetRef = useRef({ root: null, parent: '' })
+        const dragPathRef = useRef(null)
         const downloadAnchorRef = useRef(null)
 
         useEffect(() => {
@@ -3878,13 +3918,8 @@ window.__ModuleLoader__.load({
           }
         }
 
-        async function handleUploadFiles(event) {
-          const input = event.target
-          const files = input.files === null ? [] : Array.from(input.files)
-          input.value = ''
-          if (files.length === 0) return
-          const target = uploadTargetRef.current
-          if (target.root === null) return
+        async function uploadFilesTo(root, parent, files) {
+          if (uploading || root === null || files.length === 0) return
           setUploading(true)
           showToast(t('toast.uploading', { count: String(files.length) }))
           let uploaded = 0
@@ -3900,7 +3935,7 @@ window.__ModuleLoader__.load({
             }
             if (file.name.startsWith('.') && !store.get().showHidden) toggleShowHidden(true)
             try {
-              const value = await uploadToWorkspace(target.root, joinPath(target.parent, file.name), file)
+              const value = await uploadToWorkspace(root, joinPath(parent, file.name), file)
               uploaded += 1
               if (value !== null && typeof value === 'object' && typeof value.path === 'string') lastPath = value.path
             } catch (error) {
@@ -3912,12 +3947,201 @@ window.__ModuleLoader__.load({
           }
           setUploading(false)
           if (uploaded > 0) showToast(t('toast.uploaded', { count: String(uploaded) }))
-          if (store.get().root === target.root) {
-            await loadDir(target.parent)
+          if (store.get().root === root) {
+            await loadDir(parent)
             if (uploaded > 0 && lastPath !== null) {
               store.set((current) => ({ ...current, selected: lastPath }))
               if (uploaded === 1) await openFile(lastPath)
             }
+          }
+        }
+
+        async function handleUploadFiles(event) {
+          const input = event.target
+          const files = input.files === null ? [] : Array.from(input.files)
+          input.value = ''
+          if (files.length === 0) return
+          const target = uploadTargetRef.current
+          if (target.root === null) return
+          await uploadFilesTo(target.root, target.parent, files)
+        }
+
+        function targetDirectory(relative, type) {
+          return type === 'directory' ? relative : dirname(relative)
+        }
+
+        function setClipItem(mode, relative, type) {
+          if (relative === '') return
+          setClipboard({ mode, path: relative, type })
+          setMenu(null)
+          showToast(
+            mode === 'copy'
+              ? t('toast.itemCopied', { name: basename(relative) })
+              : t('toast.itemCut', { name: basename(relative) }),
+          )
+        }
+
+        function canPasteInto(directory) {
+          if (clipboard === null) return false
+          if (clipboard.type === 'directory' && (directory === clipboard.path || directory.startsWith(clipboard.path + '/'))) {
+            return false
+          }
+          if (clipboard.mode !== 'move') return true
+          if (directory === clipboard.path) return false
+          if (directory.startsWith(clipboard.path + '/')) return false
+          if (dirname(clipboard.path) === directory) return false
+          return true
+        }
+
+        /** Remap tabs, favorites and cached levels after a move. */
+        function remapWorkspacePaths(from, to) {
+          const remap = (value) => (value === from || value.startsWith(from + '/') ? to + value.slice(from.length) : value)
+          store.set((current) => {
+            const tabs = []
+            for (const tab of current.tabs) {
+              if (tab.mode === 'diff') {
+                const target = tab.diff?.path
+                if (typeof target === 'string' && (target === from || target.startsWith(from + '/'))) continue
+                tabs.push(tab)
+                continue
+              }
+              if (tab.path === from || tab.path.startsWith(from + '/')) {
+                const next = remap(tab.path)
+                tabs.push({ ...tab, path: next, name: basename(next) })
+              } else {
+                tabs.push(tab)
+              }
+            }
+            const levels = {}
+            for (const [key, level] of Object.entries(current.levels)) levels[remap(key)] = level
+            const expanded = {}
+            for (const key of Object.keys(current.expanded)) expanded[remap(key)] = true
+            let active = current.active === null ? null : remap(current.active)
+            if (active !== null && !tabs.some((tab) => tab.path === active)) active = tabs.at(-1)?.path ?? null
+            return {
+              ...current,
+              tabs,
+              levels,
+              expanded,
+              active,
+              selected: current.selected === null ? null : remap(current.selected),
+            }
+          })
+          updateFavorites((list) =>
+            list.map((item) =>
+              item.path === from || item.path.startsWith(from + '/')
+                ? { ...item, path: remap(item.path), name: basename(remap(item.path)) }
+                : item,
+            ),
+          )
+        }
+
+        async function moveItemTo(from, directory) {
+          const root = store.get().root
+          if (root === null || typeof from !== 'string' || from.length === 0) return
+          if (directory === from || directory.startsWith(from + '/')) {
+            setBanner({ kind: 'error', message: t('error.intoItself') })
+            return
+          }
+          if (dirname(from) === directory) return
+          try {
+            const value = await call('move', { root, from, to: joinPath(directory, basename(from)) })
+            remapWorkspacePaths(from, value.to)
+            setClipboard((current) =>
+              current !== null && (current.path === from || current.path.startsWith(from + '/')) ? null : current,
+            )
+            await loadDir(directory)
+            await loadDir(dirname(from))
+            store.set((current) => ({ ...current, selected: value.to }))
+            await revealPath(value.to)
+            showToast(t('toast.itemMoved', { name: basename(value.to) }))
+          } catch (error) {
+            setBanner({ kind: 'error', message: t('error.transferFailed', { message: errorText(error) }) })
+          }
+        }
+
+        async function pasteInto(directory) {
+          const root = store.get().root
+          if (root === null || clipboard === null || !canPasteInto(directory)) return
+          const from = clipboard.path
+          const to = joinPath(directory, basename(from))
+          const mode = clipboard.mode
+          setMenu(null)
+          try {
+            if (mode === 'copy') {
+              const value = await call('copy', { root, from, to, rename: true })
+              await loadDir(directory)
+              store.set((current) => ({ ...current, selected: value.to }))
+              await revealPath(value.to)
+              showToast(t('toast.itemCopied', { name: basename(value.to) }))
+            } else {
+              const value = await call('move', { root, from, to })
+              remapWorkspacePaths(from, value.to)
+              await loadDir(directory)
+              await loadDir(dirname(from))
+              store.set((current) => ({ ...current, selected: value.to }))
+              await revealPath(value.to)
+              setClipboard(null)
+              showToast(t('toast.itemMoved', { name: basename(value.to) }))
+            }
+          } catch (error) {
+            setBanner({ kind: 'error', message: t('error.transferFailed', { message: errorText(error) }) })
+          }
+        }
+
+        function hasInternalDrag(event) {
+          const types = event.dataTransfer?.types
+          return types === undefined || types === null ? false : Array.from(types).includes(DRAG_TYPE)
+        }
+
+        function canDropOn(directory, event) {
+          if (hasInternalDrag(event)) {
+            const from = dragPathRef.current
+            if (typeof from !== 'string' || from.length === 0) return false
+            if (directory === from || directory.startsWith(from + '/')) return false
+            return dirname(from) !== directory
+          }
+          const types = event.dataTransfer?.types
+          return types !== undefined && types !== null && Array.from(types).includes('Files')
+        }
+
+        function handleTreeDragOver(event, directory) {
+          const types = event.dataTransfer?.types
+          const internal = hasInternalDrag(event)
+          const external = types !== undefined && types !== null && Array.from(types).includes('Files')
+          if (!internal && !external) return
+          event.stopPropagation()
+          if (!canDropOn(directory, event)) {
+            if (dropTarget !== null) setDropTarget(null)
+            return
+          }
+          event.preventDefault()
+          if (event.dataTransfer !== null) {
+            event.dataTransfer.dropEffect = hasInternalDrag(event) ? 'move' : 'copy'
+          }
+          if (dropTarget !== directory) setDropTarget(directory)
+        }
+
+        function handleTreeDragLeave(event, directory) {
+          const related = event.relatedTarget
+          if (related instanceof Element && event.currentTarget.contains(related)) return
+          setDropTarget((current) => (current === directory ? null : current))
+        }
+
+        function handleTreeDrop(event, directory) {
+          event.preventDefault()
+          event.stopPropagation()
+          setDropTarget(null)
+          const from = event.dataTransfer?.getData(DRAG_TYPE) ?? ''
+          if (from.length > 0) {
+            if (directory === from || directory.startsWith(from + '/') || dirname(from) === directory) return
+            void moveItemTo(from, directory)
+            return
+          }
+          const files = event.dataTransfer?.files
+          const root = store.get().root
+          if (root !== null && files !== undefined && files !== null && files.length > 0) {
+            void ensureExpanded(directory).then(() => uploadFilesTo(root, directory, Array.from(files)))
           }
         }
 
@@ -4567,6 +4791,30 @@ window.__ModuleLoader__.load({
             target instanceof HTMLElement &&
             (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable)
           if (typing) return
+          if ((event.metaKey || event.ctrlKey) && !event.altKey) {
+            const key = event.key.toLowerCase()
+            if (key === 'c' && state.selected !== null && state.selected !== '') {
+              event.preventDefault()
+              setClipItem('copy', state.selected, isDirectory(state.selected) ? 'directory' : 'file')
+              return
+            }
+            if (key === 'x' && state.selected !== null && state.selected !== '') {
+              event.preventDefault()
+              setClipItem('move', state.selected, isDirectory(state.selected) ? 'directory' : 'file')
+              return
+            }
+            if (key === 'v') {
+              const directory =
+                state.selected === null || state.selected === ''
+                  ? ''
+                  : targetDirectory(state.selected, isDirectory(state.selected) ? 'directory' : 'file')
+              if (canPasteInto(directory)) {
+                event.preventDefault()
+                void pasteInto(directory)
+              }
+              return
+            }
+          }
           if (event.key === 'F2' && state.selected !== null) {
             event.preventDefault()
             startRename(state.selected)
@@ -4681,8 +4929,27 @@ window.__ModuleLoader__.load({
                   'data-active': isActive ? 'true' : undefined,
                   'aria-selected': isSelected,
                   'aria-expanded': isDir ? directoryOpen : undefined,
+                  'data-cut': clipboard?.mode === 'move' && clipboard.path === relative ? 'true' : undefined,
+                  'data-drop': isDir && dropTarget === relative ? 'true' : undefined,
+                  draggable: true,
                   style: { paddingLeft: `${String(8 + depth * 14)}px` },
                   title: relative,
+                  onDragStart: (event) => {
+                    event.stopPropagation()
+                    dragPathRef.current = relative
+                    if (event.dataTransfer !== null) {
+                      event.dataTransfer.effectAllowed = 'move'
+                      event.dataTransfer.setData(DRAG_TYPE, relative)
+                      event.dataTransfer.setData('text/plain', relative)
+                    }
+                  },
+                  onDragEnd: () => {
+                    dragPathRef.current = null
+                    setDropTarget(null)
+                  },
+                  onDragOver: (event) => handleTreeDragOver(event, isDir ? relative : dirname(relative)),
+                  onDragLeave: (event) => handleTreeDragLeave(event, isDir ? relative : dirname(relative)),
+                  onDrop: (event) => handleTreeDrop(event, isDir ? relative : dirname(relative)),
                   onClick: () => {
                     store.set((current) => ({ ...current, selected: relative }))
                     if (!isDir) void openFile(relative)
@@ -5497,6 +5764,10 @@ window.__ModuleLoader__.load({
                         className: 'ds-tree',
                         role: 'tree',
                         tabIndex: 0,
+                        'data-drop': dropTarget === '' ? 'true' : undefined,
+                        onDragOver: (event) => handleTreeDragOver(event, ''),
+                        onDragLeave: (event) => handleTreeDragLeave(event, ''),
+                        onDrop: (event) => handleTreeDrop(event, ''),
                         onContextMenu: (event) => {
                           event.preventDefault()
                           openMenu(event, '', 'directory')
@@ -5812,6 +6083,39 @@ window.__ModuleLoader__.load({
                   },
                   h(UploadIcon),
                 ),
+                menu.path === ''
+                  ? null
+                  : h(
+                      MenuItem,
+                      {
+                        label: t('action.copy'),
+                        shortcut: 'Ctrl/⌘+C',
+                        onClick: () => setClipItem('copy', menu.path, menu.type),
+                      },
+                      h(CopyIcon),
+                    ),
+                menu.path === ''
+                  ? null
+                  : h(
+                      MenuItem,
+                      {
+                        label: t('action.cut'),
+                        shortcut: 'Ctrl/⌘+X',
+                        onClick: () => setClipItem('move', menu.path, menu.type),
+                      },
+                      h(CutIcon),
+                    ),
+                h(
+                  MenuItem,
+                  {
+                    label: clipboard === null ? t('action.paste') : t('action.pasteHere'),
+                    shortcut: 'Ctrl/⌘+V',
+                    disabled: !canPasteInto(targetDirectory(menu.path, menu.type)),
+                    onClick: () => void pasteInto(targetDirectory(menu.path, menu.type)),
+                  },
+                  h(PasteIcon),
+                ),
+                h('div', { key: 'sep-transfer', className: 'ds-menu-sep' }),
                 menu.type === 'directory'
                   ? h(
                       MenuItem,
@@ -6253,6 +6557,12 @@ window.__ModuleLoader__.load({
   background: var(--dsw-alias-brand-primary);
 }
 .ds-row[data-active="true"] .ds-name { color: var(--dsw-alias-brand-primary); }
+.ds-row[data-cut="true"] { opacity: 0.5; }
+.ds-row[data-drop="true"],
+.ds-tree[data-drop="true"] {
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 13%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dsw-alias-brand-primary) 55%, transparent);
+}
 .ds-chevron {
   display: inline-flex;
   align-items: center;

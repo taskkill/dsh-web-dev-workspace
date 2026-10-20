@@ -29,6 +29,17 @@ All notable changes to this project are documented here.
   can switch to Unified from the diff toolbar. Large diffs are capped with a
   notice that points at the unified view.
 
+### Explorer
+
+- Move and copy files/folders with context-menu copy/cut/paste and `Ctrl/⌘+C`,
+  `X`, `V`; same-folder copies get `name (n)` automatically. Drag a tree entry
+  onto a folder to move it.
+- Drop files from the OS onto the tree or a folder to upload them into that
+  directory, with the existing 128 MiB and auto-rename rules.
+- Copy/move runs on the Host with the same workspace-root and symlink
+  containment checks as the other file operations; open tabs, favorites and
+  expanded folders follow a move.
+
 ## 1.0.0 — 2026-10-20
 
 Initial open-source release.

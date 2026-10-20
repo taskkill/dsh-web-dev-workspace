@@ -53,8 +53,8 @@ local bundle directories for you.
 
 - **A real editor inside the chat UI** — tabs, syntax highlighting, line numbers,
   word-wrap toggle, save and one-click copy-all.
-- **Files, not just previews** — create, rename, delete, upload and download;
-  save with stale-file protection.
+- **Files, not just previews** — create, rename, move, copy, delete, upload and
+  download; save with stale-file protection.
 - **Markdown and PDF previews** — Markdown renders in the panel; PDF and images
   render inline, with a browser handoff.
 - **Favorites and a workspace switcher** — single-click a favorite to open a file
@@ -70,6 +70,10 @@ local bundle directories for you.
 
 - Browse every registered Harness workspace; switch from the header picker.
 - Create files/folders, rename inline (F2), delete with confirmation, refresh.
+- **Copy / cut / paste** files and folders between directories from the context menu,
+  or drag a tree entry onto a folder to move it.
+- Drag files from the OS onto the tree or a folder to upload them; duplicate names
+  are resolved automatically (128 MiB per file).
 - Single-click a file to open it; single-click a folder to select it, double-click
   a folder (or its chevron) to expand/collapse.
 - One-click **collapse all** under the labeled **More** menu, together with
@@ -285,6 +289,9 @@ The agent uses the same Plugin Manager installation path as the UI.
 | --- | --- |
 | `⌘/Ctrl + S` | Save the active file |
 | `F2` | Rename the selected file/folder |
+| `Ctrl/⌘ + C` | Copy the selected entry |
+| `Ctrl/⌘ + X` | Cut the selected entry |
+| `Ctrl/⌘ + V` | Paste into the selected folder (or its parent) |
 | `Delete` | Delete the selected file/folder |
 | `Enter` | Open the selected file / toggle the selected folder |
 | `←` / `→` | Collapse/expand the focused folder |

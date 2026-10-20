@@ -148,6 +148,10 @@ async function dispatch(ctx, op, body) {
       return createDir(ctx, body)
     case 'rename':
       return renamePath(ctx, body)
+    case 'move':
+      return movePath(ctx, body)
+    case 'copy':
+      return copyPath(ctx, body)
     case 'delete':
       return deletePath(ctx, body)
     case 'stat':
@@ -242,6 +246,10 @@ function childPath(root, rel) {
 /** Whether `candidate` is `root` or one of its descendants. */
 function isInside(root, candidate) {
   return candidate === root || candidate.startsWith(root.endsWith(path.sep) ? root : root + path.sep)
+}
+
+function samePath(a, b) {
+  return process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b
 }
 
 /**
@@ -394,6 +402,126 @@ async function renamePath(ctx, body) {
   if (toExists) throw new SideError('exists', '目标名称已被占用')
   await fsp.rename(fromAbsolute, toAbsolute)
   return { from: body.from, to: body.to, type: fromInfo.isDirectory() ? 'directory' : 'file' }
+}
+
+/** Move one entry to another directory inside the root. */
+async function movePath(ctx, body) {
+  const root = await resolveRoot(ctx, body.root)
+  const fromAbsolute = childPath(root, body.from)
+  if (fromAbsolute === root) throw new SideError('protected', '不能移动工作区根目录')
+  let info
+  try {
+    info = await fsp.lstat(fromAbsolute)
+  } catch {
+    throw new SideError('not-found', '源文件或目录不存在')
+  }
+  await ensureParentInside(root, fromAbsolute)
+  const toAbsolute = await resolveDestination(root, body.to)
+  assertTransferable(fromAbsolute, toAbsolute, info.isDirectory())
+  if (await pathExists(toAbsolute)) throw new SideError('exists', '目标位置已有同名文件或目录')
+  try {
+    await fsp.rename(fromAbsolute, toAbsolute)
+  } catch (error) {
+    if (error === null || typeof error !== 'object' || error.code !== 'EXDEV') throw error
+    await copyEntry(fromAbsolute, toAbsolute)
+    await fsp.rm(fromAbsolute, { recursive: true, force: false })
+  }
+  return {
+    from: body.from,
+    to: relativeOf(root, toAbsolute),
+    type: info.isDirectory() ? 'directory' : 'file',
+  }
+}
+
+/** Copy one entry; `rename: true` picks a free "name (n)" destination. */
+async function copyPath(ctx, body) {
+  const root = await resolveRoot(ctx, body.root)
+  const fromAbsolute = childPath(root, body.from)
+  if (fromAbsolute === root) throw new SideError('protected', '不能复制工作区根目录')
+  let info
+  try {
+    info = await fsp.lstat(fromAbsolute)
+  } catch {
+    throw new SideError('not-found', '源文件或目录不存在')
+  }
+  await ensureParentInside(root, fromAbsolute)
+  let toAbsolute = await resolveDestination(root, body.to)
+  const same = samePath(fromAbsolute, toAbsolute)
+  if (same && body.rename !== true) throw new SideError('same-path', '源和目标位置相同')
+  if (!same) assertTransferable(fromAbsolute, toAbsolute, info.isDirectory())
+  let renamed = false
+  if (same) {
+    toAbsolute = await uniqueCopyPath(toAbsolute)
+    renamed = true
+  } else if (await pathExists(toAbsolute)) {
+    if (body.rename !== true) throw new SideError('exists', '目标位置已有同名文件或目录')
+    toAbsolute = await uniqueCopyPath(toAbsolute)
+    renamed = true
+  }
+  await copyEntry(fromAbsolute, toAbsolute)
+  return {
+    from: body.from,
+    to: relativeOf(root, toAbsolute),
+    type: info.isDirectory() ? 'directory' : 'file',
+    renamed,
+  }
+}
+
+/** Canonical destination inside the root; missing parents are reported as such. */
+async function resolveDestination(root, relative) {
+  try {
+    return await destinationPath(root, childPath(root, relative))
+  } catch (error) {
+    if (error instanceof SideError) throw error
+    throw new SideError('parent-missing', '目标目录不存在')
+  }
+}
+
+/** Reject same-path transfers and moving/copying a directory into itself. */
+function assertTransferable(fromAbsolute, toAbsolute, directory) {
+  if (samePath(fromAbsolute, toAbsolute)) throw new SideError('same-path', '源和目标位置相同')
+  if (!directory) return
+  const relative = path.relative(fromAbsolute, toAbsolute)
+  if (relative.length > 0 && !relative.startsWith('..') && !path.isAbsolute(relative)) {
+    throw new SideError('into-itself', '不能把目录放入它自身内部')
+  }
+}
+
+async function pathExists(absolute) {
+  try {
+    await fsp.lstat(absolute)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** Copy a file, symlink or directory tree without following symlinks. */
+async function copyEntry(fromAbsolute, toAbsolute) {
+  await fsp.cp(fromAbsolute, toAbsolute, {
+    recursive: true,
+    errorOnExist: true,
+    force: false,
+    dereference: false,
+    preserveTimestamps: true,
+  })
+}
+
+/** Next free "name (n).ext" beside an existing destination. */
+async function uniqueCopyPath(target) {
+  const directory = path.dirname(target)
+  const extension = path.extname(target)
+  const base = path.basename(target, extension)
+  for (let index = 1; index < 1000; index += 1) {
+    const candidate = path.join(directory, `${base} (${String(index)})${extension}`)
+    if (!(await pathExists(candidate))) return candidate
+  }
+  throw new SideError('exists', '同名副本过多，无法生成新名称')
+}
+
+/** Root-relative path with forward slashes. */
+function relativeOf(root, absolute) {
+  return path.relative(root, absolute).split(path.sep).join('/')
 }
 
 /** Remove one file or directory recursively. */

@@ -91,10 +91,13 @@ third-party runtime dependencies.
   opened, so the Host's registered-root confinement stays intact. `Enter`
   locates, `Escape` clears.
 - Create files/folders, rename (inline, F2), delete (with confirmation), refresh.
+- Copy/cut/paste entries between folders from the context menu (or `Ctrl/⌘+C`,
+  `X`, `V`), drag a tree entry onto a folder to move it, and drop OS files onto the
+  tree or a folder to upload them.
 - Click a file to open it; click a folder to select it, and double-click a folder
   (or use its chevron) to expand or collapse it. Context menu offers open, open in
-  browser, favorite, new file/folder, upload, rename, delete, download, copy
-  relative path.
+  browser, favorite, new file/folder, upload, copy, cut, paste, rename, delete,
+  download, copy relative path.
 
 ### Editor
 
@@ -138,6 +141,9 @@ third-party runtime dependencies.
 | --- | --- |
 | `⌘/Ctrl + S` | Save the active file |
 | `F2` | Rename the selected file/folder |
+| `Ctrl/⌘ + C` | Copy the selected entry |
+| `Ctrl/⌘ + X` | Cut the selected entry |
+| `Ctrl/⌘ + V` | Paste into the selected folder (or its parent) |
 | `Delete` | Delete the selected file/folder |
 | `Enter` | Open the selected file / toggle the selected folder |
 | `Alt + Home` | Go to the current workspace root |
@@ -155,7 +161,7 @@ third-party runtime dependencies.
 
   | Method | Operation |
   | --- | --- |
-  | `POST` | JSON operations: `roots`, `list`, `read`, `write`, `createFile`, `createDir`, `rename`, `delete`, `stat` |
+  | `POST` | JSON operations: `roots`, `list`, `read`, `write`, `createFile`, `createDir`, `rename`, `move`, `copy`, `delete`, `stat` |
   | `GET` | `?op=raw&root=…&path=…` streams a file for preview/download links |
 
 - The Client half (`client.js`) registers the `files` key in the `main` slot and a

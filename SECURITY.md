@@ -41,6 +41,9 @@ General UI bugs, missing features and questions belong in public issues.
   symlinks. Path segments are validated before the filesystem call.
 - Uploads are opened with `wx` in auto-rename mode so concurrent same-name uploads
   do not overwrite each other.
+- Copy/move reject the workspace root, refuse to place a directory inside itself,
+  never overwrite a destination, and copy directory trees without following
+  symlinks.
 - Git operations run through `git` on the Host. Network operations are explicit
   fetch/pull/push: pulls are fast-forward only, pushes never force, interactive
   prompts are disabled, and the plugin stores no credentials (the Host's SSH key or
