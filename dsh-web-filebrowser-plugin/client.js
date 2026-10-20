@@ -128,6 +128,7 @@ window.__ModuleLoader__.load({
     const zh = {
       'panel.title': '文件工作区',
       'terminal.toggle': '终端',
+      'terminal.open': '打开终端',
       'terminal.title': '终端 {n}',
       'terminal.label': '终端',
       'terminal.loading': '正在启动终端…',
@@ -448,6 +449,7 @@ window.__ModuleLoader__.load({
     const en = {
       'panel.title': 'Workspace Files',
       'terminal.toggle': 'Terminal',
+      'terminal.open': 'Open terminal',
       'terminal.title': 'Terminal {n}',
       'terminal.label': 'Terminal',
       'terminal.loading': 'Starting terminal…',
@@ -7808,6 +7810,21 @@ window.__ModuleLoader__.load({
                           h(GlobeIcon),
                           t('browser.open'),
                         ),
+                        state.root === null || isSshRootPath(state.root)
+                          ? null
+                          : h(
+                              'button',
+                              {
+                                type: 'button',
+                                className: 'ds-btn',
+                                onClick: () => {
+                                  if (terminals.some((entry) => entry.placement === 'panel')) setTerminalPanelOpen(true)
+                                  else void openTerminal('panel')
+                                },
+                              },
+                              h(TerminalIcon),
+                              t('terminal.open'),
+                            ),
                       ),
                     ),
                   )

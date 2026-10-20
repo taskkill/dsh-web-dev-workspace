@@ -25,7 +25,8 @@ All notable changes to this project are documented here.
 
 - Add a local interactive terminal with vendored xterm.js and a Host-side PTY.
   Sessions can live in editor tabs or a resizable bottom panel and can be moved
-  between them; output is buffered while hidden. Local workspaces only, max 8.
+  between them; output is buffered while hidden. The welcome page also has an
+  **Open terminal** shortcut. Local workspaces only, max 8.
 
 ### Built-in browser
 

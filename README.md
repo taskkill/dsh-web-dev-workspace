@@ -169,7 +169,7 @@ it for you.
 ### Snapshot Preview
 ### Built-in terminal
 
-- Use the header **terminal button** (or `Ctrl/⌘ + backtick`) to show the bottom terminal panel; drag its top edge to resize.
+- Use the header **terminal button**, the welcome page's **Open terminal** action, or `Ctrl/⌘ + backtick` to show the bottom terminal panel; drag its top edge to resize.
 - A terminal can live either in the bottom panel or the editor. The panel header has **Open in editor**; an editor terminal's toolbar has **Move to panel**.
 - Rendering uses vendored xterm.js with a Host-side `script(1)` PTY (Linux util-linux `script` is required), so interactive Bash, colours, `Ctrl+C` and full-screen programs work.
 - Terminals start in the local workspace root and run arbitrary commands as the Harness host user; only the owner can reach them. SSH workspaces are not supported.
