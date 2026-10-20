@@ -11,6 +11,12 @@ All notable changes to this project are documented here.
   The Git tab is hidden for SSH roots. Tabs are compact (26 px) to leave room for
   future sidebar views.
 
+### Terminal
+
+- Add a local interactive terminal with vendored xterm.js and a Host-side PTY.
+  Sessions can live in editor tabs or a resizable bottom panel and can be moved
+  between them; output is buffered while hidden. Local workspaces only, max 8.
+
 ### Built-in browser
 
 - Add browser tabs with an address bar, history, reload and external open, so a

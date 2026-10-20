@@ -103,6 +103,16 @@ third-party runtime dependencies.
   browser, favorite, new file/folder, upload, copy, cut, paste, rename, delete,
   download, copy relative path.
 
+### Built-in terminal
+
+- xterm.js (vendored) terminal views with a Host-side `script(1)` PTY. Open from the
+  header terminal button or `Ctrl/⌘ + backtick`; the panel has tabs for multiple sessions.
+- Terminals can be moved between the bottom panel and editor tabs; the Host keeps
+  the shell alive and buffers output (1 MB) while the view is detached.
+- `POST /api/dsh-web-filebrowser-terminal` supports `open`, `write`, `poll`,
+  `resize` and `close`; `GET ?op=asset&name=…` serves the vendored xterm assets.
+  Root is a registered local workspace; SSH roots are rejected.
+
 ### Built-in browser
 
 - Browser tabs (globe button, welcome action or `Alt+B`) preview a running dev

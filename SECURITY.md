@@ -63,6 +63,13 @@ General UI bugs, missing features and questions belong in public issues.
 - Local port detection reads Linux `/proc/net/tcp{,6}` and returns listening port
   numbers only (no process names or command lines) over the owner-authenticated
   API.
+- The built-in terminal runs `/bin/bash` under a `script(1)` PTY as the Harness
+  host user in a registered local workspace. It is owner-authenticated like the
+  rest of the plugin, but commands are **not sandboxed**: anyone with the owner
+  session can execute arbitrary Host commands. SSH roots are rejected, output is
+  capped at 1 MB and at most 8 sessions may exist.
+- xterm.js and its fit addon are vendored under `dsh-web-filebrowser-plugin/vendor/`
+  and served only through the authenticated terminal asset route.
 - SSH remote folders authenticate with the Host's SSH agent or `~/.ssh` keys and
   never collect passwords. `ssh2` does not pin host keys, so connect only to hosts
   you trust.

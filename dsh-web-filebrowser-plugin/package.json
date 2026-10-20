@@ -2,7 +2,7 @@
   "name": "@local/dsh-web-filebrowser",
   "version": "1.0.0",
   "private": true,
-  "description": "VS Code-style workspace file explorer, editor and preview browser for the DeepSeek Harness Web UI",
+  "description": "VS Code-style workspace file explorer, editor, terminal and preview browser for the DeepSeek Harness Web UI",
   "type": "module",
   "exports": {
     ".": "./index.js",
@@ -13,7 +13,9 @@
   "files": [
     "index.js",
     "ssh.js",
+    "terminal.js",
     "client.js",
+    "vendor/*",
     "cordis.patch.yml",
     "locale/*.json",
     "icon.svg",
@@ -40,6 +42,8 @@
     "git"
   ],
   "dependencies": {
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0",
     "ssh2": "^1.17.0"
   }
 }

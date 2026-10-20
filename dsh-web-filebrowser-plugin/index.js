@@ -19,7 +19,9 @@ import { lookup as dnsLookup } from 'node:dns/promises'
 import { isIP } from 'node:net'
 import path from 'node:path'
 import { Readable } from 'node:stream'
+import { fileURLToPath } from 'node:url'
 import * as ssh from './ssh.js'
+import { createTerminalManager } from './terminal.js'
 
 /** Exact URL below `/api` that this plugin owns. */
 const ROUTE = '/api/dsh-web-filebrowser'
@@ -29,6 +31,11 @@ const ROUTE_SSH_UPLOAD = '/api/dsh-web-filebrowser-ssh'
 
 /** Same-origin proxy used by the built-in browser for public pages. */
 const PROXY_ROUTE = '/api/dsh-web-filebrowser-proxy'
+
+/** Local terminal session/asset route. */
+const TERMINAL_ROUTE = '/api/dsh-web-filebrowser-terminal'
+
+const VENDOR_DIR = fileURLToPath(new URL('./vendor/', import.meta.url))
 
 /** Largest response the preview proxy will read. */
 const MAX_PROXY_BYTES = 8 * 1024 * 1024
@@ -95,6 +102,10 @@ export function apply(ctx) {
   ctx.effect(() => {
     let disposed = false
     const disposers = []
+    const terminals = createTerminalManager({
+      resolveRoot: (requested) => resolveRoot(ctx, requested),
+      vendorDir: VENDOR_DIR,
+    })
     const register = (route, methods, handler, label) => {
       const registration = ctx.connection.fetch.register({
         path: route,
@@ -117,9 +128,11 @@ export function apply(ctx) {
     register(ROUTE_SSH_UPLOAD, ['POST'], (request) => handleSshUpload(request), 'the SSH upload route')
     register(LEGACY_ROUTE_SSH_UPLOAD, ['POST'], (request) => handleSshUpload(request), 'the legacy SSH upload route')
     register(PROXY_ROUTE, ['GET'], (request) => handleProxy(request), 'the external preview proxy')
+    register(TERMINAL_ROUTE, ['GET', 'POST'], (request) => terminals.handle(request), 'the terminal route')
     return () => {
       disposed = true
       for (const dispose of disposers) dispose()
+      terminals.closeAll()
       void ssh.closeAll()
     }
   }, 'dsh-web-filebrowser: authenticated file API')

@@ -37,6 +37,9 @@ window.__ModuleLoader__.load({
     /** Host-side HTML proxy for public preview pages. */
     const PROXY_PATH = 'api/dsh-web-filebrowser-proxy'
 
+    /** Local terminal session/asset route. */
+    const TERMINAL_PATH = 'api/dsh-web-filebrowser-terminal'
+
     /** Suggested local dev-server ports when /proc port scanning is unavailable. */
     const BROWSER_COMMON_PORTS = [3000, 5173, 8080, 8000, 4173, 4321, 8888]
 
@@ -89,6 +92,24 @@ window.__ModuleLoader__.load({
 
     const zh = {
       'panel.title': '文件工作区',
+      'terminal.toggle': '终端',
+      'terminal.title': '终端 {n}',
+      'terminal.label': '终端',
+      'terminal.loading': '正在启动终端…',
+      'terminal.exited': '进程已退出；关闭标签可结束会话',
+      'terminal.openFailed': '打开终端失败：{message}',
+      'terminal.needRoot': '请先选择工作区再打开终端',
+      'terminal.sshUnsupported': 'SSH 远程工作区暂不支持本地终端',
+      'terminal.moveToPanel': '移到下方',
+      'terminal.moveToEditor': '在编辑区打开',
+      'terminal.close': '关闭终端',
+      'terminal.closePanel': '关闭终端面板',
+      'terminal.new': '新建终端',
+      'terminal.tabs': '终端标签',
+      'terminal.resize': '拖动调整终端高度',
+      'terminal.empty': '没有终端',
+      'terminal.local': '本地终端',
+      'terminal.sessionMissing': '终端会话已关闭',
       'panel.description': '浏览工作区目录，编辑代码，预览 Markdown 与 PDF。',
       'guide.title': '代码工作区',
       'guide.description': '浏览并编辑文件，支持代码高亮、Markdown 与 PDF 预览。',
@@ -383,6 +404,24 @@ window.__ModuleLoader__.load({
 
     const en = {
       'panel.title': 'Workspace Files',
+      'terminal.toggle': 'Terminal',
+      'terminal.title': 'Terminal {n}',
+      'terminal.label': 'Terminal',
+      'terminal.loading': 'Starting terminal…',
+      'terminal.exited': 'Process exited; close the tab to end the session',
+      'terminal.openFailed': 'Could not open terminal: {message}',
+      'terminal.needRoot': 'Choose a workspace before opening a terminal',
+      'terminal.sshUnsupported': 'Local terminals are not available for SSH workspaces',
+      'terminal.moveToPanel': 'Move to panel',
+      'terminal.moveToEditor': 'Open in editor',
+      'terminal.close': 'Close terminal',
+      'terminal.closePanel': 'Close terminal panel',
+      'terminal.new': 'New terminal',
+      'terminal.tabs': 'Terminal tabs',
+      'terminal.resize': 'Drag to resize the terminal',
+      'terminal.empty': 'No terminal',
+      'terminal.local': 'Local terminal',
+      'terminal.sessionMissing': 'Terminal session is closed',
       'panel.description': 'Browse the workspace tree, edit code, and preview Markdown and PDF files.',
       'guide.title': 'Code Workspace',
       'guide.description': 'Browse and edit files with highlighting, Markdown, and PDF previews.',
@@ -1982,6 +2021,14 @@ window.__ModuleLoader__.load({
 
     function RotateIcon() {
       return icon(15, h('path', { d: 'M12.75 6.5V3.25H9.5' }), h('path', { d: 'M12.5 3.5a5.5 5.5 0 1 0 1 6.5' }))
+    }
+
+    function TerminalIcon() {
+      return icon(15, h('rect', { x: 2, y: 3, width: 11, height: 9, rx: 1 }), h('path', { d: 'M4.5 6.25 6.5 8l-2 1.75M7.75 9.75h3' }))
+    }
+
+    function PanelTopIcon() {
+      return icon(15, h('rect', { x: 1.75, y: 2.75, width: 11.5, height: 9.5, rx: 1 }), h('path', { d: 'M1.75 6h11.5' }))
     }
 
     function MaximizeIcon() {
@@ -4176,6 +4223,191 @@ window.__ModuleLoader__.load({
       )
     }
 
+    let xtermPromise = null
+
+    function terminalAssetUrl(name) {
+      const url = new URL(TERMINAL_PATH, document.baseURI)
+      url.searchParams.set('op', 'asset')
+      url.searchParams.set('name', name)
+      return url.href
+    }
+
+    function loadExternalScript(url) {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        script.onload = () => resolve()
+        script.onerror = () => reject(new Error('无法加载终端渲染器'))
+        document.head.appendChild(script)
+      })
+    }
+
+    function ensureXterm() {
+      if (window.Terminal && window.FitAddon && window.FitAddon.FitAddon) return Promise.resolve()
+      if (xtermPromise !== null) return xtermPromise
+      xtermPromise = new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = terminalAssetUrl('xterm.css')
+        document.head.appendChild(link)
+        loadExternalScript(terminalAssetUrl('xterm.js'))
+          .then(() => loadExternalScript(terminalAssetUrl('addon-fit.js')))
+          .then(() => {
+            if (!window.Terminal || !window.FitAddon || !window.FitAddon.FitAddon) {
+              throw new Error('终端渲染器未初始化')
+            }
+            resolve()
+          })
+          .catch((error) => {
+            xtermPromise = null
+            reject(error)
+          })
+      })
+      return xtermPromise
+    }
+
+    async function callTerminal(op, params = {}) {
+      let response
+      try {
+        response = await fetch(new URL(TERMINAL_PATH, document.baseURI).href, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ op, ...params }),
+        })
+      } catch (error) {
+        throw new SideRequestError('terminal-offline', `无法连接终端服务：${errorText(error)}`)
+      }
+      if (!response.ok) throw new SideRequestError(`http-${String(response.status)}`, `HTTP ${String(response.status)}`)
+      let payload
+      try {
+        payload = await response.json()
+      } catch {
+        throw new SideRequestError('terminal-bad-response', '终端服务返回了无法解析的响应')
+      }
+      if (payload === null || typeof payload !== 'object' || payload.ok !== true) {
+        const failure = payload?.error ?? {}
+        throw new SideRequestError(failure.code ?? 'terminal-error', failure.message ?? '终端操作失败')
+      }
+      return payload.value
+    }
+
+    /** xterm.js view attached to one Host terminal session. */
+    function TerminalView({ session, t, onStatus }) {
+      const hostRef = useRef(null)
+      const statusRef = useRef(onStatus)
+      const [error, setError] = useState(null)
+      const [loading, setLoading] = useState(true)
+      const [exited, setExited] = useState(false)
+      statusRef.current = onStatus
+
+      useEffect(() => {
+        let disposed = false
+        let pollTimer = null
+        let observer = null
+        let fallbackResize = null
+        let terminal = null
+        let since = 0
+
+        function report(status, code) {
+          if (typeof statusRef.current === 'function') statusRef.current(session.id, status, code)
+        }
+
+        async function start() {
+          await ensureXterm()
+          if (disposed || hostRef.current === null) return
+          const styles = window.getComputedStyle(document.documentElement)
+          const background = styles.getPropertyValue('--dsw-alias-bg-base').trim() || '#111318'
+          const foreground = styles.getPropertyValue('--dsw-alias-label-primary').trim() || '#d7dae0'
+          terminal = new window.Terminal({
+            cursorBlink: true,
+            fontSize: 12,
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
+            lineHeight: 1.2,
+            scrollback: 4000,
+            theme: { background, foreground, cursor: foreground },
+          })
+          const fit = new window.FitAddon.FitAddon()
+          terminal.loadAddon(fit)
+          terminal.open(hostRef.current)
+          terminal.focus()
+          try {
+            fit.fit()
+          } catch {
+            /* container not measured yet */
+          }
+          terminal.onData((data) => {
+            void callTerminal('write', { id: session.hostId, data }).catch(() => {})
+          })
+          const resize = () => {
+            if (disposed || terminal === null) return
+            try {
+              fit.fit()
+              void callTerminal('resize', { id: session.hostId, cols: terminal.cols, rows: terminal.rows }).catch(() => {})
+            } catch {
+              /* ignore transient layout */
+            }
+          }
+          if (typeof ResizeObserver !== 'undefined') {
+            observer = new ResizeObserver(resize)
+            observer.observe(hostRef.current)
+          } else {
+            fallbackResize = resize
+            window.addEventListener('resize', resize)
+          }
+          setTimeout(resize, 120)
+          setLoading(false)
+          const poll = async () => {
+            if (disposed) return
+            try {
+              const value = await callTerminal('poll', { id: session.hostId, since })
+              if (disposed) return
+              if (value.reset) terminal.reset()
+              if (typeof value.data === 'string' && value.data.length > 0) terminal.write(value.data)
+              since = Number.isFinite(value.next) ? value.next : since
+              if (value.closed) {
+                setExited(true)
+                report('closed', value.exitCode)
+                return
+              }
+              pollTimer = setTimeout(() => void poll(), 140)
+            } catch (failure) {
+              if (!disposed) {
+                setError(errorText(failure))
+                report('error')
+              }
+            }
+          }
+          void poll()
+        }
+
+        start().catch((failure) => {
+          if (!disposed) {
+            setError(errorText(failure))
+            setLoading(false)
+            report('error')
+          }
+        })
+        return () => {
+          disposed = true
+          if (pollTimer !== null) clearTimeout(pollTimer)
+          if (observer !== null) observer.disconnect()
+          if (fallbackResize !== null) window.removeEventListener('resize', fallbackResize)
+          if (terminal !== null) terminal.dispose()
+        }
+      }, [session.id, session.hostId])
+
+      return h(
+        'div',
+        { className: 'ds-terminal-view' },
+        h('div', { ref: hostRef, className: 'ds-terminal-host' }),
+        loading ? h('div', { className: 'ds-terminal-overlay' }, h('span', { className: 'ds-spinner' }), t('terminal.loading')) : null,
+        error !== null ? h('div', { className: 'ds-terminal-overlay ds-terminal-error' }, error) : null,
+        exited ? h('div', { className: 'ds-terminal-exited' }, t('terminal.exited')) : null,
+      )
+    }
+
     /* ------------------------------------------------------------------ *
      * Page
      * ------------------------------------------------------------------ */
@@ -4204,6 +4436,10 @@ window.__ModuleLoader__.load({
         const [clipboard, setClipboard] = useState(null)
         const [dropTarget, setDropTarget] = useState(null)
         const [maximized, setMaximized] = useState(false)
+        const [terminals, setTerminals] = useState([])
+        const [terminalPanelOpen, setTerminalPanelOpen] = useState(false)
+        const [terminalPanelHeight, setTerminalPanelHeight] = useState(240)
+        const [terminalPanelActive, setTerminalPanelActive] = useState(null)
         const [sshOpen, setSshOpen] = useState(false)
         const [sshSpec, setSshSpec] = useState('')
         const [sshBusy, setSshBusy] = useState(false)
@@ -4217,6 +4453,9 @@ window.__ModuleLoader__.load({
         const dragPathRef = useRef(null)
         const downloadAnchorRef = useRef(null)
         const browserCounterRef = useRef(0)
+        const terminalCounterRef = useRef(0)
+        const terminalsRef = useRef([])
+        terminalsRef.current = terminals
 
         useEffect(() => {
           if (!maximized) return
@@ -4234,6 +4473,18 @@ window.__ModuleLoader__.load({
         useEffect(() => {
           const dispose = ctx.locale.subscribe(() => setLocaleVersion((value) => value + 1))
           return dispose
+        }, [])
+
+        useEffect(() => {
+          const onUnload = () => {
+            if (typeof navigator.sendBeacon !== 'function') return
+            for (const session of terminalsRef.current) {
+              const payload = JSON.stringify({ op: 'close', id: session.hostId })
+              navigator.sendBeacon(new URL(TERMINAL_PATH, document.baseURI).href, new Blob([payload], { type: 'application/json' }))
+            }
+          }
+          window.addEventListener('beforeunload', onUnload)
+          return () => window.removeEventListener('beforeunload', onUnload)
         }, [])
 
         useEffect(() => {
@@ -4478,6 +4729,7 @@ window.__ModuleLoader__.load({
         }
 
         function applyRoot(nextRoot, nextRoots) {
+          closeAllTerminalSessions()
           const roots = nextRoots ?? store.get().roots
           store.set((current) => ({
             ...current,
@@ -5312,6 +5564,167 @@ window.__ModuleLoader__.load({
           await loadDiffInto(key, root, request)
         }
 
+        function addTerminalTab(session) {
+          const key = `terminal:${session.id}`
+          const existing = store.get().tabs.find((tab) => tab.path === key)
+          if (existing !== undefined) {
+            store.set((current) => ({ ...current, active: key }))
+            return
+          }
+          const tab = {
+            path: key,
+            name: session.title,
+            mode: 'terminal',
+            language: { id: 'terminal', label: 'Terminal' },
+            terminalId: session.id,
+            content: '',
+            saved: '',
+            version: null,
+            dirty: false,
+            loading: false,
+            error: null,
+            code: null,
+            view: 'edit',
+          }
+          store.set((current) => ({ ...current, tabs: [...current.tabs, tab], active: key }))
+          setCompactView('editor')
+        }
+
+        function removeEditorTerminalTab(id) {
+          const key = `terminal:${id}`
+          const current = store.get()
+          const index = current.tabs.findIndex((tab) => tab.path === key)
+          if (index < 0) return
+          const tabs = current.tabs.filter((tab) => tab.path !== key)
+          let active = current.active
+          if (active === key) active = tabs[Math.max(0, index - 1)]?.path ?? tabs[0]?.path ?? null
+          store.set((snapshot) => ({ ...snapshot, tabs, active }))
+        }
+
+        function updateTerminalSession(id, patch) {
+          setTerminals((current) =>
+            current.map((session) => (session.id === id ? { ...session, ...patch } : session)),
+          )
+        }
+
+        function closeTerminalSession(id, options = {}) {
+          const session = terminals.find((entry) => entry.id === id)
+          if (session !== undefined) {
+            void callTerminal('close', { id: session.hostId }).catch(() => {})
+          }
+          const next = terminals.filter((entry) => entry.id !== id)
+          setTerminals(next)
+          if (options.removeEditor !== false) removeEditorTerminalTab(id)
+          const remainingPanel = next.filter((entry) => entry.placement === 'panel')
+          if (terminalPanelActive === id) setTerminalPanelActive(remainingPanel[0]?.id ?? null)
+          if (remainingPanel.length === 0) setTerminalPanelOpen(false)
+        }
+
+        function closeAllTerminalSessions() {
+          for (const session of terminals) {
+            void callTerminal('close', { id: session.hostId }).catch(() => {})
+          }
+          setTerminals([])
+          setTerminalPanelOpen(false)
+          setTerminalPanelActive(null)
+        }
+
+        async function openTerminal(placement = 'panel') {
+          const root = store.get().root
+          if (root === null) {
+            setBanner({ kind: 'error', message: t('terminal.needRoot') })
+            return
+          }
+          if (isSshRootPath(root)) {
+            setBanner({ kind: 'error', message: t('terminal.sshUnsupported') })
+            return
+          }
+          try {
+            const value = await callTerminal('open', { root, cols: 100, rows: 28 })
+            if (value === null || typeof value !== 'object' || typeof value.id !== 'string') {
+              throw new Error('终端服务没有返回会话 ID')
+            }
+            terminalCounterRef.current += 1
+            const session = {
+              id: value.id,
+              hostId: value.id,
+              title: t('terminal.title', { n: String(terminalCounterRef.current) }),
+              placement,
+              status: 'running',
+              exitCode: null,
+            }
+            setTerminals((current) => [...current, session])
+            if (placement === 'panel') {
+              setTerminalPanelOpen(true)
+              setTerminalPanelActive(session.id)
+            } else {
+              addTerminalTab(session)
+            }
+          } catch (failure) {
+            setBanner({ kind: 'error', message: t('terminal.openFailed', { message: errorText(failure) }) })
+          }
+        }
+
+        function toggleTerminalPanel() {
+          if (terminalPanelOpen) {
+            setTerminalPanelOpen(false)
+            return
+          }
+          if (terminals.some((session) => session.placement === 'panel')) {
+            setTerminalPanelOpen(true)
+            return
+          }
+          void openTerminal('panel')
+        }
+
+        function moveTerminalToPanel(id) {
+          const session = terminals.find((entry) => entry.id === id)
+          if (session === undefined) return
+          removeEditorTerminalTab(id)
+          setTerminals((current) =>
+            current.map((entry) => (entry.id === id ? { ...entry, placement: 'panel' } : entry)),
+          )
+          setTerminalPanelOpen(true)
+          setTerminalPanelActive(id)
+        }
+
+        function moveTerminalToEditor(id) {
+          const session = terminals.find((entry) => entry.id === id)
+          if (session === undefined) return
+          const remainingPanel = terminals.filter((entry) => entry.placement === 'panel' && entry.id !== id)
+          setTerminals((current) =>
+            current.map((entry) => (entry.id === id ? { ...entry, placement: 'editor' } : entry)),
+          )
+          addTerminalTab({ ...session, placement: 'editor' })
+          setTerminalPanelActive(remainingPanel[0]?.id ?? null)
+          if (remainingPanel.length === 0) setTerminalPanelOpen(false)
+        }
+
+        function closeTerminalPanel() {
+          for (const session of terminals.filter((entry) => entry.placement === 'panel')) {
+            void callTerminal('close', { id: session.hostId }).catch(() => {})
+          }
+          setTerminals((current) => current.filter((entry) => entry.placement !== 'panel'))
+          setTerminalPanelOpen(false)
+          setTerminalPanelActive(null)
+        }
+
+        function startTerminalResize(event) {
+          event.preventDefault()
+          const startY = event.clientY
+          const startHeight = terminalPanelHeight
+          const onMove = (moveEvent) => {
+            const next = startHeight + (startY - moveEvent.clientY)
+            setTerminalPanelHeight(Math.max(120, Math.min(window.innerHeight * 0.7, next)))
+          }
+          const onUp = () => {
+            window.removeEventListener('pointermove', onMove)
+            window.removeEventListener('pointerup', onUp)
+          }
+          window.addEventListener('pointermove', onMove)
+          window.addEventListener('pointerup', onUp)
+        }
+
         function readBrowserView() {
           const fallback = { device: 'pc', preset: 'iphone14', orientation: 'portrait' }
           const raw = readStorage(BROWSER_VIEW_KEY)
@@ -5485,6 +5898,10 @@ window.__ModuleLoader__.load({
         }
 
         function closeNow(relative) {
+          const closing = store.get().tabs.find((tab) => tab.path === relative)
+          if (closing?.mode === 'terminal' && typeof closing.terminalId === 'string') {
+            closeTerminalSession(closing.terminalId, { removeEditor: false })
+          }
           const current = store.get()
           const index = current.tabs.findIndex((tab) => tab.path === relative)
           const tabs = current.tabs.filter((tab) => tab.path !== relative)
@@ -5814,6 +6231,11 @@ window.__ModuleLoader__.load({
         }
 
         function onRootKeyDown(event) {
+          if ((event.ctrlKey || event.metaKey) && event.key === '`') {
+            event.preventDefault()
+            toggleTerminalPanel()
+            return
+          }
           if (event.altKey && event.key.toLowerCase() === 'b') {
             event.preventDefault()
             openBrowser()
@@ -6065,6 +6487,25 @@ window.__ModuleLoader__.load({
         }
 
         function editorToolbar(tab) {
+          if (tab.mode === 'terminal') {
+            return h(
+              'div',
+              { className: 'ds-edit-toolbar ds-terminal-toolbar' },
+              h('span', { className: 'ds-lang' }, t('terminal.label')),
+              h('span', { className: 'ds-spacer' }),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-toolbtn',
+                  title: t('terminal.moveToPanel'),
+                  onClick: () => moveTerminalToPanel(tab.terminalId),
+                },
+                h(PanelTopIcon),
+                h('span', { className: 'ds-tool-label' }, t('terminal.moveToPanel')),
+              ),
+            )
+          }
           if (tab.mode === 'browser') {
             const canBack = tab.historyIndex > 0
             const canForward = tab.historyIndex < tab.history.length - 1
@@ -6380,6 +6821,16 @@ window.__ModuleLoader__.load({
         }
 
         function tabBody(tab) {
+          if (tab.mode === 'terminal') {
+            const session = terminals.find((entry) => entry.id === tab.terminalId)
+            if (session === undefined) return h('div', { className: 'ds-empty' }, t('terminal.sessionMissing'))
+            return h(TerminalView, {
+              key: session.hostId,
+              session,
+              t,
+              onStatus: (id, status, code) => updateTerminalSession(id, { status, exitCode: code ?? null }),
+            })
+          }
           if (tab.mode === 'diff') return h(DiffView, { tab, t })
           if (tab.loading) {
             return h('div', { className: 'ds-empty' }, h('span', { className: 'ds-spinner' }), t('hint.loadingFile'))
@@ -6571,8 +7022,105 @@ window.__ModuleLoader__.load({
           )
         }
 
-        const segments = activeTab === null || activeTab.mode === 'diff' || activeTab.mode === 'browser' ? [] : breadcrumbSegments(activeTab)
+        const segments = activeTab === null || activeTab.mode === 'diff' || activeTab.mode === 'browser' || activeTab.mode === 'terminal' ? [] : breadcrumbSegments(activeTab)
         const lineCount = activeTab !== null && isTextMode(activeTab.mode) ? activeTab.content.split('\n').length : 0
+        const panelSessions = terminals.filter((session) => session.placement === 'panel')
+        const activePanelSession =
+          panelSessions.find((session) => session.id === terminalPanelActive) ?? panelSessions[0] ?? null
+        const terminalPanel =
+          terminalPanelOpen && panelSessions.length > 0
+            ? h(
+                'section',
+                { className: 'ds-terminal-panel', style: { height: `${String(terminalPanelHeight)}px` } },
+                h('div', {
+                  className: 'ds-terminal-resize',
+                  role: 'separator',
+                  'aria-orientation': 'horizontal',
+                  title: t('terminal.resize'),
+                  onPointerDown: startTerminalResize,
+                }),
+                h(
+                  'div',
+                  { className: 'ds-terminal-tabs', role: 'tablist', 'aria-label': t('terminal.tabs') },
+                  panelSessions.map((session) =>
+                    h(
+                      'div',
+                      {
+                        key: session.id,
+                        className: 'ds-terminal-tab',
+                        'data-active': session.id === activePanelSession?.id ? 'true' : undefined,
+                      },
+                      h(
+                        'button',
+                        {
+                          type: 'button',
+                          role: 'tab',
+                          className: 'ds-terminal-tab-btn',
+                          'aria-selected': session.id === activePanelSession?.id,
+                          title: session.title,
+                          onClick: () => setTerminalPanelActive(session.id),
+                        },
+                        h(TerminalIcon),
+                        h('span', { className: 'ds-terminal-tab-name' }, session.title),
+                        session.status === 'closed' ? h('span', { className: 'ds-terminal-tab-dot' }) : null,
+                      ),
+                      h(
+                        'button',
+                        {
+                          type: 'button',
+                          className: 'ds-terminal-tab-close',
+                          title: t('terminal.close'),
+                          onClick: () => closeTerminalSession(session.id),
+                        },
+                        h(CloseIcon),
+                      ),
+                    ),
+                  ),
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-iconbtn ds-iconbtn-sm',
+                      title: t('terminal.new'),
+                      onClick: () => void openTerminal('panel'),
+                    },
+                    h(PlusIcon),
+                  ),
+                  h('span', { className: 'ds-spacer' }),
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-iconbtn ds-iconbtn-sm',
+                      title: t('terminal.moveToEditor'),
+                      disabled: activePanelSession === null,
+                      onClick: () => {
+                        if (activePanelSession !== null) moveTerminalToEditor(activePanelSession.id)
+                      },
+                    },
+                    h(PanelTopIcon),
+                  ),
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-iconbtn ds-iconbtn-sm',
+                      title: t('terminal.closePanel'),
+                      onClick: closeTerminalPanel,
+                    },
+                    h(CloseIcon),
+                  ),
+                ),
+                activePanelSession === null
+                  ? h('div', { className: 'ds-terminal-empty' }, t('terminal.empty'))
+                  : h(TerminalView, {
+                      key: activePanelSession.hostId,
+                      session: activePanelSession,
+                      t,
+                      onStatus: (id, status, code) => updateTerminalSession(id, { status, exitCode: code ?? null }),
+                    }),
+              )
+            : null
 
         return h(
           'div',
@@ -6682,6 +7230,18 @@ window.__ModuleLoader__.load({
               h(NewFolderIcon),
             ),
             h('span', { className: 'ds-vr' }),
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'ds-iconbtn ds-terminal-toggle',
+                title: t('terminal.toggle'),
+                'aria-pressed': terminalPanelOpen,
+                'data-active': terminalPanelOpen ? 'true' : undefined,
+                onClick: toggleTerminalPanel,
+              },
+              h(TerminalIcon),
+            ),
             h(
               'button',
               {
@@ -7124,6 +7684,8 @@ window.__ModuleLoader__.load({
                                 ? tab.url.length > 0
                                   ? tab.url
                                   : t('browser.newTab')
+                                : tab.mode === 'terminal'
+                                  ? tab.name
                                 : tab.mode === 'diff'
                                   ? `${tab.diff?.path ?? ''} · ${tab.diff?.tag ?? ''}`
                                   : tab.path,
@@ -7143,7 +7705,9 @@ window.__ModuleLoader__.load({
                               }
                             },
                           },
-                          tab.mode === 'browser'
+                          tab.mode === 'terminal'
+                            ? h('span', { className: 'ds-glyph ds-glyph-terminal' }, h(TerminalIcon))
+                            : tab.mode === 'browser'
                             ? h('span', { className: 'ds-glyph ds-glyph-browser' }, h(GlobeIcon))
                             : tab.mode === 'diff'
                             ? h('span', { className: 'ds-glyph ds-glyph-diff' }, h(CompareIcon))
@@ -7305,6 +7869,8 @@ window.__ModuleLoader__.load({
                                 ? activeTab.url.length > 0
                                   ? activeTab.url
                                   : t('browser.newTab')
+                                : activeTab.mode === 'terminal'
+                                  ? t('terminal.local')
                                 : activeTab.mode === 'diff'
                                 ? t('git.diffReadOnly')
                                 : activeTab.dirty
@@ -7321,6 +7887,7 @@ window.__ModuleLoader__.load({
                   ),
             ),
           ),
+          terminalPanel,
           menu === null
             ? null
             : h(
@@ -8695,6 +9262,111 @@ window.__ModuleLoader__.load({
 }
 .ds-side-tab svg { flex: 0 0 auto; width: 12px; height: 12px; }
 .ds-side-tab span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-terminal-toggle[data-active="true"] { color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent); }
+.ds-glyph-terminal { color: var(--dsw-alias-brand-primary); }
+.ds-glyph-terminal svg { width: 14px; height: 14px; }
+.ds-terminal-panel {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  min-height: 120px;
+  border-top: 1px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-alias-bg-base);
+  overflow: hidden;
+}
+.ds-terminal-resize {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  height: 5px;
+  cursor: row-resize;
+}
+.ds-terminal-resize:hover { background: color-mix(in srgb, var(--dsw-alias-brand-primary) 35%, transparent); }
+.ds-terminal-tabs {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 2px;
+  min-height: 28px;
+  padding: 0 4px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-alias-bg-layer-1);
+  overflow-x: auto;
+}
+.ds-terminal-tab {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 1 auto;
+  max-width: 180px;
+  height: 24px;
+  border-radius: 5px;
+  color: var(--dsw-alias-label-secondary);
+}
+.ds-terminal-tab[data-active="true"] { color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 10%, transparent); }
+.ds-terminal-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  height: 100%;
+  padding: 0 3px 0 7px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.ds-terminal-tab-btn svg { flex: 0 0 auto; width: 13px; height: 13px; }
+.ds-terminal-tab-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-terminal-tab-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.ds-terminal-tab-close:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 10%, transparent); }
+.ds-terminal-tab-dot { flex: 0 0 auto; width: 5px; height: 5px; border-radius: 50%; background: var(--dsw-alias-state-warn-primary); }
+.ds-terminal-empty { display: flex; flex: 1; align-items: center; justify-content: center; color: var(--dsw-alias-label-secondary); font-size: 12px; }
+.ds-terminal-view { position: relative; display: flex; flex: 1 1 auto; min-height: 0; background: var(--dsw-alias-bg-base); }
+.ds-terminal-host { flex: 1 1 auto; min-height: 0; padding: 3px 4px; overflow: hidden; }
+.ds-terminal-host .xterm { height: 100%; }
+.ds-terminal-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  background: color-mix(in srgb, var(--dsw-alias-bg-base) 82%, transparent);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  pointer-events: none;
+}
+.ds-terminal-overlay.ds-terminal-error { color: var(--dsw-alias-state-error-primary); pointer-events: auto; }
+.ds-terminal-exited {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 16%, var(--dsw-alias-bg-overlay));
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+  pointer-events: none;
+}
+.ds-terminal-toolbar .ds-lang { font-family: var(--ds-mono); }
 .ds-side-foot {
   flex: 0 0 auto;
   padding: 5px 10px;
