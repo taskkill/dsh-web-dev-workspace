@@ -25,6 +25,7 @@ window.__ModuleLoader__.load({
     /** Locale-store keys. */
     const ROOT_KEY = 'dsh-web-filebrowser:root'
     const WIDTH_KEY = 'dsh-web-filebrowser:tree-width'
+    const SIDE_POSITION_KEY = 'dsh-web-filebrowser:side-position'
     const HIDDEN_KEY = 'dsh-web-filebrowser:show-hidden'
     const FAVORITES_KEY = 'dsh-web-filebrowser:favorites'
     const FAVORITES_OPEN_KEY = 'dsh-web-filebrowser:favorites-open'
@@ -150,6 +151,8 @@ window.__ModuleLoader__.load({
       'compact.back': '返回目录',
       explorer: '资源管理器',
       'side.tabs': '侧栏视图',
+      'side.moveLeft': '资源管理器移到左侧',
+      'side.moveRight': '资源管理器移到右侧',
       favorites: '收藏夹',
       'favorite.add': '收藏',
       'favorite.remove': '取消收藏',
@@ -468,6 +471,8 @@ window.__ModuleLoader__.load({
       'compact.back': 'Back to explorer',
       explorer: 'Explorer',
       'side.tabs': 'Sidebar views',
+      'side.moveLeft': 'Move explorer to the left',
+      'side.moveRight': 'Move explorer to the right',
       favorites: 'Favorites',
       'favorite.add': 'Add to favorites',
       'favorite.remove': 'Remove from favorites',
@@ -2067,6 +2072,14 @@ window.__ModuleLoader__.load({
 
     function RotateIcon() {
       return icon(15, h('path', { d: 'M12.75 6.5V3.25H9.5' }), h('path', { d: 'M12.5 3.5a5.5 5.5 0 1 0 1 6.5' }))
+    }
+
+    function PanelLeftIcon() {
+      return icon(15, h('rect', { x: 1.75, y: 2.75, width: 11.5, height: 9.5, rx: 1 }), h('path', { d: 'M5.75 2.75v9.5' }))
+    }
+
+    function PanelRightIcon() {
+      return icon(15, h('rect', { x: 1.75, y: 2.75, width: 11.5, height: 9.5, rx: 1 }), h('path', { d: 'M10.25 2.75v9.5' }))
     }
 
     function TerminalIcon() {
@@ -4015,6 +4028,21 @@ window.__ModuleLoader__.load({
             h(
               'div',
               { className: 'ds-git-section-head' },
+              h('span', { className: 'ds-git-section-title' }, `${t('git.changes')} (${String(changes.length)})`),
+              changes.length > 0
+                ? h('button', { type: 'button', className: 'ds-linkbtn', disabled: busy, onClick: stageAll }, t('git.stageAll'))
+                : null,
+            ),
+            changes.length === 0
+              ? h('div', { className: 'ds-git-hint' }, t('git.clean'))
+              : changes.map((entry) => renderRow(entry, false)),
+          ),
+          h(
+            'div',
+            { className: 'ds-git-section' },
+            h(
+              'div',
+              { className: 'ds-git-section-head' },
               h('span', { className: 'ds-git-section-title' }, `${t('git.staged')} (${String(staged.length)})`),
               staged.length > 0
                 ? h(
@@ -4027,21 +4055,6 @@ window.__ModuleLoader__.load({
             staged.length === 0
               ? h('div', { className: 'ds-git-hint' }, t('git.noStaged'))
               : staged.map((entry) => renderRow(entry, true)),
-          ),
-          h(
-            'div',
-            { className: 'ds-git-section' },
-            h(
-              'div',
-              { className: 'ds-git-section-head' },
-              h('span', { className: 'ds-git-section-title' }, `${t('git.changes')} (${String(changes.length)})`),
-              changes.length > 0
-                ? h('button', { type: 'button', className: 'ds-linkbtn', disabled: busy, onClick: stageAll }, t('git.stageAll'))
-                : null,
-            ),
-            changes.length === 0
-              ? h('div', { className: 'ds-git-hint' }, t('git.clean'))
-              : changes.map((entry) => renderRow(entry, false)),
           ),
         ),
         ),
@@ -4535,6 +4548,7 @@ window.__ModuleLoader__.load({
         const [clipboard, setClipboard] = useState(null)
         const [dropTarget, setDropTarget] = useState(null)
         const [maximized, setMaximized] = useState(false)
+        const [sidePosition, setSidePosition] = useState(() => (readStorage(SIDE_POSITION_KEY) === 'right' ? 'right' : 'left'))
         const [terminals, setTerminals] = useState([])
         const [terminalPanelOpen, setTerminalPanelOpen] = useState(false)
         const [terminalPanelHeight, setTerminalPanelHeight] = useState(240)
@@ -6413,7 +6427,8 @@ window.__ModuleLoader__.load({
           const startX = event.clientX
           const startWidth = store.get().treeWidth
           const move = (moveEvent) => {
-            const width = Math.min(560, Math.max(180, startWidth + moveEvent.clientX - startX))
+            const delta = sidePosition === 'left' ? moveEvent.clientX - startX : startX - moveEvent.clientX
+            const width = Math.min(560, Math.max(180, startWidth + delta))
             store.set((current) => ({ ...current, treeWidth: width }))
           }
           const finish = () => {
@@ -7399,7 +7414,7 @@ window.__ModuleLoader__.load({
               ),
           h(
             'div',
-            { className: 'ds-body' },
+            { className: 'ds-body', 'data-side': sidePosition },
             h(
               'aside',
               {
@@ -7410,7 +7425,25 @@ window.__ModuleLoader__.load({
               h(
                 'div',
                 { className: 'ds-pane-head' },
-                h('span', null, showGit ? t('git.title') : t('explorer')),
+                h(
+                  'span',
+                  { className: 'ds-pane-title' },
+                  h('span', { className: 'ds-pane-title-text' }, showGit ? t('git.title') : t('explorer')),
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-iconbtn ds-iconbtn-sm ds-side-switch',
+                      title: sidePosition === 'left' ? t('side.moveRight') : t('side.moveLeft'),
+                      onClick: () => {
+                        const next = sidePosition === 'left' ? 'right' : 'left'
+                        setSidePosition(next)
+                        writeStorage(SIDE_POSITION_KEY, next)
+                      },
+                    },
+                    sidePosition === 'left' ? h(PanelRightIcon) : h(PanelLeftIcon),
+                  ),
+                ),
                 h(
                   'span',
                   { className: 'ds-pane-actions' },
@@ -8507,6 +8540,11 @@ window.__ModuleLoader__.load({
 .ds-banner-text { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 .ds-banner-close { margin-left: auto; }
 .ds-body { display: flex; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.ds-body[data-side="right"] .ds-side { order: 2; border-right: 0; border-left: 1px solid var(--dsw-alias-border-l1); }
+.ds-body[data-side="right"] .ds-main { order: 0; }
+.ds-side { order: 0; }
+.ds-splitter { order: 1; }
+.ds-main { order: 2; }
 .ds-side {
   display: flex;
   flex-direction: column;
@@ -8528,6 +8566,9 @@ window.__ModuleLoader__.load({
   letter-spacing: 0.07em;
   text-transform: uppercase;
 }
+.ds-pane-title { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.ds-pane-title-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-pane-title .ds-side-switch { width: 20px; height: 20px; margin-left: 1px; }
 .ds-pane-actions { display: flex; align-items: center; gap: 1px; flex: 0 0 auto; }
 .ds-more-wrap { position: relative; }
 .ds-more-menu {
@@ -8721,7 +8762,7 @@ window.__ModuleLoader__.load({
 .ds-side[data-view="git"] .ds-tree,
 .ds-side[data-view="git"] > .ds-hint,
 .ds-side[data-view="git"] > .ds-empty { display: none; }
-.ds-side[data-view="git"] .ds-pane-actions .ds-iconbtn:not(.ds-git-toggle),
+.ds-side[data-view="git"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
 .ds-side[data-view="git"] .ds-pane-actions .ds-more-wrap { display: none; }
 .ds-git-toggle[data-active="true"] {
   color: var(--dsw-alias-brand-primary);

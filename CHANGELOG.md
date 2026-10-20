@@ -4,6 +4,16 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Explorer layout
+
+- Add a left/right switch for the explorer; the position is persisted and the
+  resize splitter follows the chosen side.
+
+### Git
+
+- Put working-tree changes above the staged section in the Changes view, matching
+  the usual stage-from-top workflow.
+
 ### Sidebar tabs
 
 - Explorer and Git are now switched by two tabs at the bottom of the sidebar;

@@ -70,6 +70,9 @@ it for you.
 ### Explorer and workspace management
 
 - Browse every registered Harness workspace; switch from the header picker.
+- The explorer header has a **side switch** that moves the file tree to the left or
+  right of the editor; the choice is persisted and the splitter drag direction
+  follows it.
 - Create files/folders, rename inline (F2), delete with confirmation, refresh.
 - **Copy / cut / paste** files and folders between directories from the context menu,
   or drag a tree entry onto a folder to move it.
