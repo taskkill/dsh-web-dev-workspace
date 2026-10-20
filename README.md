@@ -2,7 +2,7 @@
   <img src="dsh-side-plugin/icon.svg" width="88" height="88" alt="DSH Side icon" />
 </p>
 
-<h1 align="center">DSH Side</h1>
+<h1 align="center">DeepSeek Harness Web Filebrowser</h1>
 
 <p align="center">
   A VS Code-style workspace for the <strong>DeepSeek Harness</strong> Web UI:

@@ -2,7 +2,7 @@
   <img src="dsh-side-plugin/icon.svg" width="88" height="88" alt="DSH Side 图标" />
 </p>
 
-<h1 align="center">DSH Side</h1>
+<h1 align="center">DeepSeek Harness Web 文件管理器</h1>
 
 <p align="center">
   为 <strong>DeepSeek Harness</strong> Web UI 提供 VS Code 风格工作区：
