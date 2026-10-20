@@ -219,6 +219,43 @@ window.__ModuleLoader__.load({
       'git.installHint': 'Git 支持未安装：请安装 @local/dsh-side-git',
       'git.error': 'Git 操作失败',
       'git.busy': '处理中…',
+      'git.fetch': '获取',
+      'git.fetching': '获取中…',
+      'git.fetchHint': '从远程获取引用，不改动工作区',
+      'git.fetchOk': '已获取远程更新',
+      'git.fetchNone': '已是最新，没有新的远程引用',
+      'git.pull': '拉取',
+      'git.pulling': '拉取中…',
+      'git.pullHint': '以快进方式拉取上游提交',
+      'git.pullOk': '已拉取远程更新',
+      'git.push': '推送',
+      'git.pushing': '推送中…',
+      'git.pushHint': '推送当前分支到上游',
+      'git.pushOk': '已推送',
+      'git.pushSetUpstream': '已推送并设置上游 {upstream}',
+      'git.commitAndPush': '提交并推送',
+      'git.commitPushOk': '已提交并推送',
+      'git.compare': '比较',
+      'git.compareHint': '与上游或其他分支比较提交和文件',
+      'git.compareTitle': '比较分支',
+      'git.compareBase': '基准',
+      'git.compareLoading': '正在比较…',
+      'git.compareOurs': '仅本地提交',
+      'git.compareTheirs': '仅基准提交',
+      'git.compareFiles': '更改的文件',
+      'git.compareNoDiff': '没有差异',
+      'git.compareFailed': '比较失败',
+      'git.authRequired': '远程仓库要求认证；请在 Host 上配置 SSH 密钥或 Git 凭据助手（本插件不保存凭据）。',
+      'git.noRemote': '当前仓库没有配置远程仓库。',
+      'git.noUpstream': '当前分支没有上游分支，无法拉取。',
+      'git.nonFastForward': '远程有新提交，推送被拒绝；请先拉取或合并。',
+      'git.diverged': '本地分支与上游已分叉，无法快进；请先在终端变基或合并。',
+      'git.detachedPush': 'HEAD 处于分离状态，无法推送。',
+      'git.noCommits': '还没有提交。',
+      'git.networkError': '无法连接远程仓库，请检查网络或远程地址。',
+      'git.conflictError': '操作产生冲突，请先在终端解决冲突。',
+      'git.dirtyError': '工作区有未提交的更改，无法拉取；请先提交或暂存。',
+      'git.rejected': '远程仓库拒绝了这次推送。',
     }
 
     const en = {
@@ -402,6 +439,43 @@ window.__ModuleLoader__.load({
       'git.installHint': 'Git support is not installed. Install @local/dsh-side-git.',
       'git.error': 'Git operation failed',
       'git.busy': 'Working…',
+      'git.fetch': 'Fetch',
+      'git.fetching': 'Fetching…',
+      'git.fetchHint': 'Fetch remote refs without touching the working tree',
+      'git.fetchOk': 'Fetched remote updates',
+      'git.fetchNone': 'Already up to date; no new remote refs',
+      'git.pull': 'Pull',
+      'git.pulling': 'Pulling…',
+      'git.pullHint': 'Fast-forward from the upstream branch',
+      'git.pullOk': 'Pulled remote updates',
+      'git.push': 'Push',
+      'git.pushing': 'Pushing…',
+      'git.pushHint': 'Push the current branch to its upstream',
+      'git.pushOk': 'Pushed',
+      'git.pushSetUpstream': 'Pushed and set upstream to {upstream}',
+      'git.commitAndPush': 'Commit & push',
+      'git.commitPushOk': 'Committed and pushed',
+      'git.compare': 'Compare',
+      'git.compareHint': 'Compare commits and files with upstream or another branch',
+      'git.compareTitle': 'Compare branches',
+      'git.compareBase': 'Base',
+      'git.compareLoading': 'Comparing…',
+      'git.compareOurs': 'Only on this branch',
+      'git.compareTheirs': 'Only on base',
+      'git.compareFiles': 'Changed files',
+      'git.compareNoDiff': 'No differences',
+      'git.compareFailed': 'Comparison failed',
+      'git.authRequired': 'The remote requires authentication. Configure an SSH key or a Git credential helper on the Host; this plugin never stores credentials.',
+      'git.noRemote': 'This repository has no configured remote.',
+      'git.noUpstream': 'The current branch has no upstream, so it cannot be pulled.',
+      'git.nonFastForward': 'The remote has new commits and rejected the push. Pull or merge first.',
+      'git.diverged': 'The local branch has diverged from its upstream; rebase or merge it in a terminal first.',
+      'git.detachedPush': 'HEAD is detached, so there is nothing to push.',
+      'git.noCommits': 'There are no commits yet.',
+      'git.networkError': 'Could not reach the remote. Check the network or the remote URL.',
+      'git.conflictError': 'The operation produced conflicts; resolve them in a terminal first.',
+      'git.dirtyError': 'The working tree has uncommitted changes; commit or stash them before pulling.',
+      'git.rejected': 'The remote rejected this push.',
     }
 
     /* ------------------------------------------------------------------ *
@@ -2193,11 +2267,20 @@ window.__ModuleLoader__.load({
       )
     }
 
+    function CompareIcon() {
+      return icon(16,
+        h('circle', { cx: 4.6, cy: 4.8, r: 2.15 }),
+        h('circle', { cx: 11.4, cy: 11.2, r: 2.15 }),
+        h('path', { d: 'M6.8 4.8h1.7a1.6 1.6 0 0 1 1.6 1.6v2.1' }),
+        h('path', { d: 'M9.2 11.2H7.5a1.6 1.6 0 0 1-1.6-1.6V7.5' }),
+      )
+    }
+
     /* ------------------------------------------------------------------ *
      * Git panel
      * ------------------------------------------------------------------ */
 
-    function GitPanel({ root, t, onOpenFile, showToast }) {
+    function GitPanel({ root, t, onOpenFile, showToast, onFilesChanged }) {
       const [status, setStatus] = useState(null)
       const [loading, setLoading] = useState(root !== null)
       const [error, setError] = useState(null)
@@ -2207,6 +2290,14 @@ window.__ModuleLoader__.load({
       const [branchOpen, setBranchOpen] = useState(false)
       const [branches, setBranches] = useState([])
       const [branchBusy, setBranchBusy] = useState(false)
+      const [remoteAction, setRemoteAction] = useState(null)
+      const [compareOpen, setCompareOpen] = useState(false)
+      const [compareRefs, setCompareRefs] = useState(null)
+      const [compareBase, setCompareBase] = useState('')
+      const [compareData, setCompareData] = useState(null)
+      const [compareLoading, setCompareLoading] = useState(false)
+      const [compareError, setCompareError] = useState(null)
+      const [compareFile, setCompareFile] = useState(null)
 
       async function loadStatus(silent = false) {
         if (root === null) {
@@ -2231,20 +2322,24 @@ window.__ModuleLoader__.load({
         setMessage('')
         setDiff(null)
         setBranchOpen(false)
+        setCompareOpen(false)
+        setCompareData(null)
+        setCompareError(null)
         if (root !== null) void loadStatus()
         // eslint-disable-next-line react-hooks/exhaustive-deps
       }, [root])
 
       useEffect(() => {
-        if (diff === null && !branchOpen) return undefined
+        if (diff === null && !branchOpen && !compareOpen) return undefined
         const onKey = (event) => {
           if (event.key !== 'Escape') return
           setDiff(null)
           setBranchOpen(false)
+          setCompareOpen(false)
         }
         window.addEventListener('keydown', onKey)
         return () => window.removeEventListener('keydown', onKey)
-      }, [diff, branchOpen])
+      }, [diff, branchOpen, compareOpen])
 
       async function perform(action) {
         if (busy) return
@@ -2296,6 +2391,172 @@ window.__ModuleLoader__.load({
         })
       }
 
+      function commitAndPush() {
+        const text = message.trim()
+        if (text.length === 0) {
+          setError(new SideRequestError('empty-message', t('git.commitEmpty')))
+          return
+        }
+        void perform(async () => {
+          await callGit('commit', { root, message: text })
+          setMessage('')
+          try {
+            const value = await callGit('push', { root })
+            showToast(
+              value?.setUpstream
+                ? t('git.pushSetUpstream', { upstream: String(value.upstream) })
+                : t('git.commitPushOk'),
+            )
+          } catch (failure) {
+            // The commit succeeded even when the push did not; refresh so the
+            // staged list reflects what is actually left.
+            await loadStatus(true)
+            throw failure
+          }
+        })
+      }
+
+      async function runRemote(kind, action, success) {
+        if (busy || remoteAction !== null) return
+        setRemoteAction(kind)
+        setError(null)
+        try {
+          const value = await action()
+          showToast(success(value))
+          await loadStatus(true)
+        } catch (failure) {
+          setError(failure)
+        } finally {
+          setRemoteAction(null)
+        }
+      }
+
+      function fetchRemote() {
+        void runRemote(
+          'fetch',
+          () => callGit('fetch', { root }),
+          (value) => (value?.fetched > 0 ? t('git.fetchOk') : t('git.fetchNone')),
+        )
+      }
+
+      function pullRemote() {
+        void runRemote(
+          'pull',
+          async () => {
+            const value = await callGit('pull', { root })
+            if (typeof onFilesChanged === 'function') onFilesChanged()
+            return value
+          },
+          () => t('git.pullOk'),
+        )
+      }
+
+      function pushRemote() {
+        void runRemote(
+          'push',
+          () => callGit('push', { root }),
+          (value) =>
+            value?.setUpstream
+              ? t('git.pushSetUpstream', { upstream: String(value.upstream) })
+              : t('git.pushOk'),
+        )
+      }
+
+      function compareOptions(value) {
+        const options = []
+        const upstream = value?.upstream ?? status?.upstream ?? null
+        if (upstream) options.push(upstream)
+        for (const name of value?.local ?? []) {
+          if (name !== status?.branch && !options.includes(name)) options.push(name)
+        }
+        for (const name of value?.remote ?? []) {
+          if (!options.includes(name)) options.push(name)
+        }
+        if (options.length === 0 && status?.branch) options.push(status.branch)
+        return options
+      }
+
+      async function loadCompare(base) {
+        setCompareLoading(true)
+        setCompareError(null)
+        try {
+          setCompareData(await callGit('compare', { root, base }))
+        } catch (failure) {
+          setCompareError(failure)
+          setCompareData(null)
+        } finally {
+          setCompareLoading(false)
+        }
+      }
+
+      async function openCompare() {
+        setCompareOpen(true)
+        setCompareRefs(null)
+        setCompareData(null)
+        setCompareError(null)
+        setCompareLoading(true)
+        try {
+          const value = await callGit('refs', { root })
+          setCompareRefs(value)
+          const options = compareOptions(value)
+          const preferred =
+            typeof value?.upstream === 'string' && value.upstream.length > 0 ? value.upstream : options[0] ?? ''
+          setCompareBase(preferred)
+          if (preferred.length > 0) await loadCompare(preferred)
+          else setCompareLoading(false)
+        } catch (failure) {
+          setCompareError(failure)
+          setCompareLoading(false)
+        }
+      }
+
+      async function openCompareDiff(file) {
+        if (compareFile !== null) return
+        setCompareFile(file.path)
+        try {
+          const value = await callGit('compare-diff', { root, base: compareBase, path: file.path })
+          setDiff({
+            path: file.path,
+            tag: compareBase,
+            staged: false,
+            untracked: false,
+            loading: false,
+            text: typeof value?.diff === 'string' ? value.diff : '',
+            error: null,
+          })
+        } catch (failure) {
+          setDiff({
+            path: file.path,
+            tag: compareBase,
+            staged: false,
+            untracked: false,
+            loading: false,
+            text: '',
+            error: failure,
+          })
+        } finally {
+          setCompareFile(null)
+        }
+      }
+
+      function gitFailureText(failure) {
+        const keys = {
+          'auth-required': 'git.authRequired',
+          'no-remote': 'git.noRemote',
+          'no-upstream': 'git.noUpstream',
+          'non-fast-forward': 'git.nonFastForward',
+          diverged: 'git.diverged',
+          detached: 'git.detachedPush',
+          'no-commits': 'git.noCommits',
+          network: 'git.networkError',
+          conflict: 'git.conflictError',
+          dirty: 'git.dirtyError',
+          rejected: 'git.rejected',
+        }
+        const key = keys[errorCode(failure)]
+        return key === undefined ? errorText(failure) : t(key)
+      }
+
       async function openDiff(entry, staged) {
         setDiff({ path: entry.path, staged, untracked: entry.untracked, loading: true, text: '', error: null })
         try {
@@ -2337,6 +2598,7 @@ window.__ModuleLoader__.load({
           await callGit('checkout', { root, branch: name })
           setBranchOpen(false)
           showToast(t('git.checkoutOk'))
+          if (typeof onFilesChanged === 'function') onFilesChanged()
           await loadStatus(true)
         } catch (failure) {
           setError(failure)
@@ -2351,7 +2613,7 @@ window.__ModuleLoader__.load({
           ? t('git.installHint')
           : error === null
             ? ''
-            : errorText(error)
+            : gitFailureText(error)
 
       const errorCard =
         error === null
@@ -2449,7 +2711,8 @@ window.__ModuleLoader__.load({
                   h(
                     'span',
                     { className: 'ds-git-diff-tag' },
-                    diff.staged ? t('git.diffStaged') : diff.untracked ? t('git.untracked') : t('git.diffWorking'),
+                    diff.tag ??
+                      (diff.staged ? t('git.diffStaged') : diff.untracked ? t('git.untracked') : t('git.diffWorking')),
                   ),
                   h('span', { className: 'ds-spacer' }),
                   h(
@@ -2539,6 +2802,183 @@ window.__ModuleLoader__.load({
             ),
           )
 
+      function renderCommitItem(commit, prefix) {
+        return h(
+          'div',
+          {
+            key: `${prefix}:${commit.hash}`,
+            className: 'ds-git-commit-item',
+            title: `${commit.subject} — ${commit.author} · ${commit.date}`,
+          },
+          h('code', { className: 'ds-git-commit-hash' }, commit.short),
+          h('span', { className: 'ds-git-commit-subject' }, commit.subject),
+          h('span', { className: 'ds-git-commit-meta' }, `${commit.author} · ${commit.date}`),
+        )
+      }
+
+      function renderCompareFile(file) {
+        const busyFile = compareFile === file.path
+        return h(
+          'div',
+          {
+            key: `${file.status}:${file.path}`,
+            className: 'ds-git-row ds-git-compare-file',
+            role: 'button',
+            tabIndex: 0,
+            title: file.oldPath ? `${file.oldPath} → ${file.path}` : file.path,
+            'data-busy': busyFile ? 'true' : undefined,
+            onClick: () => void openCompareDiff(file),
+            onKeyDown: (event) => {
+              if (event.target !== event.currentTarget) return
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                void openCompareDiff(file)
+              }
+            },
+          },
+          h(
+            'span',
+            { className: 'ds-git-badge', 'data-status': file.status, title: file.status },
+            file.status,
+          ),
+          h('span', { className: 'ds-git-path' }, file.path),
+          busyFile ? h('span', { className: 'ds-git-hint ds-git-compare-busy' }, t('git.busy')) : null,
+        )
+      }
+
+      const compareModal = !compareOpen
+        ? null
+        : h(
+            'div',
+            {
+              className: 'ds-modal-backdrop',
+              onPointerDown: (event) => {
+                if (event.target === event.currentTarget) setCompareOpen(false)
+              },
+            },
+            h(
+              'div',
+              { className: 'ds-modal ds-git-compare-modal', role: 'dialog', 'aria-modal': true },
+              h(
+                'div',
+                { className: 'ds-git-diff-head' },
+                h('span', { className: 'ds-git-diff-title' }, t('git.compareTitle')),
+                h('span', { className: 'ds-spacer' }),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-iconbtn ds-iconbtn-sm',
+                    title: t('git.close'),
+                    onClick: () => setCompareOpen(false),
+                  },
+                  h(CloseIcon),
+                ),
+              ),
+              h(
+                'div',
+                { className: 'ds-git-compare-body' },
+                h(
+                  'div',
+                  { className: 'ds-git-compare-controls' },
+                  h('span', { className: 'ds-git-compare-label' }, t('git.compareBase')),
+                  h(
+                    'select',
+                    {
+                      className: 'ds-git-select',
+                      value: compareBase,
+                      disabled: compareLoading,
+                      onChange: (event) => {
+                        const next = event.target.value
+                        setCompareBase(next)
+                        void loadCompare(next)
+                      },
+                    },
+                    (compareRefs === null ? compareBase : compareOptions(compareRefs))
+                      .filter((name) => typeof name === 'string' && name.length > 0)
+                      .map((name) => h('option', { key: name, value: name }, name)),
+                  ),
+                ),
+                compareLoading
+                  ? h('div', { className: 'ds-empty' }, h('span', { className: 'ds-spinner' }), t('git.compareLoading'))
+                  : compareError !== null
+                    ? h(
+                        'div',
+                        { className: 'ds-git-error' },
+                        h('span', { className: 'ds-git-error-text' }, gitFailureText(compareError)),
+                      )
+                    : compareData === null
+                      ? h('div', { className: 'ds-git-hint' }, t('git.compareFailed'))
+                      : h(
+                          'div',
+                          { className: 'ds-git-compare-result' },
+                          h(
+                            'div',
+                            { className: 'ds-git-compare-summary' },
+                            h(
+                              'span',
+                              { className: 'ds-git-count' },
+                              t('git.ahead', { n: String(compareData.ahead?.count ?? 0) }),
+                            ),
+                            h(
+                              'span',
+                              { className: 'ds-git-count' },
+                              t('git.behind', { n: String(compareData.behind?.count ?? 0) }),
+                            ),
+                            compareData.truncated ? h('span', { className: 'ds-git-tag' }, '…') : null,
+                          ),
+                          h(
+                            'div',
+                            { className: 'ds-git-compare-section' },
+                            h(
+                              'div',
+                              { className: 'ds-git-section-title' },
+                              `${t('git.compareOurs')} (${String(compareData.ahead?.count ?? 0)})`,
+                            ),
+                            (compareData.ahead?.commits ?? []).length === 0
+                              ? h('div', { className: 'ds-git-hint' }, t('git.compareNoDiff'))
+                              : (compareData.ahead?.commits ?? []).map((commit) => renderCommitItem(commit, 'ahead')),
+                          ),
+                          (compareData.behind?.count ?? 0) > 0
+                            ? h(
+                                'div',
+                                { className: 'ds-git-compare-section' },
+                                h(
+                                  'div',
+                                  { className: 'ds-git-section-title' },
+                                  `${t('git.compareTheirs')} (${String(compareData.behind.count)})`,
+                                ),
+                                (compareData.behind?.commits ?? []).map((commit) =>
+                                  renderCommitItem(commit, 'behind'),
+                                ),
+                              )
+                            : null,
+                          h(
+                            'div',
+                            { className: 'ds-git-compare-section' },
+                            h(
+                              'div',
+                              { className: 'ds-git-section-title' },
+                              `${t('git.compareFiles')} (${String((compareData.files ?? []).length)})`,
+                            ),
+                            (compareData.files ?? []).length === 0
+                              ? h('div', { className: 'ds-git-hint' }, t('git.compareNoDiff'))
+                              : (compareData.files ?? []).map((file) => renderCompareFile(file)),
+                          ),
+                        ),
+              ),
+              h(
+                'div',
+                { className: 'ds-modal-actions' },
+                h(
+                  'button',
+                  { type: 'button', className: 'ds-btn', onClick: () => setCompareOpen(false) },
+                  t('git.close'),
+                ),
+              ),
+            ),
+          )
+
       if (root === null) {
         return h('div', { className: 'ds-git' }, h('div', { className: 'ds-git-empty' }, t('git.noRoot')))
       }
@@ -2550,6 +2990,7 @@ window.__ModuleLoader__.load({
           loading ? spinner : h('div', { className: 'ds-git-empty' }, errorCard ?? h('div', { className: 'ds-git-hint' }, t('git.notRepo'))),
           diffModal,
           branchModal,
+          compareModal,
         )
       }
 
@@ -2574,13 +3015,72 @@ window.__ModuleLoader__.load({
           ),
           diffModal,
           branchModal,
+          compareModal,
         )
       }
 
       const staged = Array.isArray(status.staged) ? status.staged : []
       const changes = Array.isArray(status.changes) ? status.changes : []
       const branchLabel = status.detached ? t('git.detached') : status.branch ?? t('git.branch')
-      const canCommit = staged.length > 0 && message.trim().length > 0 && !busy
+      const hasRemote = Array.isArray(status.remotes) && status.remotes.length > 0
+      const remoteBusy = remoteAction !== null
+      const canCommit = staged.length > 0 && message.trim().length > 0 && !busy && !remoteBusy
+      const canCommitAndPush = canCommit && hasRemote
+      const canFetch = hasRemote && !busy && !remoteBusy
+      const canPull = hasRemote && Boolean(status.upstream) && !busy && !remoteBusy
+      const canPush = hasRemote && !status.detached && !status.unborn && !busy && !remoteBusy
+      const canCompare = !status.unborn && !busy && !remoteBusy
+
+      function toolButton(key, Component, label, title, disabled, action, count = 0) {
+        return h(
+          'button',
+          {
+            key,
+            type: 'button',
+            className: 'ds-git-toolbtn',
+            title,
+            'data-action': key,
+            'data-active': remoteAction === key ? 'true' : undefined,
+            disabled,
+            onClick: action,
+          },
+          h(Component),
+          h('span', { className: 'ds-git-toolbtn-label' }, label),
+          count > 0 ? h('span', { className: 'ds-git-toolcount' }, String(count)) : null,
+        )
+      }
+
+      const toolbar = h(
+        'div',
+        { className: 'ds-git-toolbar' },
+        toolButton(
+          'fetch',
+          RefreshIcon,
+          remoteAction === 'fetch' ? t('git.fetching') : t('git.fetch'),
+          t('git.fetchHint'),
+          !canFetch,
+          fetchRemote,
+        ),
+        toolButton(
+          'pull',
+          DownloadIcon,
+          remoteAction === 'pull' ? t('git.pulling') : t('git.pull'),
+          t('git.pullHint'),
+          !canPull,
+          pullRemote,
+          status.behind,
+        ),
+        toolButton(
+          'push',
+          UploadIcon,
+          remoteAction === 'push' ? t('git.pushing') : t('git.push'),
+          t('git.pushHint'),
+          !canPush,
+          pushRemote,
+          status.ahead,
+        ),
+        toolButton('compare', CompareIcon, t('git.compare'), t('git.compareHint'), !canCompare, () => void openCompare()),
+      )
 
       return h(
         'div',
@@ -2621,6 +3121,7 @@ window.__ModuleLoader__.load({
             h(RefreshIcon),
           ),
         ),
+        toolbar,
         h(
           'div',
           { className: 'ds-git-commit' },
@@ -2645,12 +3146,29 @@ window.__ModuleLoader__.load({
             h(
               'span',
               { className: 'ds-git-commit-hint' },
-              staged.length === 0 ? t('git.noStaged') : `${String(staged.length)} · ${t('git.staged')}`,
+              staged.length === 0
+                ? t('git.noStaged')
+                : `${String(staged.length)} · ${t('git.staged')}`,
             ),
             h(
-              'button',
-              { type: 'button', className: 'ds-btn ds-git-commit-btn', disabled: !canCommit, onClick: commit },
-              busy ? t('git.committing') : t('git.commit'),
+              'div',
+              { className: 'ds-git-commit-actions' },
+              h(
+                'button',
+                { type: 'button', className: 'ds-btn ds-git-commit-btn', disabled: !canCommit, onClick: commit },
+                busy ? t('git.committing') : t('git.commit'),
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-btn ds-git-commit-btn',
+                  title: hasRemote ? t('git.pushHint') : t('git.noRemote'),
+                  disabled: !canCommitAndPush,
+                  onClick: commitAndPush,
+                },
+                t('git.commitAndPush'),
+              ),
             ),
           ),
         ),
@@ -2693,6 +3211,7 @@ window.__ModuleLoader__.load({
               : changes.map((entry) => renderRow(entry, false)),
           ),
         ),
+        compareModal,
         diffModal,
         branchModal,
       )
@@ -2954,10 +3473,15 @@ window.__ModuleLoader__.load({
           await ensureExpanded(levelPath)
         }
 
-        async function refreshAll() {
+        async function refreshTree() {
           if (store.get().root === null) return
           const paths = ['', ...Object.keys(store.get().expanded)]
           await Promise.all(paths.map((path) => loadDir(path)))
+        }
+
+        async function refreshAll() {
+          if (store.get().root === null) return
+          await refreshTree()
           showToast(t('toast.refreshed'))
         }
 
@@ -4650,6 +5174,7 @@ window.__ModuleLoader__.load({
                     t,
                     onOpenFile: (target) => void openFile(target),
                     showToast,
+                    onFilesChanged: () => void refreshTree(),
                   })
                 : null,
               h(
@@ -5421,6 +5946,59 @@ window.__ModuleLoader__.load({
   padding: 4px 6px;
   border-bottom: 1px solid var(--dsw-alias-border-l1);
 }
+.ds-git-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+}
+.ds-git-toolbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 24px;
+  padding: 0 4px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ds-git-toolbtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent);
+}
+.ds-git-toolbtn[data-active="true"] {
+  color: var(--dsw-alias-brand-primary);
+  border-color: color-mix(in srgb, var(--dsw-alias-brand-primary) 45%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 9%, transparent);
+}
+.ds-git-toolbtn:disabled { opacity: 0.38; cursor: default; }
+.ds-git-toolbtn svg { flex: 0 0 auto; width: 12px; height: 12px; }
+.ds-git-toolbtn-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ds-git-toolcount {
+  flex: 0 0 auto;
+  min-width: 13px;
+  padding: 0 3px;
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 9px;
+  line-height: 13px;
+  text-align: center;
+}
 .ds-git-branch {
   display: inline-flex;
   align-items: center;
@@ -5483,7 +6061,8 @@ window.__ModuleLoader__.load({
 }
 .ds-git-message:focus { border-color: var(--dsw-alias-brand-primary); }
 .ds-git-message::placeholder { color: var(--dsw-alias-label-secondary); }
-.ds-git-commit-row { display: flex; align-items: center; gap: 8px; }
+.ds-git-commit-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ds-git-commit-actions { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; margin-left: auto; }
 .ds-git-commit-hint {
   min-width: 0;
   flex: 1 1 auto;
@@ -5658,6 +6237,81 @@ window.__ModuleLoader__.load({
 .ds-git-branch-item[data-current="true"] { color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 10%, transparent); }
 .ds-git-branch-item-name { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ds-git-branch-check { color: var(--dsw-alias-brand-primary); font-size: 13px; }
+.ds-git-compare-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(760px, 100%);
+  max-height: 86vh;
+  padding: 0;
+  overflow: hidden;
+}
+.ds-git-compare-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 120px;
+  overflow: auto;
+  padding: 10px 14px 14px;
+}
+.ds-git-compare-controls { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.ds-git-compare-label { flex: 0 0 auto; color: var(--dsw-alias-label-secondary); font-size: 11.5px; }
+.ds-git-select {
+  min-width: 0;
+  flex: 1 1 auto;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 5px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}
+.ds-git-select:focus { border-color: var(--dsw-alias-brand-primary); }
+.ds-git-compare-result { display: flex; flex-direction: column; gap: 10px; }
+.ds-git-compare-summary { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ds-git-compare-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-top: 8px;
+  border-top: 1px solid var(--dsw-alias-border-l1);
+}
+.ds-git-compare-section .ds-git-section-title {
+  flex: 0 0 auto;
+  padding: 0 2px 4px;
+  font-size: 10.5px;
+}
+.ds-git-commit-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 2px 6px;
+  font-size: 11.5px;
+}
+.ds-git-commit-hash { flex: 0 0 auto; color: var(--dsw-alias-brand-primary); font-family: var(--ds-mono); font-size: 10.5px; }
+.ds-git-commit-subject {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ds-git-commit-meta {
+  flex: 0 0 auto;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+}
+.ds-git-compare-file { cursor: pointer; }
+.ds-git-compare-file[data-busy="true"] { opacity: 0.55; }
+.ds-git-compare-busy { flex: 0 0 auto; padding: 0; font-size: 10px; }
 .ds-side-foot {
   flex: 0 0 auto;
   padding: 5px 10px;

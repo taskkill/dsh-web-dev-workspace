@@ -41,8 +41,11 @@ General UI bugs, missing features and questions belong in public issues.
   symlinks. Path segments are validated before the filesystem call.
 - Uploads are opened with `wx` in auto-rename mode so concurrent same-name uploads
   do not overwrite each other.
-- Git operations run locally through `git`; the plugin does not fetch, pull or push
-  and stores no remote credentials. Commits run the repository’s configured hooks.
+- Git operations run through `git` on the Host. Network operations are explicit
+  fetch/pull/push: pulls are fast-forward only, pushes never force, interactive
+  prompts are disabled, and the plugin stores no credentials (the Host's SSH key or
+  credential helper is the only authentication path). Commits and pushes run the
+  repository's configured hooks.
 - The plugin registers no model-facing tools, prompts or session events.
 
 ## Before you publish

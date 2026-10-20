@@ -120,10 +120,17 @@ third-party runtime dependencies.
 - Branch, upstream and ahead/behind status; staged, unstaged and untracked files.
 - Stage/unstage a file or everything, commit with a message (`Ctrl/⌘+Enter`), view a
   read-only unified diff, initialize a repository and switch local branches.
+- Fetch, pull and push from the Git toolbar; **Commit & push** commits and pushes
+  in one step. The first push sets `origin/<branch>` as upstream.
+- Compare the current branch with upstream, a local branch or a remote branch:
+  commits unique to each side, ahead/behind counts and files changed since the
+  merge base, each with a diff against the base.
 - Requires the [`@local/dsh-side-git`](../dsh-side-git) host companion; if it is not
   installed, the Git view shows an install hint.
-- Local-only: no fetch/pull/push, no remote credentials. The workspace must be the
-  repository root; commit runs the repository's configured Git hooks.
+- Pull is fast-forward only and push never forces; conflicts must be resolved in a
+  terminal. Network commands use the Host's SSH key or credential helper and never
+  store credentials. The workspace must be the repository root; commit and push run
+  the repository's configured Git hooks.
 
 ## Shortcuts
 
@@ -166,10 +173,11 @@ third-party runtime dependencies.
   overwrite each other, and confines every target to a registered workspace root
   (or the deployment default directory). Downloads are streamed with
   `Content-Disposition: attachment`.
-- Git status/stage/commit/diff/branch operations live in the separate host-only
-  bundle [`@local/dsh-side-git`](../dsh-side-git) at `/api/dsh-side-git`. It invokes
-  `git` locally with `execFile`, requires the workspace to be the repository root
-  and never runs network commands.
+- Git status/stage/commit/diff/branch/compare and explicit fetch/pull/push
+  operations live in the separate host-only bundle
+  [`@local/dsh-side-git`](../dsh-side-git) at `/api/dsh-side-git`. It invokes `git`
+  with `execFile`, requires the workspace to be the repository root, disables
+  interactive prompts and never stores credentials.
 - No model-facing tools, prompts, or session events are registered.
 
 ## Local data
@@ -192,8 +200,8 @@ Preferences and favorites are stored in the browser's `localStorage`:
   accessible; an absolute path typed in the address bar is registered first.
 - No folder upload/download, no automatic file watching, no search, no
   drag-and-drop, and no binary editing.
-- Git is limited to the repository root; no pull/push, merge/rebase or hunk-level
-  staging.
+- Git is limited to the repository root; no automatic merge/rebase or hunk-level
+  staging. A diverged pull must be resolved in a terminal, and pushes never force.
 - External changes require a manual refresh/reload; saves use stale-file
   protection.
 - Built against Harness `0.2.1-rc.2`; newer releases may change slot/service

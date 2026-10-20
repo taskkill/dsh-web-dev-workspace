@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented here.
 
+## Unreleased
+
+### Git
+
+- Fetch, pull and push from the Git panel, with ahead/behind badges on the
+  toolbar; the first push sets `origin/<branch>` as the upstream.
+- Pull is fast-forward only by default and explains a diverged branch instead of
+  merging or rebasing automatically; pushes never force.
+- Commit & push action that commits staged changes and pushes in one step.
+- Compare modal: pick upstream, a local branch or a remote branch, then review
+  commits unique to each side, ahead/behind counts and files changed since the
+  merge base, with a per-file diff against the base.
+- Status now reports configured remotes; network actions are disabled when the
+  workspace has no remote.
+- Network failures (missing auth, unreachable remote, rejected non-fast-forward
+  push, divergence) map to actionable messages; credentials are never collected
+  or stored and interactive prompts are disabled.
+
 ## 1.0.0 — 2026-10-20
 
 Initial open-source release.

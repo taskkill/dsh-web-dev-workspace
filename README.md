@@ -7,7 +7,7 @@
 <p align="center">
   A VS Code-style workspace for the <strong>DeepSeek Harness</strong> Web UI:
   browse, edit, preview, favorite, upload and download workspace files — and
-  commit local Git changes — without leaving the chat.
+  commit, compare and sync Git changes — without leaving the chat.
 </p>
 
 <p align="center">
@@ -140,8 +140,15 @@ local bundle directories for you.
   (`Ctrl/⌘+Enter`); diff any changed or untracked text file in a read-only modal.
 - Initialize a repository when the workspace is not one, and switch between local
   branches from a branch picker.
-- Git runs only on the local host. There is **no fetch/pull/push**, no remote
-  credential storage and no hunk-level staging.
+- A toolbar adds **Fetch / Pull / Push / Compare**: fetch refreshes remote refs,
+  pull is fast-forward only, push sets `origin/<branch>` as upstream on its first
+  run, and **Commit & push** chains both.
+- **Compare** one branch against upstream, a local branch or a remote branch:
+  commits unique to each side, ahead/behind counts, and files changed since the
+  merge base, each opening as a diff against the base.
+- Remote operations use only the Host's existing SSH key or Git credential helper;
+  the plugin never collects or stores credentials and fails instead of prompting.
+  Pulls never merge or rebase automatically and pushes never force.
 - The Git view requires the workspace to be the repository **root**; opening a
   subdirectory of a larger repository shows a hint instead of staging outside it.
 
@@ -175,7 +182,7 @@ The repository contains **three bundles**:
 | --- | --- |
 | `dsh-side-plugin/` | Main plugin: Host file API + browser explorer/editor UI. |
 | `dsh-side-io/` | Host-only companion: binary upload and forced-download routes. Required for upload/download; the rest works without it. |
-| `dsh-side-git/` | Host-only companion: local Git status, stage, commit, diff and branch operations. Required for the Git view. |
+| `dsh-side-git/` | Host-only companion: Git status, stage, commit, diff, branches, compare, and fetch/pull/push. Required for the Git view. |
 
 ### Install from a local checkout
 
@@ -253,6 +260,10 @@ The agent uses the same Plugin Manager installation path as the UI.
 | Upload or download fails | Confirm `@local/dsh-side-io` (the IO companion) is installed and enabled. |
 | Git view says support is not installed | Install and enable `@local/dsh-side-git` (the Git companion). |
 | Git view says not the repository root | Open the repository root itself as the workspace; Git mutations are confined to that root. |
+| Fetch/pull/push says the remote requires authentication | Configure an SSH key or Git credential helper on the Host; the plugin never prompts for or stores credentials. |
+| Pull reports that branches diverged | Pull is fast-forward only; rebase or merge the branch in a terminal, then pull again. |
+| Push is rejected as non-fast-forward | The remote has new commits; fetch and pull (or merge), then push. |
+| Network buttons are disabled | The repository has no remote, or the branch has no upstream (Pull). |
 | Commit fails with identity unknown | Configure `user.name` and `user.email` on the Harness host. |
 | "只能访问已注册的工作区目录" / "outside-root" | Open the directory once through the address bar so it is registered as a workspace, then retry. |
 | Install rejected | Use an **absolute** local path, and check that the directory contains `package.json` and `cordis.patch.yml`. |
@@ -311,13 +322,24 @@ The agent uses the same Plugin Manager installation path as the UI.
 3. Use **+** on a changed file to stage it, or **Stage all**; use **−** / **Unstage
    all** in the staged section to reverse it.
 4. Type a commit message and click **Commit** (or press `Ctrl/⌘+Enter`). The
-   list refreshes after a successful commit.
+   list refreshes after a successful commit. **Commit & push** commits and pushes
+   in one step.
 5. Click a file row to open a read-only unified diff; use **Open file** from the
    diff to load the file in the editor.
 6. Click the branch button to list local branches and switch to one.
+7. **Fetch** updates remote refs (`git fetch --prune`); **Pull** fast-forwards
+   from the upstream and explains how to proceed when the branches diverge;
+   **Push** publishes the current branch and sets `origin/<branch>` as upstream on
+   the first push.
+8. **Compare** opens a base picker: it lists commits unique to each side,
+   ahead/behind counts, and files changed since the merge base; click a file for
+   its diff against the base.
 
-Git is local-only: there is no fetch/pull/push and no credential storage. Commit
-runs the repository's configured hooks, so only commit in repositories you trust.
+Pulls are fast-forward only, pushes never force, and neither resolves conflicts.
+Network commands run with `GIT_TERMINAL_PROMPT=0`, never read or store
+credentials, and rely on the Host's SSH key or credential helper. Commits and
+pushes run the repository's configured hooks, so only operate in repositories you
+trust.
 
 ## How it works
 
@@ -385,9 +407,11 @@ issue for security-sensitive reports.
 - **No model-visible data**: it registers no tools, prompts, system-prompt
   sections, or session events. Opening a file in the editor does not add it to the
   conversation.
-- **Git is local**: no fetch/pull/push and no remote credentials. Git runs inside
-  the selected repository, whose local config, hooks or fsmonitor can execute code;
-  only use Git in repositories you trust.
+- **Git network operations are explicit**: fetch/pull/push only touch remotes the
+  repository already configures; pull is fast-forward only, push never forces, no
+  automatic merge/rebase runs, and no credential is stored. Git runs inside the
+  selected repository, whose local config, hooks (commit/push) or fsmonitor can
+  execute code; only use Git in repositories you trust.
 - **Limits**: editor text reads 8 MiB; raw previews 128 MiB; uploads 128 MiB per
   file.
 - **Filesystem permissions**: the plugin runs with the Harness host's filesystem
@@ -402,7 +426,10 @@ issue for security-sensitive reports.
   folder by creating it in the UI and uploading its files, or zip it externally.
 - **No automatic file watching**: external changes appear after a manual refresh
   or reload; saves use stale-file protection.
-- **No pull/push, merge/rebase, hunk staging, search, or drag-and-drop** yet.
+- **No automatic merge/rebase, hunk staging, search, or drag-and-drop**: a pull that
+  diverged only reports the condition; resolve it in a terminal first.
+- **Git network operations require preconfigured authentication** on the Host (SSH
+  key or credential helper); the plugin cannot prompt for a username or password.
 - **Git requires the workspace root to be the repository root**; repositories
   whose top level is a parent directory are not supported for mutations.
 - **One active root per view**: multiple workspaces are available through the

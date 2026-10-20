@@ -2,9 +2,10 @@
  * Host half of the Workspace Git bundle.
  *
  * The file explorer already owns file mutations; this companion adds local Git
- * operations for the selected workspace. It deliberately does not implement
- * network commands (fetch/pull/push): the feature is about inspecting and
- * committing local changes, not managing credentials.
+ * operations and explicit remote synchronization for the selected workspace.
+ * Credentials are never collected or stored: network commands run with
+ * `GIT_TERMINAL_PROMPT=0`, so the Host's own SSH key or credential helper stays
+ * the only authentication path.
  *
  * Safety rules:
  * - The requested root must be a registered workspace (or the deployment
@@ -12,7 +13,9 @@
  *   whose root is a parent keeps every mutation inside the workspace the user
  *   opened.
  * - Git is invoked with `execFile` and argument arrays, never through a shell.
- *   Paths are validated, then passed after `--`.
+ *   Paths, refs and remotes are validated before use.
+ * - Pulls are fast-forward only unless the caller explicitly asks for rebase or
+ *   merge; pushes never force. Interactive editors and prompts are disabled.
  * - Output is bounded; diffs are capped separately.
  */
 
@@ -35,8 +38,17 @@ const MAX_UNTRACKED_BYTES = 512 * 1024
 /** Maximum number of status entries returned. */
 const MAX_ENTRIES = 2000
 
-/** One Git command may not run forever. */
+/** Maximum number of commits returned by one compare side. */
+const MAX_COMMITS = 100
+
+/** Maximum number of files returned by one compare. */
+const MAX_COMPARE_FILES = 2000
+
+/** One local Git command may not run forever. */
 const TIMEOUT_MS = 15000
+
+/** Network commands get a larger budget: a slow remote is not a hung process. */
+const NETWORK_TIMEOUT_MS = 120000
 
 const execFileAsync = promisify(execFile)
 
@@ -123,6 +135,18 @@ async function dispatch(root, body) {
       return branches(root)
     case 'checkout':
       return checkout(root, body)
+    case 'refs':
+      return refs(root)
+    case 'compare':
+      return compare(root, body)
+    case 'compare-diff':
+      return compareDiff(root, body)
+    case 'fetch':
+      return fetchRemote(root)
+    case 'pull':
+      return pull(root, body)
+    case 'push':
+      return push(root, body)
     default:
       throw new GitError('bad-op', `未知的 Git 操作：${body.op}`)
   }
@@ -180,12 +204,18 @@ async function resolveRoot(ctx, requested) {
 /* Git execution                                                              */
 /* -------------------------------------------------------------------------- */
 
-async function execGit(root, args) {
+async function execGit(root, args, options = {}) {
   const env = {
     ...process.env,
     GIT_TERMINAL_PROMPT: '0',
     GIT_PAGER: 'cat',
     GIT_OPTIONAL_LOCKS: '0',
+    GIT_EDITOR: 'true',
+    GIT_SEQUENCE_EDITOR: 'true',
+    GIT_ASKPASS: 'true',
+    GIT_MERGE_AUTOEDIT: 'no',
+    // Keep diagnostics and error classification predictable across locales.
+    LC_ALL: 'C',
   }
   // Never let an inherited Git environment redirect operations away from root.
   for (const key of [
@@ -202,7 +232,7 @@ async function execGit(root, args) {
   try {
     const result = await execFileAsync('git', args, {
       cwd: root,
-      timeout: TIMEOUT_MS,
+      timeout: options.timeout ?? TIMEOUT_MS,
       maxBuffer: MAX_BUFFER,
       windowsHide: true,
       env,
@@ -224,6 +254,11 @@ async function execGit(root, args) {
 
 async function runGit(root, args) {
   return (await execGit(root, args)).stdout
+}
+
+/** Run a command that talks to a remote, with the network budget. */
+async function runRemoteGit(root, args) {
+  return execGit(root, args, { timeout: NETWORK_TIMEOUT_MS })
 }
 
 async function hasHead(root) {
@@ -275,8 +310,11 @@ async function requireRepo(root) {
 async function status(root) {
   const info = await inspectRepo(root)
   if (!info.repo) return { repo: false, reason: info.reason }
-  const raw = await runGit(root, ['status', '--porcelain=v1', '-z', '--branch', '--untracked-files=all'])
-  return parseStatus(raw)
+  const [raw, remotes] = await Promise.all([
+    runGit(root, ['status', '--porcelain=v1', '-z', '--branch', '--untracked-files=all']),
+    listRemotes(root),
+  ])
+  return { ...parseStatus(raw), remotes }
 }
 
 function parseStatus(raw) {
@@ -513,6 +551,319 @@ async function checkout(root, body) {
     }
   }
   return { ok: true }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Refs and comparison                                                        */
+/* -------------------------------------------------------------------------- */
+
+async function refs(root) {
+  await requireRepo(root)
+  const [localRaw, remoteRaw, current, upstream] = await Promise.all([
+    runGit(root, ['for-each-ref', '--format=%(refname:short)', 'refs/heads']),
+    runGit(root, ['for-each-ref', '--format=%(refname:short)', 'refs/remotes']),
+    currentBranchName(root),
+    upstreamRef(root),
+  ])
+  return {
+    local: uniqueLines(localRaw).slice(0, 500),
+    remote: uniqueLines(remoteRaw)
+      .filter((name) => !name.endsWith('/HEAD'))
+      .slice(0, 500),
+    current,
+    upstream,
+    detached: current === null,
+  }
+}
+
+/**
+ * Compare HEAD with one base ref: commits only on each side, plus the files
+ * changed on our side since the merge base (the familiar compare view).
+ */
+async function compare(root, body) {
+  await requireRepo(root)
+  if (!(await hasHead(root))) throw new GitError('no-commits', '还没有提交，无法比较')
+  const base = normalizeRef(body.base)
+  await verifyRef(root, base)
+  const [headRaw, mergeBaseRaw, aheadCountRaw, behindCountRaw, aheadCommits, behindCommits, filesRaw] =
+    await Promise.all([
+      runGit(root, ['rev-parse', '--short', 'HEAD']),
+      runGit(root, ['merge-base', 'HEAD', base]),
+      runGit(root, ['rev-list', '--count', `${base}..HEAD`]),
+      runGit(root, ['rev-list', '--count', `HEAD..${base}`]),
+      logCommits(root, `${base}..HEAD`),
+      logCommits(root, `HEAD..${base}`),
+      runGit(root, ['diff', '--name-status', '-z', '--find-renames', `${base}...HEAD`, '--']),
+    ])
+  const mergeBase = mergeBaseRaw.trim()
+  if (mergeBase.length === 0) throw new GitError('unrelated', '当前分支与所选基准没有共同历史')
+  const files = parseNameStatus(filesRaw)
+  const aheadCount = Number.parseInt(aheadCountRaw.trim(), 10) || 0
+  const behindCount = Number.parseInt(behindCountRaw.trim(), 10) || 0
+  return {
+    base,
+    head: headRaw.trim(),
+    mergeBase: mergeBase.slice(0, 12),
+    ahead: { count: aheadCount, commits: aheadCommits },
+    behind: { count: behindCount, commits: behindCommits },
+    files,
+    truncated:
+      aheadCount > aheadCommits.length || behindCount > behindCommits.length || files.length >= MAX_COMPARE_FILES,
+  }
+}
+
+/** Unified diff of one file between the merge base and HEAD. */
+async function compareDiff(root, body) {
+  await requireRepo(root)
+  const base = normalizeRef(body.base)
+  await verifyRef(root, base)
+  const relative = normalizeRepoPath(root, body.path)
+  const text = await runGit(root, [
+    'diff',
+    '--no-ext-diff',
+    '--no-color',
+    '--unified=3',
+    `${base}...HEAD`,
+    '--',
+    relative,
+  ])
+  if (Buffer.byteLength(text, 'utf8') > MAX_DIFF_BYTES) {
+    throw new GitError('diff-too-large', '差异内容过大，无法在面板中显示')
+  }
+  return { base, path: relative, diff: text }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Remote synchronization                                                     */
+/* -------------------------------------------------------------------------- */
+
+async function fetchRemote(root) {
+  await requireRepo(root)
+  const remotes = await listRemotes(root)
+  if (remotes.length === 0) throw new GitError('no-remote', '当前仓库没有配置远程仓库')
+  try {
+    const result = await runRemoteGit(root, ['fetch', '--prune', '--no-recurse-submodules'])
+    const summary = summarize(result.stderr || result.stdout)
+    const fetched = summary.split('\n').filter((line) => line.includes('->')).length
+    return { ok: true, remotes, fetched, summary }
+  } catch (error) {
+    throw mapRemoteFailure(error)
+  }
+}
+
+async function pull(root, body) {
+  await requireRepo(root)
+  const mode = body.mode === 'rebase' ? 'rebase' : body.mode === 'merge' ? 'merge' : 'ff-only'
+  const upstream = await upstreamRef(root)
+  if (upstream === null) throw new GitError('no-upstream', '当前分支没有上游分支，无法拉取')
+  const args = ['pull']
+  if (mode === 'ff-only') args.push('--ff-only', '--no-rebase')
+  else if (mode === 'rebase') args.push('--rebase', '--no-autostash')
+  else args.push('--no-rebase', '--no-edit')
+  try {
+    const result = await runRemoteGit(root, args)
+    const summary = summarize(result.stdout || result.stderr)
+    return { ok: true, mode, upstream, summary, updated: !/already up.to.date/iu.test(summary) }
+  } catch (error) {
+    throw mapPullFailure(error)
+  }
+}
+
+async function push(root, body) {
+  await requireRepo(root)
+  if (!(await hasHead(root))) throw new GitError('no-commits', '还没有提交，无法推送')
+  const branch = await currentBranchName(root)
+  if (branch === null) throw new GitError('detached', 'HEAD 处于分离状态，无法推送；请先切换到一个分支')
+  const remotes = await listRemotes(root)
+  if (remotes.length === 0) throw new GitError('no-remote', '当前仓库没有配置远程仓库')
+  const upstream = await upstreamRef(root)
+  const args = ['push']
+  let remote = null
+  if (upstream === null) {
+    remote = typeof body.remote === 'string' && body.remote.length > 0 ? normalizeRemoteName(body.remote, remotes) : pickRemote(remotes)
+    args.push('--set-upstream', remote, branch)
+  }
+  try {
+    const result = await runRemoteGit(root, args)
+    return {
+      ok: true,
+      branch,
+      upstream: upstream ?? `${remote}/${branch}`,
+      setUpstream: upstream === null,
+      summary: summarize(result.stderr || result.stdout),
+    }
+  } catch (error) {
+    throw mapPushFailure(error)
+  }
+}
+
+async function listRemotes(root) {
+  try {
+    const raw = await runGit(root, ['remote'])
+    return uniqueLines(raw)
+  } catch {
+    return []
+  }
+}
+
+async function currentBranchName(root) {
+  try {
+    return (await runGit(root, ['symbolic-ref', '--short', '-q', 'HEAD'])).trim() || null
+  } catch {
+    return null
+  }
+}
+
+async function upstreamRef(root) {
+  try {
+    const value = (await runGit(root, ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'])).trim()
+    return value.length > 0 ? value : null
+  } catch {
+    return null
+  }
+}
+
+function pickRemote(remotes) {
+  if (remotes.includes('origin')) return 'origin'
+  if (remotes.length === 1) return remotes[0]
+  throw new GitError('ambiguous-remote', '仓库有多个远程且没有 origin；请先在终端为当前分支设置上游')
+}
+
+function normalizeRemoteName(input, remotes) {
+  const name = typeof input === 'string' ? input.trim() : ''
+  if (name.length === 0 || name.startsWith('-') || !remotes.includes(name)) {
+    throw new GitError('bad-remote', '远程仓库名称无效')
+  }
+  return name
+}
+
+function normalizeRef(input) {
+  const ref = typeof input === 'string' ? input.trim() : ''
+  if (ref.length === 0 || ref.length > 200 || ref.startsWith('-') || /[\u0000-\u0020\u007f]/u.test(ref)) {
+    throw new GitError('bad-ref', '分支或提交名称无效')
+  }
+  return ref
+}
+
+async function verifyRef(root, ref) {
+  try {
+    await runGit(root, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`])
+  } catch {
+    throw new GitError('bad-ref', `找不到分支或提交：${ref}`)
+  }
+}
+
+async function logCommits(root, range) {
+  const format = ['%H', '%h', '%an', '%ad', '%s'].join('%x1f') + '%x1e'
+  const raw = await runGit(root, ['log', `--max-count=${MAX_COMMITS}`, '--date=short', `--format=${format}`, range, '--'])
+  const commits = []
+  for (const record of raw.split('\u001e')) {
+    const line = record.trim()
+    if (line.length === 0) continue
+    const fields = line.split('\u001f')
+    if (fields.length < 5) continue
+    commits.push({
+      hash: fields[0],
+      short: fields[1],
+      author: fields[2],
+      date: fields[3],
+      subject: fields.slice(4).join('\u001f'),
+    })
+  }
+  return commits
+}
+
+function parseNameStatus(raw) {
+  const parts = raw.split('\u0000')
+  const files = []
+  for (let index = 0; index < parts.length; ) {
+    const status = parts[index]
+    index += 1
+    if (status === undefined || status.length === 0) continue
+    const letter = status[0]
+    if (letter === 'R' || letter === 'C') {
+      const from = parts[index] ?? ''
+      const to = parts[index + 1] ?? ''
+      index += 2
+      if (to.length > 0) files.push({ path: to, oldPath: from.length > 0 ? from : null, status: letter })
+    } else {
+      const file = parts[index] ?? ''
+      index += 1
+      if (file.length > 0) files.push({ path: file, oldPath: null, status: letter })
+    }
+    if (files.length >= MAX_COMPARE_FILES) break
+  }
+  return files
+}
+
+function mapRemoteFailure(error) {
+  if (!(error instanceof GitError)) return error
+  const text = error.message
+  if (
+    /authentication failed|could not read (username|password)|terminal prompts disabled|permission denied \(publickey\)|support for password authentication|repository not found|access denied|not authorized|invalid username or password/iu.test(
+      text,
+    )
+  ) {
+    return new GitError('auth-required', '远程仓库要求认证；DSH 不保存凭据，请在 Host 上配置 SSH 密钥或 Git 凭据助手')
+  }
+  if (
+    /could not resolve host|unable to access|connection timed out|connection refused|network is unreachable|failed to connect|operation timed out|temporary failure in name resolution|rpc failed|http2|expected flush|early eof|transfer closed|ssl|tls/iu.test(
+      text,
+    )
+  ) {
+    return new GitError('network', `无法连接远程仓库：${text}`)
+  }
+  return error
+}
+
+function mapPullFailure(error) {
+  if (!(error instanceof GitError)) return error
+  const text = error.message
+  if (/not possible to fast-forward|diverging branches|need to specify how to reconcile/iu.test(text)) {
+    return new GitError('diverged', '本地分支与上游已分叉，无法快进合并。请先在终端变基或合并后再拉取。')
+  }
+  if (/no tracking information|there is no tracking|no upstream/iu.test(text)) {
+    return new GitError('no-upstream', '当前分支没有上游分支，无法拉取')
+  }
+  if (/would be overwritten|please commit your changes|please stash|local changes/iu.test(text)) {
+    return new GitError('dirty', '工作区有未提交的更改，无法拉取；请先提交或暂存这些更改。')
+  }
+  if (/conflict/iu.test(text)) return new GitError('conflict', '拉取产生冲突，请先在终端解决冲突')
+  return mapRemoteFailure(error)
+}
+
+function mapPushFailure(error) {
+  if (!(error instanceof GitError)) return error
+  const text = error.message
+  if (/non-fast-forward|fetch first|\[rejected\]|updates were rejected/iu.test(text)) {
+    return new GitError('non-fast-forward', '远程分支有新提交，推送被拒绝。请先拉取或合并后再推送。')
+  }
+  if (/remote rejected|pre-receive hook declined|protected branch/iu.test(text)) {
+    return new GitError('rejected', `远程仓库拒绝了这次推送：${text}`)
+  }
+  return mapRemoteFailure(error)
+}
+
+function uniqueLines(raw) {
+  const seen = new Set()
+  const values = []
+  for (const line of raw.split('\n')) {
+    const value = line.trim()
+    if (value.length === 0 || seen.has(value)) continue
+    seen.add(value)
+    values.push(value)
+  }
+  return values
+}
+
+function summarize(text) {
+  return text
+    .split(/\r?\n|\r/)
+    .map((line) => line.trimEnd())
+    .filter((line) => line.length > 0)
+    .slice(-12)
+    .join('\n')
+    .slice(0, 4000)
 }
 
 /* -------------------------------------------------------------------------- */

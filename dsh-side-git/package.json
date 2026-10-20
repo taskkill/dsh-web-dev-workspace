@@ -2,7 +2,7 @@
   "name": "@local/dsh-side-git",
   "version": "1.0.0",
   "private": true,
-  "description": "Local Git status, staging, commit and branch support for the Workspace Files plugin",
+  "description": "Git status, staging, commit, compare and explicit fetch/pull/push support for the Workspace Files plugin",
   "type": "module",
   "exports": {
     ".": "./index.js",

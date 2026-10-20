@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "工作区 Git",
-    "description": "在工作区面板中查看本地 Git 变更、暂存文件、提交、初始化仓库和切换分支。不提供 fetch/pull/push，也不保存任何凭证。"
+    "description": "在工作区面板中查看变更、暂存、提交、比较分支，并显式执行 fetch/pull/push；不保存任何凭证，拉取仅快进、推送不 force。"
   }
 }
