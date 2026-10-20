@@ -1,0 +1,20 @@
+{
+  "name": "dsh-side",
+  "version": "1.0.0",
+  "private": true,
+  "description": "VS Code-style workspace files plugin for the DeepSeek Harness Web UI",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "check": "node --check dsh-side-plugin/index.js && node --check dsh-side-plugin/client.js && node --check dsh-side-io/index.js",
+    "check:json": "node scripts/check-json.mjs"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "plugin",
+    "workspace",
+    "file-manager",
+    "code-editor"
+  ]
+}

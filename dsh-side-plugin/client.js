@@ -1,0 +1,4848 @@
+window.__ModuleLoader__.load({
+  id: '@local/dsh-side',
+  factory(require) {
+    const React = require('react')
+    const h = React.createElement
+    const { useEffect, useMemo, useRef, useState } = React
+
+    /** Locale namespace owned by this plugin. */
+    const NS = 'dsh-side'
+
+    /** Right-sidebar tab-type identity and kind for the guide entry. */
+    const IDE_ID = '@local/dsh-side'
+    const IDE_KIND = 'dsh-side'
+
+    /** Absolute route below `/api` served by the Host half. */
+    const API_PATH = 'api/dsh-side'
+
+    /** Binary upload/download companion route (host bridge bundle). */
+    const IO_PATH = 'api/dsh-side-io'
+    const MAX_UPLOAD_BYTES = 128 * 1024 * 1024
+
+    /** Locale-store keys. */
+    const ROOT_KEY = 'dsh-side:root'
+    const WIDTH_KEY = 'dsh-side:tree-width'
+    const HIDDEN_KEY = 'dsh-side:show-hidden'
+    const FAVORITES_KEY = 'dsh-side:favorites'
+    const FAVORITES_OPEN_KEY = 'dsh-side:favorites-open'
+    const HIDDEN_ROOTS_KEY = 'dsh-side:hidden-roots'
+    const WRAP_KEY = 'dsh-side:word-wrap'
+
+    /** Stable empty list for a slot without the workspaces hook. */
+    const EMPTY_WORKSPACES = []
+
+    /* ------------------------------------------------------------------ *
+     * Dictionaries
+     * ------------------------------------------------------------------ */
+
+    const zh = {
+      'panel.title': '文件工作区',
+      'panel.description': '浏览工作区目录，编辑代码，预览 Markdown 与 PDF。',
+      'guide.title': '代码工作区',
+      'guide.description': '浏览并编辑文件，支持代码高亮、Markdown 与 PDF 预览。',
+      'compact.back': '返回目录',
+      explorer: '资源管理器',
+      favorites: '收藏夹',
+      'favorite.add': '收藏',
+      'favorite.remove': '取消收藏',
+      'favorite.addSelected': '收藏当前选中项',
+      'favorite.removeSelected': '取消收藏当前选中项',
+      'favorite.empty': '右键文件或目录选择「收藏」，收藏后单击即可直达。',
+      'action.newFile': '新建文件',
+      'action.newFolder': '新建文件夹',
+      'action.refresh': '刷新',
+      'action.refreshRoots': '刷新工作区列表',
+      'action.collapseAll': '全部收起',
+      'action.showHidden': '显示隐藏文件',
+      'action.hideHidden': '隐藏隐藏文件',
+      'address.placeholder': '输入路径直达：/数据目录 或 src/lib',
+      'action.go': '直达',
+      'action.save': '保存',
+      'action.reload': '重新加载',
+      'action.overwrite': '强制覆盖',
+      'action.open': '打开',
+      'action.openInBrowser': '在浏览器中打开',
+      'action.rename': '重命名',
+      'action.delete': '删除',
+      'action.copyPath': '复制相对路径',
+      'action.copyAll': '复制全文',
+      'action.upload': '上传文件',
+      'action.uploadHere': '上传文件到此处',
+      'action.uploading': '正在上传…',
+      'action.download': '下载文件',
+      'action.downloadShort': '下载',
+      'action.copyShort': '复制',
+      'action.more': '更多操作',
+      'action.jumpRoot': '定位到当前工作区根目录（Alt+Home）',
+      'action.removeWorkspace': '移除工作区',
+      'action.remove': '移除',
+      'workspace.pickTitle': '切换或管理工作区',
+      'action.wrap': '自动换行',
+      'action.wrapShort': '换行',
+      'action.nowrap': '取消换行',
+      'action.cancel': '取消',
+      'action.discard': '放弃更改',
+      'action.preview': '预览',
+      'action.edit': '编辑',
+      'action.retry': '重试',
+      'action.newFileHere': '在此新建文件',
+      'action.newFolderHere': '在此新建文件夹',
+      'menu.refreshFolder': '刷新此目录',
+      'menu.jumpRoot': '回到工作区根目录',
+      'workspace.label': '工作区',
+      welcomeTitle: '文件工作区',
+      welcomeHint: '在左侧资源管理器中浏览目录。单击文件即可打开，单击目录选中，双击目录展开或收起。',
+      welcomeShortcuts: '⌘/Ctrl + S 保存 · F2 重命名 · Delete 删除',
+      welcomeNewFile: '新建第一个文件',
+      'hint.loading': '正在读取…',
+      'hint.empty': '空目录',
+      'hint.hiddenOnly': '只有隐藏文件，点击眼睛图标可显示。',
+      'hint.noRoot': '当前没有可用的工作区目录。',
+      'hint.noRootAction': '请在 Harness 中打开或新建一个工作区后重试。',
+      'hint.noFile': '从左侧选择一个文件开始编辑。',
+      'hint.binary': '这是二进制文件，编辑器无法以文本方式打开。',
+      'hint.tooLarge': '文件太大，编辑器没有打开它。',
+      'hint.pdf': 'PDF 预览',
+      'hint.image': '图片预览',
+      'hint.dirtyClose': '这个文件有未保存的更改。',
+      'hint.unsaved': '未保存',
+      'hint.saved': '已保存',
+      'hint.loadingFile': '正在读取文件…',
+      'hint.preview': 'Markdown 预览',
+      'hint.other': '其他',
+      'status.encoding': 'UTF-8',
+      'status.lines': '{count} 行',
+      'status.cursor': '第 {line} 行，第 {column} 列',
+      'error.roots': '读取工作区列表失败：{message}',
+      'error.list': '读取目录失败：{message}',
+      'error.pathNotFound': '找不到路径：{path}',
+      'error.notDirectoryPath': '{path} 不是目录',
+      'error.openRootFailed': '打开目录失败：{message}',
+      'error.removeWorkspaceFailed': '移除工作区失败：{message}',
+      'error.workspaceRecord': '没有找到这个工作区的记录，请刷新工作区列表后重试。',
+      'error.uploadFailed': '上传「{name}」失败：{message}',
+      'error.fileTooLarge': '文件「{name}」超过 {size} 上限，未上传。',
+      'error.needRoot': '请先选择或输入一个工作区目录。',
+      'error.read': '读取文件失败：{message}',
+      'error.saveFailed': '保存失败：{message}',
+      'error.createFailed': '创建失败：{message}',
+      'error.renameFailed': '重命名失败：{message}',
+      'error.deleteFailed': '删除失败：{message}',
+      'error.badName': '名称不能包含 “/”、“\\”，也不能是 “.” 或 “..”。',
+      'error.nameTaken': '同名文件或目录已存在。',
+      'error.notFound': '文件或目录不存在，可能已被移动或删除。',
+      'error.outsideRoot': '只能访问工作区内的路径。',
+      'error.stale': '磁盘上的文件已被其他程序修改，保存已阻止。',
+      'error.tooLarge': '文件超出编辑器的大小上限。',
+      'error.binary': '这是二进制文件，无法作为文本编辑。',
+      'error.exists': '同名文件或目录已存在。',
+      'error.internal': '请求失败：{message}',
+      'modal.deleteTitle': '确认删除',
+      'modal.deleteFile': '确定删除文件 “{name}” 吗？此操作无法撤销。',
+      'modal.deleteFolder': '确定删除文件夹 “{name}” 及其全部内容吗？此操作无法撤销。',
+      'modal.dirtyTitle': '未保存的更改',
+      'modal.dirtyMessage': '“{name}” 有未保存的更改，关闭后这些更改会丢失。',
+      'modal.switchRootTitle': '切换工作区',
+      'modal.switchRootMessage': '有未保存的文件。切换工作区会关闭这些文件并丢失更改。',
+      'modal.deleteWorkspaceTitle': '移除工作区',
+      'modal.deleteWorkspaceMessage': '从工作区列表移除「{name}」（{path}）？不会删除磁盘文件；该工作区下的会话会保留，但不再分组显示。',
+      'modal.deleteWorkspaceDirty': '当前工作区有未保存的文件。移除「{name}」（{path}）会关闭这些文件并丢失更改；磁盘文件不会被删除，会话会保留。',
+      'modal.hideRootTitle': '从列表移除目录',
+      'modal.hideRootMessage': '从当前插件的目录列表隐藏「{name}」（{path}）？不会删除磁盘文件；之后可用地址栏重新打开。',
+      'modal.confirmDelete': '删除',
+      'toast.saved': '已保存',
+      'toast.refreshed': '已刷新',
+      'toast.copied': '路径已复制',
+      'toast.copyFailed': '无法复制路径',
+      'toast.copiedAll': '已复制全文',
+      'toast.rootSwitched': '已切换工作区',
+      'toast.workspaceRemoved': '已移除工作区',
+      'toast.uploading': '正在上传 {count} 个文件…',
+      'toast.uploaded': '已上传 {count} 个文件',
+      'title.newFile': '新建文件',
+      'title.newFolder': '新建文件夹',
+      'title.rename': '重命名',
+      'title.readError': '无法打开文件',
+      'title.preview': '预览',
+      'title.edit': '编辑',
+      'panel.tooltip': '打开文件工作区',
+      'root.none': '没有工作区',
+      'markdown.empty': '这个 Markdown 文件是空的。',
+      'pdf.open': '在新标签页中打开 PDF',
+      'image.open': '在新标签页中打开图片',
+      'file.openExternal': '用浏览器打开',
+    }
+
+    const en = {
+      'panel.title': 'Workspace Files',
+      'panel.description': 'Browse the workspace tree, edit code, and preview Markdown and PDF files.',
+      'guide.title': 'Code Workspace',
+      'guide.description': 'Browse and edit files with highlighting, Markdown, and PDF previews.',
+      'compact.back': 'Back to explorer',
+      explorer: 'Explorer',
+      favorites: 'Favorites',
+      'favorite.add': 'Add to favorites',
+      'favorite.remove': 'Remove from favorites',
+      'favorite.addSelected': 'Add the selected item to favorites',
+      'favorite.removeSelected': 'Remove the selected item from favorites',
+      'favorite.empty': 'Right-click a file or folder and choose “Add to favorites”; click a favorite to jump to it.',
+      'action.newFile': 'New file',
+      'action.newFolder': 'New folder',
+      'action.refresh': 'Refresh',
+      'action.refreshRoots': 'Refresh workspaces',
+      'action.collapseAll': 'Collapse all',
+      'action.showHidden': 'Show hidden files',
+      'action.hideHidden': 'Hide hidden files',
+      'address.placeholder': 'Jump to a path: /data/project or src/lib',
+      'action.go': 'Go',
+      'action.save': 'Save',
+      'action.reload': 'Reload',
+      'action.overwrite': 'Overwrite',
+      'action.open': 'Open',
+      'action.openInBrowser': 'Open in browser',
+      'action.rename': 'Rename',
+      'action.delete': 'Delete',
+      'action.copyPath': 'Copy relative path',
+      'action.copyAll': 'Copy all',
+      'action.upload': 'Upload files',
+      'action.uploadHere': 'Upload files here',
+      'action.uploading': 'Uploading…',
+      'action.download': 'Download file',
+      'action.downloadShort': 'Download',
+      'action.copyShort': 'Copy',
+      'action.more': 'More actions',
+      'action.jumpRoot': 'Go to the workspace root (Alt+Home)',
+      'action.removeWorkspace': 'Remove workspace',
+      'action.remove': 'Remove',
+      'workspace.pickTitle': 'Switch or manage workspaces',
+      'action.wrap': 'Word wrap',
+      'action.wrapShort': 'Wrap',
+      'action.nowrap': 'No wrap',
+      'action.cancel': 'Cancel',
+      'action.discard': 'Discard changes',
+      'action.preview': 'Preview',
+      'action.edit': 'Edit',
+      'action.retry': 'Retry',
+      'action.newFileHere': 'New file here',
+      'action.newFolderHere': 'New folder here',
+      'menu.refreshFolder': 'Refresh this folder',
+      'menu.jumpRoot': 'Go to the workspace root',
+      'workspace.label': 'Workspace',
+      welcomeTitle: 'Workspace Files',
+      welcomeHint: 'Browse directories in the Explorer. Click a file to open it, click a folder to select it, and double-click a folder to expand or collapse it.',
+      welcomeShortcuts: '⌘/Ctrl + S save · F2 rename · Delete remove',
+      welcomeNewFile: 'Create your first file',
+      'hint.loading': 'Loading…',
+      'hint.empty': 'Empty directory',
+      'hint.hiddenOnly': 'Hidden files only; use the eye button to show them.',
+      'hint.noRoot': 'No workspace directory is available.',
+      'hint.noRootAction': 'Open or create a workspace in Harness, then retry.',
+      'hint.noFile': 'Select a file on the left to start editing.',
+      'hint.binary': 'This is a binary file; the editor cannot open it as text.',
+      'hint.tooLarge': 'This file is too large for the editor.',
+      'hint.pdf': 'PDF preview',
+      'hint.image': 'Image preview',
+      'hint.dirtyClose': 'This file has unsaved changes.',
+      'hint.unsaved': 'Unsaved',
+      'hint.saved': 'Saved',
+      'hint.loadingFile': 'Loading file…',
+      'hint.preview': 'Markdown preview',
+      'hint.other': 'Other',
+      'status.encoding': 'UTF-8',
+      'status.lines': '{count} lines',
+      'status.cursor': 'Ln {line}, Col {column}',
+      'error.roots': 'Could not read the workspace list: {message}',
+      'error.list': 'Could not read the directory: {message}',
+      'error.pathNotFound': 'Path not found: {path}',
+      'error.notDirectoryPath': '{path} is not a directory',
+      'error.openRootFailed': 'Could not open the directory: {message}',
+      'error.removeWorkspaceFailed': 'Could not remove the workspace: {message}',
+      'error.workspaceRecord': 'Could not find this workspace record; refresh the workspace list and retry.',
+      'error.uploadFailed': 'Could not upload “{name}”: {message}',
+      'error.fileTooLarge': '“{name}” exceeds the {size} upload limit.',
+      'error.needRoot': 'Choose or enter a workspace directory first.',
+      'error.read': 'Could not read the file: {message}',
+      'error.saveFailed': 'Save failed: {message}',
+      'error.createFailed': 'Create failed: {message}',
+      'error.renameFailed': 'Rename failed: {message}',
+      'error.deleteFailed': 'Delete failed: {message}',
+      'error.badName': 'A name cannot contain “/” or “\\”, and cannot be “.” or “..”.',
+      'error.nameTaken': 'A file or folder with that name already exists.',
+      'error.notFound': 'The file or folder no longer exists.',
+      'error.outsideRoot': 'Only paths inside the workspace can be accessed.',
+      'error.stale': 'The file changed on disk, so the save was blocked.',
+      'error.tooLarge': 'The file exceeds the editor size limit.',
+      'error.binary': 'This is a binary file and cannot be edited as text.',
+      'error.exists': 'A file or folder with that name already exists.',
+      'error.internal': 'Request failed: {message}',
+      'modal.deleteTitle': 'Delete',
+      'modal.deleteFile': 'Delete the file “{name}”? This cannot be undone.',
+      'modal.deleteFolder': 'Delete the folder “{name}” and all of its contents? This cannot be undone.',
+      'modal.dirtyTitle': 'Unsaved changes',
+      'modal.dirtyMessage': '“{name}” has unsaved changes. Closing it discards them.',
+      'modal.switchRootTitle': 'Switch workspace',
+      'modal.switchRootMessage': 'Some files have unsaved changes. Switching workspaces closes them and discards those changes.',
+      'modal.deleteWorkspaceTitle': 'Remove workspace',
+      'modal.deleteWorkspaceMessage': 'Remove “{name}” ({path}) from the workspace list? Files on disk are not deleted; sessions stay, but they are no longer grouped under this workspace.',
+      'modal.deleteWorkspaceDirty': 'This workspace has unsaved files. Removing “{name}” ({path}) closes them and discards those changes; files on disk and sessions stay.',
+      'modal.hideRootTitle': 'Remove directory from the list',
+      'modal.hideRootMessage': 'Hide “{name}” ({path}) from this plugin’s directory list? Files on disk are not deleted; you can reopen it from the address bar later.',
+      'modal.confirmDelete': 'Delete',
+      'toast.saved': 'Saved',
+      'toast.refreshed': 'Refreshed',
+      'toast.copied': 'Path copied',
+      'toast.copyFailed': 'Could not copy the path',
+      'toast.copiedAll': 'Copied the whole file',
+      'toast.rootSwitched': 'Workspace switched',
+      'toast.workspaceRemoved': 'Workspace removed',
+      'toast.uploading': 'Uploading {count} file(s)…',
+      'toast.uploaded': 'Uploaded {count} file(s)',
+      'title.newFile': 'New file',
+      'title.newFolder': 'New folder',
+      'title.rename': 'Rename',
+      'title.readError': 'Could not open the file',
+      'title.preview': 'Preview',
+      'title.edit': 'Edit',
+      'panel.tooltip': 'Open Workspace Files',
+      'root.none': 'No workspace',
+      'markdown.empty': 'This Markdown file is empty.',
+      'pdf.open': 'Open PDF in a new tab',
+      'image.open': 'Open image in a new tab',
+      'file.openExternal': 'Open with the browser',
+    }
+
+    /* ------------------------------------------------------------------ *
+     * Utilities
+     * ------------------------------------------------------------------ */
+
+    function clsx(...values) {
+      return values.filter(Boolean).join(' ')
+    }
+
+    function basename(value) {
+      const index = value.lastIndexOf('/')
+      return index < 0 ? value : value.slice(index + 1)
+    }
+
+    function dirname(value) {
+      const index = value.lastIndexOf('/')
+      return index < 0 ? '' : value.slice(0, index)
+    }
+
+    function joinPath(parent, name) {
+      return parent.length === 0 ? name : `${parent}/${name}`
+    }
+
+    function extensionOf(name) {
+      const base = basename(name)
+      const index = base.lastIndexOf('.')
+      return index <= 0 ? '' : base.slice(index + 1).toLowerCase()
+    }
+
+    function isAbsolutePath(value) {
+      return typeof value === 'string' && value.length > 0 && (value.startsWith('/') || /^[A-Za-z]:[\\/]/u.test(value))
+    }
+
+    function isValidName(name) {
+      return name.length > 0 && name !== '.' && name !== '..' && !name.includes('/') && !name.includes('\\') && !name.includes('\u0000')
+    }
+
+    class SideRequestError extends Error {
+      constructor(code, message, details) {
+        super(message)
+        this.name = 'SideRequestError'
+        this.code = code
+        this.details = details
+      }
+    }
+
+    function errorCode(error) {
+      return error instanceof SideRequestError ? error.code : 'internal'
+    }
+
+    function errorText(error) {
+      return error instanceof Error ? error.message : String(error)
+    }
+
+    function apiUrl() {
+      return new URL(API_PATH, document.baseURI).href
+    }
+
+    function rawUrl(root, relative) {
+      const url = new URL(apiUrl())
+      url.searchParams.set('op', 'raw')
+      url.searchParams.set('root', root)
+      url.searchParams.set('path', relative)
+      return url.href
+    }
+
+    function ioUrl(op, params) {
+      const url = new URL(IO_PATH, document.baseURI)
+      url.searchParams.set('op', op)
+      for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null) url.searchParams.set(key, String(value))
+      }
+      return url
+    }
+
+    function ioDownloadUrl(root, relative) {
+      return ioUrl('download', { root, path: relative }).href
+    }
+
+    async function uploadToWorkspace(root, relative, file) {
+      const url = ioUrl('upload', { root, path: relative })
+      let response
+      try {
+        response = await fetch(url.href, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'content-type': file.type || 'application/octet-stream' },
+          body: file,
+        })
+      } catch (error) {
+        throw new SideRequestError('offline', `无法连接 Harness：${errorText(error)}`)
+      }
+      if (!response.ok) {
+        throw new SideRequestError(`http-${String(response.status)}`, `HTTP ${String(response.status)} ${response.statusText}`)
+      }
+      let payload
+      try {
+        payload = await response.json()
+      } catch {
+        throw new SideRequestError('bad-response', '服务返回了无法解析的响应')
+      }
+      if (payload === null || typeof payload !== 'object' || payload.ok !== true) {
+        const failure = payload?.error ?? {}
+        throw new SideRequestError(failure.code ?? 'unknown', failure.message ?? '上传失败')
+      }
+      return payload.value
+    }
+
+    async function call(op, params = {}) {
+      let response
+      try {
+        response = await fetch(apiUrl(), {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ op, ...params }),
+        })
+      } catch (error) {
+        throw new SideRequestError('offline', `无法连接 Harness：${errorText(error)}`)
+      }
+      if (!response.ok) {
+        throw new SideRequestError(`http-${String(response.status)}`, `HTTP ${String(response.status)} ${response.statusText}`)
+      }
+      let payload
+      try {
+        payload = await response.json()
+      } catch {
+        throw new SideRequestError('bad-response', '服务返回了无法解析的响应')
+      }
+      if (payload === null || typeof payload !== 'object' || payload.ok !== true) {
+        const failure = payload?.error ?? {}
+        throw new SideRequestError(failure.code ?? 'unknown', failure.message ?? '请求失败', failure.details)
+      }
+      return payload.value
+    }
+
+    /* ------------------------------------------------------------------ *
+     * File kinds and languages
+     * ------------------------------------------------------------------ */
+
+    const MARKDOWN_EXTENSIONS = new Set(['md', 'markdown', 'mdown', 'mkd', 'mdx'])
+    const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'avif', 'bmp', 'ico', 'svg'])
+    const BINARY_EXTENSIONS = new Set([
+      'zip', 'gz', 'tgz', 'tar', 'rar', '7z', 'bz2', 'xz', 'exe', 'dll', 'so', 'dylib', 'bin', 'class', 'jar',
+      'woff', 'woff2', 'ttf', 'otf', 'eot', 'mp3', 'mp4', 'm4a', 'mov', 'avi', 'mkv', 'webm', 'wav', 'flac',
+      'psd', 'ai', 'sketch', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp', 'wasm', 'db',
+    ])
+
+    function modeOf(name) {
+      const ext = extensionOf(name)
+      if (ext === 'pdf') return 'pdf'
+      if (MARKDOWN_EXTENSIONS.has(ext)) return 'markdown'
+      if (IMAGE_EXTENSIONS.has(ext)) return 'image'
+      if (BINARY_EXTENSIONS.has(ext)) return 'binary'
+      return 'text'
+    }
+
+    /** Modes whose content is UTF-8 text held in a tab (code/plain and Markdown). */
+    function isTextMode(mode) {
+      return mode === 'text' || mode === 'markdown'
+    }
+
+    const LANGUAGE_ROWS = [
+      [['js', 'mjs', 'cjs', 'jsx'], 'javascript', 'JavaScript'],
+      [['ts', 'tsx', 'mts', 'cts'], 'typescript', 'TypeScript'],
+      [['json', 'jsonc', 'json5'], 'json', 'JSON'],
+      [['css', 'scss', 'less'], 'css', 'CSS'],
+      [['html', 'htm', 'xhtml', 'vue', 'svelte'], 'html', 'HTML'],
+      [['xml', 'svg', 'plist'], 'html', 'XML'],
+      [['py', 'pyw'], 'python', 'Python'],
+      [['sh', 'bash', 'zsh', 'fish'], 'shell', 'Shell'],
+      [['yml', 'yaml'], 'yaml', 'YAML'],
+      [['sql'], 'sql', 'SQL'],
+      [['md', 'markdown', 'mdown', 'mkd', 'mdx'], 'markdown', 'Markdown'],
+      [['rs'], 'rust', 'Rust'],
+      [['go'], 'go', 'Go'],
+      [['java', 'kt', 'kts', 'scala'], 'java', 'Java'],
+      [['c', 'h', 'cc', 'cpp', 'cxx', 'hpp', 'm', 'mm'], 'cpp', 'C/C++'],
+      [['cs', 'csx'], 'csharp', 'C#'],
+      [['rb'], 'ruby', 'Ruby'],
+      [['php'], 'php', 'PHP'],
+      [['lua'], 'lua', 'Lua'],
+      [['toml', 'ini', 'conf', 'cfg', 'env'], 'config', 'Config'],
+      [['lock'], 'config', 'Lockfile'],
+      [['diff', 'patch'], 'diff', 'Diff'],
+    ]
+
+    function languageOf(name) {
+      const ext = extensionOf(name)
+      for (const [extensions, id, label] of LANGUAGE_ROWS) {
+        if (extensions.includes(ext)) return { id, label }
+      }
+      return { id: 'plain', label: 'Text' }
+    }
+
+    /* ------------------------------------------------------------------ *
+     * Syntax highlighting
+     * ------------------------------------------------------------------ */
+
+    const JS_KEYWORDS = new Set([
+      'as', 'async', 'await', 'break', 'case', 'catch', 'class', 'const', 'continue', 'debugger', 'default',
+      'delete', 'do', 'else', 'export', 'extends', 'finally', 'for', 'from', 'function', 'get', 'if', 'implements',
+      'import', 'in', 'instanceof', 'interface', 'let', 'new', 'of', 'package', 'private', 'protected', 'public',
+      'readonly', 'return', 'set', 'static', 'super', 'switch', 'this', 'throw', 'try', 'type', 'typeof', 'var',
+      'void', 'while', 'with', 'yield', 'enum', 'declare', 'namespace', 'keyof', 'satisfies', 'infer', 'abstract',
+    ])
+    const PY_KEYWORDS = new Set([
+      'and', 'as', 'assert', 'async', 'await', 'break', 'class', 'continue', 'def', 'del', 'elif', 'else', 'except',
+      'finally', 'for', 'from', 'global', 'if', 'import', 'in', 'is', 'lambda', 'nonlocal', 'not', 'or', 'pass',
+      'raise', 'return', 'try', 'while', 'with', 'yield', 'match', 'case',
+    ])
+    const SH_KEYWORDS = new Set([
+      'if', 'then', 'else', 'elif', 'fi', 'for', 'while', 'until', 'do', 'done', 'case', 'esac', 'function', 'in',
+      'local', 'export', 'readonly', 'return', 'exit', 'echo', 'printf', 'cd', 'pwd', 'mkdir', 'rm', 'mv', 'cp',
+      'cat', 'grep', 'sed', 'awk', 'curl', 'wget', 'git', 'npm', 'pnpm', 'node', 'python', 'sudo',
+    ])
+    const SQL_KEYWORDS = new Set([
+      'select', 'from', 'where', 'insert', 'into', 'values', 'update', 'set', 'delete', 'create', 'table', 'drop',
+      'alter', 'add', 'column', 'index', 'join', 'inner', 'left', 'right', 'outer', 'full', 'on', 'group', 'by',
+      'order', 'having', 'limit', 'offset', 'union', 'all', 'distinct', 'as', 'and', 'or', 'not', 'null', 'is',
+      'in', 'between', 'like', 'exists', 'case', 'when', 'then', 'else', 'end', 'primary', 'key', 'foreign',
+      'references', 'default', 'constraint', 'unique', 'begin', 'commit', 'rollback', 'with', 'asc', 'desc',
+    ])
+    const C_KEYWORDS = new Set([
+      'auto', 'break', 'case', 'char', 'const', 'continue', 'default', 'do', 'double', 'else', 'enum', 'extern',
+      'float', 'for', 'goto', 'if', 'inline', 'int', 'long', 'register', 'restrict', 'return', 'short', 'signed',
+      'sizeof', 'static', 'struct', 'switch', 'typedef', 'union', 'unsigned', 'void', 'volatile', 'while', 'class',
+      'namespace', 'template', 'typename', 'public', 'private', 'protected', 'virtual', 'override', 'using',
+      'nullptr', 'true', 'false', 'new', 'delete', 'try', 'catch', 'throw', 'auto',
+    ])
+    const CSHARP_KEYWORDS = new Set([
+      'abstract', 'as', 'base', 'bool', 'break', 'byte', 'case', 'catch', 'char', 'checked', 'class', 'const',
+      'continue', 'decimal', 'default', 'delegate', 'do', 'double', 'else', 'enum', 'event', 'explicit', 'extern',
+      'false', 'finally', 'fixed', 'float', 'for', 'foreach', 'goto', 'if', 'implicit', 'in', 'int', 'interface',
+      'internal', 'is', 'lock', 'long', 'namespace', 'new', 'null', 'object', 'operator', 'out', 'override',
+      'params', 'private', 'protected', 'public', 'readonly', 'ref', 'return', 'sbyte', 'sealed', 'short',
+      'sizeof', 'stackalloc', 'static', 'string', 'struct', 'switch', 'this', 'throw', 'true', 'try', 'typeof',
+      'uint', 'ulong', 'unchecked', 'unsafe', 'ushort', 'using', 'virtual', 'void', 'volatile', 'while',
+      'async', 'await', 'var', 'dynamic', 'yield', 'when', 'where', 'get', 'set', 'init', 'record', 'required',
+      'file', 'global', 'partial', 'nameof', 'with', 'not', 'and', 'or', 'add', 'remove',
+    ])
+    const GO_KEYWORDS = new Set([
+      'break', 'case', 'chan', 'const', 'continue', 'default', 'defer', 'else', 'fallthrough', 'for', 'func', 'go',
+      'goto', 'if', 'import', 'interface', 'map', 'package', 'range', 'return', 'select', 'struct', 'switch', 'type',
+      'var',
+    ])
+    const RUST_KEYWORDS = new Set([
+      'as', 'async', 'await', 'break', 'const', 'continue', 'crate', 'dyn', 'else', 'enum', 'extern', 'false', 'fn',
+      'for', 'if', 'impl', 'in', 'let', 'loop', 'match', 'mod', 'move', 'mut', 'pub', 'ref', 'return', 'self', 'static',
+      'struct', 'super', 'trait', 'true', 'type', 'unsafe', 'use', 'where', 'while',
+    ])
+    const JAVA_KEYWORDS = new Set([
+      'abstract', 'assert', 'boolean', 'break', 'byte', 'case', 'catch', 'char', 'class', 'const', 'continue',
+      'default', 'do', 'double', 'else', 'enum', 'extends', 'final', 'finally', 'float', 'for', 'goto', 'if',
+      'implements', 'import', 'instanceof', 'int', 'interface', 'long', 'native', 'new', 'package', 'private',
+      'protected', 'public', 'return', 'short', 'static', 'strictfp', 'super', 'switch', 'synchronized', 'this',
+      'throw', 'throws', 'transient', 'try', 'void', 'volatile', 'while', 'record', 'sealed', 'permits',
+    ])
+    const RUBY_KEYWORDS = new Set([
+      'alias', 'and', 'begin', 'break', 'case', 'class', 'def', 'defined', 'do', 'else', 'elsif', 'end', 'ensure',
+      'false', 'for', 'if', 'in', 'module', 'next', 'nil', 'not', 'or', 'redo', 'rescue', 'retry', 'return', 'self',
+      'super', 'then', 'true', 'undef', 'unless', 'until', 'when', 'while', 'yield',
+    ])
+    const PHP_KEYWORDS = new Set([
+      'abstract', 'and', 'array', 'as', 'break', 'callable', 'case', 'catch', 'class', 'clone', 'const', 'continue',
+      'declare', 'default', 'do', 'echo', 'else', 'elseif', 'empty', 'enddeclare', 'endfor', 'endforeach', 'endif',
+      'endswitch', 'endwhile', 'eval', 'exit', 'extends', 'final', 'finally', 'fn', 'for', 'foreach', 'function',
+      'global', 'goto', 'if', 'implements', 'include', 'include_once', 'instanceof', 'insteadof', 'interface',
+      'isset', 'list', 'match', 'namespace', 'new', 'or', 'print', 'private', 'protected', 'public', 'readonly',
+      'require', 'require_once', 'return', 'static', 'switch', 'throw', 'trait', 'try', 'unset', 'use', 'var',
+      'while', 'xor', 'yield', 'true', 'false', 'null',
+    ])
+    const LUA_KEYWORDS = new Set([
+      'and', 'break', 'do', 'else', 'elseif', 'end', 'false', 'for', 'function', 'goto', 'if', 'in', 'local', 'nil',
+      'not', 'or', 'repeat', 'return', 'then', 'true', 'until', 'while',
+    ])
+
+    function keywordClassifier(words) {
+      return (text, code, index) => {
+        if (text.startsWith('//') || text.startsWith('/*') || text.startsWith('#') || text.startsWith('--')) return 'comment'
+        if (text.startsWith('"') || text.startsWith("'") || text.startsWith('`')) return 'string'
+        if (/^[0-9]/u.test(text)) return 'number'
+        if (words.has(text.toLowerCase()) || words.has(text)) return 'keyword'
+        if (/^(?:true|false|null|undefined|nil|none|NaN|Infinity)$/u.test(text)) return 'constant'
+        const after = code.slice(index + text.length)
+        if (/^\s*\(/u.test(after)) return 'function'
+        if (/^[A-Z]/u.test(text)) return 'type'
+        return 'plain'
+      }
+    }
+
+    function jsonClassifier(text, code, index) {
+      if (text.startsWith('"')) {
+        const rest = code.slice(index + text.length)
+        return /^\s*:/u.test(rest) ? 'property' : 'string'
+      }
+      if (/^-?[0-9]/u.test(text)) return 'number'
+      return 'constant'
+    }
+
+    function cssClassifier(text, code, index) {
+      if (text.startsWith('/*')) return 'comment'
+      if (text.startsWith('"') || text.startsWith("'")) return 'string'
+      if (text.startsWith('@')) return 'keyword'
+      if (/^#[0-9a-f]{3,8}$/iu.test(text)) return 'number'
+      if (/^[0-9]/u.test(text)) return 'number'
+      const after = code.slice(index + text.length)
+      if (/^\s*:/u.test(after)) return 'property'
+      return 'plain'
+    }
+
+    function htmlClassifier(text, code, index) {
+      if (text.startsWith('<!--')) return 'comment'
+      if (text.startsWith('<')) return 'tag'
+      if (text.startsWith('"') || text.startsWith("'")) return 'string'
+      const after = code.slice(index + text.length)
+      if (/^\s*=/u.test(after)) return 'attr'
+      return 'plain'
+    }
+
+    function yamlClassifier(text, code, index) {
+      if (text.startsWith('#')) return 'comment'
+      if (text.startsWith('"') || text.startsWith("'")) return 'string'
+      if (/^(?:true|false|null|yes|no)$/iu.test(text)) return 'constant'
+      if (/^-?[0-9]/u.test(text)) return 'number'
+      const after = code.slice(index + text.length)
+      if (/^\s*:/u.test(after)) return 'property'
+      return 'plain'
+    }
+
+    function markdownClassifier(text) {
+      if (/^#{1,6}/u.test(text)) return 'heading'
+      if (text.startsWith('```') || text.startsWith('~~~')) return 'comment'
+      if (text.startsWith('`')) return 'string'
+      if (/^\[[^\]]*\]\(/u.test(text) || /^!\[[^\]]*\]\(/u.test(text)) return 'link'
+      if (/^\*\*|^__|^\*[^*]|^_[^_]/u.test(text)) return 'keyword'
+      if (/^\s*(?:[-*+]|\d+\.)\s/u.test(text)) return 'property'
+      if (/^>/u.test(text)) return 'comment'
+      return 'plain'
+    }
+
+    const HIGHLIGHTERS = {
+      javascript: {
+        re: /\/\/[^\n]*|\/\*[\s\S]*?\*\/|`(?:\\[\s\S]|[^\\`])*`|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\b\d(?:[\w.]*)\b|[A-Za-z_$][\w$]*/gu,
+        classify: keywordClassifier(JS_KEYWORDS),
+      },
+      typescript: {
+        re: /\/\/[^\n]*|\/\*[\s\S]*?\*\/|`(?:\\[\s\S]|[^\\`])*`|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\b\d(?:[\w.]*)\b|[A-Za-z_$][\w$]*/gu,
+        classify: keywordClassifier(JS_KEYWORDS),
+      },
+      json: {
+        re: /"(?:\\.|[^"\\])*"|-?\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b|\b(?:true|false|null)\b/gu,
+        classify: jsonClassifier,
+      },
+      css: {
+        re: /\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|#[0-9a-fA-F]{3,8}\b|@[\w-]+|--?[\w-]+(?=\s*:)|\b\d+(?:\.\d+)?(?:px|em|rem|%|vh|vw|vmin|vmax|s|ms|deg|fr|ch|ex)?\b/gu,
+        classify: cssClassifier,
+      },
+      html: {
+        re: /<!--[\s\S]*?-->|<\/?[A-Za-z][\w:-]*|[A-Za-z_:][\w:.-]*(?==)|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/gu,
+        classify: htmlClassifier,
+      },
+      python: {
+        re: /#[^\n]*|'''[\s\S]*?'''|"""[\s\S]*?"""|[rbfu]{0,2}"(?:\\.|[^"\\\n])*"|[rbfu]{0,2}'(?:\\.|[^'\\\n])*'|@[\w.]+\b|\b\d+(?:\.\d+)?\b|[A-Za-z_]\w*/gu,
+        classify: keywordClassifier(PY_KEYWORDS),
+      },
+      shell: {
+        re: /#[^\n]*|"(?:\\.|[^"\\])*"|'[^']*'|\$\{?[\w@#?*!-]+\}?|\b\d+\b|[A-Za-z_][\w-]*/gu,
+        classify: (text, code, index) => {
+          if (text.startsWith('#')) return 'comment'
+          if (text.startsWith('"') || text.startsWith("'")) return 'string'
+          if (text.startsWith('$')) return 'property'
+          if (/^[0-9]/u.test(text)) return 'number'
+          if (SH_KEYWORDS.has(text)) return 'keyword'
+          const after = code.slice(index + text.length)
+          if (/^\s*\(\)/u.test(after)) return 'function'
+          return 'plain'
+        },
+      },
+      yaml: {
+        re: /#[^\n]*|"(?:\\.|[^"\\])*"|'(?:''|[^'])*'|^[ \t-]*[A-Za-z_][\w.-]*(?=\s*:)|\b-?\d+(?:\.\d+)?\b|\b(?:true|false|null|yes|no)\b/gmu,
+        classify: yamlClassifier,
+      },
+      sql: {
+        re: /--[^\n]*|\/\*[\s\S]*?\*\/|'(?:''|[^'])*'|"(?:""|[^"])*"|\b\d+(?:\.\d+)?\b|[A-Za-z_]\w*/gu,
+        classify: (text, code, index) => keywordClassifier(SQL_KEYWORDS)(text, code, index),
+      },
+      markdown: {
+        re: /^#{1,6}[^\n]*|^```[\s\S]*?^```|`[^`\n]+`|\*\*[^*\n]+\*\*|__[^_\n]+__|!?\[[^\]\n]*\]\([^)\n]*\)|^[ \t]*(?:[-*+]|\d+\.)[ \t]|^>[^\n]*/gmu,
+        classify: markdownClassifier,
+      },
+      rust: {
+        re: /\/\/[^\n]*|\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\b\d(?:[\w.]*)\b|[A-Za-z_]\w*!?/gu,
+        classify: keywordClassifier(RUST_KEYWORDS),
+      },
+      go: {
+        re: /\/\/[^\n]*|\/\*[\s\S]*?\*\/|`[^`]*`|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\b\d(?:[\w.]*)\b|[A-Za-z_]\w*/gu,
+        classify: keywordClassifier(GO_KEYWORDS),
+      },
+      java: {
+        re: /\/\/[^\n]*|\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\b\d(?:[\w.]*)\b|[A-Za-z_$][\w$]*/gu,
+        classify: keywordClassifier(JAVA_KEYWORDS),
+      },
+      cpp: {
+        re: /\/\/[^\n]*|\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|#\s*\w+|\b\d(?:[\w.]*)\b|[A-Za-z_]\w*/gu,
+        classify: (text, code, index) => {
+          if (text.startsWith('#')) return 'keyword'
+          return keywordClassifier(C_KEYWORDS)(text, code, index)
+        },
+      },
+      csharp: {
+        re: /\/\/[^\n]*|\/\*[\s\S]*?\*\/|"""[\s\S]*?"""|\$?@"(?:""|[^"])*"|\$?"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|#\s*[A-Za-z]+|\b(?:0[xX][0-9a-fA-F_]+|0[bB][01_]+|\d[\d_]*(?:\.\d+)?(?:[eE][+-]?\d+)?)(?:[fFdDmMuUlL]+)?\b|@[A-Za-z_]\w*|[A-Za-z_]\w*/gu,
+        classify: (text, code, index) => {
+          if (text.startsWith('//') || text.startsWith('/*')) return 'comment'
+          if (text.startsWith('"') || text.startsWith("'") || text.startsWith('$')) return 'string'
+          if (text.startsWith('@"') || text.startsWith('$@"')) return 'string'
+          if (text.startsWith('@')) return 'plain'
+          if (text.startsWith('#')) return 'keyword'
+          if (/^[0-9]/.test(text)) return 'number'
+          if (CSHARP_KEYWORDS.has(text)) return 'keyword'
+          if (/^(?:true|false|null)$/.test(text)) return 'constant'
+          const after = code.slice(index + text.length)
+          if (/^\s*\(/.test(after)) return 'function'
+          if (/^[A-Z]/.test(text)) return 'type'
+          return 'plain'
+        },
+      },
+      ruby: {
+        re: /#[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|:[A-Za-z_]\w*|\b\d+(?:\.\d+)?\b|[A-Za-z_]\w*[!?]?/gu,
+        classify: (text, code, index) => {
+          if (text.startsWith('#')) return 'comment'
+          if (text.startsWith(':')) return 'property'
+          return keywordClassifier(RUBY_KEYWORDS)(text, code, index)
+        },
+      },
+      php: {
+        re: /\/\/[^\n]*|#[^\n]*|\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\$[A-Za-z_]\w*|\b\d+(?:\.\d+)?\b|[A-Za-z_]\w*/gu,
+        classify: (text, code, index) => {
+          if (text.startsWith('$')) return 'property'
+          return keywordClassifier(PHP_KEYWORDS)(text, code, index)
+        },
+      },
+      lua: {
+        re: /--\[\[[\s\S]*?\]\]|--[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b\d+(?:\.\d+)?\b|[A-Za-z_]\w*/gu,
+        classify: keywordClassifier(LUA_KEYWORDS),
+      },
+      config: {
+        re: /^[ \t]*[#;][^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|^[ \t]*[A-Za-z_][\w.-]*(?=\s*[=:])|\b\d+(?:\.\d+)?\b/gmu,
+        classify: (text, code, index) => {
+          if (/^[ \t]*[#;]/u.test(text)) return 'comment'
+          if (/^\s*"/u.test(text) || /^\s*'/u.test(text)) return 'string'
+          if (/^[ \t]*[A-Za-z_]/u.test(text) && text.trim().length > 0) return 'property'
+          if (/^[0-9]/u.test(text.trim())) return 'number'
+          return 'plain'
+        },
+      },
+      diff: {
+        re: /^\+[^\n]*|^-[^\n]*|^@@[^\n]*/gmu,
+        classify: (text) => (text.startsWith('+') ? 'string' : text.startsWith('-') ? 'keyword' : 'function'),
+      },
+      plain: null,
+    }
+
+    const TOKEN_CACHE = new Map()
+
+    function tokenize(code, language) {
+      const spec = HIGHLIGHTERS[language]
+      if (!spec) return null
+      if (code.length > 320000) return null
+      const cacheKey = `${language}\u0000${code.length}\u0000${code.slice(0, 64)}`
+      const cached = TOKEN_CACHE.get(cacheKey)
+      if (cached !== undefined && cached.source === code) return cached.tokens
+      const tokens = []
+      spec.re.lastIndex = 0
+      let last = 0
+      let match
+      while ((match = spec.re.exec(code)) !== null) {
+        if (match[0].length === 0) {
+          spec.re.lastIndex += 1
+          continue
+        }
+        if (match.index > last) tokens.push({ text: code.slice(last, match.index) })
+        tokens.push({ text: match[0], kind: spec.classify(match[0], code, match.index) })
+        last = match.index + match[0].length
+      }
+      if (last < code.length) tokens.push({ text: code.slice(last) })
+      if (TOKEN_CACHE.size > 40) TOKEN_CACHE.clear()
+      TOKEN_CACHE.set(cacheKey, { source: code, tokens })
+      return tokens
+    }
+
+    function Highlighted({ code, language }) {
+      const tokens = useMemo(() => tokenize(code, language), [code, language])
+      if (tokens === null) return code
+      return tokens.map((token, index) =>
+        token.kind === undefined || token.kind === 'plain'
+          ? h('span', { key: index }, token.text)
+          : h('span', { key: index, className: `ds-tok-${token.kind}` }, token.text),
+      )
+    }
+
+    /* ------------------------------------------------------------------ *
+     * Markdown rendering
+     * ------------------------------------------------------------------ */
+
+    function resolveRelative(baseFile, href) {
+      if (/^(?:[a-z][a-z0-9+.-]*:|#|\/\/)/iu.test(href)) return href
+      if (href.startsWith('/')) return href.replace(/^\/+/u, '')
+      const clean = href.split('#')[0].split('?')[0]
+      if (clean.length === 0) return href
+      const segments = dirname(baseFile).length > 0 ? dirname(baseFile).split('/') : []
+      for (const part of clean.split('/')) {
+        if (part === '' || part === '.') continue
+        if (part === '..') segments.pop()
+        else segments.push(part)
+      }
+      return segments.join('/')
+    }
+
+    function inlineMarkdown(text, keyPrefix, context) {
+      const nodes = []
+      const pattern = /(`[^`\n]+`)|(\*\*[^*\n]+\*\*|__[^_\n]+__)|(\*[^*\n]+\*|_[^_\n]+_)|(!?\[[^\]\n]*\]\([^)\n]*\))|(https?:\/\/[^\s<)]+)/gu
+      let last = 0
+      let index = 0
+      let match
+      while ((match = pattern.exec(text)) !== null) {
+        if (match.index > last) nodes.push(text.slice(last, match.index))
+        const token = match[0]
+        const key = `${keyPrefix}-${String(index++)}`
+        if (token.startsWith('`')) {
+          nodes.push(h('code', { key, className: 'ds-md-inline-code' }, token.slice(1, -1)))
+        } else if (token.startsWith('**') || token.startsWith('__')) {
+          nodes.push(h('strong', { key }, inlineMarkdown(token.slice(2, -2), key, context)))
+        } else if (token.startsWith('*') || token.startsWith('_')) {
+          nodes.push(h('em', { key }, inlineMarkdown(token.slice(1, -1), key, context)))
+        } else if (token.startsWith('![') || token.startsWith('[')) {
+          const image = token.startsWith('![')
+          const close = token.indexOf('](')
+          const label = token.slice(image ? 2 : 1, close)
+          const target = token.slice(close + 2, -1).trim()
+          if (image) {
+            const source = resolveRelative(context.file, target)
+            const url = /^https?:/iu.test(source) ? source : rawUrl(context.root, source)
+            nodes.push(h('img', { key, src: url, alt: label, loading: 'lazy', className: 'ds-md-image' }))
+          } else if (target.startsWith('#')) {
+            nodes.push(h('a', { key, href: target, className: 'ds-md-link' }, inlineMarkdown(label, key, context)))
+          } else {
+            const external = /^(?:https?:|mailto:)/iu.test(target)
+            const source = external ? target : resolveRelative(context.file, target)
+            const href = external ? target : `#${encodeURIComponent(source)}`
+            nodes.push(
+              h(
+                'a',
+                {
+                  key,
+                  href,
+                  target: external ? '_blank' : undefined,
+                  rel: external ? 'noreferrer' : undefined,
+                  className: 'ds-md-link',
+                  onClick: external
+                    ? undefined
+                    : (event) => {
+                        event.preventDefault()
+                        context.onOpenPath?.(source)
+                      },
+                },
+                inlineMarkdown(label, key, context),
+              ),
+            )
+          }
+        } else if (token.startsWith('http')) {
+          nodes.push(
+            h('a', { key, href: token, target: '_blank', rel: 'noreferrer', className: 'ds-md-link' }, token),
+          )
+        }
+        last = match.index + token.length
+      }
+      if (last < text.length) nodes.push(text.slice(last))
+      return nodes
+    }
+
+    function parseTableRow(line) {
+      const trimmed = line.trim().replace(/^\|/u, '').replace(/\|$/u, '')
+      return trimmed.split('|').map((cell) => cell.trim())
+    }
+
+    function MarkdownView({ text, root, file, onOpenPath, t }) {
+      const context = { root, file, onOpenPath }
+      const blocks = useMemo(() => {
+        const lines = text.replace(/\r\n?/gu, '\n').split('\n')
+        const result = []
+        let index = 0
+        let key = 0
+        while (index < lines.length) {
+          const line = lines[index]
+          if (line.trim().length === 0) {
+            index += 1
+            continue
+          }
+          const fence = line.match(/^\s*(```+|~~~+)\s*([\w+#.-]*)\s*$/u)
+          if (fence !== null) {
+            const body = []
+            index += 1
+            while (index < lines.length && !new RegExp(`^\\s*${fence[1]}`).test(lines[index])) {
+              body.push(lines[index])
+              index += 1
+            }
+            index += 1
+            result.push({ kind: 'code', key: `b${String(key++)}`, language: fence[2], text: body.join('\n') })
+            continue
+          }
+          const heading = line.match(/^(#{1,6})\s+(.*)$/u)
+          if (heading !== null) {
+            result.push({
+              kind: 'heading',
+              key: `b${String(key++)}`,
+              level: heading[1].length,
+              text: heading[2].trim(),
+            })
+            index += 1
+            continue
+          }
+          if (/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/u.test(line)) {
+            result.push({ kind: 'hr', key: `b${String(key++)}` })
+            index += 1
+            continue
+          }
+          if (/^\s*\|.*\|\s*$/u.test(line) && index + 1 < lines.length && /^\s*\|?[\s:|-]+\|[\s:|-]*$/u.test(lines[index + 1])) {
+            const header = parseTableRow(line)
+            index += 2
+            const rows = []
+            while (index < lines.length && /^\s*\|.*\|\s*$/u.test(lines[index])) {
+              rows.push(parseTableRow(lines[index]))
+              index += 1
+            }
+            result.push({ kind: 'table', key: `b${String(key++)}`, header, rows })
+            continue
+          }
+          if (/^\s*>/u.test(line)) {
+            const body = []
+            while (index < lines.length && /^\s*>/u.test(lines[index])) {
+              body.push(lines[index].replace(/^\s*>\s?/u, ''))
+              index += 1
+            }
+            result.push({ kind: 'quote', key: `b${String(key++)}`, text: body.join('\n') })
+            continue
+          }
+          const listMatch = line.match(/^(\s*)([-*+]|\d+\.)\s+(.*)$/u)
+          if (listMatch !== null) {
+            const ordered = /\d/.test(listMatch[2])
+            const items = []
+            while (index < lines.length) {
+              const item = lines[index].match(/^(\s*)([-*+]|\d+\.)\s+(.*)$/u)
+              if (item === null) break
+              items.push({ indent: item[1].length, text: item[3] })
+              index += 1
+              while (index < lines.length && /^\s{2,}\S/u.test(lines[index]) && !/^(\s*)([-*+]|\d+\.)\s+/u.test(lines[index])) {
+                const lastItem = items[items.length - 1]
+                lastItem.text += ` ${lines[index].trim()}`
+                index += 1
+              }
+            }
+            result.push({ kind: 'list', key: `b${String(key++)}`, ordered, items })
+            continue
+          }
+          const paragraph = [line.trim()]
+          index += 1
+          while (index < lines.length) {
+            const next = lines[index]
+            if (
+              next.trim().length === 0 ||
+              /^(#{1,6})\s+/u.test(next) ||
+              /^\s*(```+|~~~+)/u.test(next) ||
+              /^\s*>/u.test(next) ||
+              /^\s*\|.*\|\s*$/u.test(next) ||
+              /^(\s*)([-*+]|\d+\.)\s+/u.test(next) ||
+              /^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/u.test(next)
+            ) {
+              break
+            }
+            paragraph.push(next.trim())
+            index += 1
+          }
+          result.push({ kind: 'paragraph', key: `b${String(key++)}`, text: paragraph.join(' ') })
+        }
+        return result
+      }, [text])
+
+      if (text.trim().length === 0) return h('div', { className: 'ds-md ds-md-empty' }, t('markdown.empty'))
+
+      return h(
+        'div',
+        { className: 'ds-md' },
+        h(
+          'div',
+          { className: 'ds-md-inner' },
+          blocks.map((block) => {
+            if (block.kind === 'heading') {
+              return h(
+                `h${String(block.level)}`,
+                { key: block.key, className: 'ds-md-heading' },
+                inlineMarkdown(block.text, block.key, context),
+              )
+            }
+            if (block.kind === 'code') {
+              return h(
+                'pre',
+                { key: block.key, className: 'ds-md-pre', 'data-language': block.language || undefined },
+                h('code', null, block.text),
+              )
+            }
+            if (block.kind === 'hr') return h('hr', { key: block.key, className: 'ds-md-hr' })
+            if (block.kind === 'quote') {
+              return h('blockquote', { key: block.key, className: 'ds-md-quote' }, inlineMarkdown(block.text, block.key, context))
+            }
+            if (block.kind === 'table') {
+              return h(
+                'div',
+                { key: block.key, className: 'ds-md-tablewrap' },
+                h(
+                  'table',
+                  { className: 'ds-md-table' },
+                  h(
+                    'thead',
+                    null,
+                    h(
+                      'tr',
+                      null,
+                      block.header.map((cell, cellIndex) =>
+                        h('th', { key: `${block.key}-h${String(cellIndex)}` }, inlineMarkdown(cell, `${block.key}-h${String(cellIndex)}`, context)),
+                      ),
+                    ),
+                  ),
+                  h(
+                    'tbody',
+                    null,
+                    block.rows.map((row, rowIndex) =>
+                      h(
+                        'tr',
+                        { key: `${block.key}-r${String(rowIndex)}` },
+                        row.map((cell, cellIndex) =>
+                          h('td', { key: `${block.key}-r${String(rowIndex)}-${String(cellIndex)}` }, inlineMarkdown(cell, `${block.key}-r${String(rowIndex)}-${String(cellIndex)}`, context)),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            }
+            if (block.kind === 'list') {
+              return h(
+                block.ordered ? 'ol' : 'ul',
+                { key: block.key, className: 'ds-md-list' },
+                block.items.map((item, itemIndex) =>
+                  h(
+                    'li',
+                    {
+                      key: `${block.key}-${String(itemIndex)}`,
+                      style: item.indent >= 2 ? { marginLeft: `${String(Math.min(item.indent, 8) * 4)}px` } : undefined,
+                    },
+                    inlineMarkdown(item.text, `${block.key}-${String(itemIndex)}`, context),
+                  ),
+                ),
+              )
+            }
+            return h('p', { key: block.key, className: 'ds-md-para' }, inlineMarkdown(block.text, block.key, context))
+          }),
+        ),
+      )
+    }
+
+    /* ------------------------------------------------------------------ *
+     * Icons
+     * ------------------------------------------------------------------ */
+
+    function icon(size, children, extra) {
+      return h(
+        'svg',
+        {
+          width: size,
+          height: size,
+          viewBox: '0 0 16 16',
+          fill: 'none',
+          stroke: 'currentColor',
+          strokeWidth: 1.4,
+          strokeLinecap: 'round',
+          strokeLinejoin: 'round',
+          'aria-hidden': true,
+          focusable: false,
+          ...extra,
+        },
+        children,
+      )
+    }
+
+    function ChevronIcon() {
+      return icon(14, h('path', { d: 'M6 3.5 10.5 8 6 12.5' }))
+    }
+
+    function FolderIcon({ open }) {
+      return open
+        ? icon(15, h('path', { d: 'M1.75 4.5h4l1.2 1.5h7.3v6.25a1 1 0 0 1-1 1H2.75a1 1 0 0 1-1-1Z' }), h('path', { d: 'M1.75 4.5V3.25a1 1 0 0 1 1-1h3l1.2 1.5' }))
+        : icon(15, h('path', { d: 'M1.75 12.5V3.25a1 1 0 0 1 1-1h3.1l1.3 1.6h5.85a1 1 0 0 1 1 1v7.65a1 1 0 0 1-1 1H2.75a1 1 0 0 1-1-1Z' }))
+    }
+
+    function PageIcon() {
+      return icon(15, h('path', { d: 'M3.5 1.75h5.2l3.3 3.3v9.2H3.5Z' }), h('path', { d: 'M8.5 1.75v3.5H12' }))
+    }
+
+    function glyphGroup(name) {
+      const ext = extensionOf(name)
+      if (ext === 'pdf') return 'pdf'
+      if (MARKDOWN_EXTENSIONS.has(ext)) return 'markdown'
+      if (IMAGE_EXTENSIONS.has(ext)) return 'image'
+      if (['json', 'yml', 'yaml', 'toml', 'ini', 'lock'].includes(ext)) return 'data'
+      if (['js', 'mjs', 'cjs', 'jsx', 'ts', 'tsx', 'mts', 'cts', 'vue', 'svelte'].includes(ext)) return 'code'
+      if (['css', 'scss', 'less', 'html', 'htm', 'xml', 'svg'].includes(ext)) return 'web'
+      if (['py', 'rb', 'go', 'rs', 'java', 'kt', 'cs', 'csx', 'c', 'h', 'cc', 'cpp', 'hpp', 'php', 'lua', 'sh', 'bash', 'zsh'].includes(ext)) return 'code'
+      return 'plain'
+    }
+
+    function FileGlyph({ name, size = 15 }) {
+      return h('span', { className: `ds-fileglyph ds-fileglyph-${glyphGroup(name)}`, style: { width: `${String(size)}px`, height: `${String(size)}px` } }, h(PageIcon))
+    }
+
+    function PanelGlyph({ size = 20, active = false }) {
+      return h(
+        'svg',
+        {
+          width: size,
+          height: size,
+          viewBox: '0 0 24 24',
+          fill: 'none',
+          stroke: 'currentColor',
+          strokeWidth: 1.6,
+          strokeLinecap: 'round',
+          strokeLinejoin: 'round',
+          style: { color: active ? 'var(--dsw-alias-brand-primary)' : undefined },
+          'aria-hidden': true,
+        },
+        h('path', { d: 'M3 8V5.75A1.75 1.75 0 0 1 4.75 4h4.4l1.6 2.1h7.5A1.75 1.75 0 0 1 20 7.85v9.4a1.75 1.75 0 0 1-1.75 1.75H4.75A1.75 1.75 0 0 1 3 17.25Z' }),
+        h('path', { d: 'M9.75 11.5 7.5 14l2.25 2.5' }),
+        h('path', { d: 'M14.25 11.5 16.5 14l-2.25 2.5' }),
+        h('path', { d: 'M12.75 10.75 11.25 17.25' }),
+      )
+    }
+
+    function NewFileIcon() {
+      return icon(15, h('path', { d: 'M3.75 1.75h5.1l3.4 3.4v9.1H3.75Z' }), h('path', { d: 'M8.75 1.75v3.5h3.5' }), h('path', { d: 'M12 9.5v4M10 11.5h4' }))
+    }
+
+    function NewFolderIcon() {
+      return icon(15, h('path', { d: 'M1.75 12.5V3.25a1 1 0 0 1 1-1h3.1l1.3 1.6h4.85a1 1 0 0 1 1 1v7.65a1 1 0 0 1-1 1H2.75a1 1 0 0 1-1-1Z' }), h('path', { d: 'M9.5 8.75v4M7.5 10.75h4' }))
+    }
+
+    function RefreshIcon() {
+      return icon(15, h('path', { d: 'M13.25 7A5.4 5.4 0 1 0 13 10.5' }), h('path', { d: 'M13.5 2.75V6.5h-3.75' }))
+    }
+
+    function SaveIcon() {
+      return icon(15, h('path', { d: 'M2.75 2.75h8.5l2 2v8.5H2.75Z' }), h('path', { d: 'M5 2.75v3.5h5.5v-3.5' }), h('path', { d: 'M5 13.25v-4h6v4' }))
+    }
+
+    function ExternalIcon() {
+      return icon(14, h('path', { d: 'M6.5 3.25H3.25v9.5h9.5V9.5' }), h('path', { d: 'M9 2.75h4.25V7' }), h('path', { d: 'M13.25 2.75 7.5 8.5' }))
+    }
+
+    function CloseIcon() {
+      return icon(12, h('path', { d: 'M4 4l8 8M12 4l-8 8' }))
+    }
+
+    function CodeIcon() {
+      return icon(15, h('path', { d: 'M5.5 4 2 8l3.5 4M10.5 4 14 8l-3.5 4' }))
+    }
+
+    function EyeIcon() {
+      return icon(15, h('path', { d: 'M1.75 8s2.3-4.25 6.25-4.25S14.25 8 14.25 8 12 12.25 8 12.25 1.75 8 1.75 8Z' }), h('circle', { cx: 8, cy: 8, r: 1.9 }))
+    }
+
+    function TrashIcon() {
+      return icon(14, h('path', { d: 'M3 4.25h10M6.25 4.25V2.75h3.5v1.5M4.25 4.25l.6 9h6.3l.6-9' }))
+    }
+
+    function PencilIcon() {
+      return icon(14, h('path', { d: 'M10.5 2.75l2.75 2.75L5.5 13.25H2.75V10.5Z' }))
+    }
+
+    function CopyIcon() {
+      return icon(
+        15,
+        h('rect', { x: 5.5, y: 5.5, width: 8, height: 8, rx: 1.3 }),
+        h('path', { d: 'M10.5 5.5V3.25a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1H5.5' }),
+        h('path', { d: 'M7.5 8.5h4' }),
+        h('path', { d: 'M7.5 10.75h2.75' }),
+      )
+    }
+
+    /* ------------------------------------------------------------------ *
+     * Store
+     * ------------------------------------------------------------------ */
+
+    function readStorage(key) {
+      try {
+        return window.localStorage.getItem(key)
+      } catch {
+        return null
+      }
+    }
+
+    function writeStorage(key, value) {
+      try {
+        window.localStorage.setItem(key, value)
+      } catch {
+        /* storage may be unavailable; the UI still works for this mount */
+      }
+    }
+
+    /** Read locally hidden workspace paths. */
+    function readHiddenRoots() {
+      const raw = readStorage(HIDDEN_ROOTS_KEY)
+      if (typeof raw !== 'string' || raw.length === 0) return []
+      try {
+        const parsed = JSON.parse(raw)
+        return Array.isArray(parsed) ? parsed.filter((path) => typeof path === 'string' && path.length > 0) : []
+      } catch {
+        return []
+      }
+    }
+
+    /** Read the per-root favorites map, dropping malformed entries. */
+    function readFavorites() {
+      const raw = readStorage(FAVORITES_KEY)
+      if (typeof raw !== 'string' || raw.length === 0) return {}
+      try {
+        const parsed = JSON.parse(raw)
+        if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+        const result = {}
+        for (const [root, list] of Object.entries(parsed)) {
+          if (!Array.isArray(list)) continue
+          result[root] = list.filter(
+            (item) =>
+              item !== null &&
+              typeof item === 'object' &&
+              typeof item.path === 'string' &&
+              item.path.length > 0 &&
+              typeof item.name === 'string' &&
+              (item.type === 'file' || item.type === 'directory'),
+          )
+        }
+        return result
+      } catch {
+        return {}
+      }
+    }
+
+    function createStore(initial) {
+      let state = initial
+      const listeners = new Set()
+      return {
+        get: () => state,
+        set: (next) => {
+          const value = typeof next === 'function' ? next(state) : next
+          if (value === state) return
+          state = value
+          for (const listener of [...listeners]) listener()
+        },
+        subscribe: (listener) => {
+          listeners.add(listener)
+          return () => listeners.delete(listener)
+        },
+      }
+    }
+
+    function useStore(store) {
+      const [value, setValue] = useState(store.get)
+      useEffect(() => {
+        setValue(store.get())
+        return store.subscribe(() => setValue(store.get()))
+      }, [store])
+      return value
+    }
+
+    function initialState() {
+      const width = Number.parseInt(readStorage(WIDTH_KEY) ?? '', 10)
+      return {
+        ready: false,
+        loadingRoots: false,
+        startError: null,
+        roots: [],
+        root: null,
+        rootTitle: '',
+        levels: {},
+        expanded: {},
+        selected: null,
+        tabs: [],
+        active: null,
+        treeWidth: Number.isFinite(width) ? Math.min(560, Math.max(180, width)) : 260,
+        showHidden: readStorage(HIDDEN_KEY) === '1',
+        favorites: readFavorites(),
+        favoritesOpen: readStorage(FAVORITES_OPEN_KEY) !== '0',
+        hiddenRoots: readHiddenRoots(),
+        wordWrap: readStorage(WRAP_KEY) === '1',
+      }
+    }
+
+    /* ------------------------------------------------------------------ *
+     * Code editor
+     * ------------------------------------------------------------------ */
+
+    function CodeEditor({ tab, language, onChange, onSave, onCursor, t, wrap }) {
+      const textareaRef = useRef(null)
+      const preRef = useRef(null)
+      const gutterRef = useRef(null)
+      const areaRef = useRef(null)
+      const measureRef = useRef(null)
+      const pendingSelection = useRef(null)
+      const [contentWidth, setContentWidth] = useState(0)
+      const [fontSpec, setFontSpec] = useState('')
+      const value = tab.content
+      const lines = useMemo(() => value.split('\n'), [value])
+      const tokens = useMemo(() => tokenize(value, language.id), [value, language.id])
+
+      useEffect(() => {
+        const textarea = textareaRef.current
+        if (textarea === null) return
+        const style = window.getComputedStyle(textarea)
+        setFontSpec(`${style.fontWeight} ${style.fontSize} ${style.fontFamily}`)
+        const measure = () => setContentWidth(Math.max(40, textarea.clientWidth - 32))
+        measure()
+        if (typeof ResizeObserver === 'undefined') {
+          window.addEventListener('resize', measure)
+          return () => window.removeEventListener('resize', measure)
+        }
+        const observer = new ResizeObserver(measure)
+        observer.observe(textarea)
+        return () => observer.disconnect()
+      }, [])
+
+      useEffect(() => {
+        const textarea = textareaRef.current
+        if (textarea === null) return
+        const width = Math.max(40, textarea.clientWidth - 32)
+        setContentWidth((previous) => (Math.abs(previous - width) > 1 ? width : previous))
+      }, [value, wrap])
+
+      const lineRows = useMemo(() => {
+        if (!wrap || contentWidth <= 0 || lines.length === 0) return null
+        let context = measureRef.current
+        if (context === null) {
+          const canvas = document.createElement('canvas')
+          context = canvas.getContext('2d')
+          if (context === null) return null
+          measureRef.current = context
+        }
+        context.font = fontSpec || '13px monospace'
+        return lines.map((line) => {
+          if (line.length === 0) return 1
+          const measurable = line.includes('\t') ? line.replace(/\t/g, '  ') : line
+          return Math.max(1, Math.ceil(context.measureText(measurable).width / contentWidth))
+        })
+      }, [wrap, lines, contentWidth, fontSpec])
+
+      useEffect(() => {
+        syncScroll()
+      }, [wrap, value, lineRows])
+
+      useEffect(() => {
+        const pending = pendingSelection.current
+        if (pending === null) return
+        pendingSelection.current = null
+        const textarea = textareaRef.current
+        if (textarea === null) return
+        textarea.selectionStart = pending.start
+        textarea.selectionEnd = pending.end
+        textarea.scrollTop = pending.scrollTop
+        syncScroll()
+      }, [value])
+
+      function syncScroll() {
+        const textarea = textareaRef.current
+        const pre = preRef.current
+        const gutter = gutterRef.current
+        if (textarea === null) return
+        if (pre !== null) {
+          pre.scrollTop = textarea.scrollTop
+          pre.scrollLeft = textarea.scrollLeft
+        }
+        if (gutter !== null) gutter.style.transform = `translateY(${String(-textarea.scrollTop)}px)`
+      }
+
+      function applyChange(nextValue, selectionStart, selectionEnd) {
+        const textarea = textareaRef.current
+        pendingSelection.current = {
+          start: selectionStart,
+          end: selectionEnd,
+          scrollTop: textarea === null ? 0 : textarea.scrollTop,
+        }
+        onChange(nextValue)
+      }
+
+      function reportCursor() {
+        const textarea = textareaRef.current
+        if (textarea === null) return
+        const before = value.slice(0, textarea.selectionStart)
+        const line = before.split('\n').length
+        const column = before.length - before.lastIndexOf('\n')
+        onCursor?.({ line, column })
+      }
+
+      function onKeyDown(event) {
+        const textarea = textareaRef.current
+        if (textarea === null) return
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+          event.preventDefault()
+          event.stopPropagation()
+          onSave()
+          return
+        }
+        if (event.key === 'Tab') {
+          event.preventDefault()
+          const start = textarea.selectionStart
+          const end = textarea.selectionEnd
+          const next = `${value.slice(0, start)}  ${value.slice(end)}`
+          applyChange(next, start + 2, start + 2)
+          return
+        }
+        if (event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
+          const start = textarea.selectionStart
+          const end = textarea.selectionEnd
+          const lineStart = value.lastIndexOf('\n', start - 1) + 1
+          const currentLine = value.slice(lineStart, start)
+          const indent = currentLine.match(/^[\t ]*/u)?.[0] ?? ''
+          const extra = /[{[(:]\s*$/u.test(currentLine) ? '  ' : ''
+          event.preventDefault()
+          const insertion = `\n${indent}${extra}`
+          const next = `${value.slice(0, start)}${insertion}${value.slice(end)}`
+          applyChange(next, start + insertion.length, start + insertion.length)
+        }
+      }
+
+      return h(
+        'div',
+        { className: 'ds-editor-wrap' },
+        h(
+          'div',
+          { className: 'ds-gutter', 'aria-hidden': true },
+          h(
+            'div',
+            { className: 'ds-gutter-inner', ref: gutterRef },
+            lines.map((_, index) =>
+              h(
+                'div',
+                {
+                  key: index,
+                  className: 'ds-gutter-line',
+                  'data-current': false,
+                  style: lineRows === null ? undefined : { height: `${String((lineRows[index] ?? 1) * 20)}px` },
+                },
+                String(index + 1),
+              ),
+            ),
+          ),
+        ),
+        h(
+          'div',
+          { className: 'ds-code-area', ref: areaRef, 'data-wrap': wrap ? 'true' : undefined },
+          h(
+            'pre',
+            { className: 'ds-pre', ref: preRef, 'aria-hidden': true },
+            tokens === null ? value : h(Highlighted, { code: value, language: language.id }),
+            value.endsWith('\n') ? '\n' : '',
+          ),
+          h('textarea', {
+            ref: textareaRef,
+            className: 'ds-ta',
+            value,
+            spellCheck: false,
+            autoCapitalize: 'off',
+            autoCorrect: 'off',
+            wrap: wrap ? 'soft' : 'off',
+            'aria-label': tab.name,
+            onChange: (event) => {
+              onChange(event.target.value)
+              reportCursor()
+            },
+            onKeyDown,
+            onKeyUp: reportCursor,
+            onClick: reportCursor,
+            onScroll: syncScroll,
+            onSelect: reportCursor,
+          }),
+        ),
+      )
+    }
+
+    /* ------------------------------------------------------------------ *
+     * Small components
+     * ------------------------------------------------------------------ */
+
+    function NameInput({ initial, depth, placeholder, onCommit, onCancel, t }) {
+      const [name, setName] = useState(initial ?? '')
+      const ref = useRef(null)
+      useEffect(() => {
+        const input = ref.current
+        if (input === null) return
+        input.focus()
+        const dot = (initial ?? '').lastIndexOf('.')
+        if (dot > 0) input.setSelectionRange(0, dot)
+        else input.select()
+      }, [initial])
+      return h(
+        'div',
+        { className: 'ds-row ds-row-draft', style: { paddingLeft: `${String(8 + depth * 14)}px` } },
+        h('span', { className: 'ds-chevron' }, h('span', { style: { width: '14px' } })),
+        h('input', {
+          ref,
+          className: 'ds-rowinput',
+          value: name,
+          placeholder: placeholder ?? '',
+          spellCheck: false,
+          onChange: (event) => setName(event.target.value),
+          onKeyDown: (event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              onCommit(name)
+            } else if (event.key === 'Escape') {
+              event.preventDefault()
+              onCancel()
+            }
+          },
+          onBlur: () => onCancel(),
+        }),
+      )
+    }
+
+    function MenuItem({ label, shortcut, danger, onClick, children, disabled = false }) {
+      return h(
+        'button',
+        {
+          type: 'button',
+          className: 'ds-menu-item',
+          role: 'menuitem',
+          'data-danger': danger === true ? 'true' : undefined,
+          disabled,
+          onClick,
+        },
+        h('span', { className: 'ds-menu-label' }, children, h('span', null, label)),
+        shortcut === undefined ? null : h('span', { className: 'ds-menu-kbd' }, shortcut),
+      )
+    }
+
+    function PanelIcon({ size = 20, active = false }) {
+      return h(
+        'span',
+        { style: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center' } },
+        h(PanelGlyph, { size, active }),
+      )
+    }
+
+    /** Guide card artwork: the split-pane glyph sized for the guide's icon cell. */
+    function GuideIcon() {
+      return h(PanelGlyph, { size: 24 })
+    }
+
+    /** Tab chip content for the right-sidebar instance. */
+    function makeIdeTitle(t) {
+      return function IdeTitle() {
+        return h(
+          'span',
+          { style: { display: 'inline-flex', alignItems: 'center', gap: '6px', minWidth: 0 } },
+          h(PanelGlyph, { size: 16 }),
+          h('span', { style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, t('panel.title')),
+        )
+      }
+    }
+
+    function ChevronLeftIcon() {
+      return icon(14, h('path', { d: 'M10 3.5 5.5 8l4.5 4.5' }))
+    }
+
+    function CollapseAllIcon() {
+      return icon(
+        15,
+        h('path', { d: 'M3 2.75h10' }),
+        h('path', { d: 'M4 8.5 8 4.75l4 3.75' }),
+        h('path', { d: 'M4 13 8 9.25l4 3.75' }),
+      )
+    }
+
+    /** Current state: hidden dotfiles are not shown. */
+    function HiddenFilesIcon() {
+      return icon(
+        15,
+        h('path', { d: 'M3.5 1.75h5.2l3.3 3.3v9.2H3.5Z' }),
+        h('path', { d: 'M8.7 1.75v3.4h3.3' }),
+        h('circle', { cx: 8, cy: 9, r: 1.35, fill: 'currentColor', stroke: 'none' }),
+        h('path', { d: 'M2.5 13.5 13.5 2.5' }),
+      )
+    }
+
+    /** Current state: dotfiles are visible. */
+    function VisibleFilesIcon() {
+      return icon(
+        15,
+        h('path', { d: 'M3.5 1.75h5.2l3.3 3.3v9.2H3.5Z' }),
+        h('path', { d: 'M8.7 1.75v3.4h3.3' }),
+        h('circle', { cx: 8, cy: 9, r: 1.6, fill: 'currentColor', stroke: 'none' }),
+      )
+    }
+
+    function GoIcon() {
+      return icon(
+        15,
+        h('path', {
+          d: 'M2.75 2.75 13.25 8 2.75 13.25 4.75 8Z',
+          fill: 'currentColor',
+          stroke: 'none',
+        }),
+      )
+    }
+
+    function StarIcon({ filled = false, size = 14, className }) {
+      return h(
+        'svg',
+        {
+          width: size,
+          height: size,
+          viewBox: '0 0 16 16',
+          fill: filled ? 'currentColor' : 'none',
+          stroke: 'currentColor',
+          strokeWidth: 1.25,
+          strokeLinejoin: 'round',
+          className,
+          'aria-hidden': true,
+          focusable: false,
+        },
+        h('path', { d: 'M8 1.9l1.86 3.77 4.16.6-3.01 2.94.71 4.14L8 11.4l-3.72 1.95.71-4.14L1.98 6.27l4.16-.6Z' }),
+      )
+    }
+
+    function WrapIcon() {
+      return icon(
+        15,
+        h('path', { d: 'M2.5 3.5h10.75v4.75a2.25 2.25 0 0 1-2.25 2.25H4.5' }),
+        h('path', { d: 'M7.25 8.25 4.5 10.5l2.75 2.25' }),
+        { strokeWidth: 1.7 },
+      )
+    }
+
+    function MoreIcon() {
+      return icon(
+        15,
+        h('circle', { cx: 8, cy: 3.25, r: 1.3, fill: 'currentColor', stroke: 'none' }),
+        h('circle', { cx: 8, cy: 8, r: 1.3, fill: 'currentColor', stroke: 'none' }),
+        h('circle', { cx: 8, cy: 12.75, r: 1.3, fill: 'currentColor', stroke: 'none' }),
+      )
+    }
+
+    function HomeIcon() {
+      return icon(
+        15,
+        h('path', { d: 'M2.25 7.25 8 2.5l5.75 4.75' }),
+        h('path', { d: 'M3.75 6.25v7.25h8.5V6.25' }),
+        h('path', { d: 'M6.4 13.5V9.5h3.2v4' }),
+      )
+    }
+
+    function UploadIcon() {
+      return icon(
+        15,
+        h('path', { d: 'M8 10.5V6.5' }),
+        h('path', { d: 'M8 2.5 4.25 6.75h7.5Z', fill: 'currentColor', stroke: 'none' }),
+        h('path', { d: 'M2.75 13.25h10.5' }),
+        { strokeWidth: 1.9 },
+      )
+    }
+
+    function DownloadIcon() {
+      return icon(
+        15,
+        h('path', { d: 'M8 2.75v4' }),
+        h('path', { d: 'M8 10.75 4.25 6.5h7.5Z', fill: 'currentColor', stroke: 'none' }),
+        h('path', { d: 'M2.75 13.25h10.5' }),
+        { strokeWidth: 1.9 },
+      )
+    }
+
+    /* ------------------------------------------------------------------ *
+     * Page
+     * ------------------------------------------------------------------ */
+
+    function makeIdePage(ctx, t, store) {
+      return function IdePage(props) {
+        const state = useStore(store)
+        const workspaceSnapshot =
+          typeof props?.useWorkspaces === 'function'
+            ? props.useWorkspaces((snapshot) => snapshot.items)
+            : EMPTY_WORKSPACES
+        const workspaceItems = Array.isArray(workspaceSnapshot) ? workspaceSnapshot : EMPTY_WORKSPACES
+        const [draft, setDraft] = useState(null)
+        const [menu, setMenu] = useState(null)
+        const [modal, setModal] = useState(null)
+        const [toast, setToast] = useState(null)
+        const [banner, setBanner] = useState(null)
+        const [cursor, setCursor] = useState({ line: 1, column: 1 })
+        const [, setLocaleVersion] = useState(0)
+        const [containerWidth, setContainerWidth] = useState(0)
+        const [compactView, setCompactView] = useState('tree')
+        const [address, setAddress] = useState('')
+        const [pickerOpen, setPickerOpen] = useState(false)
+        const [moreOpen, setMoreOpen] = useState(false)
+        const [moreAt, setMoreAt] = useState({ top: 0, left: 0 })
+        const [uploading, setUploading] = useState(false)
+        const rootRef = useRef(null)
+        const uploadInputRef = useRef(null)
+        const uploadTargetRef = useRef({ root: null, parent: '' })
+        const downloadAnchorRef = useRef(null)
+
+        useEffect(() => {
+          const dispose = ctx.locale.subscribe(() => setLocaleVersion((value) => value + 1))
+          return dispose
+        }, [])
+
+        useEffect(() => {
+          const element = rootRef.current
+          if (element === null) return
+          const measure = () => setContainerWidth(element.clientWidth)
+          measure()
+          if (typeof ResizeObserver === 'undefined') {
+            window.addEventListener('resize', measure)
+            return () => window.removeEventListener('resize', measure)
+          }
+          const observer = new ResizeObserver(measure)
+          observer.observe(element)
+          return () => observer.disconnect()
+        }, [])
+
+        useEffect(() => {
+          if (store.get().ready || store.get().loadingRoots) return
+          void loadRoots()
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [])
+
+        useEffect(() => {
+          if (toast === null) return
+          const timer = window.setTimeout(() => setToast(null), 2200)
+          return () => window.clearTimeout(timer)
+        }, [toast])
+
+        useEffect(() => {
+          if (menu === null) return
+          const dismiss = (event) => {
+            if (event.target instanceof Element && event.target.closest('.ds-menu') !== null) return
+            setMenu(null)
+          }
+          const onKey = (event) => {
+            if (event.key === 'Escape') setMenu(null)
+          }
+          window.addEventListener('pointerdown', dismiss, true)
+          window.addEventListener('keydown', onKey)
+          window.addEventListener('blur', dismiss)
+          return () => {
+            window.removeEventListener('pointerdown', dismiss, true)
+            window.removeEventListener('keydown', onKey)
+            window.removeEventListener('blur', dismiss)
+          }
+        }, [menu])
+
+        useEffect(() => {
+          if (modal === null) return
+          const onKey = (event) => {
+            if (event.key === 'Escape') setModal(null)
+          }
+          window.addEventListener('keydown', onKey)
+          return () => window.removeEventListener('keydown', onKey)
+        }, [modal])
+
+        useEffect(() => {
+          if (!moreOpen) return
+          const dismiss = (event) => {
+            if (event.target instanceof Element && event.target.closest('.ds-more-wrap') !== null) return
+            setMoreOpen(false)
+          }
+          const onKey = (event) => {
+            if (event.key === 'Escape') setMoreOpen(false)
+          }
+          window.addEventListener('pointerdown', dismiss, true)
+          window.addEventListener('keydown', onKey)
+          window.addEventListener('blur', dismiss)
+          window.addEventListener('resize', dismiss)
+          window.addEventListener('scroll', dismiss, true)
+          return () => {
+            window.removeEventListener('pointerdown', dismiss, true)
+            window.removeEventListener('keydown', onKey)
+            window.removeEventListener('blur', dismiss)
+            window.removeEventListener('resize', dismiss)
+            window.removeEventListener('scroll', dismiss, true)
+          }
+        }, [moreOpen])
+
+        useEffect(() => {
+          if (!pickerOpen) return
+          const dismiss = (event) => {
+            if (event.target instanceof Element && event.target.closest('.ds-workspace-wrap') !== null) return
+            setPickerOpen(false)
+          }
+          const onKey = (event) => {
+            if (event.key === 'Escape') setPickerOpen(false)
+          }
+          window.addEventListener('pointerdown', dismiss, true)
+          window.addEventListener('keydown', onKey)
+          window.addEventListener('blur', dismiss)
+          return () => {
+            window.removeEventListener('pointerdown', dismiss, true)
+            window.removeEventListener('keydown', onKey)
+            window.removeEventListener('blur', dismiss)
+          }
+        }, [pickerOpen])
+
+        const activeTab = state.tabs.find((tab) => tab.path === state.active) ?? null
+        const rootIsOpen = state.expanded[''] !== undefined
+        const compact = containerWidth > 0 && containerWidth < 640
+        const showSide = !compact || compactView === 'tree' || activeTab === null
+        const showMain = !compact || (activeTab !== null && compactView === 'editor')
+        const canCollapse = Object.keys(state.expanded).some((entry) => entry !== '')
+        const rootFavorites = state.root === null ? [] : state.favorites[state.root] ?? []
+        const favoritePaths = new Set(rootFavorites.map((item) => item.path))
+        const selectedIsFavorite =
+          state.selected !== null && state.selected !== '' && favoritePaths.has(state.selected)
+
+        useEffect(() => {
+          if (activeTab === null) setCompactView('tree')
+        }, [activeTab])
+
+        function showToast(message) {
+          setToast(message)
+        }
+
+        function patchLevel(levelPath, patch) {
+          store.set((current) => ({
+            ...current,
+            levels: { ...current.levels, [levelPath]: { ...(current.levels[levelPath] ?? {}), ...patch } },
+          }))
+        }
+
+        function patchTab(tabPath, patch) {
+          store.set((current) => ({
+            ...current,
+            tabs: current.tabs.map((tab) => (tab.path === tabPath ? { ...tab, ...patch } : tab)),
+          }))
+        }
+
+        function isDirectory(relative) {
+          if (relative === '') return true
+          const parent = dirname(relative)
+          const level = store.get().levels[parent]
+          return level?.entries?.some((entry) => joinPath(parent, entry.name) === relative && entry.type === 'directory') ?? false
+        }
+
+        async function loadRoots() {
+          const previous = store.get()
+          store.set((current) => ({ ...current, loadingRoots: true, startError: null }))
+          try {
+            const value = await call('roots')
+            const hidden = new Set(Array.isArray(previous.hiddenRoots) ? previous.hiddenRoots : [])
+            const roots = (Array.isArray(value?.roots) ? [...value.roots] : []).filter((entry) => !hidden.has(entry.path))
+            let root = previous.root
+            if (root === null || !roots.some((entry) => entry.path === root)) {
+              const saved = readStorage(ROOT_KEY)
+              root = roots.some((entry) => entry.path === saved) ? saved : null
+            }
+            if (root === null) {
+              root = value?.defaultRoot && roots.some((entry) => entry.path === value.defaultRoot) ? value.defaultRoot : roots[0]?.path ?? null
+            }
+            const rootInfo = roots.find((entry) => entry.path === root)
+            const rootChanged = root !== previous.root
+            store.set((current) => ({
+              ...current,
+              ready: true,
+              loadingRoots: false,
+              roots,
+              root,
+              rootTitle: rootInfo?.title ?? (root === null ? '' : basename(root)),
+              startError: roots.length === 0 ? t('hint.noRoot') : null,
+              ...(rootChanged || !previous.ready
+                ? {
+                    levels: {},
+                    expanded: root === null ? {} : { '': true },
+                    selected: null,
+                    tabs: [],
+                    active: null,
+                  }
+                : {}),
+            }))
+            if (rootChanged) setCompactView('tree')
+            if (root !== null) {
+              writeStorage(ROOT_KEY, root)
+              if (rootChanged || !previous.ready) await loadDir('', { root })
+            }
+          } catch (error) {
+            store.set((current) => ({
+              ...current,
+              ready: true,
+              loadingRoots: false,
+              startError: t('error.roots', { message: errorText(error) }),
+            }))
+          }
+        }
+
+        async function loadDir(levelPath, options = {}) {
+          const root = options.root ?? store.get().root
+          if (root === null) return
+          patchLevel(levelPath, { status: 'loading', error: null })
+          try {
+            const value = await call('list', { root, path: levelPath })
+            if (store.get().root !== root) return
+            patchLevel(levelPath, { status: 'ready', error: null, entries: Array.isArray(value?.entries) ? value.entries : [] })
+          } catch (error) {
+            if (store.get().root !== root) return
+            patchLevel(levelPath, { status: 'error', error: t('error.list', { message: errorText(error) }) })
+          }
+        }
+
+        async function ensureExpanded(levelPath) {
+          store.set((current) => ({ ...current, expanded: { ...current.expanded, [levelPath]: true } }))
+          const level = store.get().levels[levelPath]
+          if (level === undefined || level.status === 'error') await loadDir(levelPath)
+        }
+
+        async function toggleDir(levelPath) {
+          const open = store.get().expanded[levelPath] !== undefined
+          if (open) {
+            store.set((current) => {
+              const expanded = { ...current.expanded }
+              delete expanded[levelPath]
+              return { ...current, expanded }
+            })
+            return
+          }
+          await ensureExpanded(levelPath)
+        }
+
+        async function refreshAll() {
+          if (store.get().root === null) return
+          const paths = ['', ...Object.keys(store.get().expanded)]
+          await Promise.all(paths.map((path) => loadDir(path)))
+          showToast(t('toast.refreshed'))
+        }
+
+        function rememberRoot(root) {
+          writeStorage(ROOT_KEY, root)
+        }
+
+        function applyRoot(nextRoot, nextRoots) {
+          const roots = nextRoots ?? store.get().roots
+          store.set((current) => ({
+            ...current,
+            roots,
+            root: nextRoot,
+            rootTitle: roots.find((entry) => entry.path === nextRoot)?.title ?? basename(nextRoot),
+            levels: {},
+            expanded: { '': true },
+            selected: null,
+            tabs: [],
+            active: null,
+            startError: null,
+          }))
+          rememberRoot(nextRoot)
+          setCompactView('tree')
+          void loadDir('', { root: nextRoot })
+          showToast(t('toast.rootSwitched'))
+        }
+
+        function switchRoot(nextRoot) {
+          if (nextRoot === store.get().root) return
+          if (store.get().tabs.some((tab) => tab.dirty)) {
+            setModal({
+              title: t('modal.switchRootTitle'),
+              message: t('modal.switchRootMessage'),
+              confirmLabel: t('action.discard'),
+              danger: true,
+              onConfirm: () => {
+                setModal(null)
+                applyRoot(nextRoot)
+              },
+            })
+            return
+          }
+          applyRoot(nextRoot)
+        }
+
+        function workspaceItemFor(rootPath) {
+          return workspaceItems.find((item) => item.path === rootPath)
+        }
+
+        function unhideRoot(rootPath) {
+          const current = store.get()
+          if (!Array.isArray(current.hiddenRoots) || !current.hiddenRoots.includes(rootPath)) return
+          const hiddenRoots = current.hiddenRoots.filter((path) => path !== rootPath)
+          store.set((snapshot) => ({ ...snapshot, hiddenRoots }))
+          writeStorage(HIDDEN_ROOTS_KEY, JSON.stringify(hiddenRoots))
+        }
+
+        function jumpToWorkspaceRoot() {
+          const current = store.get()
+          if (current.root === null) {
+            setBanner({ kind: 'error', message: t('error.needRoot') })
+            return
+          }
+          setPickerOpen(false)
+          setAddress('')
+          setBanner(null)
+          store.set((snapshot) => ({
+            ...snapshot,
+            expanded: { ...snapshot.expanded, '': true },
+            selected: null,
+          }))
+          setCompactView('tree')
+          const level = store.get().levels['']
+          if (level === undefined || level.status === 'error') void loadDir('')
+          window.requestAnimationFrame(() => {
+            const tree = rootRef.current === null ? null : rootRef.current.querySelector('.ds-tree')
+            if (tree !== null) tree.scrollTop = 0
+          })
+        }
+
+        function requestRemoveWorkspace(root) {
+          const item = workspaceItemFor(root.path)
+          setPickerOpen(false)
+          const dirty = root.path === store.get().root && store.get().tabs.some((tab) => tab.dirty)
+          const name = root.title || basename(root.path)
+          setModal({
+            title: item === undefined ? t('modal.hideRootTitle') : t('modal.deleteWorkspaceTitle'),
+            message:
+              item === undefined
+                ? dirty
+                  ? t('modal.deleteWorkspaceDirty', { name, path: root.path })
+                  : t('modal.hideRootMessage', { name, path: root.path })
+                : dirty
+                  ? t('modal.deleteWorkspaceDirty', { name, path: root.path })
+                  : t('modal.deleteWorkspaceMessage', { name, path: root.path }),
+            confirmLabel: t('action.remove'),
+            danger: true,
+            onConfirm: () => {
+              setModal(null)
+              void removeWorkspace(root)
+            },
+          })
+        }
+
+        async function removeWorkspace(root) {
+          const item = workspaceItemFor(root.path)
+          const service = ctx.get('workspaces')
+          if (item !== undefined && (service === undefined || typeof service.delete !== 'function')) {
+            setBanner({ kind: 'error', message: t('error.removeWorkspaceFailed', { message: t('error.needRoot') }) })
+            return
+          }
+          try {
+            if (item !== undefined) await service.delete(item.workspaceId)
+            const currentHidden = Array.isArray(store.get().hiddenRoots) ? store.get().hiddenRoots : []
+            const hiddenRoots = [...new Set([...currentHidden, root.path])]
+            store.set((snapshot) => ({ ...snapshot, hiddenRoots }))
+            writeStorage(HIDDEN_ROOTS_KEY, JSON.stringify(hiddenRoots))
+            const current = store.get()
+            if (Object.prototype.hasOwnProperty.call(current.favorites, root.path)) {
+              const favorites = { ...current.favorites }
+              delete favorites[root.path]
+              store.set((snapshot) => ({ ...snapshot, favorites }))
+              persistFavorites(favorites)
+            }
+            await loadRoots()
+            showToast(t('toast.workspaceRemoved'))
+          } catch (error) {
+            setBanner({ kind: 'error', message: t('error.removeWorkspaceFailed', { message: errorText(error) }) })
+          }
+        }
+
+        function toggleShowHidden(next) {
+          const value = next === undefined ? !store.get().showHidden : Boolean(next)
+          store.set((current) => ({ ...current, showHidden: value }))
+          writeStorage(HIDDEN_KEY, value ? '1' : '0')
+        }
+
+        function toggleWordWrap() {
+          const next = !store.get().wordWrap
+          store.set((current) => ({ ...current, wordWrap: next }))
+          writeStorage(WRAP_KEY, next ? '1' : '0')
+        }
+
+        async function copyFullText(tab) {
+          if (tab === null || tab === undefined || !isTextMode(tab.mode)) return
+          try {
+            await navigator.clipboard.writeText(tab.content)
+            showToast(t('toast.copiedAll'))
+          } catch {
+            showToast(t('toast.copyFailed'))
+          }
+        }
+
+        function pickUploads(parent) {
+          const current = store.get()
+          if (current.root === null) {
+            setBanner({ kind: 'error', message: t('error.needRoot') })
+            return
+          }
+          if (uploading) return
+          const target = parent ?? defaultParent()
+          uploadTargetRef.current = { root: current.root, parent: target }
+          void ensureExpanded(target)
+          const input = uploadInputRef.current
+          if (input !== null) {
+            input.value = ''
+            input.click()
+          }
+        }
+
+        async function handleUploadFiles(event) {
+          const input = event.target
+          const files = input.files === null ? [] : Array.from(input.files)
+          input.value = ''
+          if (files.length === 0) return
+          const target = uploadTargetRef.current
+          if (target.root === null) return
+          setUploading(true)
+          showToast(t('toast.uploading', { count: String(files.length) }))
+          let uploaded = 0
+          let lastPath = null
+          for (const file of files) {
+            if (!isValidName(file.name)) {
+              setBanner({ kind: 'error', message: t('error.badName') })
+              continue
+            }
+            if (file.size > MAX_UPLOAD_BYTES) {
+              setBanner({ kind: 'error', message: t('error.fileTooLarge', { name: file.name, size: '128 MB' }) })
+              continue
+            }
+            if (file.name.startsWith('.') && !store.get().showHidden) toggleShowHidden(true)
+            try {
+              const value = await uploadToWorkspace(target.root, joinPath(target.parent, file.name), file)
+              uploaded += 1
+              if (value !== null && typeof value === 'object' && typeof value.path === 'string') lastPath = value.path
+            } catch (error) {
+              setBanner({
+                kind: 'error',
+                message: t('error.uploadFailed', { name: file.name, message: errorText(error) }),
+              })
+            }
+          }
+          setUploading(false)
+          if (uploaded > 0) showToast(t('toast.uploaded', { count: String(uploaded) }))
+          if (store.get().root === target.root) {
+            await loadDir(target.parent)
+            if (uploaded > 0 && lastPath !== null) {
+              store.set((current) => ({ ...current, selected: lastPath }))
+              if (uploaded === 1) await openFile(lastPath)
+            }
+          }
+        }
+
+        function downloadFile(relative) {
+          const root = store.get().root
+          if (root === null || typeof relative !== 'string' || relative.length === 0) return
+          const anchor = downloadAnchorRef.current
+          if (anchor === null) return
+          anchor.href = ioDownloadUrl(root, relative)
+          anchor.download = basename(relative)
+          anchor.target = '_blank'
+          anchor.rel = 'noopener noreferrer'
+          anchor.click()
+        }
+
+        function collapseAll() {
+          store.set((current) => ({ ...current, expanded: current.root === null ? {} : { '': true } }))
+        }
+
+        function persistFavorites(favorites) {
+          writeStorage(FAVORITES_KEY, JSON.stringify(favorites))
+        }
+
+        function updateFavorites(updater) {
+          const current = store.get()
+          const root = current.root
+          if (root === null) return
+          const list = current.favorites[root] ?? []
+          const next = { ...current.favorites, [root]: updater(list) }
+          store.set((snapshot) => ({ ...snapshot, favorites: next }))
+          persistFavorites(next)
+        }
+
+        function toggleFavorite(relative) {
+          if (relative === null || relative === '' || store.get().root === null) return
+          const type = isDirectory(relative) ? 'directory' : 'file'
+          updateFavorites((list) =>
+            list.some((item) => item.path === relative)
+              ? list.filter((item) => item.path !== relative)
+              : [{ path: relative, name: basename(relative), type }, ...list],
+          )
+        }
+
+        function removeFavorite(relative) {
+          updateFavorites((list) => list.filter((item) => item.path !== relative))
+        }
+
+        function toggleFavoritesOpen() {
+          const next = !store.get().favoritesOpen
+          store.set((current) => ({ ...current, favoritesOpen: next }))
+          writeStorage(FAVORITES_OPEN_KEY, next ? '1' : '0')
+        }
+
+        async function openFavorite(item) {
+          await navigateRelative(item.path)
+        }
+
+        function revealPath(relative) {
+          if (relative === null) return
+          const escaped = relative.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+          let attempts = 0
+          const attempt = () => {
+            const rootElement = rootRef.current
+            const row = rootElement === null ? null : rootElement.querySelector(`[data-path="${escaped}"]`)
+            if (row !== null) {
+              row.scrollIntoView({ block: 'nearest' })
+              return
+            }
+            attempts += 1
+            if (attempts < 4) window.requestAnimationFrame(attempt)
+          }
+          window.requestAnimationFrame(attempt)
+        }
+
+        async function navigateRelative(raw) {
+          const root = store.get().root
+          if (root === null) {
+            setBanner({ kind: 'error', message: t('error.needRoot') })
+            return false
+          }
+          const cleaned = raw.replace(/\\/g, '/').trim()
+          const segments = cleaned.split('/').filter((segment) => segment.length > 0 && segment !== '.')
+          let current = ''
+          for (let index = 0; index < segments.length; index += 1) {
+            const segment = segments[index]
+            if (segment === '..') {
+              current = dirname(current)
+              continue
+            }
+            const level = store.get().levels[current]
+            if (level === undefined || level.status === 'error') await loadDir(current)
+            const loaded = store.get().levels[current]
+            if (loaded === undefined || loaded.status === 'error') {
+              setBanner({ kind: 'error', message: t('error.pathNotFound', { path: raw }) })
+              return false
+            }
+            const entry = (loaded.entries ?? []).find((candidate) => candidate.name === segment)
+            if (entry === undefined) {
+              setBanner({ kind: 'error', message: t('error.pathNotFound', { path: raw }) })
+              return false
+            }
+            current = joinPath(current, segment)
+            if (entry.type === 'directory') {
+              await ensureExpanded(current)
+            } else if (index < segments.length - 1) {
+              setBanner({ kind: 'error', message: t('error.notDirectoryPath', { path: raw }) })
+              return false
+            }
+          }
+          const hidden = segments.some((segment) => segment.startsWith('.'))
+          if (hidden && !store.get().showHidden) toggleShowHidden(true)
+          store.set((stateNow) => ({ ...stateNow, selected: current === '' ? null : current }))
+          if (current !== '' && !isDirectory(current)) {
+            await openFile(current)
+          } else if (current !== '') {
+            await ensureExpanded(current)
+          }
+          setAddress('')
+          setBanner(null)
+          revealPath(current === '' ? null : current)
+          return true
+        }
+
+        async function goToAddress() {
+          const raw = address.trim()
+          if (raw.length === 0) return
+          const isAbsolute = isAbsolutePath(raw)
+          const root = store.get().root
+          if (!isAbsolute) {
+            await navigateRelative(raw)
+            return
+          }
+          const normalized = raw.replace(/\\/g, '/').replace(/\/+$/u, '') || '/'
+          if (root !== null) {
+            const prefix = root.endsWith('/') ? root : `${root}/`
+            if (normalized === root || normalized.startsWith(prefix)) {
+              const relative = normalized === root ? '' : normalized.slice(prefix.length)
+              await navigateRelative(relative)
+              return
+            }
+          }
+          const switchTo = (entry, toRoots) => {
+            unhideRoot(entry.path)
+            if (entry.path === store.get().root) {
+              setAddress('')
+              return
+            }
+            const roots = toRoots.some((candidate) => candidate.path === entry.path)
+              ? toRoots
+              : [...toRoots, entry]
+            if (store.get().tabs.some((tab) => tab.dirty)) {
+              setModal({
+                title: t('modal.switchRootTitle'),
+                message: t('modal.switchRootMessage'),
+                confirmLabel: t('action.discard'),
+                danger: true,
+                onConfirm: () => {
+                  setModal(null)
+                  applyRoot(entry.path, roots)
+                  setAddress('')
+                },
+              })
+            } else {
+              applyRoot(entry.path, roots)
+              setAddress('')
+            }
+          }
+          try {
+            const known = store.get().roots.find((entry) => entry.path === normalized || entry.path === raw)
+            if (known !== undefined) {
+              switchTo(known, store.get().roots)
+              return
+            }
+            const workspaces = ctx.get('workspaces')
+            if (workspaces === undefined || typeof workspaces.create !== 'function') {
+              setBanner({ kind: 'error', message: t('error.openRootFailed', { message: t('error.needRoot') }) })
+              return
+            }
+            const view = await workspaces.create({ path: raw })
+            const entry = { path: view.path, title: view.title || basename(view.path) }
+            switchTo(entry, store.get().roots)
+          } catch (error) {
+            await loadRoots()
+            const refreshed = store.get().roots.find((entry) => entry.path === normalized || entry.path === raw)
+            if (refreshed !== undefined) switchTo(refreshed, store.get().roots)
+            else setBanner({ kind: 'error', message: t('error.openRootFailed', { message: errorText(error) }) })
+          }
+        }
+
+        function submitAddress() {
+          void goToAddress().catch((error) => {
+            setBanner({ kind: 'error', message: t('error.openRootFailed', { message: errorText(error) }) })
+          })
+        }
+
+        async function openFile(relative) {
+          const root = store.get().root
+          if (root === null) return
+          setCompactView('editor')
+          const existing = store.get().tabs.find((tab) => tab.path === relative)
+          if (existing !== undefined) {
+            store.set((current) => ({ ...current, active: relative, selected: relative }))
+            setCursor({ line: 1, column: 1 })
+            return
+          }
+          const name = basename(relative)
+          const mode = modeOf(name)
+          const language = languageOf(name)
+          const tab = {
+            path: relative,
+            name,
+            mode,
+            language,
+            content: '',
+            saved: '',
+            version: null,
+            dirty: false,
+            loading: isTextMode(mode),
+            error: null,
+            code: null,
+            view: mode === 'markdown' ? 'preview' : 'edit',
+          }
+          store.set((current) => ({ ...current, tabs: [...current.tabs, tab], active: relative, selected: relative }))
+          setCursor({ line: 1, column: 1 })
+          if (!isTextMode(mode)) return
+          try {
+            const value = await call('read', { root, path: relative })
+            patchTab(relative, {
+              content: typeof value?.content === 'string' ? value.content : '',
+              saved: typeof value?.content === 'string' ? value.content : '',
+              version: typeof value?.version === 'string' ? value.version : null,
+              loading: false,
+              error: null,
+            })
+          } catch (error) {
+            patchTab(relative, { loading: false, error: errorText(error), code: errorCode(error) })
+          }
+        }
+
+        function closeNow(relative) {
+          const current = store.get()
+          const index = current.tabs.findIndex((tab) => tab.path === relative)
+          const tabs = current.tabs.filter((tab) => tab.path !== relative)
+          let active = current.active
+          if (active === relative) {
+            const replacement = tabs[Math.min(index, tabs.length - 1)]
+            active = replacement?.path ?? null
+          }
+          store.set((value) => ({ ...value, tabs, active }))
+          setCursor({ line: 1, column: 1 })
+          if (active === null) setCompactView('tree')
+        }
+
+        function requestClose(relative) {
+          const tab = store.get().tabs.find((entry) => entry.path === relative)
+          if (tab === undefined) return
+          if (!tab.dirty) {
+            closeNow(relative)
+            return
+          }
+          setModal({
+            title: t('modal.dirtyTitle'),
+            message: t('modal.dirtyMessage', { name: tab.name }),
+            confirmLabel: t('action.discard'),
+            danger: true,
+            onConfirm: () => {
+              setModal(null)
+              closeNow(relative)
+            },
+          })
+        }
+
+        async function saveTab(relative) {
+          const current = store.get()
+          const tab = current.tabs.find((entry) => entry.path === relative)
+          if (tab === undefined || !isTextMode(tab.mode) || tab.loading) return
+          if (current.root === null) return
+          try {
+            const value = await call('write', {
+              root: current.root,
+              path: relative,
+              content: tab.content,
+              expectedVersion: tab.version,
+            })
+            patchTab(relative, {
+              version: typeof value?.version === 'string' ? value.version : tab.version,
+              saved: tab.content,
+              dirty: false,
+            })
+            setBanner(null)
+            showToast(t('toast.saved'))
+          } catch (error) {
+            const code = errorCode(error)
+            if (code === 'stale') {
+              setBanner({
+                kind: 'warn',
+                message: t('error.stale'),
+                actions: [
+                  { label: t('action.reload'), run: () => { setBanner(null); void reloadTab(relative) } },
+                  { label: t('action.overwrite'), run: () => { setBanner(null); void overwriteTab(relative) } },
+                ],
+              })
+            } else {
+              setBanner({ kind: 'error', message: t('error.saveFailed', { message: errorText(error) }) })
+            }
+          }
+        }
+
+        async function overwriteTab(relative) {
+          const current = store.get()
+          const tab = current.tabs.find((entry) => entry.path === relative)
+          if (tab === undefined || current.root === null) return
+          try {
+            const value = await call('write', { root: current.root, path: relative, content: tab.content })
+            patchTab(relative, {
+              version: typeof value?.version === 'string' ? value.version : tab.version,
+              saved: tab.content,
+              dirty: false,
+            })
+            setBanner(null)
+            showToast(t('toast.saved'))
+          } catch (error) {
+            setBanner({ kind: 'error', message: t('error.saveFailed', { message: errorText(error) }) })
+          }
+        }
+
+        async function reloadTab(relative) {
+          const current = store.get()
+          if (current.root === null) return
+          try {
+            const value = await call('read', { root: current.root, path: relative })
+            patchTab(relative, {
+              content: typeof value?.content === 'string' ? value.content : '',
+              saved: typeof value?.content === 'string' ? value.content : '',
+              version: typeof value?.version === 'string' ? value.version : null,
+              dirty: false,
+              loading: false,
+              error: null,
+              code: null,
+            })
+            setBanner(null)
+            showToast(t('toast.refreshed'))
+          } catch (error) {
+            setBanner({ kind: 'error', message: t('error.read', { message: errorText(error) }) })
+          }
+        }
+
+        function requestReloadTab(relative) {
+          const tab = store.get().tabs.find((entry) => entry.path === relative)
+          if (tab === undefined) return
+          if (!tab.dirty) {
+            void reloadTab(relative)
+            return
+          }
+          setModal({
+            title: t('modal.dirtyTitle'),
+            message: t('modal.dirtyMessage', { name: tab.name }),
+            confirmLabel: t('action.discard'),
+            danger: true,
+            onConfirm: () => {
+              setModal(null)
+              void reloadTab(relative)
+            },
+          })
+        }
+
+        function renameLocal(from, to) {
+          const current = store.get()
+          const remap = (value) => {
+            if (value === from) return to
+            if (value.startsWith(`${from}/`)) return `${to}${value.slice(from.length)}`
+            return value
+          }
+          const remapMap = (map) => {
+            const next = {}
+            for (const [key, value] of Object.entries(map)) next[remap(key)] = value
+            return next
+          }
+          const favorites = { ...current.favorites }
+          const root = current.root
+          let favoritesChanged = false
+          if (root !== null && Array.isArray(favorites[root])) {
+            favorites[root] = favorites[root].map((item) => {
+              const path = remap(item.path)
+              if (path === item.path) return item
+              favoritesChanged = true
+              return { ...item, path, name: basename(path) }
+            })
+          }
+          store.set({
+            ...current,
+            tabs: current.tabs.map((tab) => {
+              const path = remap(tab.path)
+              return path === tab.path ? tab : { ...tab, path, name: basename(path) }
+            }),
+            levels: remapMap(current.levels),
+            expanded: remapMap(current.expanded),
+            selected: current.selected === null ? null : remap(current.selected),
+            active: current.active === null ? null : remap(current.active),
+            favorites,
+          })
+          if (favoritesChanged) persistFavorites(favorites)
+        }
+
+        function defaultParent() {
+          const current = store.get()
+          if (current.selected !== null && current.selected !== '') {
+            return isDirectory(current.selected) ? current.selected : dirname(current.selected)
+          }
+          if (current.active !== null) return dirname(current.active)
+          return ''
+        }
+
+        function startCreate(kind, parent) {
+          setMenu(null)
+          const target = parent ?? defaultParent()
+          void ensureExpanded(target)
+          setDraft({ kind, parent: target, name: '' })
+        }
+
+        function startRename(relative) {
+          if (relative === '' || relative === null) return
+          setMenu(null)
+          setDraft({ kind: 'rename', target: relative, parent: dirname(relative), name: basename(relative) })
+        }
+
+        async function commitDraft(value) {
+          const currentDraft = draft
+          const current = store.get()
+          if (currentDraft === null || current.root === null) return
+          const name = value.trim()
+          if (name.length === 0) {
+            setDraft(null)
+            return
+          }
+          if (!isValidName(name)) {
+            setBanner({ kind: 'error', message: t('error.badName') })
+            return
+          }
+          if (name.startsWith('.') && !store.get().showHidden) toggleShowHidden(true)
+          if (currentDraft.kind === 'rename' && name === basename(currentDraft.target)) {
+            setDraft(null)
+            return
+          }
+          const target = joinPath(currentDraft.parent, name)
+          setDraft(null)
+          try {
+            if (currentDraft.kind === 'rename') {
+              await call('rename', { root: current.root, from: currentDraft.target, to: target })
+              renameLocal(currentDraft.target, target)
+              await loadDir(dirname(currentDraft.target))
+              await loadDir(dirname(target))
+              if (store.get().expanded[target] !== undefined) await loadDir(target)
+            } else {
+              await call(currentDraft.kind === 'directory' ? 'createDir' : 'createFile', {
+                root: current.root,
+                path: target,
+              })
+              store.set((stateNow) => ({ ...stateNow, selected: target }))
+              await loadDir(currentDraft.parent)
+              if (currentDraft.kind === 'file') await openFile(target)
+            }
+            setBanner(null)
+          } catch (error) {
+            setBanner({
+              kind: 'error',
+              message: t(currentDraft.kind === 'rename' ? 'error.renameFailed' : 'error.createFailed', {
+                message: errorText(error),
+              }),
+            })
+          }
+        }
+
+        function requestDelete(relative) {
+          if (relative === '') return
+          const current = store.get()
+          const name = basename(relative)
+          const directory = isDirectory(relative)
+          setMenu(null)
+          setModal({
+            title: t('modal.deleteTitle'),
+            message: directory ? t('modal.deleteFolder', { name }) : t('modal.deleteFile', { name }),
+            confirmLabel: t('modal.confirmDelete'),
+            danger: true,
+            onConfirm: () => {
+              setModal(null)
+              void deleteNow(relative, directory)
+            },
+          })
+        }
+
+        async function deleteNow(relative, directory) {
+          const current = store.get()
+          if (current.root === null) return
+          try {
+            await call('delete', { root: current.root, path: relative })
+            let favoritesChanged = false
+            store.set((stateNow) => {
+              const prefix = `${relative}/`
+              const removeKeys = (map) => {
+                const next = {}
+                for (const [key, value] of Object.entries(map)) {
+                  if (key === relative || key.startsWith(prefix)) continue
+                  next[key] = value
+                }
+                return next
+              }
+              const tabs = stateNow.tabs.filter((tab) => tab.path !== relative && !tab.path.startsWith(prefix))
+              let active = stateNow.active
+              if (active === relative || (active !== null && active.startsWith(prefix))) active = tabs[tabs.length - 1]?.path ?? null
+              let selected = stateNow.selected
+              if (selected === relative || (selected !== null && selected.startsWith(prefix))) selected = dirname(relative)
+              const favorites = { ...stateNow.favorites }
+              if (stateNow.root !== null && Array.isArray(favorites[stateNow.root])) {
+                const kept = favorites[stateNow.root].filter(
+                  (item) => item.path !== relative && !item.path.startsWith(prefix),
+                )
+                if (kept.length !== favorites[stateNow.root].length) {
+                  favorites[stateNow.root] = kept
+                  favoritesChanged = true
+                }
+              }
+              return {
+                ...stateNow,
+                tabs,
+                active,
+                selected,
+                levels: removeKeys(stateNow.levels),
+                expanded: removeKeys(stateNow.expanded),
+                favorites,
+              }
+            })
+            if (favoritesChanged) persistFavorites(store.get().favorites)
+            await loadDir(dirname(relative))
+            setBanner(null)
+            if (!directory) showToast(t('toast.refreshed'))
+          } catch (error) {
+            setBanner({ kind: 'error', message: t('error.deleteFailed', { message: errorText(error) }) })
+          }
+        }
+
+        function openMenu(event, relative, type) {
+          event.preventDefault()
+          event.stopPropagation()
+          const x = Math.min(event.clientX, Math.max(8, window.innerWidth - 220))
+          const y = Math.min(event.clientY, Math.max(8, window.innerHeight - 260))
+          setMenu({ x, y, path: relative, type })
+          store.set((current) => ({ ...current, selected: relative }))
+        }
+
+        async function copyRelative(relative) {
+          const text = relative.length === 0 ? '.' : relative
+          try {
+            await navigator.clipboard.writeText(text)
+            showToast(t('toast.copied'))
+          } catch {
+            showToast(t('toast.copyFailed'))
+          }
+          setMenu(null)
+        }
+
+        function openExternal(relative) {
+          const root = store.get().root
+          if (root === null) return
+          window.open(rawUrl(root, relative), '_blank', 'noopener,noreferrer')
+          setMenu(null)
+        }
+
+        function onRootKeyDown(event) {
+          if (event.altKey && event.key === 'Home') {
+            event.preventDefault()
+            jumpToWorkspaceRoot()
+            return
+          }
+          if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+            if (activeTab !== null) {
+              event.preventDefault()
+              void saveTab(activeTab.path)
+            }
+            return
+          }
+          const target = event.target
+          const typing =
+            target instanceof HTMLElement &&
+            (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable)
+          if (typing) return
+          if (event.key === 'F2' && state.selected !== null) {
+            event.preventDefault()
+            startRename(state.selected)
+          } else if (event.key === 'Delete' && state.selected !== null) {
+            event.preventDefault()
+            requestDelete(state.selected)
+          } else if (event.key === 'Enter' && state.selected !== null && !isDirectory(state.selected)) {
+            event.preventDefault()
+            void openFile(state.selected)
+          }
+        }
+
+        function beginSplitDrag(event) {
+          event.preventDefault()
+          const startX = event.clientX
+          const startWidth = store.get().treeWidth
+          const move = (moveEvent) => {
+            const width = Math.min(560, Math.max(180, startWidth + moveEvent.clientX - startX))
+            store.set((current) => ({ ...current, treeWidth: width }))
+          }
+          const finish = () => {
+            window.removeEventListener('pointermove', move)
+            window.removeEventListener('pointerup', finish)
+            writeStorage(WIDTH_KEY, String(store.get().treeWidth))
+          }
+          window.addEventListener('pointermove', move)
+          window.addEventListener('pointerup', finish)
+        }
+
+        function renderDraftRow(levelPath, depth) {
+          if (draft === null || draft.kind === 'rename' || draft.parent !== levelPath) return null
+          return h(NameInput, {
+            key: `draft-${levelPath}`,
+            initial: '',
+            depth,
+            placeholder: draft.kind === 'directory' ? t('title.newFolder') : t('title.newFile'),
+            onCommit: (value) => void commitDraft(value),
+            onCancel: () => setDraft(null),
+            t,
+          })
+        }
+
+        function renderLevel(levelPath, depth) {
+          const level = state.levels[levelPath]
+          const nodes = []
+          const draftRow = renderDraftRow(levelPath, depth)
+          if (draftRow !== null) nodes.push(draftRow)
+          if (level === undefined || (level.status === 'loading' && level.entries === undefined)) {
+            if (draftRow === null) nodes.push(h('div', { key: `loading-${levelPath}`, className: 'ds-hint' }, t('hint.loading')))
+            return nodes
+          }
+          if (level.status === 'error') {
+            nodes.push(
+              h(
+                'div',
+                { key: `error-${levelPath}`, className: 'ds-errorline' },
+                h('span', null, level.error ?? t('error.internal', { message: '' })),
+                h(
+                  'button',
+                  { type: 'button', className: 'ds-linkbtn', onClick: () => void loadDir(levelPath) },
+                  t('action.retry'),
+                ),
+              ),
+            )
+            return nodes
+          }
+          const allEntries = level.entries ?? []
+          const entries = allEntries.filter((entry) => state.showHidden || !entry.name.startsWith('.'))
+          if (entries.length === 0) {
+            const hiddenOnly = !state.showHidden && allEntries.some((entry) => entry.name.startsWith('.'))
+            if (draftRow === null) {
+              nodes.push(
+                h(
+                  'div',
+                  { key: `empty-${levelPath}`, className: 'ds-hint' },
+                  hiddenOnly ? t('hint.hiddenOnly') : t('hint.empty'),
+                ),
+              )
+            }
+            return nodes
+          }
+          for (const entry of entries) {
+            const relative = joinPath(levelPath, entry.name)
+            const isDir = entry.type === 'directory'
+            const directoryOpen = state.expanded[relative] !== undefined
+            if (draft !== null && draft.kind === 'rename' && draft.target === relative) {
+              nodes.push(
+                h(NameInput, {
+                  key: `rename-${relative}`,
+                  initial: draft.name,
+                  depth,
+                  placeholder: t('title.rename'),
+                  onCommit: (value) => void commitDraft(value),
+                  onCancel: () => setDraft(null),
+                  t,
+                }),
+              )
+              continue
+            }
+            const isSelected = state.selected === relative
+            const isActive = state.active === relative
+            nodes.push(
+              h(
+                'div',
+                {
+                  key: relative,
+                  className: 'ds-row',
+                  role: 'treeitem',
+                  tabIndex: 0,
+                  'data-path': relative,
+                  'data-selected': isSelected ? 'true' : undefined,
+                  'data-active': isActive ? 'true' : undefined,
+                  'aria-selected': isSelected,
+                  'aria-expanded': isDir ? directoryOpen : undefined,
+                  style: { paddingLeft: `${String(8 + depth * 14)}px` },
+                  title: relative,
+                  onClick: () => {
+                    store.set((current) => ({ ...current, selected: relative }))
+                    if (!isDir) void openFile(relative)
+                  },
+                  onDoubleClick: () => {
+                    if (isDir) void toggleDir(relative)
+                  },
+                  onKeyDown: (event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault()
+                      if (isDir) void toggleDir(relative)
+                      else void openFile(relative)
+                    } else if (event.key === 'ArrowRight' && isDir && !directoryOpen) {
+                      event.preventDefault()
+                      void toggleDir(relative)
+                    } else if (event.key === 'ArrowLeft' && isDir && directoryOpen) {
+                      event.preventDefault()
+                      void toggleDir(relative)
+                    }
+                  },
+                  onContextMenu: (event) => openMenu(event, relative, isDir ? 'directory' : 'file'),
+                },
+                isDir
+                  ? h(
+                      'span',
+                      {
+                        className: 'ds-chevron',
+                        'data-open': directoryOpen ? 'true' : undefined,
+                        onClick: (event) => {
+                          event.stopPropagation()
+                          void toggleDir(relative)
+                        },
+                      },
+                      h(ChevronIcon),
+                    )
+                  : h('span', { className: 'ds-chevron' }),
+                isDir
+                  ? h('span', { className: 'ds-glyph ds-glyph-folder' }, h(FolderIcon, { open: directoryOpen }))
+                  : h(FileGlyph, { name: entry.name }),
+                h('span', { className: 'ds-name' }, entry.name),
+                favoritePaths.has(relative)
+                  ? h(
+                      'span',
+                      { className: 'ds-fav-mark', title: t('favorites') },
+                      h(StarIcon, { filled: true, size: 11, className: 'ds-star-warn' }),
+                    )
+                  : null,
+                entry.type === 'other' ? h('span', { className: 'ds-tag' }, t('hint.other')) : null,
+              ),
+            )
+            if (isDir && directoryOpen) {
+              for (const child of renderLevel(relative, depth + 1)) nodes.push(child)
+            }
+          }
+          return nodes
+        }
+
+        function breadcrumbSegments(tab) {
+          if (tab === null) return []
+          const parts = tab.path.split('/')
+          const result = []
+          let accumulated = ''
+          for (const part of parts) {
+            accumulated = joinPath(accumulated, part)
+            result.push({ label: part, path: accumulated })
+          }
+          return result
+        }
+
+        function editorToolbar(tab) {
+          const isMarkdown = tab.mode === 'markdown'
+          return h(
+            'div',
+            { className: 'ds-edit-toolbar' },
+            isMarkdown
+              ? h(
+                  'div',
+                  { className: 'ds-switch', role: 'group' },
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-switch-btn',
+                      'data-active': tab.view === 'preview' ? 'true' : undefined,
+                      onClick: () => patchTab(tab.path, { view: 'preview' }),
+                    },
+                    h(EyeIcon),
+                    t('action.preview'),
+                  ),
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-switch-btn',
+                      'data-active': tab.view === 'edit' ? 'true' : undefined,
+                      onClick: () => patchTab(tab.path, { view: 'edit' }),
+                    },
+                    h(CodeIcon),
+                    t('action.edit'),
+                  ),
+                )
+              : h('span', { className: 'ds-lang' }, tab.language.label),
+            h('span', { className: 'ds-spacer' }),
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'ds-toolbtn',
+                title: t('action.download'),
+                onClick: () => downloadFile(tab.path),
+              },
+              h(DownloadIcon),
+              h('span', { className: 'ds-tool-label' }, t('action.downloadShort')),
+            ),
+            isTextMode(tab.mode)
+              ? h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-switch-btn ds-wrap-toggle',
+                    'data-active': state.wordWrap ? 'true' : undefined,
+                    title: state.wordWrap ? t('action.nowrap') : t('action.wrap'),
+                    'aria-pressed': state.wordWrap,
+                    onClick: toggleWordWrap,
+                  },
+                  h(WrapIcon),
+                  h('span', { className: 'ds-wrap-label' }, t('action.wrapShort')),
+                )
+              : null,
+            isTextMode(tab.mode)
+              ? h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-toolbtn',
+                    title: t('action.copyAll'),
+                    disabled: tab.loading,
+                    onClick: () => void copyFullText(tab),
+                  },
+                  h(CopyIcon),
+                  h('span', { className: 'ds-tool-label' }, t('action.copyShort')),
+                )
+              : null,
+            isTextMode(tab.mode)
+              ? h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-iconbtn',
+                    title: t('action.reload'),
+                    onClick: () => requestReloadTab(tab.path),
+                  },
+                  h(RefreshIcon),
+                )
+              : null,
+            isTextMode(tab.mode)
+              ? h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-savebtn',
+                    disabled: !tab.dirty,
+                    onClick: () => void saveTab(tab.path),
+                  },
+                  h(SaveIcon),
+                  t('action.save'),
+                  tab.dirty ? h('span', { className: 'ds-dirty-dot' }) : null,
+                )
+              : null,
+            !isTextMode(tab.mode)
+              ? h(
+                  'button',
+                  { type: 'button', className: 'ds-linkbtn', onClick: () => openExternal(tab.path) },
+                  h(ExternalIcon),
+                  t('action.openInBrowser'),
+                )
+              : null,
+          )
+        }
+
+        function tabBody(tab) {
+          if (tab.loading) {
+            return h('div', { className: 'ds-empty' }, h('span', { className: 'ds-spinner' }), t('hint.loadingFile'))
+          }
+          if (tab.error !== null) {
+            const canOpen = tab.code === 'binary' || tab.code === 'too-large'
+            return h(
+              'div',
+              { className: 'ds-empty ds-empty-error' },
+              h(
+                'div',
+                { className: 'ds-empty-title' },
+                tab.code === 'binary' ? t('hint.binary') : tab.code === 'too-large' ? t('hint.tooLarge') : t('title.readError'),
+              ),
+              h('div', { className: 'ds-empty-text' }, tab.error),
+              h(
+                'div',
+                { className: 'ds-empty-actions' },
+                isTextMode(tab.mode)
+                  ? h(
+                      'button',
+                      { type: 'button', className: 'ds-btn', onClick: () => void reloadTab(tab.path) },
+                      h(RefreshIcon),
+                      t('action.reload'),
+                    )
+                  : null,
+                canOpen
+                  ? h(
+                      'button',
+                      { type: 'button', className: 'ds-btn', onClick: () => openExternal(tab.path) },
+                      h(ExternalIcon),
+                      t('file.openExternal'),
+                    )
+                  : null,
+              ),
+            )
+          }
+          if (tab.mode === 'pdf') {
+            return h(
+              'div',
+              { className: 'ds-pdfwrap' },
+              h('iframe', {
+                className: 'ds-pdf',
+                src: rawUrl(state.root, tab.path),
+                title: tab.name,
+              }),
+            )
+          }
+          if (tab.mode === 'image') {
+            return h(
+              'div',
+              { className: 'ds-imageview' },
+              h('img', { src: rawUrl(state.root, tab.path), alt: tab.name }),
+            )
+          }
+          if (tab.mode === 'binary') {
+            return h(
+              'div',
+              { className: 'ds-empty' },
+              h('div', { className: 'ds-empty-title' }, t('hint.binary')),
+              h(
+                'button',
+                { type: 'button', className: 'ds-btn', onClick: () => openExternal(tab.path) },
+                h(ExternalIcon),
+                t('file.openExternal'),
+              ),
+            )
+          }
+          if (tab.mode === 'markdown' && tab.view === 'preview') {
+            return h(MarkdownView, {
+              key: tab.path,
+              text: tab.content,
+              root: state.root,
+              file: tab.path,
+              onOpenPath: (relative) => {
+                if (relative.endsWith('/')) {
+                  void ensureExpanded(relative.replace(/\/$/u, ''))
+                } else {
+                  void openFile(relative)
+                }
+              },
+              t,
+            })
+          }
+          return h(CodeEditor, {
+            key: tab.path,
+            tab,
+            language: tab.language,
+            t,
+            wrap: state.wordWrap,
+            onChange: (content) =>
+              store.set((current) => ({
+                ...current,
+                tabs: current.tabs.map((entry) =>
+                  entry.path === tab.path
+                    ? { ...entry, content, dirty: content !== entry.saved }
+                    : entry,
+                ),
+              })),
+            onSave: () => void saveTab(tab.path),
+            onCursor: setCursor,
+          })
+        }
+
+        function renderWorkspaceSelect() {
+          if (state.roots.length === 0) {
+            return h('span', { className: 'ds-workspace-empty' }, t('root.none'))
+          }
+          return h(
+            'div',
+            { className: 'ds-workspace-wrap' },
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'ds-workspace-btn',
+                title: t('workspace.pickTitle'),
+                'aria-haspopup': 'listbox',
+                'aria-expanded': pickerOpen,
+                onClick: () => setPickerOpen((open) => !open),
+              },
+              h('span', { className: 'ds-workspace-btn-title' }, state.rootTitle || t('workspace.label')),
+              h('span', { className: 'ds-workspace-btn-path' }, state.root ?? ''),
+              h('span', { className: 'ds-chevron', 'data-open': pickerOpen ? 'true' : undefined }, h(ChevronIcon)),
+            ),
+            pickerOpen
+              ? h(
+                  'div',
+                  { className: 'ds-workspace-menu', role: 'listbox' },
+                  state.roots.map((root) => {
+                    const active = root.path === state.root
+                    return h(
+                      'div',
+                      {
+                        key: root.path,
+                        className: 'ds-ws-row',
+                        'data-active': active ? 'true' : undefined,
+                        role: 'option',
+                        'aria-selected': active,
+                      },
+                      h(
+                        'button',
+                        {
+                          type: 'button',
+                          className: 'ds-ws-pick',
+                          onClick: () => {
+                            setPickerOpen(false)
+                            switchRoot(root.path)
+                          },
+                        },
+                        h('span', { className: 'ds-ws-title' }, root.title || basename(root.path)),
+                        h('span', { className: 'ds-ws-path' }, root.path),
+                      ),
+                      active ? h('span', { className: 'ds-ws-check', 'aria-hidden': true }, '✓') : null,
+                      h(
+                        'button',
+                        {
+                          type: 'button',
+                          className: 'ds-ws-remove',
+                          title: t('action.removeWorkspace'),
+                          onClick: (event) => {
+                            event.stopPropagation()
+                            requestRemoveWorkspace(root)
+                          },
+                        },
+                        h(TrashIcon),
+                      ),
+                    )
+                  }),
+                )
+              : null,
+          )
+        }
+
+        const segments = breadcrumbSegments(activeTab)
+        const lineCount = activeTab !== null && isTextMode(activeTab.mode) ? activeTab.content.split('\n').length : 0
+
+        return h(
+          'div',
+          { className: 'ds-root', ref: rootRef, onKeyDown: onRootKeyDown, 'data-compact': compact ? 'true' : undefined },
+          h('style', null, CSS),
+          h('input', {
+            ref: uploadInputRef,
+            type: 'file',
+            multiple: true,
+            style: { display: 'none' },
+            onChange: handleUploadFiles,
+          }),
+          h('a', {
+            ref: downloadAnchorRef,
+            style: { position: 'absolute', width: '0', height: '0', opacity: '0', overflow: 'hidden', pointerEvents: 'none' },
+            'aria-hidden': true,
+          }),
+          h(
+            'header',
+            { className: 'ds-header' },
+            h(
+              'div',
+              { className: 'ds-header-title' },
+              h('span', { className: 'ds-header-logo' }, h(PanelGlyph, { size: 20, active: true })),
+              h('span', null, t('panel.title')),
+            ),
+            h('span', { className: 'ds-vr' }),
+            renderWorkspaceSelect(),
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'ds-iconbtn',
+                title: t('action.jumpRoot'),
+                onClick: jumpToWorkspaceRoot,
+                disabled: state.root === null,
+              },
+              h(HomeIcon),
+            ),
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'ds-iconbtn',
+                title: t('action.refreshRoots'),
+                onClick: () => void loadRoots(),
+                disabled: state.loadingRoots,
+              },
+              h(RefreshIcon),
+            ),
+            h(
+              'div',
+              { className: 'ds-address-wrap', title: t('address.placeholder') },
+              h('input', {
+                className: 'ds-address',
+                value: address,
+                placeholder: t('address.placeholder'),
+                spellCheck: false,
+                autoComplete: 'off',
+                'aria-label': t('address.placeholder'),
+                onChange: (event) => setAddress(event.target.value),
+                onKeyDown: (event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    submitAddress()
+                  } else if (event.key === 'Escape') {
+                    event.preventDefault()
+                    setAddress('')
+                    event.currentTarget.blur()
+                  }
+                },
+              }),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-address-go',
+                  title: t('action.go'),
+                  onClick: submitAddress,
+                  disabled: address.trim().length === 0,
+                },
+                h(GoIcon),
+                h('span', { className: 'ds-go-label' }, t('action.go')),
+              ),
+            ),
+            h('span', { className: 'ds-spacer' }),
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'ds-iconbtn ds-header-new',
+                title: t('action.newFile'),
+                onClick: () => startCreate('file'),
+                disabled: state.root === null,
+              },
+              h(NewFileIcon),
+            ),
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'ds-iconbtn ds-header-new',
+                title: t('action.newFolder'),
+                onClick: () => startCreate('directory'),
+                disabled: state.root === null,
+              },
+              h(NewFolderIcon),
+            ),
+          ),
+          banner === null
+            ? null
+            : h(
+                'div',
+                { className: 'ds-banner', 'data-kind': banner.kind },
+                h('span', { className: 'ds-banner-text' }, banner.message),
+                ...(banner.actions ?? []).map((action, index) =>
+                  h(
+                    'button',
+                    { key: index, type: 'button', className: 'ds-linkbtn', onClick: action.run },
+                    action.label,
+                  ),
+                ),
+                h(
+                  'button',
+                  { type: 'button', className: 'ds-iconbtn ds-banner-close', title: t('action.cancel'), onClick: () => setBanner(null) },
+                  h(CloseIcon),
+                ),
+              ),
+          h(
+            'div',
+            { className: 'ds-body' },
+            h(
+              'aside',
+              {
+                className: 'ds-side',
+                style: { width: compact ? '100%' : `${String(state.treeWidth)}px`, display: showSide ? undefined : 'none' },
+              },
+              h(
+                'div',
+                { className: 'ds-pane-head' },
+                h('span', null, t('explorer')),
+                h(
+                  'span',
+                  { className: 'ds-pane-actions' },
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-iconbtn ds-iconbtn-sm',
+                      title: t('action.newFile'),
+                      onClick: () => startCreate('file'),
+                      disabled: state.root === null,
+                    },
+                    h(NewFileIcon),
+                  ),
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-iconbtn ds-iconbtn-sm',
+                      title: t('action.newFolder'),
+                      onClick: () => startCreate('directory'),
+                      disabled: state.root === null,
+                    },
+                    h(NewFolderIcon),
+                  ),
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-iconbtn ds-iconbtn-sm',
+                      title: uploading ? t('action.uploading') : t('action.upload'),
+                      onClick: () => pickUploads(defaultParent()),
+                      disabled: state.root === null || uploading,
+                    },
+                    h(UploadIcon),
+                  ),
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-iconbtn ds-iconbtn-sm',
+                      title: t('action.refresh'),
+                      onClick: () => void refreshAll(),
+                      disabled: state.root === null,
+                    },
+                    h(RefreshIcon),
+                  ),
+                  h(
+                    'div',
+                    { className: 'ds-more-wrap' },
+                    h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'ds-iconbtn ds-iconbtn-sm',
+                        title: t('action.more'),
+                        'aria-haspopup': 'menu',
+                        'aria-expanded': moreOpen,
+                        onClick: (event) => {
+                          const rect = event.currentTarget.getBoundingClientRect()
+                          const width = Math.min(260, window.innerWidth - 16)
+                          const left = Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8))
+                          setMoreAt({ top: rect.bottom + 4, left })
+                          setMoreOpen((open) => !open)
+                        },
+                      },
+                      h(MoreIcon),
+                    ),
+                    moreOpen
+                      ? h(
+                          'div',
+                          { className: 'ds-more-menu', role: 'menu', style: { top: `${moreAt.top}px`, left: `${moreAt.left}px` } },
+                          h(
+                            MenuItem,
+                            {
+                              label: t('action.collapseAll'),
+                              disabled: !canCollapse,
+                              onClick: () => {
+                                setMoreOpen(false)
+                                collapseAll()
+                              },
+                            },
+                            h(CollapseAllIcon),
+                          ),
+                          h(
+                            MenuItem,
+                            {
+                              label: state.showHidden ? t('action.hideHidden') : t('action.showHidden'),
+                              onClick: () => {
+                                setMoreOpen(false)
+                                toggleShowHidden()
+                              },
+                            },
+                            state.showHidden ? h(VisibleFilesIcon) : h(HiddenFilesIcon),
+                          ),
+                          h(
+                            MenuItem,
+                            {
+                              label: t('menu.jumpRoot'),
+                              shortcut: 'Alt+Home',
+                              disabled: state.root === null,
+                              onClick: () => {
+                                setMoreOpen(false)
+                                jumpToWorkspaceRoot()
+                              },
+                            },
+                            h(HomeIcon),
+                          ),
+                          h('div', { className: 'ds-menu-sep' }),
+                          h(
+                            MenuItem,
+                            {
+                              label: t('action.refresh'),
+                              disabled: state.root === null,
+                              onClick: () => {
+                                setMoreOpen(false)
+                                void refreshAll()
+                              },
+                            },
+                            h(RefreshIcon),
+                          ),
+                        )
+                      : null,
+                  ),
+                ),
+              ),
+              h(
+                'div',
+                { className: 'ds-favorites' },
+                h(
+                  'div',
+                  {
+                    className: 'ds-favorites-head',
+                    role: 'button',
+                    tabIndex: 0,
+                    title: t('favorites'),
+                    onClick: toggleFavoritesOpen,
+                    onKeyDown: (event) => {
+                      if (event.target !== event.currentTarget) return
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        toggleFavoritesOpen()
+                      }
+                    },
+                  },
+                  h(
+                    'span',
+                    { className: 'ds-chevron', 'data-open': state.favoritesOpen ? 'true' : undefined },
+                    h(ChevronIcon),
+                  ),
+                  h('span', { className: 'ds-star-ink' }, h(StarIcon, { filled: true, size: 13 })),
+                  h('span', { className: 'ds-favorites-title' }, t('favorites')),
+                  h('span', { className: 'ds-favorites-count' }, String(rootFavorites.length)),
+                  h('span', { className: 'ds-spacer' }),
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-iconbtn ds-iconbtn-sm',
+                      title: selectedIsFavorite ? t('favorite.removeSelected') : t('favorite.addSelected'),
+                      'aria-pressed': selectedIsFavorite,
+                      onClick: (event) => {
+                        event.stopPropagation()
+                        toggleFavorite(state.selected)
+                      },
+                      disabled: state.selected === null || state.selected === '',
+                    },
+                    h(StarIcon, {
+                      filled: selectedIsFavorite,
+                      size: 14,
+                      className: selectedIsFavorite ? 'ds-star-warn' : undefined,
+                    }),
+                  ),
+                ),
+                state.favoritesOpen
+                  ? h(
+                      'div',
+                      { className: 'ds-favorites-list' },
+                      rootFavorites.length === 0
+                        ? h('div', { className: 'ds-fav-empty' }, t('favorite.empty'))
+                        : rootFavorites.map((item) =>
+                            h(
+                              'div',
+                              {
+                                key: item.path,
+                                className: 'ds-fav-row',
+                                role: 'button',
+                                tabIndex: 0,
+                                title: item.path,
+                                'data-active': state.active === item.path ? 'true' : undefined,
+                                onClick: () => void openFavorite(item),
+                                onKeyDown: (event) => {
+                                  if (event.target !== event.currentTarget) return
+                                  if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault()
+                                    void openFavorite(item)
+                                  }
+                                },
+                              },
+                              item.type === 'directory'
+                                ? h('span', { className: 'ds-glyph ds-glyph-folder' }, h(FolderIcon, { open: false }))
+                                : h(FileGlyph, { name: item.name, size: 14 }),
+                              h('span', { className: 'ds-fav-name' }, item.name),
+                              h('span', { className: 'ds-fav-path' }, dirname(item.path) || '.'),
+                              h(
+                                'button',
+                                {
+                                  type: 'button',
+                                  className: 'ds-fav-remove',
+                                  title: t('favorite.remove'),
+                                  onClick: (event) => {
+                                    event.stopPropagation()
+                                    removeFavorite(item.path)
+                                  },
+                                },
+                                h(CloseIcon),
+                              ),
+                            ),
+                          ),
+                    )
+                  : null,
+              ),
+              state.loadingRoots
+                ? h('div', { className: 'ds-hint' }, t('hint.loading'))
+                : state.startError !== null
+                  ? h(
+                      'div',
+                      { className: 'ds-errorline' },
+                      h('span', null, state.startError),
+                      h(
+                        'button',
+                        { type: 'button', className: 'ds-linkbtn', onClick: () => void loadRoots() },
+                        t('action.retry'),
+                      ),
+                    )
+                  : h(
+                      'div',
+                      {
+                        className: 'ds-tree',
+                        role: 'tree',
+                        tabIndex: 0,
+                        onContextMenu: (event) => {
+                          event.preventDefault()
+                          openMenu(event, '', 'directory')
+                        },
+                        onClick: (event) => {
+                          if (event.target === event.currentTarget) store.set((current) => ({ ...current, selected: null }))
+                        },
+                      },
+                      rootIsOpen
+                        ? renderLevel('', 0)
+                        : h(
+                            'div',
+                            { className: 'ds-hint' },
+                            h(
+                              'button',
+                              { type: 'button', className: 'ds-linkbtn', onClick: () => void ensureExpanded('') },
+                              t('action.open'),
+                            ),
+                          ),
+                    ),
+              h(
+                'div',
+                { className: 'ds-side-foot' },
+                h('span', { className: 'ds-side-path', title: state.root ?? '' }, state.root ?? ''),
+              ),
+            ),
+            h('div', {
+              className: 'ds-splitter',
+              role: 'separator',
+              'aria-orientation': 'vertical',
+              style: compact ? { display: 'none' } : undefined,
+              onPointerDown: beginSplitDrag,
+            }),
+            h(
+              'section',
+              { className: 'ds-main', style: showMain ? undefined : { display: 'none' } },
+              state.tabs.length === 0
+                ? h(
+                    'div',
+                    { className: 'ds-welcome' },
+                    h(
+                      'div',
+                      { className: 'ds-welcome-card' },
+                      h('span', { className: 'ds-welcome-logo' }, h(PanelGlyph, { size: 44, active: true })),
+                      h('div', { className: 'ds-welcome-title' }, t('welcomeTitle')),
+                      h('div', { className: 'ds-welcome-text' }, t('welcomeHint')),
+                      h('div', { className: 'ds-kbdline' }, t('welcomeShortcuts')),
+                      state.root === null
+                        ? null
+                        : h(
+                            'button',
+                            { type: 'button', className: 'ds-btn ds-btn-primary', onClick: () => startCreate('file') },
+                            h(NewFileIcon),
+                            t('welcomeNewFile'),
+                          ),
+                    ),
+                  )
+                : h(
+                    React.Fragment,
+                    null,
+                    h(
+                      'div',
+                      { className: 'ds-tabs', role: 'tablist' },
+                      state.tabs.map((tab) =>
+                        h(
+                          'div',
+                          {
+                            key: tab.path,
+                            className: 'ds-tab',
+                            role: 'tab',
+                            'data-active': tab.path === state.active ? 'true' : undefined,
+                            'aria-selected': tab.path === state.active,
+                            title: tab.path,
+                            onClick: () => {
+                              store.set((current) => ({ ...current, active: tab.path, selected: tab.path }))
+                              setCursor({ line: 1, column: 1 })
+                              setCompactView('editor')
+                            },
+                            onAuxClick: (event) => {
+                              if (event.button === 1) {
+                                event.preventDefault()
+                                requestClose(tab.path)
+                              }
+                            },
+                          },
+                          isTextMode(tab.mode)
+                            ? h(FileGlyph, { name: tab.name, size: 14 })
+                            : h(
+                                'span',
+                                { className: `ds-glyph ds-glyph-${tab.mode === 'pdf' ? 'pdf' : tab.mode === 'image' ? 'image' : 'plain'}` },
+                                tab.mode === 'pdf' ? h(PageIcon) : h(PageIcon),
+                              ),
+                          h('span', { className: 'ds-tab-name' }, tab.name),
+                          tab.dirty ? h('span', { className: 'ds-dot', title: t('hint.unsaved') }) : null,
+                          h(
+                            'button',
+                            {
+                              type: 'button',
+                              className: 'ds-tabclose',
+                              title: t('action.cancel'),
+                              onClick: (event) => {
+                                event.stopPropagation()
+                                requestClose(tab.path)
+                              },
+                            },
+                            h(CloseIcon),
+                          ),
+                        ),
+                      ),
+                    ),
+                    activeTab === null
+                      ? h('div', { className: 'ds-empty' }, t('hint.noFile'))
+                      : h(
+                          React.Fragment,
+                          null,
+                          h(
+                            'div',
+                            { className: 'ds-breadcrumb' },
+                            compact
+                              ? h(
+                                  'button',
+                                  {
+                                    type: 'button',
+                                    className: 'ds-iconbtn ds-iconbtn-sm',
+                                    title: t('compact.back'),
+                                    onClick: () => setCompactView('tree'),
+                                  },
+                                  h(ChevronLeftIcon),
+                                )
+                              : null,
+                            h(
+                              'span',
+                              { className: 'ds-breadcrumb-root', title: state.root ?? '' },
+                              h(FolderIcon, { open: true }),
+                              h('span', null, state.rootTitle || t('workspace.label')),
+                            ),
+                            segments.map((segment, index) =>
+                              h(
+                                React.Fragment,
+                                { key: segment.path },
+                                h('span', { className: 'ds-crumb-sep' }, '/'),
+                                h(
+                                  'button',
+                                  {
+                                    type: 'button',
+                                    className: 'ds-crumb',
+                                    onClick: () => {
+                                      void ensureExpanded(dirname(segment.path))
+                                      if (index === segments.length - 1) {
+                                        store.set((current) => ({ ...current, selected: segment.path }))
+                                      } else {
+                                        void ensureExpanded(segment.path)
+                                        store.set((current) => ({ ...current, selected: segment.path }))
+                                      }
+                                    },
+                                  },
+                                  segment.label,
+                                ),
+                              ),
+                            ),
+                            h('span', { className: 'ds-spacer' }),
+                            editorToolbar(activeTab),
+                          ),
+                          tabBody(activeTab),
+                          h(
+                            'footer',
+                            { className: 'ds-statusbar' },
+                            h('span', { className: 'ds-status-item' }, isTextMode(activeTab.mode) ? activeTab.language.label : activeTab.mode.toUpperCase()),
+                            isTextMode(activeTab.mode)
+                              ? h('span', { className: 'ds-status-item' }, t('status.lines', { count: String(lineCount) }))
+                              : null,
+                            h('span', { className: 'ds-status-item' }, activeTab.dirty ? t('hint.unsaved') : t('hint.saved')),
+                            h('span', { className: 'ds-spacer' }),
+                            isTextMode(activeTab.mode)
+                              ? h('span', { className: 'ds-status-item' }, t('status.cursor', { line: String(cursor.line), column: String(cursor.column) }))
+                              : null,
+                            h('span', { className: 'ds-status-item' }, t('status.encoding')),
+                          ),
+                        ),
+                  ),
+            ),
+          ),
+          menu === null
+            ? null
+            : h(
+                'div',
+                { className: 'ds-menu', role: 'menu', style: { left: `${String(menu.x)}px`, top: `${String(menu.y)}px` } },
+                menu.type === 'file'
+                  ? h(
+                      MenuItem,
+                      {
+                        label: t('action.open'),
+                        onClick: () => {
+                          setMenu(null)
+                          void openFile(menu.path)
+                        },
+                      },
+                      h(PageIcon),
+                    )
+                  : null,
+                menu.type === 'file'
+                  ? h(
+                      MenuItem,
+                      {
+                        label: t('action.openInBrowser'),
+                        onClick: () => openExternal(menu.path),
+                      },
+                      h(ExternalIcon),
+                    )
+                  : null,
+                menu.type === 'file'
+                  ? h(
+                      MenuItem,
+                      {
+                        label: t('action.download'),
+                        onClick: () => {
+                          setMenu(null)
+                          downloadFile(menu.path)
+                        },
+                      },
+                      h(DownloadIcon),
+                    )
+                  : null,
+                menu.type === 'file' ? h('div', { key: 'sep-open', className: 'ds-menu-sep' }) : null,
+                menu.path === ''
+                  ? null
+                  : h(
+                      MenuItem,
+                      {
+                        label: favoritePaths.has(menu.path) ? t('favorite.remove') : t('favorite.add'),
+                        onClick: () => {
+                          setMenu(null)
+                          toggleFavorite(menu.path)
+                        },
+                      },
+                      h(StarIcon, {
+                        filled: favoritePaths.has(menu.path),
+                        size: 14,
+                        className: favoritePaths.has(menu.path) ? 'ds-star-warn' : undefined,
+                      }),
+                    ),
+                h(
+                  MenuItem,
+                  {
+                    label: t('action.newFileHere'),
+                    onClick: () => startCreate('file', menu.type === 'directory' ? menu.path : dirname(menu.path)),
+                  },
+                  h(NewFileIcon),
+                ),
+                h(
+                  MenuItem,
+                  {
+                    label: t('action.newFolderHere'),
+                    onClick: () => startCreate('directory', menu.type === 'directory' ? menu.path : dirname(menu.path)),
+                  },
+                  h(NewFolderIcon),
+                ),
+                h(
+                  MenuItem,
+                  {
+                    label: t('action.uploadHere'),
+                    onClick: () => {
+                      setMenu(null)
+                      pickUploads(menu.type === 'directory' ? menu.path : dirname(menu.path))
+                    },
+                  },
+                  h(UploadIcon),
+                ),
+                menu.type === 'directory'
+                  ? h(
+                      MenuItem,
+                      {
+                        label: t('menu.refreshFolder'),
+                        onClick: () => {
+                          setMenu(null)
+                          void loadDir(menu.path)
+                        },
+                      },
+                      h(RefreshIcon),
+                    )
+                  : null,
+                menu.path === ''
+                  ? null
+                  : h('div', { key: 'sep-edit', className: 'ds-menu-sep' }),
+                menu.path === ''
+                  ? null
+                  : h(
+                      MenuItem,
+                      {
+                        label: t('action.rename'),
+                        shortcut: 'F2',
+                        onClick: () => startRename(menu.path),
+                      },
+                      h(PencilIcon),
+                    ),
+                menu.path === ''
+                  ? null
+                  : h(
+                      MenuItem,
+                      {
+                        label: t('action.delete'),
+                        shortcut: 'Del',
+                        danger: true,
+                        onClick: () => requestDelete(menu.path),
+                      },
+                      h(TrashIcon),
+                    ),
+                h('div', { key: 'sep-copy', className: 'ds-menu-sep' }),
+                h(
+                  MenuItem,
+                  {
+                    label: t('action.copyPath'),
+                    onClick: () => void copyRelative(menu.path),
+                  },
+                  h(CopyIcon),
+                ),
+              ),
+          modal === null
+            ? null
+            : h(
+                'div',
+                {
+                  className: 'ds-modal-backdrop',
+                  onPointerDown: (event) => {
+                    if (event.target === event.currentTarget) setModal(null)
+                  },
+                },
+                h(
+                  'div',
+                  { className: 'ds-modal', role: 'dialog', 'aria-modal': true },
+                  h('div', { className: 'ds-modal-title' }, modal.title),
+                  h('div', { className: 'ds-modal-text' }, modal.message),
+                  h(
+                    'div',
+                    { className: 'ds-modal-actions' },
+                    h(
+                      'button',
+                      { type: 'button', className: 'ds-btn', onClick: () => setModal(null) },
+                      t('action.cancel'),
+                    ),
+                    h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: clsx('ds-btn', modal.danger ? 'ds-btn-danger' : 'ds-btn-primary'),
+                        onClick: modal.onConfirm,
+                      },
+                      modal.confirmLabel,
+                    ),
+                  ),
+                ),
+              ),
+          toast === null ? null : h('div', { className: 'ds-toast', role: 'status' }, toast),
+        )
+      }
+    }
+
+    /* ------------------------------------------------------------------ *
+     * Styles
+     * ------------------------------------------------------------------ */
+
+    const CSS = `
+.ds-root {
+  --ds-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.ds-root *, .ds-root *::before, .ds-root *::after { box-sizing: border-box; }
+.ds-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  height: 44px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-alias-bg-layer-1);
+  min-width: 0;
+}
+.ds-header-title { display: flex; align-items: center; gap: 7px; font-weight: 600; white-space: nowrap; }
+.ds-header-logo { display: inline-flex; }
+.ds-root[data-compact="true"] .ds-header-title > span:last-child { display: none; }
+.ds-root[data-compact="true"] .ds-workspace-wrap { flex-basis: 132px; max-width: 132px; }
+.ds-root[data-compact="true"] .ds-breadcrumb { padding-left: 4px; }
+.ds-root[data-compact="true"] .ds-crumb { max-width: 92px; }
+.ds-vr { width: 1px; height: 18px; background: var(--dsw-alias-border-l1); flex: 0 0 auto; }
+.ds-workspace-wrap { position: relative; flex: 0 1 250px; min-width: 0; max-width: 340px; }
+.ds-workspace-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  padding: 0 7px 0 9px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 7px;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.ds-workspace-btn:hover { border-color: var(--dsw-alias-border-l2); }
+.ds-workspace-btn:focus-visible { border-color: var(--dsw-alias-brand-primary); outline: none; }
+.ds-workspace-btn-title { flex: 0 0 auto; max-width: 46%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.ds-workspace-btn-path { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-secondary); font-size: 10.5px; direction: rtl; text-align: left; }
+.ds-workspace-btn .ds-chevron { flex: 0 0 auto; }
+.ds-workspace-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 1400;
+  width: 300px;
+  max-width: calc(100vw - 24px);
+  max-height: min(360px, 60vh);
+  overflow: auto;
+  padding: 4px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 9px;
+  background: var(--dsw-alias-bg-overlay);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--dsw-alias-label-primary) 22%, transparent);
+}
+.ds-ws-row { display: flex; align-items: center; gap: 2px; padding: 2px; border-radius: 6px; }
+.ds-ws-row:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent); }
+.ds-ws-row[data-active="true"] { background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent); }
+.ds-ws-pick {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ds-ws-pick:focus-visible { box-shadow: inset 0 0 0 1px var(--dsw-alias-brand-primary); outline: none; }
+.ds-ws-title { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 500; }
+.ds-ws-path { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-secondary); font-size: 10.5px; direction: rtl; }
+.ds-ws-check { flex: 0 0 auto; padding: 0 2px; color: var(--dsw-alias-brand-primary); font-size: 12px; }
+.ds-ws-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  opacity: 0.55;
+}
+.ds-ws-row:hover .ds-ws-remove, .ds-ws-row:focus-within .ds-ws-remove { opacity: 1; }
+.ds-ws-remove:hover:not(:disabled) { background: color-mix(in srgb, var(--dsw-alias-label-primary) 10%, transparent); color: var(--dsw-alias-state-error-primary); }
+.ds-ws-remove:disabled { opacity: 0.2; cursor: default; }
+.ds-workspace-empty { color: var(--dsw-alias-label-secondary); font-size: 12px; }
+.ds-address-wrap {
+  display: flex;
+  align-items: center;
+  flex: 1 1 220px;
+  min-width: 90px;
+  max-width: 460px;
+  height: 28px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 7px;
+  background: var(--dsw-alias-bg-layer-2);
+  overflow: hidden;
+}
+.ds-address-wrap:focus-within { border-color: var(--dsw-alias-brand-primary); }
+.ds-address {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}
+.ds-address::placeholder { color: var(--dsw-alias-label-secondary); }
+.ds-address-go {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  gap: 4px;
+  min-width: 48px;
+  height: 100%;
+  padding: 0 8px;
+  border: 0;
+  border-left: 1px solid var(--dsw-alias-border-l1);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 11.5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ds-address-go:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 9%, transparent);
+  color: var(--dsw-alias-label-primary);
+}
+.ds-address-go:disabled { opacity: 0.35; cursor: default; }
+.ds-go-label { white-space: nowrap; }
+.ds-root[data-compact="true"] .ds-address-go { min-width: 28px; padding: 0 6px; }
+.ds-root[data-compact="true"] .ds-go-label { display: none; }
+.ds-root[data-compact="true"] .ds-header-new { display: none; }
+.ds-root[data-compact="true"] .ds-address-wrap { flex-basis: 120px; min-width: 64px; }
+.ds-spacer { flex: 1 1 auto; }
+.ds-vspacer { flex: 0 0 4px; }
+.ds-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+.ds-iconbtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 9%, transparent);
+  color: var(--dsw-alias-label-primary);
+}
+.ds-iconbtn:disabled { opacity: 0.35; cursor: default; }
+.ds-iconbtn-sm { width: 22px; height: 22px; }
+.ds-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding: 7px 10px 7px 14px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  font-size: 12px;
+}
+.ds-banner[data-kind="error"] { background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, var(--dsw-alias-bg-base)); }
+.ds-banner[data-kind="warn"] { background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 14%, var(--dsw-alias-bg-base)); }
+.ds-banner-text { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.ds-banner-close { margin-left: auto; }
+.ds-body { display: flex; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.ds-side {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  min-height: 0;
+  border-right: 1px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-alias-bg-layer-1);
+}
+.ds-pane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 0 0 auto;
+  height: 32px;
+  padding: 0 6px 0 13px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.ds-pane-actions { display: flex; align-items: center; gap: 1px; flex: 0 0 auto; }
+.ds-more-wrap { position: relative; }
+.ds-more-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1500;
+  width: 260px;
+  max-width: calc(100vw - 16px);
+  padding: 4px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 9px;
+  background: var(--dsw-alias-bg-overlay);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--dsw-alias-label-primary) 22%, transparent);
+}
+.ds-pane-head > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-tree { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 2px 0 10px; outline: none; }
+.ds-favorites { flex: 0 0 auto; border-bottom: 1px solid var(--dsw-alias-border-l1); }
+.ds-favorites-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 6px 0 8px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+}
+.ds-favorites-head:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 5%, transparent); }
+.ds-favorites-head:focus-visible { box-shadow: inset 0 0 0 1px var(--dsw-alias-brand-primary); }
+.ds-favorites-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-favorites-count {
+  flex: 0 0 auto;
+  min-width: 16px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 9.5px;
+  line-height: 15px;
+  text-align: center;
+}
+.ds-star-ink { display: inline-flex; color: var(--dsw-alias-state-warn-primary); }
+.ds-star-warn { color: var(--dsw-alias-state-warn-primary); }
+.ds-favorites-list { max-height: 200px; overflow: auto; padding: 1px 0 6px; }
+.ds-fav-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 5px 0 12px;
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+}
+.ds-fav-row:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent); }
+.ds-fav-row:focus-visible { box-shadow: inset 0 0 0 1px var(--dsw-alias-brand-primary); }
+.ds-fav-row[data-active="true"] .ds-fav-name { color: var(--dsw-alias-brand-primary); }
+.ds-fav-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-fav-path {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10.5px;
+  text-align: right;
+}
+.ds-fav-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  opacity: 0;
+}
+.ds-fav-row:hover .ds-fav-remove, .ds-fav-row:focus-within .ds-fav-remove { opacity: 1; }
+.ds-fav-remove:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 12%, transparent); color: var(--dsw-alias-label-primary); }
+.ds-fav-empty { padding: 3px 12px 7px; color: var(--dsw-alias-label-secondary); font-size: 11.5px; line-height: 1.55; }
+.ds-fav-mark { display: inline-flex; flex: 0 0 auto; margin-left: 1px; }
+.ds-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding-right: 8px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  color: var(--dsw-alias-label-primary);
+  outline: none;
+}
+.ds-row:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent); }
+.ds-row:focus-visible { box-shadow: inset 0 0 0 1px var(--dsw-alias-brand-primary); }
+.ds-row[data-selected="true"] { background: color-mix(in srgb, var(--dsw-alias-brand-primary) 15%, transparent); }
+.ds-row[data-selected="true"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 2px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--dsw-alias-brand-primary);
+}
+.ds-row[data-active="true"] .ds-name { color: var(--dsw-alias-brand-primary); }
+.ds-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  color: var(--dsw-alias-label-secondary);
+  transition: transform 120ms ease;
+}
+.ds-chevron[data-open="true"] { transform: rotate(90deg); }
+.ds-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ds-tag { margin-left: auto; color: var(--dsw-alias-label-secondary); font-size: 10px; }
+.ds-glyph { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.ds-glyph-folder { color: var(--dsw-alias-state-warn-primary); }
+.ds-glyph-pdf, .ds-fileglyph-pdf { color: var(--dsw-alias-state-error-primary); }
+.ds-glyph-image, .ds-fileglyph-image { color: var(--dsw-alias-state-success-primary); }
+.ds-glyph-markdown, .ds-fileglyph-markdown { color: var(--dsw-alias-brand-primary); }
+.ds-glyph-code, .ds-fileglyph-code { color: var(--dsw-alias-brand-primary); }
+.ds-glyph-web, .ds-fileglyph-web { color: var(--dsw-alias-state-warn-primary); }
+.ds-glyph-data, .ds-fileglyph-data { color: var(--dsw-alias-state-warn-primary); }
+.ds-glyph-plain, .ds-fileglyph-plain { color: var(--dsw-alias-label-secondary); }
+.ds-rowinput {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 21px;
+  padding: 0 4px;
+  border: 1px solid var(--dsw-alias-brand-primary);
+  border-radius: 4px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 12.5px;
+  outline: none;
+}
+.ds-row-draft { padding-right: 6px; }
+.ds-hint { padding: 5px 13px; color: var(--dsw-alias-label-secondary); font-size: 12px; }
+.ds-errorline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 13px;
+  color: var(--dsw-alias-state-error-primary);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.ds-linkbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--dsw-alias-brand-primary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: none;
+}
+.ds-linkbtn:hover { text-decoration: underline; }
+.ds-side-foot {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  border-top: 1px solid var(--dsw-alias-border-l1);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10.5px;
+}
+.ds-side-path { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+.ds-splitter { flex: 0 0 auto; width: 5px; margin: 0 -2px; cursor: col-resize; z-index: 3; }
+.ds-splitter:hover { background: color-mix(in srgb, var(--dsw-alias-brand-primary) 35%, transparent); }
+.ds-main { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; min-height: 0; background: var(--dsw-alias-bg-base); }
+.ds-tabs {
+  display: flex;
+  flex: 0 0 auto;
+  height: 35px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-alias-bg-layer-1);
+  scrollbar-width: none;
+}
+.ds-tabs::-webkit-scrollbar { display: none; }
+.ds-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  max-width: 230px;
+  min-width: 90px;
+  padding: 0 5px 0 11px;
+  border-right: 1px solid var(--dsw-alias-border-l1);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+.ds-tab:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 5%, transparent); }
+.ds-tab[data-active="true"] { background: var(--dsw-alias-bg-base); color: var(--dsw-alias-label-primary); }
+.ds-tab[data-active="true"]::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: var(--dsw-alias-brand-primary);
+}
+.ds-tab-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-tabclose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  opacity: 0;
+}
+.ds-tab:hover .ds-tabclose, .ds-tab[data-active="true"] .ds-tabclose { opacity: 1; }
+.ds-tabclose:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 12%, transparent); color: var(--dsw-alias-label-primary); }
+.ds-dot { flex: 0 0 auto; width: 6px; height: 6px; border-radius: 50%; background: var(--dsw-alias-brand-primary); }
+.ds-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  height: 32px;
+  padding: 0 8px 0 12px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  overflow: hidden;
+}
+.ds-breadcrumb-root { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; color: var(--dsw-alias-label-secondary); flex: 0 0 auto; }
+.ds-crumb-sep { color: var(--dsw-alias-border-l2); flex: 0 0 auto; }
+.ds-crumb {
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+.ds-crumb:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent); color: var(--dsw-alias-label-primary); }
+.ds-edit-toolbar { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; margin-left: 8px; }
+.ds-switch { display: inline-flex; padding: 2px; border-radius: 6px; background: var(--dsw-alias-bg-layer-2); }
+.ds-switch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.ds-switch-btn[data-active="true"] { background: var(--dsw-alias-bg-base); color: var(--dsw-alias-label-primary); box-shadow: 0 0 0 1px var(--dsw-alias-border-l1); }
+.ds-wrap-toggle { flex: 0 0 auto; }
+.ds-wrap-toggle svg { flex: 0 0 auto; }
+.ds-wrap-label { white-space: nowrap; }
+.ds-root[data-compact="true"] .ds-wrap-label { display: none; }
+.ds-toolbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  height: 22px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.ds-toolbtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent);
+  color: var(--dsw-alias-label-primary);
+}
+.ds-toolbtn:disabled { opacity: 0.4; cursor: default; }
+.ds-toolbtn svg { flex: 0 0 auto; }
+.ds-tool-label { white-space: nowrap; }
+.ds-root[data-compact="true"] .ds-tool-label { display: none; }
+.ds-lang { color: var(--dsw-alias-label-secondary); font-size: 11px; white-space: nowrap; }
+.ds-savebtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 9px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.ds-savebtn:hover:not(:disabled) { border-color: var(--dsw-alias-brand-primary); }
+.ds-savebtn:disabled { opacity: 0.4; cursor: default; }
+.ds-dirty-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--dsw-alias-brand-primary); }
+.ds-editor-wrap { display: flex; flex: 1 1 auto; min-height: 0; position: relative; }
+.ds-gutter {
+  flex: 0 0 auto;
+  width: 56px;
+  overflow: hidden;
+  position: relative;
+  border-right: 1px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-alias-bg-base);
+}
+.ds-gutter-inner {
+  position: absolute;
+  inset: 0 0 auto 0;
+  padding: 12px 0;
+  font-family: var(--ds-mono);
+  font-size: 12px;
+  line-height: 20px;
+  color: var(--dsw-alias-label-secondary);
+  text-align: right;
+}
+.ds-gutter-line { height: 20px; padding-right: 11px; }
+.ds-code-area { position: relative; flex: 1 1 auto; min-width: 0; min-height: 0; overflow: hidden; }
+.ds-code-area[data-wrap="true"] .ds-pre,
+.ds-code-area[data-wrap="true"] .ds-ta {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  overflow-x: hidden;
+}
+.ds-code-area[data-wrap="true"] .ds-ta { scrollbar-gutter: stable; }
+.ds-code-area[data-wrap="true"] .ds-pre { padding-right: 26px; }
+.ds-pre, .ds-ta {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 12px 16px;
+  border: 0;
+  font-family: var(--ds-mono);
+  font-size: 13px;
+  line-height: 20px;
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+  box-sizing: border-box;
+}
+.ds-pre { overflow: hidden; pointer-events: none; color: var(--dsw-alias-label-primary); }
+.ds-ta {
+  z-index: 2;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--dsw-alias-label-primary);
+  resize: none;
+  outline: none;
+}
+.ds-ta::selection { background: color-mix(in srgb, var(--dsw-alias-brand-primary) 30%, transparent); }
+.ds-ta::-webkit-scrollbar, .ds-tree::-webkit-scrollbar, .ds-md::-webkit-scrollbar, .ds-pre::-webkit-scrollbar { width: 10px; height: 10px; }
+.ds-ta::-webkit-scrollbar-thumb, .ds-tree::-webkit-scrollbar-thumb, .ds-md::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--dsw-alias-label-primary) 18%, transparent); border-radius: 6px; }
+.ds-ta::-webkit-scrollbar-track, .ds-tree::-webkit-scrollbar-track, .ds-md::-webkit-scrollbar-track { background: transparent; }
+.ds-tok-comment { color: var(--dsw-alias-label-secondary); font-style: italic; }
+.ds-tok-keyword { color: var(--dsw-alias-brand-primary); }
+.ds-tok-string { color: var(--dsw-alias-state-success-primary); }
+.ds-tok-number { color: var(--dsw-alias-state-warn-primary); }
+.ds-tok-constant { color: var(--dsw-alias-state-warn-primary); }
+.ds-tok-function { color: var(--dsw-alias-label-primary); font-weight: 600; }
+.ds-tok-type { color: color-mix(in srgb, var(--dsw-alias-brand-primary) 62%, var(--dsw-alias-label-primary)); }
+.ds-tok-property { color: var(--dsw-alias-state-warn-primary); }
+.ds-tok-attr { color: var(--dsw-alias-state-warn-primary); }
+.ds-tok-tag { color: var(--dsw-alias-brand-primary); }
+.ds-tok-heading { color: var(--dsw-alias-brand-primary); font-weight: 600; }
+.ds-tok-link { color: var(--dsw-alias-brand-primary); text-decoration: underline; }
+.ds-statusbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 0 0 auto;
+  height: 24px;
+  padding: 0 10px;
+  border-top: 1px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-specific-sidebar-fill);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10.5px;
+}
+.ds-status-item { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ds-welcome { display: flex; flex: 1 1 auto; align-items: center; justify-content: center; padding: 32px; }
+.ds-welcome-card { display: flex; flex-direction: column; align-items: center; gap: 12px; max-width: 460px; text-align: center; }
+.ds-welcome-logo { display: inline-flex; color: var(--dsw-alias-brand-primary); margin-bottom: 2px; }
+.ds-welcome-title { font-size: 19px; font-weight: 600; color: var(--dsw-alias-label-primary); }
+.ds-welcome-text { color: var(--dsw-alias-label-secondary); line-height: 1.7; }
+.ds-kbdline { color: var(--dsw-alias-label-secondary); font-size: 11.5px; }
+.ds-empty {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px;
+  color: var(--dsw-alias-label-secondary);
+  text-align: center;
+}
+.ds-empty-title { color: var(--dsw-alias-label-primary); font-size: 14px; font-weight: 600; }
+.ds-empty-text { max-width: 520px; overflow-wrap: anywhere; }
+.ds-empty-actions { display: flex; align-items: center; gap: 8px; }
+.ds-empty-error { color: var(--dsw-alias-state-error-primary); }
+.ds-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid color-mix(in srgb, var(--dsw-alias-label-primary) 18%, transparent);
+  border-top-color: var(--dsw-alias-brand-primary);
+  border-radius: 50%;
+  animation: ds-spin 0.8s linear infinite;
+}
+@keyframes ds-spin { to { transform: rotate(360deg); } }
+.ds-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 7px;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.ds-btn:hover { border-color: var(--dsw-alias-border-l2); }
+.ds-btn-primary { border-color: transparent; background: var(--dsw-alias-brand-primary); color: var(--dsw-alias-bg-base); }
+.ds-btn-danger { border-color: transparent; background: var(--dsw-alias-state-error-primary); color: var(--dsw-alias-bg-base); }
+.ds-menu {
+  position: fixed;
+  z-index: 1200;
+  min-width: 200px;
+  padding: 4px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 9px;
+  background: var(--dsw-alias-bg-overlay);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--dsw-alias-label-primary) 22%, transparent);
+}
+.ds-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ds-menu-item:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 9%, transparent); }
+.ds-menu-item:disabled { opacity: 0.4; cursor: default; }
+.ds-menu-item:disabled:hover { background: transparent; }
+.ds-menu-item[data-danger="true"] { color: var(--dsw-alias-state-error-primary); }
+.ds-menu-label { display: inline-flex; align-items: center; gap: 8px; flex: 0 0 auto; white-space: nowrap; }
+.ds-menu-kbd { flex: 0 0 auto; margin-left: auto; color: var(--dsw-alias-label-secondary); font-size: 10.5px; white-space: nowrap; }
+.ds-menu-sep { height: 1px; margin: 4px 3px; background: var(--dsw-alias-border-l1); }
+.ds-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 30%, transparent);
+}
+.ds-modal {
+  width: min(430px, 100%);
+  padding: 18px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-overlay);
+  box-shadow: 0 24px 70px color-mix(in srgb, var(--dsw-alias-label-primary) 30%, transparent);
+}
+.ds-modal-title { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+.ds-modal-text { color: var(--dsw-alias-label-secondary); line-height: 1.65; overflow-wrap: anywhere; }
+.ds-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.ds-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 34px;
+  transform: translateX(-50%);
+  z-index: 1400;
+  max-width: 70%;
+  padding: 7px 13px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 7px;
+  background: var(--dsw-alias-bg-overlay);
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--dsw-alias-label-primary) 20%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ds-pdfwrap { display: flex; flex: 1 1 auto; min-height: 0; }
+.ds-pdf { flex: 1 1 auto; width: 100%; height: 100%; border: 0; background: var(--dsw-alias-bg-layer-1); }
+.ds-imageview { display: flex; flex: 1 1 auto; align-items: center; justify-content: center; min-height: 0; overflow: auto; padding: 24px; background: var(--dsw-alias-bg-layer-1); }
+.ds-imageview img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 24px color-mix(in srgb, var(--dsw-alias-label-primary) 18%, transparent); }
+.ds-md { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 26px 34px 70px; background: var(--dsw-alias-bg-base); color: var(--dsw-alias-label-primary); font-size: 14px; line-height: 1.72; }
+.ds-md-inner { max-width: 860px; margin: 0 auto; }
+.ds-md-empty { color: var(--dsw-alias-label-secondary); font-style: italic; }
+.ds-md-heading { margin: 1.3em 0 0.55em; line-height: 1.3; font-weight: 600; }
+.ds-md h1 { font-size: 1.85em; margin-top: 0.6em; padding-bottom: 0.25em; border-bottom: 1px solid var(--dsw-alias-border-l1); }
+.ds-md h2 { font-size: 1.45em; padding-bottom: 0.2em; border-bottom: 1px solid var(--dsw-alias-border-l1); }
+.ds-md h3 { font-size: 1.2em; }
+.ds-md h4 { font-size: 1.05em; }
+.ds-md h5, .ds-md h6 { font-size: 1em; color: var(--dsw-alias-label-secondary); }
+.ds-md-para { margin: 0.75em 0; }
+.ds-md-list { margin: 0.65em 0; padding-left: 1.6em; }
+.ds-md-list li { margin: 0.28em 0; }
+.ds-md-link { color: var(--dsw-alias-brand-primary); text-decoration: none; }
+.ds-md-link:hover { text-decoration: underline; }
+.ds-md-inline-code { padding: 0.12em 0.35em; border-radius: 4px; background: var(--dsw-alias-bg-layer-2); font-family: var(--ds-mono); font-size: 0.86em; }
+.ds-md-pre { margin: 0.9em 0; padding: 12px 14px; border-radius: 8px; border: 1px solid var(--dsw-alias-border-l1); background: var(--dsw-alias-bg-layer-2); overflow: auto; }
+.ds-md-pre code { font-family: var(--ds-mono); font-size: 12.5px; line-height: 1.55; white-space: pre; }
+.ds-md-quote { margin: 0.85em 0; padding: 0.2em 1em; border-left: 3px solid var(--dsw-alias-brand-primary); color: var(--dsw-alias-label-secondary); }
+.ds-md-hr { margin: 1.4em 0; border: 0; border-top: 1px solid var(--dsw-alias-border-l1); }
+.ds-md-tablewrap { margin: 0.9em 0; overflow-x: auto; }
+.ds-md-table { width: 100%; border-collapse: collapse; font-size: 0.92em; }
+.ds-md-table th, .ds-md-table td { padding: 6px 10px; border: 1px solid var(--dsw-alias-border-l1); text-align: left; }
+.ds-md-table th { background: var(--dsw-alias-bg-layer-2); font-weight: 600; }
+.ds-md-image { display: block; max-width: 100%; margin: 0.9em 0; border-radius: 6px; }
+`
+
+    /* ------------------------------------------------------------------ *
+     * Plugin body
+     * ------------------------------------------------------------------ */
+
+    return {
+      inject: ['slots', 'locale'],
+      apply(ctx) {
+        const t = ctx.locale.bind(NS)
+        const store = createStore(initialState())
+        ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-side: dictionaries')
+        const IdePage = makeIdePage(ctx, t, store)
+        const IdeTitle = makeIdeTitle(t)
+        ctx.effect(
+          () =>
+            ctx.slots.inject('main', () =>
+              ctx.slots.register({ name: 'main', key: 'files', locale: NS }, IdePage),
+            ),
+          'dsh-side: main panel',
+        )
+        ctx.effect(
+          () =>
+            ctx.slots.inject('sidebar.panellist', () =>
+              ctx.slots.register(
+                {
+                  name: 'sidebar.panellist',
+                  id: 'files',
+                  order: 20,
+                  locale: NS,
+                  label: () => t('panel.title'),
+                },
+                PanelIcon,
+              ),
+            ),
+          'dsh-side: sidebar entry',
+        )
+        // The right Sidebar's Start page lists one card per registered tab type.
+        // Registering here is optional: a profile without the right Sidebar keeps
+        // the main-panel and left-sidebar entry points above.
+        ctx.inject(['sidebarRightTabs'], (sidebarCtx) => {
+          sidebarCtx.effect(
+            () =>
+              sidebarCtx.sidebarRightTabs.register({
+                id: IDE_ID,
+                kind: IDE_KIND,
+                priority: 'extension',
+                title: () => t('panel.title'),
+                guide: [
+                  {
+                    id: 'workspace',
+                    order: 30,
+                    title: () => t('guide.title'),
+                    description: () => t('guide.description'),
+                    icon: GuideIcon,
+                  },
+                ],
+              }),
+            'dsh-side: right-sidebar tab type',
+          )
+          sidebarCtx.effect(
+            () =>
+              sidebarCtx.slots.inject('sidebar.right.pane.tab', () =>
+                sidebarCtx.slots.register(
+                  { name: 'sidebar.right.pane.tab', key: IDE_ID, locale: NS },
+                  IdePage,
+                ),
+              ),
+            'dsh-side: right-sidebar body',
+          )
+          sidebarCtx.effect(
+            () =>
+              sidebarCtx.slots.inject('sidebar.right.pane.tab.title', () =>
+                sidebarCtx.slots.register(
+                  { name: 'sidebar.right.pane.tab.title', key: IDE_ID, locale: NS },
+                  IdeTitle,
+                ),
+              ),
+            'dsh-side: right-sidebar title',
+          )
+        })
+      },
+    }
+  },
+})

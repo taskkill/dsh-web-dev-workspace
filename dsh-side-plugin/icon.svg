@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Workspace Files">
+  <defs>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2f7cf6"/>
+      <stop offset="1" stop-color="#1b4fa8"/>
+    </linearGradient>
+  </defs>
+  <rect x="3" y="4" width="58" height="56" rx="12" fill="url(#panel)"/>
+  <rect x="10" y="12" width="16" height="40" rx="3" fill="#ffffff" fill-opacity="0.18"/>
+  <path d="M13 18h10M13 23h8M13 28h10M13 33h7" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-opacity="0.85"/>
+  <path d="M33 25l-5 7 5 7M43 25l5 7-5 7" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M39 22l-3 20" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-opacity="0.75"/>
+</svg>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Workspace Files IO">
+  <defs>
+    <linearGradient id="io" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2f7cf6"/>
+      <stop offset="1" stop-color="#1b4fa8"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="5" width="56" height="54" rx="12" fill="url(#io)"/>
+  <path d="M32 13v17" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+  <path d="M24 22l8-8 8 8" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M32 51V34" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+  <path d="M24 42l8 8 8-8" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,17 @@
+# Dependencies and local tooling
+node_modules/
+.pnpm-store/
+
+# Harness profile artifacts
+.dsh/
+*.log
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local environment
+.env
+.env.*
