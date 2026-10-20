@@ -99,6 +99,18 @@ third-party runtime dependencies.
   browser, favorite, new file/folder, upload, copy, cut, paste, rename, delete,
   download, copy relative path.
 
+### SSH remote folders
+
+- Add `ssh://user@host:port/absolute/path` from the workspace picker or the address
+  bar. The Host connects over SFTP using the SSH agent or keys under `~/.ssh`
+  (`~/.ssh/config` HostName/User/Port/IdentityFile are honored).
+- Browse, edit/save, create, rename, delete, copy/move and upload/download on the
+  remote root; drag-and-drop upload and the context menu use the same paths as
+  local workspaces. Git is local-only and its button is hidden for SSH roots.
+- Requires the optional `ssh2` dependency: run `npm install` in this directory.
+  Without it the plugin still loads; SSH operations report the missing dependency.
+- Host keys are not pinned; connect only to trusted hosts.
+
 ### Editor
 
 - Multi-tab editing: dirty indicators, save (button or `⌘/Ctrl+S`), reload,
@@ -152,16 +164,18 @@ third-party runtime dependencies.
 
 ## How it works
 
-- The Host half (`index.js`) registers one exact Fetch route on the authenticated
-  shared API channel: `/api/dsh-side`. Only owner peers reach exact routes, so the
+- The Host half (`index.js`) registers exact Fetch routes on the authenticated
+  shared API channel: `/api/dsh-side` for file operations and `/api/dsh-side-ssh`
+  for binary uploads into SSH roots. Only owner peers reach exact routes, so the
   browser's signed Harness cookie authenticates every request; no extra token is
-  introduced. Every path is confined to a registered workspace root, symlinks are
-  resolved before containment is checked, and the workspace root itself cannot be
-  renamed or deleted.
+  introduced. Local paths are confined to a registered workspace root, symlinks
+  are resolved before containment is checked, and the workspace root itself
+  cannot be renamed or deleted. SSH roots are confined to their absolute remote
+  path by the SFTP backend (`ssh.js`).
 
   | Method | Operation |
   | --- | --- |
-  | `POST` | JSON operations: `roots`, `list`, `read`, `write`, `createFile`, `createDir`, `rename`, `move`, `copy`, `delete`, `stat` |
+  | `POST` | JSON operations: `roots`, `list`, `read`, `write`, `createFile`, `createDir`, `rename`, `move`, `copy`, `delete`, `stat`, `sshTest` |
   | `GET` | `?op=raw&root=…&path=…` streams a file for preview/download links |
 
 - The Client half (`client.js`) registers the `files` key in the `main` slot and a
@@ -204,8 +218,8 @@ Preferences and favorites are stored in the browser's `localStorage`:
 
 - Only registered workspaces (or the deployment default directory) are
   accessible; an absolute path typed in the address bar is registered first.
-- No folder upload/download, no automatic file watching, no search, no
-  drag-and-drop, and no binary editing.
+- No folder upload/download, no automatic file watching, no search, and no
+  binary editing. SSH host keys are not pinned and password auth is not offered.
 - Git is limited to the repository root; no automatic merge/rebase or hunk-level
   staging. A diverged pull must be resolved in a terminal, and pushes never force.
 - External changes require a manual refresh/reload; saves use stale-file

@@ -160,6 +160,24 @@ local bundle directories for you.
 
 
 ### Snapshot Preview
+### SSH remote folders
+
+- Add a remote directory from the **Add SSH remote…** entry at the bottom of the
+  workspace picker, or type `ssh://user@host:22/absolute/path` in the address bar.
+  Remote roots participate in switching, favorites and recent-root behavior like
+  local ones.
+- Browse, open/save text files, create, rename, delete, copy/move and
+  upload/download over SFTP; drag-and-drop upload works for remote roots too.
+- Authentication uses the SSH agent or keys under `~/.ssh` (HostName, User, Port
+  and IdentityFile from `~/.ssh/config` are honored). Passwords are never
+  prompted for or stored.
+- SSH support requires `ssh2`: run `npm install` once in `dsh-side-plugin/`.
+  Without it every other feature still works; SSH operations report the missing
+  dependency.
+- **Host keys are not pinned** (ssh2 accepts the key presented at connect time).
+  Only use remote folders on trusted hosts and networks.
+- Git is local-only: the Git button is hidden for SSH roots.
+
   <img alt="dshwfb" src="./docs/1.png" width="500px" />
   <img alt="dshwfb" src="./docs/2.png" width="500px" />
   <img alt="dshwfb" src="./docs/3.png" width="500px" />
@@ -175,10 +193,12 @@ local bundle directories for you.
 - Tested with DeepSeek Harness **`0.2.1-rc.2`** on **Linux**. Later releases may
   work, but the slot/service APIs are not guaranteed to be stable between
   releases; macOS/Windows hosts are not explicitly verified.
-- No build step, no extra Node dependencies. The bundles are plain ESM and run
+- No build step. The bundles are plain ESM and run
   inside the Harness host.
 - A current evergreen browser (the UI uses `color-mix`, `ResizeObserver`, and the
   Clipboard API).
+- For SSH remote folders: `npm install` in `dsh-side-plugin/` (installs `ssh2`) and
+  a configured SSH agent or key under `~/.ssh`.
 - For Git features: `git` on the Harness host's `PATH`, and a configured Git
   identity for commits (`user.name` / `user.email`).
 
@@ -418,6 +438,10 @@ issue for security-sensitive reports.
 - **No model-visible data**: it registers no tools, prompts, system-prompt
   sections, or session events. Opening a file in the editor does not add it to the
   conversation.
+- **SSH remote folders**: authentication uses only the Host's SSH agent or keys
+  under `~/.ssh`; passwords are never collected or stored. `ssh2` accepts the host
+  key presented at connect time (no known_hosts pinning), so use trusted hosts and
+  networks only.
 - **Git network operations are explicit**: fetch/pull/push only touch remotes the
   repository already configures; pull is fast-forward only, push never forces, no
   automatic merge/rebase runs, and no credential is stored. Git runs inside the

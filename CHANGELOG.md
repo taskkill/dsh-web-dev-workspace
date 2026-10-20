@@ -40,6 +40,17 @@ All notable changes to this project are documented here.
   containment checks as the other file operations; open tabs, favorites and
   expanded folders follow a move.
 
+### SSH remote folders
+
+- Add remote workspaces with `ssh://user@host:port/absolute/path` from the
+  workspace picker or the address bar, and browse/edit/save, create, rename,
+  delete, copy/move, upload and download over SFTP.
+- Authentication uses the SSH agent or `~/.ssh` keys/config; passwords are never
+  collected or stored. The optional `ssh2` dependency is loaded lazily, so the
+  rest of the plugin works without it.
+- Remote roots are confined to their absolute path, Git is hidden for them, and
+  host keys are not pinned (documented trade-off).
+
 ## 1.0.0 — 2026-10-20
 
 Initial open-source release.

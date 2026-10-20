@@ -100,6 +100,18 @@ DSH Side 把 Harness Web UI 变成一个真正可用的编码工作区：它在�
 - 网络操作只使用 Host 已有的 SSH 密钥 / Git 凭据助手，插件不收集也不保存凭据；无法交互输入时直接报错而不是挂起。拉取不做自动合并/变基（默认 `--ff-only`），推送不使用 force。
 - Git 视图要求工作区就是仓库**根目录**；打开子目录时会提示，而不是在根目录之外暂存。
 
+### SSH 远程目录
+
+- 通过工作区选择器底部的 **添加 SSH 远程…**（或地址栏输入 `ssh://user@host:22/绝对路径`）
+  把远程目录加入工作区；切换、收藏、最近目录等行为与本地目录一致。
+- 通过 SFTP 浏览、打开/保存文本、新建、重命名、删除、复制/移动和上传/下载；拖拽上传同样适用于远程目录。
+- 认证使用 SSH agent 或 `~/.ssh` 下的私钥（会读取 `~/.ssh/config` 的 HostName/User/Port/IdentityFile）；
+  不提供密码输入，也不保存任何凭据。
+- SSH 支持依赖 `ssh2`：在 `dsh-side-plugin/` 目录执行一次 `npm install`。未安装时其它功能不受影响，
+  只有 SSH 操作会提示安装。
+- **主机密钥未做固定校验**（ssh2 接受连接时提供的密钥）；请只在可信网络/主机上使用远程目录。
+- Git 视图仅支持本地仓库；SSH 工作区会隐藏 Git 按钮。
+
 ### 截图预览
   <img alt="dshwfb" src="./docs/1.png" width="500px" />
   <img alt="dshwfb" src="./docs/2.png" width="500px" />
@@ -114,8 +126,9 @@ DSH Side 把 Harness Web UI 变成一个真正可用的编码工作区：它在�
 - 带 **Web** profile 和 **插件管理器** 页面的 DeepSeek Harness。
 - 已在 **Linux** 上测试：DeepSeek Harness **`0.2.1-rc.2`**。更高版本可能可用，但
   Harness 的 slot/service API 不保证稳定；macOS/Windows 宿主未做显式验证。
-- 无需构建、无额外 Node 依赖；三个 bundle 都是普通 ESM，直接在 Harness Host 中运行。
+- 无需构建；三个 bundle 都是普通 ESM，直接在 Harness Host 中运行。SSH 远程目录是可选功能，需要 `ssh2`（在 `dsh-side-plugin/` 执行 `npm install`），其余功能不依赖额外包。
 - 较新的现代浏览器（使用了 `color-mix`、`ResizeObserver`、Clipboard API）。
+- SSH 远程目录：在 `dsh-side-plugin/` 执行 `npm install` 安装 `ssh2`，并准备好 SSH agent 或 `~/.ssh` 私钥。
 - Git 功能需要 Host 的 `PATH` 中有 `git`，并配置提交身份（`user.name` / `user.email`）。
 
 仓库包含**三个 bundle**：
@@ -316,6 +329,7 @@ DSH Side 是**本地优先**插件，拥有文件系统访问能力。启用前�
   页面地址作为 Referer 发送给第三方主机。
 - **模型不可见**：不注册工具、提示词、系统提示或会话事件；在编辑器中打开文件不会
   写入对话。
+- **SSH 远程目录**：认证只使用 Host 上的 SSH agent 或 `~/.ssh` 私钥，插件不收集/保存密码；`ssh2` 接受连接时提供的主机密钥（未做 known_hosts 固定校验），请只在可信主机/网络使用。
 - **Git 网络操作是显式的**：获取/拉取/推送只作用于仓库已配置的远程；拉取默认仅快进，推送不使用
   force，不提供自动 merge/rebase，也不会保存凭据。Git 在选中的仓库内执行，仓库本地配置、
   hooks（commit/push）或 fsmonitor 可能执行代码；请只在信任的仓库中使用 Git。

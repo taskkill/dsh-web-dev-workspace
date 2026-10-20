@@ -17,15 +17,22 @@
 import { createReadStream, promises as fsp } from 'node:fs'
 import path from 'node:path'
 import { Readable } from 'node:stream'
+import * as ssh from './ssh.js'
 
 /** Exact URL below `/api` that this plugin owns. */
 const ROUTE = '/api/dsh-side'
+
+/** Binary upload route for SSH workspaces. */
+const ROUTE_SSH_UPLOAD = '/api/dsh-side-ssh'
 
 /** Largest file the editor will open as UTF-8 text. */
 const MAX_TEXT_BYTES = 8 * 1024 * 1024
 
 /** Largest file the raw passthrough will stream (PDF, images, downloads). */
 const MAX_RAW_BYTES = 128 * 1024 * 1024
+
+/** Largest binary upload accepted for an SSH workspace. */
+const MAX_SSH_UPLOAD_BYTES = 128 * 1024 * 1024
 
 /** Stable, descriptive failure carrying a machine-readable code. */
 class SideError extends Error {
@@ -69,25 +76,30 @@ const CONTENT_TYPES = new Map([
 export function apply(ctx) {
   ctx.effect(() => {
     let disposed = false
-    let disposeRoute = () => {}
-    const registration = ctx.connection.fetch.register({
-      path: ROUTE,
-      methods: ['GET', 'POST'],
-      requestBody: 'buffered',
-      fetch: (request) => handleRequest(ctx, request),
-    })
-    registration.then(
-      (dispose) => {
-        if (disposed) dispose()
-        else disposeRoute = dispose
-      },
-      (error) => {
-        console.error('dsh-side: failed to register its API route', error)
-      },
-    )
+    const disposers = []
+    const register = (route, methods, handler, label) => {
+      const registration = ctx.connection.fetch.register({
+        path: route,
+        methods,
+        requestBody: 'buffered',
+        fetch: handler,
+      })
+      registration.then(
+        (dispose) => {
+          if (disposed) dispose()
+          else disposers.push(dispose)
+        },
+        (error) => {
+          console.error(`dsh-side: failed to register ${label}`, error)
+        },
+      )
+    }
+    register(ROUTE, ['GET', 'POST'], (request) => handleRequest(ctx, request), 'its API route')
+    register(ROUTE_SSH_UPLOAD, ['POST'], (request) => handleSshUpload(request), 'the SSH upload route')
     return () => {
       disposed = true
-      disposeRoute()
+      for (const dispose of disposers) dispose()
+      void ssh.closeAll()
     }
   }, 'dsh-side: authenticated file API')
 }
@@ -114,11 +126,17 @@ async function handleRequest(ctx, request) {
     if (body === null || typeof body !== 'object' || typeof body.op !== 'string') {
       return json({ ok: false, error: failure('bad-request', '缺少操作名 op') }, 400)
     }
+    if (body.op === 'sshTest') {
+      return json({ ok: true, value: await ssh.test(typeof body.spec === 'string' ? body.spec : '') })
+    }
     const value = await dispatch(ctx, body.op, body)
     return json({ ok: true, value })
   } catch (error) {
     if (error instanceof SideError) {
       return json({ ok: false, error: { code: error.code, message: error.message, details: error.details } }, 200)
+    }
+    if (error !== null && typeof error === 'object' && typeof error.sideCode === 'string') {
+      return json({ ok: false, error: { code: error.sideCode, message: error.message } }, 200)
     }
     console.error('dsh-side: file API failed', error)
     return json({ ok: false, error: failure('internal', error instanceof Error ? error.message : String(error)) }, 200)
@@ -207,6 +225,10 @@ async function listRoots(ctx) {
  * @returns canonical root path.
  */
 async function resolveRoot(ctx, requested) {
+  if (ssh.isSshRoot(requested)) {
+    ssh.parseSshRoot(requested)
+    return requested
+  }
   const { roots } = await listRoots(ctx)
   if (roots.length === 0) throw new SideError('no-root', '没有可用的工作区目录')
   const wanted = typeof requested === 'string' && requested.length > 0 ? requested : roots[0].path
@@ -292,6 +314,7 @@ function expectedVersion(body) {
 /** List one directory. */
 async function listDirectory(ctx, body) {
   const root = await resolveRoot(ctx, body.root)
+  if (ssh.isSshRoot(root)) return ssh.list(root, body)
   const absolute = childPath(root, typeof body.path === 'string' ? body.path : '')
   const target = await inspectTarget(root, absolute)
   if (!target.exists) throw new SideError('not-found', '目录不存在')
@@ -314,6 +337,7 @@ async function listDirectory(ctx, body) {
 /** One file's metadata. */
 async function statPath(ctx, body) {
   const root = await resolveRoot(ctx, body.root)
+  if (ssh.isSshRoot(root)) return ssh.stat(root, body)
   const absolute = childPath(root, body.path)
   const target = await inspectTarget(root, absolute)
   if (!target.exists) throw new SideError('not-found', '文件不存在')
@@ -324,6 +348,7 @@ async function statPath(ctx, body) {
 /** Read one UTF-8 text file. */
 async function readText(ctx, body) {
   const root = await resolveRoot(ctx, body.root)
+  if (ssh.isSshRoot(root)) return ssh.readText(root, body)
   const absolute = childPath(root, body.path)
   const target = await inspectTarget(root, absolute)
   if (!target.exists) throw new SideError('not-found', '文件不存在')
@@ -340,6 +365,7 @@ async function readText(ctx, body) {
 /** Create or replace one UTF-8 text file, optionally guarded by a version. */
 async function writeText(ctx, body) {
   const root = await resolveRoot(ctx, body.root)
+  if (ssh.isSshRoot(root)) return ssh.writeText(root, body)
   const absolute = childPath(root, body.path)
   if (typeof body.content !== 'string') throw new SideError('bad-content', '文件内容必须是字符串')
   const encoded = Buffer.byteLength(body.content, 'utf8')
@@ -362,6 +388,7 @@ async function writeText(ctx, body) {
 /** Create one empty file; fails when the name is taken. */
 async function createFile(ctx, body) {
   const root = await resolveRoot(ctx, body.root)
+  if (ssh.isSshRoot(root)) return ssh.create(root, { ...body, type: 'file' })
   const absolute = childPath(root, body.path)
   const target = await inspectTarget(root, absolute)
   if (target.exists) throw new SideError('exists', '同名文件或目录已存在')
@@ -373,6 +400,7 @@ async function createFile(ctx, body) {
 /** Create one directory; fails when the name is taken. */
 async function createDir(ctx, body) {
   const root = await resolveRoot(ctx, body.root)
+  if (ssh.isSshRoot(root)) return ssh.create(root, { ...body, type: 'directory' })
   const absolute = childPath(root, body.path)
   const target = await inspectTarget(root, absolute)
   if (target.exists) throw new SideError('exists', '同名文件或目录已存在')
@@ -383,6 +411,7 @@ async function createDir(ctx, body) {
 /** Rename or move one entry inside the root. */
 async function renamePath(ctx, body) {
   const root = await resolveRoot(ctx, body.root)
+  if (ssh.isSshRoot(root)) return ssh.rename(root, body)
   const fromAbsolute = childPath(root, body.from)
   if (fromAbsolute === root) throw new SideError('protected', '不能重命名工作区根目录')
   let fromInfo
@@ -407,6 +436,7 @@ async function renamePath(ctx, body) {
 /** Move one entry to another directory inside the root. */
 async function movePath(ctx, body) {
   const root = await resolveRoot(ctx, body.root)
+  if (ssh.isSshRoot(root)) return ssh.rename(root, body)
   const fromAbsolute = childPath(root, body.from)
   if (fromAbsolute === root) throw new SideError('protected', '不能移动工作区根目录')
   let info
@@ -436,6 +466,7 @@ async function movePath(ctx, body) {
 /** Copy one entry; `rename: true` picks a free "name (n)" destination. */
 async function copyPath(ctx, body) {
   const root = await resolveRoot(ctx, body.root)
+  if (ssh.isSshRoot(root)) return ssh.copy(root, body)
   const fromAbsolute = childPath(root, body.from)
   if (fromAbsolute === root) throw new SideError('protected', '不能复制工作区根目录')
   let info
@@ -527,6 +558,7 @@ function relativeOf(root, absolute) {
 /** Remove one file or directory recursively. */
 async function deletePath(ctx, body) {
   const root = await resolveRoot(ctx, body.root)
+  if (ssh.isSshRoot(root)) return ssh.remove(root, body)
   const absolute = childPath(root, body.path)
   if (absolute === root) throw new SideError('protected', '不能删除工作区根目录')
   let info
@@ -563,6 +595,22 @@ async function handleGet(ctx, request) {
     }
     const root = await resolveRoot(ctx, url.searchParams.get('root') ?? '')
     const relative = url.searchParams.get('path') ?? ''
+    if (ssh.isSshRoot(root)) {
+      const download = url.searchParams.get('download') === '1'
+      const opened = await ssh.openRead(root, relative)
+      const type = CONTENT_TYPES.get(path.posix.extname(opened.name).toLowerCase()) ?? 'application/octet-stream'
+      return new Response(Readable.toWeb(opened.stream), {
+        status: 200,
+        headers: {
+          'content-type': type,
+          'content-length': String(opened.size),
+          'content-disposition': `${download ? 'attachment' : 'inline'}; filename*=UTF-8''${encodeURIComponent(opened.name)}`,
+          'cache-control': 'no-store',
+          'x-content-type-options': 'nosniff',
+          'referrer-policy': 'no-referrer',
+        },
+      })
+    }
     const absolute = childPath(root, relative)
     const target = await inspectTarget(root, absolute)
     if (!target.exists) return json({ ok: false, error: failure('not-found', '文件不存在') }, 404)
@@ -584,8 +632,42 @@ async function handleGet(ctx, request) {
     })
   } catch (error) {
     if (error instanceof SideError) return json({ ok: false, error: { code: error.code, message: error.message } }, 400)
+    if (error !== null && typeof error === 'object' && typeof error.sideCode === 'string') {
+      return json({ ok: false, error: { code: error.sideCode, message: error.message } }, 400)
+    }
     console.error('dsh-side: raw read failed', error)
     return json({ ok: false, error: failure('internal', error instanceof Error ? error.message : String(error)) }, 500)
+  }
+}
+
+/** Binary upload into one SSH workspace path. */
+async function handleSshUpload(request) {
+  try {
+    if (request.method !== 'POST') return json({ ok: false, error: failure('bad-method', '仅支持 POST') }, 405)
+    const url = new URL(request.url)
+    const root = url.searchParams.get('root') ?? ''
+    const relative = url.searchParams.get('path') ?? ''
+    if (!ssh.isSshRoot(root)) throw new SideError('bad-root', '只支持 SSH 工作区')
+    if (relative.length === 0) throw new SideError('bad-path', '缺少上传路径')
+    ssh.parseSshRoot(root)
+    const declared = Number(request.headers.get('content-length') ?? '0')
+    if (Number.isFinite(declared) && declared > MAX_SSH_UPLOAD_BYTES) {
+      throw new SideError('too-large', `文件超过 ${String(Math.round(MAX_SSH_UPLOAD_BYTES / 1024 / 1024))} MB 上限`)
+    }
+    const bytes = Buffer.from(await request.arrayBuffer())
+    if (bytes.length === 0) throw new SideError('empty', '文件内容为空')
+    if (bytes.length > MAX_SSH_UPLOAD_BYTES) {
+      throw new SideError('too-large', `文件超过 ${String(Math.round(MAX_SSH_UPLOAD_BYTES / 1024 / 1024))} MB 上限`)
+    }
+    const value = await ssh.upload(root, relative, bytes)
+    return json({ ok: true, value })
+  } catch (error) {
+    if (error instanceof SideError) return json({ ok: false, error: { code: error.code, message: error.message } }, 200)
+    if (error !== null && typeof error === 'object' && typeof error.sideCode === 'string') {
+      return json({ ok: false, error: { code: error.sideCode, message: error.message } }, 200)
+    }
+    console.error('dsh-side: SSH upload failed', error)
+    return json({ ok: false, error: failure('internal', error instanceof Error ? error.message : String(error)) }, 200)
   }
 }
 

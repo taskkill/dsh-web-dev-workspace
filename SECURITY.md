@@ -49,6 +49,9 @@ General UI bugs, missing features and questions belong in public issues.
   prompts are disabled, and the plugin stores no credentials (the Host's SSH key or
   credential helper is the only authentication path). Commits and pushes run the
   repository's configured hooks.
+- SSH remote folders authenticate with the Host's SSH agent or `~/.ssh` keys and
+  never collect passwords. `ssh2` does not pin host keys, so connect only to hosts
+  you trust.
 - The plugin registers no model-facing tools, prompts or session events.
 
 ## Before you publish

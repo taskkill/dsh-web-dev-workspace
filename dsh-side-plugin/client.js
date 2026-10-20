@@ -31,6 +31,8 @@ window.__ModuleLoader__.load({
     const HIDDEN_ROOTS_KEY = 'dsh-side:hidden-roots'
     const WRAP_KEY = 'dsh-side:word-wrap'
     const DRAG_TYPE = 'application/x-dsh-side-path'
+    const SSH_ROOTS_KEY = 'dsh-side:ssh-roots'
+    const SSH_UPLOAD_PATH = 'api/dsh-side-ssh'
 
     /** Stable empty list for a slot without the workspaces hook. */
     const EMPTY_WORKSPACES = []
@@ -98,6 +100,16 @@ window.__ModuleLoader__.load({
       'menu.refreshFolder': '刷新此目录',
       'menu.jumpRoot': '回到工作区根目录',
       'workspace.label': '工作区',
+      'ssh.add': '添加 SSH 远程…',
+      'ssh.title': '添加 SSH 远程目录',
+      'ssh.hint': '填写 ssh://user@host:port/绝对路径。认证使用 SSH agent 或 ~/.ssh 下的私钥；插件不保存密码。',
+      'ssh.badSpec': 'SSH 地址无效，应形如 ssh://user@host:22/var/www',
+      'ssh.notDirectory': '该路径不是远程目录',
+      'ssh.test': '测试连接',
+      'ssh.testing': '测试中…',
+      'ssh.connect': '连接并添加',
+      'ssh.checked': '连接成功：{name}',
+      'ssh.connectFailed': '连接 SSH 失败：{message}',
       welcomeTitle: '文件工作区',
       welcomeHint: '在左侧资源管理器中浏览目录。单击文件即可打开，单击目录选中，双击目录展开或收起。',
       welcomeShortcuts: '⌘/Ctrl + S 保存 · F2 重命名 · Delete 删除',
@@ -339,6 +351,16 @@ window.__ModuleLoader__.load({
       'menu.refreshFolder': 'Refresh this folder',
       'menu.jumpRoot': 'Go to the workspace root',
       'workspace.label': 'Workspace',
+      'ssh.add': 'Add SSH remote…',
+      'ssh.title': 'Add SSH remote folder',
+      'ssh.hint': 'Enter ssh://user@host:port/absolute/path. Authentication uses the SSH agent or keys under ~/.ssh; passwords are never stored.',
+      'ssh.badSpec': 'Invalid SSH address; use ssh://user@host:22/var/www',
+      'ssh.notDirectory': 'That path is not a remote directory',
+      'ssh.test': 'Test connection',
+      'ssh.testing': 'Testing…',
+      'ssh.connect': 'Connect and add',
+      'ssh.checked': 'Connected: {name}',
+      'ssh.connectFailed': 'SSH connection failed: {message}',
       welcomeTitle: 'Workspace Files',
       welcomeHint: 'Browse directories in the Explorer. Click a file to open it, click a folder to select it, and double-click a folder to expand or collapse it.',
       welcomeShortcuts: '⌘/Ctrl + S save · F2 rename · Delete remove',
@@ -599,8 +621,15 @@ window.__ModuleLoader__.load({
       return ioUrl('download', { root, path: relative }).href
     }
 
+    function sshUploadUrl(root, relative) {
+      const url = new URL(SSH_UPLOAD_PATH, document.baseURI)
+      url.searchParams.set('root', root)
+      url.searchParams.set('path', relative)
+      return url
+    }
+
     async function uploadToWorkspace(root, relative, file) {
-      const url = ioUrl('upload', { root, path: relative })
+      const url = isSshRootPath(root) ? sshUploadUrl(root, relative) : ioUrl('upload', { root, path: relative })
       let response
       try {
         response = await fetch(url.href, {
@@ -1879,6 +1908,38 @@ window.__ModuleLoader__.load({
         return result
       } catch {
         return {}
+      }
+    }
+
+    function isSshRootPath(value) {
+      return typeof value === 'string' && /^ssh:\/\//iu.test(value)
+    }
+
+    function readSshRoots() {
+      const raw = readStorage(SSH_ROOTS_KEY)
+      if (typeof raw !== 'string' || raw.length === 0) return []
+      try {
+        const parsed = JSON.parse(raw)
+        return Array.isArray(parsed)
+          ? [...new Set(parsed.filter((item) => isSshRootPath(item) && item.length <= 4096))]
+          : []
+      } catch {
+        return []
+      }
+    }
+
+    function writeSshRoots(list) {
+      writeStorage(SSH_ROOTS_KEY, JSON.stringify([...new Set(list.filter((item) => isSshRootPath(item)))]))
+    }
+
+    function sshRootTitle(spec) {
+      try {
+        const url = new URL(spec)
+        const remotePath = decodeURIComponent(url.pathname)
+        const base = remotePath.split('/').filter((part) => part.length > 0).at(-1)
+        return base === undefined ? `${url.host}` : `${url.host}/${base}`
+      } catch {
+        return spec
       }
     }
 
@@ -3507,6 +3568,11 @@ window.__ModuleLoader__.load({
         const [moreAt, setMoreAt] = useState({ top: 0, left: 0 })
         const [clipboard, setClipboard] = useState(null)
         const [dropTarget, setDropTarget] = useState(null)
+        const [sshOpen, setSshOpen] = useState(false)
+        const [sshSpec, setSshSpec] = useState('')
+        const [sshBusy, setSshBusy] = useState(false)
+        const [sshError, setSshError] = useState(null)
+        const [sshCheck, setSshCheck] = useState(null)
         const [paneView, setPaneView] = useState('files')
         const [uploading, setUploading] = useState(false)
         const rootRef = useRef(null)
@@ -3662,7 +3728,11 @@ window.__ModuleLoader__.load({
           try {
             const value = await call('roots')
             const hidden = new Set(Array.isArray(previous.hiddenRoots) ? previous.hiddenRoots : [])
-            const roots = (Array.isArray(value?.roots) ? [...value.roots] : []).filter((entry) => !hidden.has(entry.path))
+            const localRoots = (Array.isArray(value?.roots) ? [...value.roots] : []).filter((entry) => !hidden.has(entry.path))
+            const sshRoots = readSshRoots()
+              .filter((spec) => !hidden.has(spec))
+              .map((spec) => ({ path: spec, title: sshRootTitle(spec) }))
+            const roots = [...localRoots, ...sshRoots.filter((entry) => !localRoots.some((local) => local.path === entry.path))]
             let root = previous.root
             if (root === null || !roots.some((entry) => entry.path === root)) {
               const saved = readStorage(ROOT_KEY)
@@ -3767,6 +3837,7 @@ window.__ModuleLoader__.load({
             selected: null,
             tabs: [],
             active: null,
+            paneView: 'files',
             startError: null,
           }))
           rememberRoot(nextRoot)
@@ -3791,6 +3862,122 @@ window.__ModuleLoader__.load({
             return
           }
           applyRoot(nextRoot)
+        }
+
+        function openSshDialog() {
+          setPickerOpen(false)
+          setSshSpec('')
+          setSshError(null)
+          setSshCheck(null)
+          setSshOpen(true)
+        }
+
+        function validSshSpec(spec) {
+          if (!isSshRootPath(spec)) return false
+          try {
+            const url = new URL(spec)
+            return url.protocol === 'ssh:' && url.hostname.length > 0 && decodeURIComponent(url.pathname).startsWith('/')
+          } catch {
+            return false
+          }
+        }
+
+        async function probeSsh(spec) {
+          const value = await call('sshTest', { spec })
+          if (value === null || typeof value !== 'object' || value.type !== 'directory') {
+            throw new Error(t('ssh.notDirectory'))
+          }
+          return value
+        }
+
+        async function testSsh() {
+          if (sshBusy) return
+          const spec = sshSpec.trim()
+          if (!validSshSpec(spec)) {
+            setSshError(t('ssh.badSpec'))
+            return
+          }
+          setSshBusy(true)
+          setSshError(null)
+          setSshCheck(null)
+          try {
+            const value = await probeSsh(spec)
+            setSshCheck(value.name ?? sshRootTitle(spec))
+          } catch (error) {
+            setSshError(errorText(error))
+          } finally {
+            setSshBusy(false)
+          }
+        }
+
+        function activateRootEntry(entry, roots) {
+          if (entry.path === store.get().root) return
+          const apply = () => applyRoot(entry.path, roots)
+          if (store.get().tabs.some((tab) => tab.dirty)) {
+            setModal({
+              title: t('modal.switchRootTitle'),
+              message: t('modal.switchRootMessage'),
+              confirmLabel: t('action.discard'),
+              danger: true,
+              onConfirm: () => {
+                setModal(null)
+                apply()
+              },
+            })
+            return
+          }
+          apply()
+        }
+
+        async function addSsh() {
+          if (sshBusy) return
+          const spec = sshSpec.trim()
+          if (!validSshSpec(spec)) {
+            setSshError(t('ssh.badSpec'))
+            return
+          }
+          setSshBusy(true)
+          setSshError(null)
+          try {
+            const value = await probeSsh(spec)
+            const entry = { path: spec, title: sshRootTitle(spec) }
+            const roots = [...store.get().roots.filter((item) => item.path !== spec), entry]
+            writeSshRoots([...readSshRoots(), spec])
+            unhideRoot(spec)
+            setSshCheck(value.name ?? entry.title)
+            setSshOpen(false)
+            activateRootEntry(entry, roots)
+          } catch (error) {
+            setSshError(errorText(error))
+          } finally {
+            setSshBusy(false)
+          }
+        }
+
+        function removeSshRoot(spec) {
+          writeSshRoots(readSshRoots().filter((item) => item !== spec))
+          const current = store.get()
+          const favorites = { ...current.favorites }
+          delete favorites[spec]
+          persistFavorites(favorites)
+          const roots = current.roots.filter((entry) => entry.path !== spec)
+          store.set((snapshot) => ({ ...snapshot, roots, favorites }))
+          if (current.root === spec) {
+            const fallback = roots[0]
+            if (fallback !== undefined) applyRoot(fallback.path, roots)
+            else {
+              store.set((snapshot) => ({
+                ...snapshot,
+                root: null,
+                rootTitle: '',
+                levels: {},
+                expanded: {},
+                tabs: [],
+                active: null,
+                selected: null,
+              }))
+            }
+          }
         }
 
         function workspaceItemFor(rootPath) {
@@ -3853,6 +4040,11 @@ window.__ModuleLoader__.load({
         }
 
         async function removeWorkspace(root) {
+          if (isSshRootPath(root.path)) {
+            removeSshRoot(root.path)
+            showToast(t('toast.workspaceRemoved'))
+            return
+          }
           const item = workspaceItemFor(root.path)
           const service = ctx.get('workspaces')
           if (item !== undefined && (service === undefined || typeof service.delete !== 'function')) {
@@ -4150,7 +4342,7 @@ window.__ModuleLoader__.load({
           if (root === null || typeof relative !== 'string' || relative.length === 0) return
           const anchor = downloadAnchorRef.current
           if (anchor === null) return
-          anchor.href = ioDownloadUrl(root, relative)
+          anchor.href = isSshRootPath(root) ? `${rawUrl(root, relative)}&download=1` : ioDownloadUrl(root, relative)
           anchor.download = basename(relative)
           anchor.target = '_blank'
           anchor.rel = 'noopener noreferrer'
@@ -4268,6 +4460,25 @@ window.__ModuleLoader__.load({
         async function goToAddress() {
           const raw = address.trim()
           if (raw.length === 0) return
+          if (isSshRootPath(raw)) {
+            if (!validSshSpec(raw)) {
+              setBanner({ kind: 'error', message: t('ssh.badSpec') })
+              return
+            }
+            try {
+              const value = await probeSsh(raw)
+              const entry = { path: raw, title: sshRootTitle(raw) }
+              const roots = [...store.get().roots.filter((item) => item.path !== raw), entry]
+              writeSshRoots([...readSshRoots(), raw])
+              unhideRoot(raw)
+              setAddress('')
+              setSshCheck(value.name ?? entry.title)
+              activateRootEntry(entry, roots)
+            } catch (error) {
+              setBanner({ kind: 'error', message: t('ssh.connectFailed', { message: errorText(error) }) })
+            }
+            return
+          }
           const isAbsolute = isAbsolutePath(raw)
           const root = store.get().root
           if (!isAbsolute) {
@@ -5296,7 +5507,17 @@ window.__ModuleLoader__.load({
 
         function renderWorkspaceSelect() {
           if (state.roots.length === 0) {
-            return h('span', { className: 'ds-workspace-empty' }, t('root.none'))
+            return h(
+              'div',
+              { className: 'ds-workspace-wrap' },
+              h('span', { className: 'ds-workspace-empty' }, t('root.none')),
+              h(
+                'button',
+                { type: 'button', className: 'ds-ws-add', onClick: openSshDialog },
+                h(PlusIcon),
+                t('ssh.add'),
+              ),
+            )
           }
           return h(
             'div',
@@ -5359,6 +5580,13 @@ window.__ModuleLoader__.load({
                       ),
                     )
                   }),
+                  h('div', { className: 'ds-menu-sep' }),
+                  h(
+                    'button',
+                    { type: 'button', className: 'ds-ws-add', onClick: openSshDialog },
+                    h(PlusIcon),
+                    t('ssh.add'),
+                  ),
                 )
               : null,
           )
@@ -5632,7 +5860,9 @@ window.__ModuleLoader__.load({
                         )
                       : null,
                   ),
-                  h(
+                  isSshRootPath(state.root)
+                    ? null
+                    : h(
                     'button',
                     {
                       type: 'button',
@@ -6165,6 +6395,70 @@ window.__ModuleLoader__.load({
                   h(CopyIcon),
                 ),
               ),
+          sshOpen
+            ? h(
+                'div',
+                {
+                  className: 'ds-modal-backdrop',
+                  onPointerDown: (event) => {
+                    if (event.target === event.currentTarget && !sshBusy) setSshOpen(false)
+                  },
+                },
+                h(
+                  'div',
+                  { className: 'ds-modal ds-ssh-modal', role: 'dialog', 'aria-modal': true },
+                  h('div', { className: 'ds-modal-title' }, t('ssh.title')),
+                  h('div', { className: 'ds-modal-text' }, t('ssh.hint')),
+                  h('input', {
+                    className: 'ds-ssh-input',
+                    value: sshSpec,
+                    placeholder: 'ssh://user@host:22/var/www',
+                    spellCheck: false,
+                    autoFocus: true,
+                    disabled: sshBusy,
+                    onChange: (event) => {
+                      setSshSpec(event.target.value)
+                      setSshError(null)
+                      setSshCheck(null)
+                    },
+                    onKeyDown: (event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault()
+                        void addSsh()
+                      }
+                    },
+                  }),
+                  sshError === null ? null : h('div', { className: 'ds-errorline' }, sshError),
+                  sshCheck === null
+                    ? null
+                    : h('div', { className: 'ds-ssh-ok' }, t('ssh.checked', { name: sshCheck })),
+                  h(
+                    'div',
+                    { className: 'ds-modal-actions' },
+                    h(
+                      'button',
+                      { type: 'button', className: 'ds-btn', disabled: sshBusy, onClick: () => void testSsh() },
+                      sshBusy ? t('ssh.testing') : t('ssh.test'),
+                    ),
+                    h(
+                      'button',
+                      { type: 'button', className: 'ds-btn', disabled: sshBusy, onClick: () => setSshOpen(false) },
+                      t('action.cancel'),
+                    ),
+                    h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'ds-btn ds-btn-primary',
+                        disabled: sshBusy,
+                        onClick: () => void addSsh(),
+                      },
+                      t('ssh.connect'),
+                    ),
+                  ),
+                ),
+              )
+            : null,
           modal === null
             ? null
             : h(
@@ -6323,6 +6617,23 @@ window.__ModuleLoader__.load({
 .ds-ws-row:hover .ds-ws-remove, .ds-ws-row:focus-within .ds-ws-remove { opacity: 1; }
 .ds-ws-remove:hover:not(:disabled) { background: color-mix(in srgb, var(--dsw-alias-label-primary) 10%, transparent); color: var(--dsw-alias-state-error-primary); }
 .ds-ws-remove:disabled { opacity: 0.2; cursor: default; }
+.ds-ws-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-brand-primary);
+  font: inherit;
+  font-size: 11.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.ds-ws-add:hover { background: color-mix(in srgb, var(--dsw-alias-brand-primary) 10%, transparent); }
+.ds-ws-add svg { flex: 0 0 auto; width: 13px; height: 13px; }
 .ds-workspace-empty { color: var(--dsw-alias-label-secondary); font-size: 12px; }
 .ds-address-wrap {
   display: flex;
@@ -7491,6 +7802,22 @@ window.__ModuleLoader__.load({
   padding: 24px;
   background: color-mix(in srgb, var(--dsw-alias-label-primary) 30%, transparent);
 }
+.ds-ssh-modal { width: min(560px, 100%); }
+.ds-ssh-input {
+  width: 100%;
+  height: 32px;
+  margin-top: 8px;
+  padding: 0 8px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font-family: var(--ds-mono);
+  font-size: 12px;
+  outline: none;
+}
+.ds-ssh-input:focus { border-color: var(--dsw-alias-brand-primary); }
+.ds-ssh-ok { margin-top: 8px; color: var(--dsw-alias-state-success-primary); font-size: 11.5px; }
 .ds-modal {
   width: min(430px, 100%);
   padding: 18px;

@@ -12,6 +12,7 @@
   },
   "files": [
     "index.js",
+    "ssh.js",
     "client.js",
     "cordis.patch.yml",
     "locale/*.json",
@@ -37,5 +38,8 @@
     "file-manager",
     "code-editor",
     "git"
-  ]
+  ],
+  "dependencies": {
+    "ssh2": "^1.17.0"
+  }
 }
