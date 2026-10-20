@@ -2894,7 +2894,12 @@ window.__ModuleLoader__.load({
                         void loadCompare(next)
                       },
                     },
-                    (compareRefs === null ? compareBase : compareOptions(compareRefs))
+                    (compareRefs === null
+                      ? compareBase.length > 0
+                        ? [compareBase]
+                        : []
+                      : compareOptions(compareRefs)
+                    )
                       .filter((name) => typeof name === 'string' && name.length > 0)
                       .map((name) => h('option', { key: name, value: name }, name)),
                   ),
@@ -6162,7 +6167,7 @@ window.__ModuleLoader__.load({
   overflow-wrap: anywhere;
 }
 .ds-git-error-text { flex: 1 1 auto; }
-.ds-git-diff-modal {
+.ds-modal.ds-git-diff-modal {
   display: flex;
   flex-direction: column;
   width: min(920px, 100%);
@@ -6215,7 +6220,7 @@ window.__ModuleLoader__.load({
   padding: 10px 14px;
   border-top: 1px solid var(--dsw-alias-border-l1);
 }
-.ds-git-branch-modal { width: min(420px, 100%); }
+.ds-modal.ds-git-branch-modal { width: min(420px, 100%); }
 .ds-git-branch-list { max-height: 300px; overflow: auto; margin: 8px 0; }
 .ds-git-branch-item {
   display: flex;
@@ -6237,7 +6242,7 @@ window.__ModuleLoader__.load({
 .ds-git-branch-item[data-current="true"] { color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 10%, transparent); }
 .ds-git-branch-item-name { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ds-git-branch-check { color: var(--dsw-alias-brand-primary); font-size: 13px; }
-.ds-git-compare-modal {
+.ds-modal.ds-git-compare-modal {
   display: flex;
   flex-direction: column;
   width: min(760px, 100%);
