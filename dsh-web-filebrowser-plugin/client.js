@@ -1,38 +1,60 @@
 window.__ModuleLoader__.load({
-  id: '@local/dsh-side',
+  id: '@local/dsh-web-filebrowser',
   factory(require) {
     const React = require('react')
     const h = React.createElement
     const { useEffect, useMemo, useRef, useState } = React
 
     /** Locale namespace owned by this plugin. */
-    const NS = 'dsh-side'
+    const NS = 'dsh-web-filebrowser'
 
     /** Right-sidebar tab-type identity and kind for the guide entry. */
-    const IDE_ID = '@local/dsh-side'
-    const IDE_KIND = 'dsh-side'
+    const IDE_ID = '@local/dsh-web-filebrowser'
+    const IDE_KIND = 'dsh-web-filebrowser'
 
     /** Absolute route below `/api` served by the Host half. */
-    const API_PATH = 'api/dsh-side'
+    const API_PATH = 'api/dsh-web-filebrowser'
 
     /** Binary upload/download companion route (host bridge bundle). */
-    const IO_PATH = 'api/dsh-side-io'
+    const IO_PATH = 'api/dsh-web-filebrowser-io'
     const MAX_UPLOAD_BYTES = 128 * 1024 * 1024
 
     /** Local Git companion route (host bridge bundle). */
-    const GIT_PATH = 'api/dsh-side-git'
+    const GIT_PATH = 'api/dsh-web-filebrowser-git'
 
     /** Locale-store keys. */
-    const ROOT_KEY = 'dsh-side:root'
-    const WIDTH_KEY = 'dsh-side:tree-width'
-    const HIDDEN_KEY = 'dsh-side:show-hidden'
-    const FAVORITES_KEY = 'dsh-side:favorites'
-    const FAVORITES_OPEN_KEY = 'dsh-side:favorites-open'
-    const HIDDEN_ROOTS_KEY = 'dsh-side:hidden-roots'
-    const WRAP_KEY = 'dsh-side:word-wrap'
-    const DRAG_TYPE = 'application/x-dsh-side-path'
-    const SSH_ROOTS_KEY = 'dsh-side:ssh-roots'
-    const SSH_UPLOAD_PATH = 'api/dsh-side-ssh'
+    const ROOT_KEY = 'dsh-web-filebrowser:root'
+    const WIDTH_KEY = 'dsh-web-filebrowser:tree-width'
+    const HIDDEN_KEY = 'dsh-web-filebrowser:show-hidden'
+    const FAVORITES_KEY = 'dsh-web-filebrowser:favorites'
+    const FAVORITES_OPEN_KEY = 'dsh-web-filebrowser:favorites-open'
+    const HIDDEN_ROOTS_KEY = 'dsh-web-filebrowser:hidden-roots'
+    const WRAP_KEY = 'dsh-web-filebrowser:word-wrap'
+    const DRAG_TYPE = 'application/x-dsh-web-filebrowser-path'
+    const SSH_ROOTS_KEY = 'dsh-web-filebrowser:ssh-roots'
+    const SSH_UPLOAD_PATH = 'api/dsh-web-filebrowser-ssh'
+
+    /**
+     * Copy preferences saved under the old prefix to the new
+     * dsh-web-filebrowser keys. Existing new keys win; old keys are left in
+     * place so a downgrade still sees them.
+     */
+    function migrateLegacyStorage() {
+      const legacyPrefix = 'dsh-side:'
+      const currentPrefix = 'dsh-web-filebrowser:'
+      const keys = [ROOT_KEY, WIDTH_KEY, HIDDEN_KEY, FAVORITES_KEY, FAVORITES_OPEN_KEY, HIDDEN_ROOTS_KEY, WRAP_KEY, SSH_ROOTS_KEY]
+      try {
+        for (const key of keys) {
+          const legacy = legacyPrefix + key.slice(currentPrefix.length)
+          const value = window.localStorage.getItem(legacy)
+          if (value !== null && window.localStorage.getItem(key) === null) window.localStorage.setItem(key, value)
+        }
+      } catch {
+        /* private mode or disabled localStorage: preferences start empty */
+      }
+    }
+
+    migrateLegacyStorage()
 
     /** Stable empty list for a slot without the workspaces hook. */
     const EMPTY_WORKSPACES = []
@@ -250,7 +272,7 @@ window.__ModuleLoader__.load({
       'git.openFile': '打开文件',
       'git.close': '关闭',
       'git.retry': '重试',
-      'git.installHint': 'Git 支持未安装：请安装 @local/dsh-side-git',
+      'git.installHint': 'Git 支持未安装：请安装 @local/dsh-web-filebrowser-git',
       'git.error': 'Git 操作失败',
       'git.busy': '处理中…',
       'git.fetch': '获取',
@@ -501,7 +523,7 @@ window.__ModuleLoader__.load({
       'git.openFile': 'Open file',
       'git.close': 'Close',
       'git.retry': 'Retry',
-      'git.installHint': 'Git support is not installed. Install @local/dsh-side-git.',
+      'git.installHint': 'Git support is not installed. Install @local/dsh-web-filebrowser-git.',
       'git.error': 'Git operation failed',
       'git.busy': 'Working…',
       'git.fetch': 'Fetch',
@@ -702,7 +724,7 @@ window.__ModuleLoader__.load({
         throw new SideRequestError('git-offline', `无法连接 Git 服务：${errorText(error)}`)
       }
       if (response.status === 404) {
-        throw new SideRequestError('git-bridge-missing', 'Git 支持未安装：请安装 @local/dsh-side-git')
+        throw new SideRequestError('git-bridge-missing', 'Git 支持未安装：请安装 @local/dsh-web-filebrowser-git')
       }
       if (!response.ok) {
         throw new SideRequestError(`http-${String(response.status)}`, `HTTP ${String(response.status)} ${response.statusText}`)
@@ -7886,7 +7908,7 @@ window.__ModuleLoader__.load({
       apply(ctx) {
         const t = ctx.locale.bind(NS)
         const store = createStore(initialState())
-        ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-side: dictionaries')
+        ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-web-filebrowser: dictionaries')
         const IdePage = makeIdePage(ctx, t, store)
         const IdeTitle = makeIdeTitle(t)
         ctx.effect(
@@ -7894,7 +7916,7 @@ window.__ModuleLoader__.load({
             ctx.slots.inject('main', () =>
               ctx.slots.register({ name: 'main', key: 'files', locale: NS }, IdePage),
             ),
-          'dsh-side: main panel',
+          'dsh-web-filebrowser: main panel',
         )
         ctx.effect(
           () =>
@@ -7910,7 +7932,7 @@ window.__ModuleLoader__.load({
                 PanelIcon,
               ),
             ),
-          'dsh-side: sidebar entry',
+          'dsh-web-filebrowser: sidebar entry',
         )
         // The right Sidebar's Start page lists one card per registered tab type.
         // Registering here is optional: a profile without the right Sidebar keeps
@@ -7933,7 +7955,7 @@ window.__ModuleLoader__.load({
                   },
                 ],
               }),
-            'dsh-side: right-sidebar tab type',
+            'dsh-web-filebrowser: right-sidebar tab type',
           )
           sidebarCtx.effect(
             () =>
@@ -7943,7 +7965,7 @@ window.__ModuleLoader__.load({
                   IdePage,
                 ),
               ),
-            'dsh-side: right-sidebar body',
+            'dsh-web-filebrowser: right-sidebar body',
           )
           sidebarCtx.effect(
             () =>
@@ -7953,7 +7975,7 @@ window.__ModuleLoader__.load({
                   IdeTitle,
                 ),
               ),
-            'dsh-side: right-sidebar title',
+            'dsh-web-filebrowser: right-sidebar title',
           )
         })
       },

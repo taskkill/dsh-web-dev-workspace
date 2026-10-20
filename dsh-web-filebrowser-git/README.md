@@ -1,7 +1,7 @@
-# Workspace Git (`@local/dsh-side-git`)
+# Workspace Git (`@local/dsh-web-filebrowser-git`)
 
-Host-only companion bundle for **[Workspace Files](../dsh-side-plugin)** — part of
-[DSH Side](../README.md). It adds Git operations to the workspace panel: status,
+Host-only companion bundle for **[Workspace Files](../dsh-web-filebrowser-plugin)** — part of
+[DSH Web Filebrowser](../README.md). It adds Git operations to the workspace panel: status,
 staging, commits, diffs, branches, comparison, and explicit fetch/pull/push.
 
 > Git runs on the **Harness host** with the host's permissions. Network commands
@@ -18,7 +18,7 @@ Manager:
 2. Enter the absolute path to this directory:
 
    ```text
-   /absolute/path/to/dsh-side/dsh-side-git
+   /absolute/path/to/dsh-web-filebrowser/dsh-web-filebrowser-git
    ```
 
 3. Install and enable it.
@@ -42,7 +42,7 @@ missing, that panel shows an install hint instead of failing silently.
 
 ## Operations
 
-`POST /api/dsh-side-git` with JSON `{ "op": "...", "root": "<absolute workspace root>", ... }`.
+`POST /api/dsh-web-filebrowser-git` with JSON `{ "op": "...", "root": "<absolute workspace root>", ... }`.
 
 | `op` | Body | Result |
 | --- | --- | --- |
@@ -67,7 +67,7 @@ interactive editors and askpass prompts are disabled.
 
 ## Safety
 
-- Only owner-authenticated requests reach the exact `/api/dsh-side-git` route.
+- Only owner-authenticated requests reach the exact `/api/dsh-web-filebrowser-git` route.
 - The root must be a registered workspace (or the deployment default) **and** the
   repository top level. Paths, refs and remotes are validated before use.
 - Output is capped: up to 2000 status entries, 2 MiB tracked diffs, 512 KiB
@@ -89,4 +89,4 @@ interactive editors and askpass prompts are disabled.
 
 ## License
 
-[MIT](../LICENSE) © DSH Side contributors.
+[MIT](../LICENSE) © DSH Web Filebrowser contributors.

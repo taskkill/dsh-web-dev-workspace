@@ -16,7 +16,10 @@ import { createReadStream, promises as fsp } from 'node:fs'
 import path from 'node:path'
 import { Readable } from 'node:stream'
 
-const ROUTE = '/api/dsh-side-io'
+const ROUTE = '/api/dsh-web-filebrowser-io'
+
+/** Deprecated alias for tabs opened before the rename. */
+const LEGACY_ROUTE = '/api/dsh-side-io'
 
 /** Largest single upload accepted by this bridge. */
 const MAX_UPLOAD_BYTES = 128 * 1024 * 1024
@@ -52,25 +55,27 @@ export const inject = ['connection']
 export function apply(ctx) {
   ctx.effect(() => {
     let disposed = false
-    let disposeRoute = () => {}
-    const registration = ctx.connection.fetch.register({
-      path: ROUTE,
-      methods: ['GET', 'POST'],
-      requestBody: 'buffered',
-      fetch: (request) => handleRequest(ctx, request),
-    })
-    registration.then(
-      (dispose) => {
-        if (disposed) dispose()
-        else disposeRoute = dispose
-      },
-      (error) => console.error('dsh-side-io: failed to register its API route', error),
-    )
+    const disposers = []
+    for (const route of [ROUTE, LEGACY_ROUTE]) {
+      const registration = ctx.connection.fetch.register({
+        path: route,
+        methods: ['GET', 'POST'],
+        requestBody: 'buffered',
+        fetch: (request) => handleRequest(ctx, request),
+      })
+      registration.then(
+        (dispose) => {
+          if (disposed) dispose()
+          else disposers.push(dispose)
+        },
+        (error) => console.error(`dsh-web-filebrowser-io: failed to register ${route}`, error),
+      )
+    }
     return () => {
       disposed = true
-      disposeRoute()
+      for (const dispose of disposers) dispose()
     }
-  }, 'dsh-side-io: upload/download API')
+  }, 'dsh-web-filebrowser-io: upload/download API')
 }
 
 async function handleRequest(ctx, request) {
@@ -84,7 +89,7 @@ async function handleRequest(ctx, request) {
     if (error instanceof IoError) {
       return json({ ok: false, error: { code: error.code, message: error.message } }, 200)
     }
-    console.error('dsh-side-io: request failed', error)
+    console.error('dsh-web-filebrowser-io: request failed', error)
     return json({ ok: false, error: { code: 'internal', message: error instanceof Error ? error.message : String(error) } }, 200)
   }
 }

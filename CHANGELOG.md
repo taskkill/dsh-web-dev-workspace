@@ -6,8 +6,14 @@ All notable changes to this project are documented here.
 
 ### Packaging
 
+- Rename the project and package identity from `dsh-side` to
+  `dsh-web-filebrowser`: the combined bundle is `@local/dsh-web-filebrowser`,
+  routes are under `/api/dsh-web-filebrowser*`, and browser preferences saved
+  under `dsh-side:` are copied to the new keys on first load. The old
+  `/api/dsh-side*` routes remain as deprecated aliases so a tab opened before
+  the rename keeps working until Harness is restarted.
 - The three components are now one combined bundle at the repository root
-  (`@local/dsh-side`, `index.js` + `cordis.patch.yml`). Install the root once;
+  (`@local/dsh-web-filebrowser`, `index.js` + `cordis.patch.yml`). Install the root once;
   the bundle starts the explorer/editor, binary I/O and Git components together.
   Subdirectory installs remain possible for development only.
 
@@ -99,7 +105,7 @@ Initial open-source release.
 
 - Multi-file upload with auto-rename on conflict and a 128 MiB per-file limit.
 - Forced-download route for any file, including PDFs and images.
-- Host-only companion bundle `@local/dsh-side-io` for binary I/O.
+- Host-only companion bundle `@local/dsh-web-filebrowser-io` for binary I/O.
 
 ### Git
 
@@ -107,7 +113,7 @@ Initial open-source release.
 - Staged, unstaged and untracked file lists; per-file and bulk stage/unstage.
 - Commit message box with `Ctrl/⌘+Enter`; read-only unified diff modal.
 - Repository initialization and local branch switching.
-- Host-only companion bundle `@local/dsh-side-git` for safe local Git
+- Host-only companion bundle `@local/dsh-web-filebrowser-git` for safe local Git
   operations; no fetch/pull/push and no credential storage.
 
 ### Integration

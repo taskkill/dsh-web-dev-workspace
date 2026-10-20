@@ -1,19 +1,16 @@
 {
-  "name": "@local/dsh-side",
+  "name": "@local/dsh-web-filebrowser-git",
   "version": "1.0.0",
   "private": true,
-  "description": "VS Code-style workspace file explorer and editor for the DeepSeek Harness Web UI",
+  "description": "Git status, staging, commit, compare and explicit fetch/pull/push support for the Workspace Files plugin",
   "type": "module",
   "exports": {
     ".": "./index.js",
-    "./client": "./client.js",
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.svg"
   },
   "files": [
     "index.js",
-    "ssh.js",
-    "client.js",
     "cordis.patch.yml",
     "locale/*.json",
     "icon.svg",
@@ -23,10 +20,6 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
-    },
-    "client": {
-      "platform": "web",
-      "immediately": true
     }
   },
   "license": "MIT",
@@ -34,12 +27,8 @@
     "deepseek-harness",
     "dsh",
     "plugin",
-    "workspace",
-    "file-manager",
-    "code-editor",
-    "git"
-  ],
-  "dependencies": {
-    "ssh2": "^1.17.0"
-  }
+    "git",
+    "source-control",
+    "commit"
+  ]
 }

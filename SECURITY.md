@@ -1,6 +1,6 @@
 # Security Policy
 
-DSH Side runs inside the DeepSeek Harness host and can read and write files inside
+DSH Web Filebrowser runs inside the DeepSeek Harness host and can read and write files inside
 the workspace roots you open. Please report security-sensitive issues privately.
 
 ## Reporting a vulnerability
@@ -14,7 +14,7 @@ through the repository's private contact channel.
 Please include:
 
 - the affected version or commit, and the DeepSeek Harness version;
-- whether the companion bundle `@local/dsh-side-io` is installed;
+- whether the companion bundle `@local/dsh-web-filebrowser-io` is installed;
 - a minimal reproduction and the expected/actual behavior;
 - the impact (files read or written, paths reached, data exposed);
 - any relevant logs with secrets removed.
@@ -23,7 +23,7 @@ Please include:
 
 Examples of issues that matter:
 
-- bypassing the owner-cookie check on the `/api/dsh-side*` routes;
+- bypassing the owner-cookie check on the `/api/dsh-web-filebrowser*` routes;
 - reading or writing outside the selected workspace root, including symlink
   escapes;
 - a directory traversal in the address bar, upload path, rename, delete or raw

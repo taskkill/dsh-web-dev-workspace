@@ -1,10 +1,10 @@
 /**
- * Host half of the dsh-side bundle.
+ * Host half of the dsh-web-filebrowser bundle.
  *
  * The browser editor needs file mutations (create, rename, delete, save), which
  * the shipped read-only `workspaceFiles` Remote namespace does not expose. This
  * host plugin registers one exact Fetch route on the authenticated shared API
- * channel (`/api/dsh-side`). Only owner Peers reach an exact route, so the
+ * channel (`/api/dsh-web-filebrowser`). Only owner Peers reach an exact route, so the
  * browser's signed session cookie is the authentication input; no additional
  * token is invented here.
  *
@@ -20,10 +20,17 @@ import { Readable } from 'node:stream'
 import * as ssh from './ssh.js'
 
 /** Exact URL below `/api` that this plugin owns. */
-const ROUTE = '/api/dsh-side'
+const ROUTE = '/api/dsh-web-filebrowser'
 
 /** Binary upload route for SSH workspaces. */
-const ROUTE_SSH_UPLOAD = '/api/dsh-side-ssh'
+const ROUTE_SSH_UPLOAD = '/api/dsh-web-filebrowser-ssh'
+
+/**
+ * Deprecated aliases for tabs opened before the rename. They keep the old
+ * client functional until it is refreshed or Harness is restarted.
+ */
+const LEGACY_ROUTE = '/api/dsh-side'
+const LEGACY_ROUTE_SSH_UPLOAD = '/api/dsh-side-ssh'
 
 /** Largest file the editor will open as UTF-8 text. */
 const MAX_TEXT_BYTES = 8 * 1024 * 1024
@@ -90,18 +97,20 @@ export function apply(ctx) {
           else disposers.push(dispose)
         },
         (error) => {
-          console.error(`dsh-side: failed to register ${label}`, error)
+          console.error(`dsh-web-filebrowser: failed to register ${label}`, error)
         },
       )
     }
     register(ROUTE, ['GET', 'POST'], (request) => handleRequest(ctx, request), 'its API route')
+    register(LEGACY_ROUTE, ['GET', 'POST'], (request) => handleRequest(ctx, request), 'its legacy API route')
     register(ROUTE_SSH_UPLOAD, ['POST'], (request) => handleSshUpload(request), 'the SSH upload route')
+    register(LEGACY_ROUTE_SSH_UPLOAD, ['POST'], (request) => handleSshUpload(request), 'the legacy SSH upload route')
     return () => {
       disposed = true
       for (const dispose of disposers) dispose()
       void ssh.closeAll()
     }
-  }, 'dsh-side: authenticated file API')
+  }, 'dsh-web-filebrowser: authenticated file API')
 }
 
 /** Host dependency: the shared API channel authenticates the route. */
@@ -138,7 +147,7 @@ async function handleRequest(ctx, request) {
     if (error !== null && typeof error === 'object' && typeof error.sideCode === 'string') {
       return json({ ok: false, error: { code: error.sideCode, message: error.message } }, 200)
     }
-    console.error('dsh-side: file API failed', error)
+    console.error('dsh-web-filebrowser: file API failed', error)
     return json({ ok: false, error: failure('internal', error instanceof Error ? error.message : String(error)) }, 200)
   }
 }
@@ -635,7 +644,7 @@ async function handleGet(ctx, request) {
     if (error !== null && typeof error === 'object' && typeof error.sideCode === 'string') {
       return json({ ok: false, error: { code: error.sideCode, message: error.message } }, 400)
     }
-    console.error('dsh-side: raw read failed', error)
+    console.error('dsh-web-filebrowser: raw read failed', error)
     return json({ ok: false, error: failure('internal', error instanceof Error ? error.message : String(error)) }, 500)
   }
 }
@@ -666,7 +675,7 @@ async function handleSshUpload(request) {
     if (error !== null && typeof error === 'object' && typeof error.sideCode === 'string') {
       return json({ ok: false, error: { code: error.sideCode, message: error.message } }, 200)
     }
-    console.error('dsh-side: SSH upload failed', error)
+    console.error('dsh-web-filebrowser: SSH upload failed', error)
     return json({ ok: false, error: failure('internal', error instanceof Error ? error.message : String(error)) }, 200)
   }
 }

@@ -1,18 +1,18 @@
 /**
- * Combined DSH Side bundle.
+ * Combined DSH Web Filebrowser bundle.
  *
  * A single profile entry hosts three interchangeable halves:
- * - the workspace files API and browser client (`dsh-side-plugin/`)
- * - binary upload/download (`dsh-side-io/`)
- * - local Git (`dsh-side-git/`)
+ * - the workspace files API and browser client (`dsh-web-filebrowser-plugin/`)
+ * - binary upload/download (`dsh-web-filebrowser-io/`)
+ * - local Git (`dsh-web-filebrowser-git/`)
  *
  * Keeping one bundle entry means users install this repository once; the three
  * component directories remain independently loadable for development.
  */
 
-import { apply as applyFiles } from './dsh-side-plugin/index.js'
-import { apply as applyIo } from './dsh-side-io/index.js'
-import { apply as applyGit } from './dsh-side-git/index.js'
+import { apply as applyFiles } from './dsh-web-filebrowser-plugin/index.js'
+import { apply as applyIo } from './dsh-web-filebrowser-io/index.js'
+import { apply as applyGit } from './dsh-web-filebrowser-git/index.js'
 
 /** All three components register routes on the shared connection service. */
 export const inject = ['connection']

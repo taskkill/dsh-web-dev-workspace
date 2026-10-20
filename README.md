@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="dsh-side-plugin/icon.svg" width="88" height="88" alt="DSH Side icon" />
+  <img src="dsh-web-filebrowser-plugin/icon.svg" width="88" height="88" alt="DSH Web Filebrowser icon" />
 </p>
 
 <h1 align="center">Deepseek Harness Web Power FileBrowser</h1>
@@ -27,7 +27,7 @@
 
 ---
 
-DSH Side turns the Harness Web UI into a practical coding workspace. It adds a
+DSH Web Filebrowser turns the Harness Web UI into a practical coding workspace. It adds a
 file explorer and a tabbed editor to the left sidebar and to the right sidebar's
 Start page, while keeping the chat and the sessions exactly where they are.
 
@@ -202,21 +202,21 @@ it for you.
 - For Git features: `git` on the Harness host's `PATH`, and a configured Git
   identity for commits (`user.name` / `user.email`).
 
-The repository is now one **combined bundle** (`@local/dsh-side`) with three internal components; install the repository root once:
+The repository is now one **combined bundle** (`@local/dsh-web-filebrowser`) with three internal components; install the repository root once:
 
 | Directory | Purpose |
 | --- | --- |
-| `dsh-side-plugin/` | Main component: Host file API, SSH/SFTP and the browser explorer/editor UI. |
-| `dsh-side-io/` | Host-only component: binary upload and forced-download routes. |
-| `dsh-side-git/` | Host-only component: Git status, stage, commit, diff, branches, compare and fetch/pull/push. |
+| `dsh-web-filebrowser-plugin/` | Main component: Host file API, SSH/SFTP and the browser explorer/editor UI. |
+| `dsh-web-filebrowser-io/` | Host-only component: binary upload and forced-download routes. |
+| `dsh-web-filebrowser-git/` | Host-only component: Git status, stage, commit, diff, branches, compare and fetch/pull/push. |
 
 ### Install from a local checkout
 
 1. Clone the repository (or download and extract a release):
 
    ```bash
-   git clone <repository-url> dsh-side
-   cd dsh-side
+   git clone <repository-url> dsh-web-filebrowser
+   cd dsh-web-filebrowser
    ```
 
 2. For SSH remote folders, install the optional dependency at the repository root:
@@ -231,7 +231,7 @@ The repository is now one **combined bundle** (`@local/dsh-side`) with three int
    **absolute** path to the **repository root**:
 
    ```text
-   /absolute/path/to/dsh-side
+   /absolute/path/to/dsh-web-filebrowser
    ```
 
    Confirm the trust prompt, install, then **Enable now**.
@@ -251,7 +251,7 @@ If you are working with the DSH agent, ask it to install the combined local
 bundle:
 
 ```text
-Install the local DSH bundle at /absolute/path/to/dsh-side and enable it.
+Install the local DSH bundle at /absolute/path/to/dsh-web-filebrowser and enable it.
 ```
 
 The agent uses the same Plugin Manager installation path as the UI (the
@@ -259,10 +259,14 @@ repository root, not a subdirectory).
 
 ### Update and uninstall
 
+- **Upgrading from `dsh-side`**: uninstall the old `@local/dsh-side` bundle and its
+  two companions, then install the repository root again. Root, favorites,
+  preferences and SSH remotes are copied from the old `dsh-side:` browser keys on
+  first load. Hard-refresh any tab opened with the old client.
 - **Update**: in **Plugins → Installed plugins**, uninstall and reinstall the
   combined bundle from the updated local path (or use the UI's update action when
   it is offered).
-- **Uninstall**: uninstall `@local/dsh-side` from **Installed plugins**. This removes
+- **Uninstall**: uninstall `@local/dsh-web-filebrowser` from **Installed plugins**. This removes
   the profile dependency/link and the plugin row; it does not delete your cloned
   source or workspace files.
 - **Browser state**: preferences and favorites live in the browser's
@@ -274,7 +278,7 @@ repository root, not a subdirectory).
 | Symptom | What to try |
 | --- | --- |
 | No new sidebar icon / Start card | Refresh the page. Confirm the combined bundle is enabled in **Plugins**. |
-| Upload or download fails | Confirm the combined bundle `@local/dsh-side` is installed and enabled. |
+| Upload or download fails | Confirm the combined bundle `@local/dsh-web-filebrowser` is installed and enabled. |
 | Git view says support is not installed | Confirm the combined bundle is enabled; SSH remote workspaces have no Git view. |
 | Git view says not the repository root | Open the repository root itself as the workspace; Git mutations are confined to that root. |
 | Fetch/pull/push says the remote requires authentication | Configure an SSH key or Git credential helper on the Host; the plugin never prompts for or stores credentials. |
@@ -375,9 +379,9 @@ flowchart TB
 
   subgraph Host["Harness Host"]
     API["/api shared channel<br/>authenticated owner cookie"]
-    MAIN["/api/dsh-side<br/>JSON file ops + raw preview"]
-    IO["/api/dsh-side-io<br/>binary upload + attachment download"]
-    GIT["/api/dsh-side-git<br/>local Git operations"]
+    MAIN["/api/dsh-web-filebrowser<br/>JSON file ops + raw preview"]
+    IO["/api/dsh-web-filebrowser-io<br/>binary upload + attachment download"]
+    GIT["/api/dsh-web-filebrowser-git<br/>local Git operations"]
     FS["Workspace filesystem"]
     REG["Workspace registry"]
     API --> MAIN
@@ -394,7 +398,7 @@ flowchart TB
 ```
 
 - The browser half registers `main` key `files`, a `sidebar.panellist` entry and
-  a `ctx.sidebarRightTabs` type (`kind: dsh-side`) with body/title seats.
+  a `ctx.sidebarRightTabs` type (`kind: dsh-web-filebrowser`) with body/title seats.
 - The Host half registers exact `/api` routes through
   `ctx.connection.fetch.register`. Only owner peers reach an exact route, so the
   browser's signed session cookie is the authentication input; the plugin does
@@ -411,7 +415,7 @@ flowchart TB
 
 ## Security and privacy
 
-DSH Side is a **local-first** plugin with filesystem access. Review the source
+DSH Web Filebrowser is a **local-first** plugin with filesystem access. Review the source
 before enabling it, and only install bundles you trust. To report a
 vulnerability, follow [`SECURITY.md`](SECURITY.md) — please do not open a public
 issue for security-sensitive reports.
@@ -468,23 +472,23 @@ issue for security-sensitive reports.
 ## Repository layout
 
 ```text
-dsh-side/
+dsh-web-filebrowser/
 ├── index.js                  # combined bundle entry: files, IO, Git
 ├── cordis.patch.yml          # combined bundle row
-├── dsh-side-plugin/          # main component: Host API, SSH, browser UI
-│   ├── index.js              # /api/dsh-side host routes
+├── dsh-web-filebrowser-plugin/  # main component: Host API, SSH, browser UI
+│   ├── index.js              # /api/dsh-web-filebrowser host routes
 │   ├── ssh.js                # optional SFTP backend
 │   ├── client.js             # main panel, sidebar entries, explorer/editor UI
 │   ├── cordis.patch.yml      # standalone component row
 │   ├── locale/{en,zh}.json   # plugin-manager metadata
 │   └── icon.svg
-├── dsh-side-io/              # host-only binary component
-│   ├── index.js              # /api/dsh-side-io upload/download
+├── dsh-web-filebrowser-io/      # host-only binary component
+│   ├── index.js              # /api/dsh-web-filebrowser-io upload/download
 │   ├── cordis.patch.yml
 │   ├── locale/{en,zh}.json
 │   └── icon.svg
-├── dsh-side-git/             # host-only Git component
-│   ├── index.js              # /api/dsh-side-git status/stage/commit/diff/branch
+├── dsh-web-filebrowser-git/     # host-only Git component
+│   ├── index.js              # /api/dsh-web-filebrowser-git status/stage/commit/diff/branch
 │   ├── cordis.patch.yml
 │   ├── locale/{en,zh}.json
 │   └── icon.svg
@@ -523,13 +527,13 @@ npm run check:json
 
   | Key | Contents |
   | --- | --- |
-  | `dsh-side:root` | Last opened workspace path |
-  | `dsh-side:tree-width` | Explorer width in px |
-  | `dsh-side:show-hidden` | Show dotfiles (`1`/`0`) |
-  | `dsh-side:favorites` | Per-root favorites map |
-  | `dsh-side:favorites-open` | Favorites section open state |
-  | `dsh-side:word-wrap` | Word-wrap toggle |
-  | `dsh-side:hidden-roots` | Locally hidden directory paths |
+  | `dsh-web-filebrowser:root` | Last opened workspace path |
+  | `dsh-web-filebrowser:tree-width` | Explorer width in px |
+  | `dsh-web-filebrowser:show-hidden` | Show dotfiles (`1`/`0`) |
+  | `dsh-web-filebrowser:favorites` | Per-root favorites map |
+  | `dsh-web-filebrowser:favorites-open` | Favorites section open state |
+  | `dsh-web-filebrowser:word-wrap` | Word-wrap toggle |
+  | `dsh-web-filebrowser:hidden-roots` | Locally hidden directory paths |
 
 - **Localization**: runtime strings live in `client.js` (`zh`/`en` dicts); the
   plugin-manager display metadata lives in `locale/*.json`.
@@ -543,4 +547,4 @@ recording if you can.
 
 ## License
 
-[MIT](LICENSE) © DSH Side contributors.
+[MIT](LICENSE) © DSH Web Filebrowser contributors.

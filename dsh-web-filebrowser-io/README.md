@@ -1,7 +1,7 @@
-# Workspace Files IO (`@local/dsh-side-io`)
+# Workspace Files IO (`@local/dsh-web-filebrowser-io`)
 
-Host-only companion bundle for **[Workspace Files](../dsh-side-plugin)** — part of
-[DSH Side](../README.md). It provides the binary upload and forced-download host
+Host-only companion bundle for **[Workspace Files](../dsh-web-filebrowser-plugin)** — part of
+[DSH Web Filebrowser](../README.md). It provides the binary upload and forced-download host
 routes used by the main explorer/editor UI.
 
 ## Why a separate bundle?
@@ -21,7 +21,7 @@ Manager:
 2. Enter the absolute path to this directory:
 
    ```text
-   /absolute/path/to/dsh-side/dsh-side-io
+   /absolute/path/to/dsh-web-filebrowser/dsh-web-filebrowser-io
    ```
 
 3. Install and enable it.
@@ -38,7 +38,7 @@ browser with its signed Harness cookie reaches them.
 ### Upload
 
 ```http
-POST /api/dsh-side-io?op=upload&root=<absolute-root>&path=<relative-path>
+POST /api/dsh-web-filebrowser-io?op=upload&root=<absolute-root>&path=<relative-path>
 Content-Type: application/octet-stream
 
 <raw file bytes>
@@ -55,7 +55,7 @@ Content-Type: application/octet-stream
 ### Download
 
 ```http
-GET /api/dsh-side-io?op=download&root=<absolute-root>&path=<relative-path>
+GET /api/dsh-web-filebrowser-io?op=download&root=<absolute-root>&path=<relative-path>
 ```
 
 - Streams the file with `Content-Disposition: attachment`, so the browser saves
@@ -74,4 +74,4 @@ GET /api/dsh-side-io?op=download&root=<absolute-root>&path=<relative-path>
 
 ## License
 
-[MIT](../LICENSE) © DSH Side contributors.
+[MIT](../LICENSE) © DSH Web Filebrowser contributors.

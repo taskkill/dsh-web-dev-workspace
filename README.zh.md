@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="dsh-side-plugin/icon.svg" width="88" height="88" alt="DSH Side 图标" />
+  <img src="dsh-web-filebrowser-plugin/icon.svg" width="88" height="88" alt="DSH Web Filebrowser 图标" />
 </p>
 
 <h1 align="center">Deepseek Harness Web 增强文件管理器</h1>
@@ -20,7 +20,7 @@
 
 ---
 
-DSH Side 把 Harness Web UI 变成一个真正可用的编码工作区：它在左侧栏和右侧栏
+DSH Web Filebrowser 把 Harness Web UI 变成一个真正可用的编码工作区：它在左侧栏和右侧栏
 「开始」页中加入文件树与多标签编辑器，同时保持原有的对话和会话界面不变。
 
 这是一个**本地组合 bundle**（不是 npm 包）：从克隆下来的仓库根目录，通过 Harness
@@ -131,21 +131,21 @@ DSH Side 把 Harness Web UI 变成一个真正可用的编码工作区：它在�
 - SSH 远程目录：在仓库根目录执行 `npm install` 安装 `ssh2`，并准备好 SSH agent 或 `~/.ssh` 私钥。
 - Git 功能需要 Host 的 `PATH` 中有 `git`，并配置提交身份（`user.name` / `user.email`）。
 
-仓库现在是一个**组合 bundle**（`@local/dsh-side`），内部包含三个组件；安装时只需要填仓库根目录一次：
+仓库现在是一个**组合 bundle**（`@local/dsh-web-filebrowser`），内部包含三个组件；安装时只需要填仓库根目录一次：
 
 | 目录 | 作用 |
 | --- | --- |
-| `dsh-side-plugin/` | 主组件：Host 文件 API、SSH/SFTP、浏览器目录/编辑器 UI。 |
-| `dsh-side-io/` | 仅 Host 的组件：二进制上传与强制下载路由。 |
-| `dsh-side-git/` | 仅 Host 的组件：Git 状态、暂存、提交、diff、分支、比较与 fetch/pull/push。 |
+| `dsh-web-filebrowser-plugin/` | 主组件：Host 文件 API、SSH/SFTP、浏览器目录/编辑器 UI。 |
+| `dsh-web-filebrowser-io/` | 仅 Host 的组件：二进制上传与强制下载路由。 |
+| `dsh-web-filebrowser-git/` | 仅 Host 的组件：Git 状态、暂存、提交、diff、分支、比较与 fetch/pull/push。 |
 
 ### 从本地目录安装
 
 1. 克隆仓库（或下载 Release 解压）：
 
    ```bash
-   git clone <repository-url> dsh-side
-   cd dsh-side
+   git clone <repository-url> dsh-web-filebrowser
+   cd dsh-web-filebrowser
    ```
 
 2. 如需 SSH 远程目录，在仓库根目录安装可选依赖：
@@ -160,7 +160,7 @@ DSH Side 把 Harness Web UI 变成一个真正可用的编码工作区：它在�
    填入**仓库根目录**的绝对路径：
 
    ```text
-   /absolute/path/to/dsh-side
+   /absolute/path/to/dsh-web-filebrowser
    ```
 
    确认信任提示并安装，完成后点 **立即启用（Enable now）**。
@@ -178,7 +178,7 @@ DSH Side 把 Harness Web UI 变成一个真正可用的编码工作区：它在�
 
 ```text
 请安装这个本地 DSH 组合包：
-/absolute/path/to/dsh-side
+/absolute/path/to/dsh-web-filebrowser
 并启用它。
 ```
 
@@ -186,9 +186,11 @@ Agent 会走与插件管理器相同的安装流程（安装的是仓库根目�
 
 ### 更新与卸载
 
+- **从旧 `dsh-side` 升级**：卸载旧的 `@local/dsh-side` 及其两个配套插件，重新安装仓库根目录；
+  浏览器里的根目录、收藏、偏好和 SSH 远程列表会自动从 `dsh-side:` 迁移到新键。旧页面标签需要硬刷新。
 - **更新**：在 **插件 → 已安装插件** 中卸载后，从新的本地路径重新安装；如果页面
   提供 Update 操作也可直接使用。
-- **卸载**：卸载 `@local/dsh-side` 这一个组合包即可。会移除 profile 的依赖/链接与插件行，不会删除你克隆的源码或工作区文件。
+- **卸载**：卸载 `@local/dsh-web-filebrowser` 这一个组合包即可。会移除 profile 的依赖/链接与插件行，不会删除你克隆的源码或工作区文件。
 - **浏览器数据**：偏好与收藏保存在浏览器 `localStorage`，卸载插件不会自动清除；
   如需彻底清理，可在浏览器站点数据中删除。
 
@@ -197,8 +199,8 @@ Agent 会走与插件管理器相同的安装流程（安装的是仓库根目�
 | 现象 | 处理 |
 | --- | --- |
 | 没有新的侧栏图标 / 开始页卡片 | 刷新页面；确认主 bundle 已启用。 |
-| 上传或下载失败 | 确认组合包 `@local/dsh-side` 已安装并启用。 |
-| Git 视图提示未安装 | 确认组合包 `@local/dsh-side` 已启用；SSH 远程工作区不提供 Git。 |
+| 上传或下载失败 | 确认组合包 `@local/dsh-web-filebrowser` 已安装并启用。 |
+| Git 视图提示未安装 | 确认组合包 `@local/dsh-web-filebrowser` 已启用；SSH 远程工作区不提供 Git。 |
 | Git 视图提示不是仓库根目录 | 直接打开仓库根目录作为工作区；Git 操作只允许在该根目录内。 |
 | 获取/拉取/推送提示远程要求认证 | 在 Host 上配置 SSH 密钥或 Git 凭据助手；插件不会提示输入密码，也不保存凭据。 |
 | 拉取提示已分叉 | 默认只做快进；请在终端对本地分支变基或合并后再拉取。 |
@@ -277,9 +279,9 @@ flowchart TB
 
   subgraph Host["Harness Host"]
     API["/api 共享通道<br/>owner 签名 Cookie 鉴权"]
-    MAIN["/api/dsh-side<br/>JSON 文件操作 + 原始预览"]
-    IO["/api/dsh-side-io<br/>二进制上传 + attachment 下载"]
-    GIT["/api/dsh-side-git<br/>本地 Git 操作"]
+    MAIN["/api/dsh-web-filebrowser<br/>JSON 文件操作 + 原始预览"]
+    IO["/api/dsh-web-filebrowser-io<br/>二进制上传 + attachment 下载"]
+    GIT["/api/dsh-web-filebrowser-git<br/>本地 Git 操作"]
     FS["工作区文件系统"]
     REG["工作区注册表"]
     API --> MAIN
@@ -296,7 +298,7 @@ flowchart TB
 ```
 
 - 浏览器半注册 `main` 的 `files` 键、`sidebar.panellist` 入口，以及
-  `ctx.sidebarRightTabs` 类型（`kind: dsh-side`）及其 body/title 座位。
+  `ctx.sidebarRightTabs` 类型（`kind: dsh-web-filebrowser`）及其 body/title 座位。
 - Host 半通过 `ctx.connection.fetch.register` 注册 `/api` 精确路由。只有 owner
   peer 能进入精确路由，浏览器签名 Cookie 即鉴权输入，插件不额外生成 token。
 - 所有路径都在选定根目录内解析和校验；符号链接在包含检查之前先解析；
@@ -309,7 +311,7 @@ flowchart TB
 
 ## 安全与隐私
 
-DSH Side 是**本地优先**插件，拥有文件系统访问能力。启用前请阅读源码，只安装可信来源。
+DSH Web Filebrowser 是**本地优先**插件，拥有文件系统访问能力。启用前请阅读源码，只安装可信来源。
 安全问题请按 [`SECURITY.md`](SECURITY.md) 私下报告，不要开公开 Issue。
 
 - **鉴权**：`/api` 精确路由只有携带有效 Harness 会话 Cookie 的 owner 浏览器可达，
@@ -347,23 +349,23 @@ DSH Side 是**本地优先**插件，拥有文件系统访问能力。启用前�
 ## 目录结构
 
 ```text
-dsh-side/
+dsh-web-filebrowser/
 ├── index.js                  # 组合 bundle 入口：启动文件/IO/Git 三个组件
 ├── cordis.patch.yml          # 组合 bundle 的插件行
-├── dsh-side-plugin/          # 主组件：Host API + SSH + 浏览器 UI
-│   ├── index.js              # /api/dsh-side Host 路由
+├── dsh-web-filebrowser-plugin/  # 主组件：Host API + SSH + 浏览器 UI
+│   ├── index.js              # /api/dsh-web-filebrowser Host 路由
 │   ├── ssh.js                # 可选 SFTP 后端
 │   ├── client.js             # 主面板、侧栏入口、目录/编辑器 UI
 │   ├── cordis.patch.yml      # 插入 Host 插件行
 │   ├── locale/{en,zh}.json   # 插件管理器显示元数据
 │   └── icon.svg
-├── dsh-side-io/              # 仅 Host 的二进制组件
-│   ├── index.js              # /api/dsh-side-io 上传/下载路由
+├── dsh-web-filebrowser-io/      # 仅 Host 的二进制组件
+│   ├── index.js              # /api/dsh-web-filebrowser-io 上传/下载路由
 │   ├── cordis.patch.yml
 │   ├── locale/{en,zh}.json
 │   └── icon.svg
-├── dsh-side-git/             # 仅 Host 的 Git 组件
-│   ├── index.js              # /api/dsh-side-git status/stage/commit/diff/branch
+├── dsh-web-filebrowser-git/     # 仅 Host 的 Git 组件
+│   ├── index.js              # /api/dsh-web-filebrowser-git status/stage/commit/diff/branch
 │   ├── cordis.patch.yml
 │   ├── locale/{en,zh}.json
 │   └── icon.svg
@@ -398,13 +400,13 @@ npm run check:json
 
   | Key | 内容 |
   | --- | --- |
-  | `dsh-side:root` | 上次打开的工作区路径 |
-  | `dsh-side:tree-width` | 目录树宽度（px） |
-  | `dsh-side:show-hidden` | 是否显示 dotfile（`1`/`0`） |
-  | `dsh-side:favorites` | 按根目录保存的收藏 |
-  | `dsh-side:favorites-open` | 收藏夹展开状态 |
-  | `dsh-side:word-wrap` | 自动换行状态 |
-  | `dsh-side:hidden-roots` | 本地隐藏的目录路径 |
+  | `dsh-web-filebrowser:root` | 上次打开的工作区路径 |
+  | `dsh-web-filebrowser:tree-width` | 目录树宽度（px） |
+  | `dsh-web-filebrowser:show-hidden` | 是否显示 dotfile（`1`/`0`） |
+  | `dsh-web-filebrowser:favorites` | 按根目录保存的收藏 |
+  | `dsh-web-filebrowser:favorites-open` | 收藏夹展开状态 |
+  | `dsh-web-filebrowser:word-wrap` | 自动换行状态 |
+  | `dsh-web-filebrowser:hidden-roots` | 本地隐藏的目录路径 |
 
 - **本地化**：运行时文案在 `client.js` 的 `zh`/`en` 字典；插件管理器显示元数据在
   `locale/*.json`。
@@ -416,4 +418,4 @@ npm run check:json
 
 ## 许可证
 
-[MIT](LICENSE) © DSH Side contributors.
+[MIT](LICENSE) © DSH Web Filebrowser contributors.

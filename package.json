@@ -1,5 +1,5 @@
 {
-  "name": "@local/dsh-side",
+  "name": "@local/dsh-web-filebrowser",
   "version": "1.1.0",
   "private": true,
   "description": "VS Code-style workspace files, SSH remotes and Git for the DeepSeek Harness Web UI",
@@ -7,16 +7,16 @@
   "type": "module",
   "exports": {
     ".": "./index.js",
-    "./client": "./dsh-side-plugin/client.js",
-    "./locale/*.json": "./dsh-side-plugin/locale/*.json",
-    "./icon": "./dsh-side-plugin/icon.svg"
+    "./client": "./dsh-web-filebrowser-plugin/client.js",
+    "./locale/*.json": "./dsh-web-filebrowser-plugin/locale/*.json",
+    "./icon": "./dsh-web-filebrowser-plugin/icon.svg"
   },
   "files": [
     "index.js",
     "cordis.patch.yml",
-    "dsh-side-plugin/**",
-    "dsh-side-io/**",
-    "dsh-side-git/**",
+    "dsh-web-filebrowser-plugin/**",
+    "dsh-web-filebrowser-io/**",
+    "dsh-web-filebrowser-git/**",
     "README.md",
     "README.zh.md",
     "CHANGELOG.md",
@@ -32,7 +32,7 @@
     }
   },
   "scripts": {
-    "check": "node --check index.js && node --check dsh-side-plugin/index.js && node --check dsh-side-plugin/ssh.js && node --check dsh-side-plugin/client.js && node --check dsh-side-io/index.js && node --check dsh-side-git/index.js",
+    "check": "node --check index.js && node --check dsh-web-filebrowser-plugin/index.js && node --check dsh-web-filebrowser-plugin/ssh.js && node --check dsh-web-filebrowser-plugin/client.js && node --check dsh-web-filebrowser-io/index.js && node --check dsh-web-filebrowser-git/index.js",
     "check:json": "node scripts/check-json.mjs"
   },
   "dependencies": {

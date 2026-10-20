@@ -1,0 +1,3 @@
+- insert:
+    - id: dsh-web-filebrowser-git
+      name: '@local/dsh-web-filebrowser-git'

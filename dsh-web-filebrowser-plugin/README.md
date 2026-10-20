@@ -1,10 +1,10 @@
-# Workspace Files (`@local/dsh-side`)
+# Workspace Files (`@local/dsh-web-filebrowser`)
 
-Part of **[DSH Side](../README.md)** — a VS Code-style workspace for the
+Part of **[DSH Web Filebrowser](../README.md)** — a VS Code-style workspace for the
 DeepSeek Harness Web UI. This package is the main bundle: it provides the Host
 file API and the browser explorer/editor. Upload and forced download are provided
-by the companion host-only bundle [`@local/dsh-side-io`](../dsh-side-io); the Git
-view is provided by [`@local/dsh-side-git`](../dsh-side-git).
+by the companion host-only bundle [`@local/dsh-web-filebrowser-io`](../dsh-web-filebrowser-io); the Git
+view is provided by [`@local/dsh-web-filebrowser-git`](../dsh-web-filebrowser-git).
 
 Chinese overview: [`README.zh.md`](../README.zh.md).
 
@@ -15,7 +15,7 @@ bundle from the repository root once; it starts this component together with the
 IO and Git components:
 
 ```text
-/absolute/path/to/dsh-side
+/absolute/path/to/dsh-web-filebrowser
 ```
 
 Installing this directory alone is supported for development, but binary I/O and
@@ -24,14 +24,14 @@ the Git view then need their own installs. To install just this component:
 1. Clone the repository:
 
    ```bash
-   git clone <repository-url> dsh-side
+   git clone <repository-url> dsh-web-filebrowser
    ```
 
 2. In the Harness Web UI, open **Plugins → Add plugin → Install a third-party
    plugin** and enter the absolute path to this directory:
 
    ```text
-   /absolute/path/to/dsh-side/dsh-side-plugin
+   /absolute/path/to/dsh-web-filebrowser/dsh-web-filebrowser-plugin
    ```
 
 3. Install and enable it. For the full feature set install the combined bundle
@@ -144,7 +144,7 @@ third-party runtime dependencies.
 - Compare the current branch with upstream, a local branch or a remote branch:
   commits unique to each side, ahead/behind counts and files changed since the
   merge base, each with a diff against the base.
-- Requires the [`@local/dsh-side-git`](../dsh-side-git) host companion; if it is not
+- Requires the [`@local/dsh-web-filebrowser-git`](../dsh-web-filebrowser-git) host companion; if it is not
   installed, the Git view shows an install hint.
 - Pull is fast-forward only and push never forces; conflicts must be resolved in a
   terminal. Network commands use the Host's SSH key or credential helper and never
@@ -169,7 +169,7 @@ third-party runtime dependencies.
 ## How it works
 
 - The Host half (`index.js`) registers exact Fetch routes on the authenticated
-  shared API channel: `/api/dsh-side` for file operations and `/api/dsh-side-ssh`
+  shared API channel: `/api/dsh-web-filebrowser` for file operations and `/api/dsh-web-filebrowser-ssh`
   for binary uploads into SSH roots. Only owner peers reach exact routes, so the
   browser's signed Harness cookie authenticates every request; no extra token is
   introduced. Local paths are confined to a registered workspace root, symlinks
@@ -184,7 +184,7 @@ third-party runtime dependencies.
 
 - The Client half (`client.js`) registers the `files` key in the `main` slot and a
   matching entry in `sidebar.panellist`, so the sidebar icon opens this page. It
-  also registers `ctx.sidebarRightTabs` (kind `dsh-side`, guide card order 30) with
+  also registers `ctx.sidebarRightTabs` (kind `dsh-web-filebrowser`, guide card order 30) with
   a `sidebar.right.pane.tab` body and title, so the right Sidebar's Start page gets
   a card. Styling uses only Harness theme tokens (`--dsw-*`); no Harness Client package
   is imported.
@@ -192,14 +192,14 @@ third-party runtime dependencies.
   `workspaceFiles` Remote namespace is read-only. Editor text reads are capped at
   8 MiB; raw preview passthrough at 128 MiB.
 - Binary upload/download lives in the separate host-only bundle
-  [`@local/dsh-side-io`](../dsh-side-io) at `/api/dsh-side-io`. It accepts raw
+  [`@local/dsh-web-filebrowser-io`](../dsh-web-filebrowser-io) at `/api/dsh-web-filebrowser-io`. It accepts raw
   octet-stream uploads, writes with `wx` so concurrent same-name uploads never
   overwrite each other, and confines every target to a registered workspace root
   (or the deployment default directory). Downloads are streamed with
   `Content-Disposition: attachment`.
 - Git status/stage/commit/diff/branch/compare and explicit fetch/pull/push
   operations live in the separate host-only bundle
-  [`@local/dsh-side-git`](../dsh-side-git) at `/api/dsh-side-git`. It invokes `git`
+  [`@local/dsh-web-filebrowser-git`](../dsh-web-filebrowser-git) at `/api/dsh-web-filebrowser-git`. It invokes `git`
   with `execFile`, requires the workspace to be the repository root, disables
   interactive prompts and never stores credentials.
 - No model-facing tools, prompts, or session events are registered.
@@ -210,13 +210,13 @@ Preferences and favorites are stored in the browser's `localStorage`:
 
 | Key | Contents |
 | --- | --- |
-| `dsh-side:root` | Last opened workspace path |
-| `dsh-side:tree-width` | Explorer width in px |
-| `dsh-side:show-hidden` | Show dotfiles (`1`/`0`) |
-| `dsh-side:favorites` | Per-root favorites map |
-| `dsh-side:favorites-open` | Favorites section open state |
-| `dsh-side:word-wrap` | Word-wrap toggle |
-| `dsh-side:hidden-roots` | Locally hidden directory paths |
+| `dsh-web-filebrowser:root` | Last opened workspace path |
+| `dsh-web-filebrowser:tree-width` | Explorer width in px |
+| `dsh-web-filebrowser:show-hidden` | Show dotfiles (`1`/`0`) |
+| `dsh-web-filebrowser:favorites` | Per-root favorites map |
+| `dsh-web-filebrowser:favorites-open` | Favorites section open state |
+| `dsh-web-filebrowser:word-wrap` | Word-wrap toggle |
+| `dsh-web-filebrowser:hidden-roots` | Locally hidden directory paths |
 
 ## Limitations
 
@@ -238,4 +238,4 @@ privately, not in a public issue.
 
 ## License
 
-[MIT](../LICENSE) © DSH Side contributors.
+[MIT](../LICENSE) © DSH Web Filebrowser contributors.

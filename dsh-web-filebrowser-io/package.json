@@ -1,8 +1,8 @@
 {
-  "name": "@local/dsh-side-git",
+  "name": "@local/dsh-web-filebrowser-io",
   "version": "1.0.0",
   "private": true,
-  "description": "Git status, staging, commit, compare and explicit fetch/pull/push support for the Workspace Files plugin",
+  "description": "Binary upload/download bridge for the Workspace Files plugin",
   "type": "module",
   "exports": {
     ".": "./index.js",
@@ -27,8 +27,8 @@
     "deepseek-harness",
     "dsh",
     "plugin",
-    "git",
-    "source-control",
-    "commit"
+    "upload",
+    "download",
+    "binary-transfer"
   ]
 }
