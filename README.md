@@ -138,8 +138,8 @@ local bundle directories for you.
   staged changes, working-tree changes and untracked files.
 - Stage/unstage individual files or everything, write a commit message and commit
   (`Ctrl/⌘+Enter`); diff any changed or untracked text file in a read-only editor
-  tab that defaults to a resizable side-by-side view (long lines wrap to fit) and
-  can switch to unified.
+  tab that defaults to a centered side-by-side view; one horizontal scrollbar at
+  the bottom pans both sides together, and the view can switch to unified.
 - Initialize a repository when the workspace is not one, and switch between local
   branches from a branch picker.
 - A toolbar adds **Fetch / Pull / Push / Compare**: fetch refreshes remote refs,
@@ -326,10 +326,10 @@ The agent uses the same Plugin Manager installation path as the UI.
 4. Type a commit message and click **Commit** (or press `Ctrl/⌘+Enter`). The
    list refreshes after a successful commit. **Commit & push** commits and pushes
    in one step.
-5. Click a file row to open a read-only side-by-side diff in the editor area.
-   Drag the divider between the panes to resize them (double-click resets), or
-   switch to **Unified** in the diff toolbar; long lines wrap to fit the editor.
-   The **Open file** action loads the working tree file in a normal editor tab.
+5. Click a file row to open a read-only side-by-side diff in the editor area. The
+   divider stays centered; drag the single horizontal scrollbar at the bottom to
+   pan both sides together, or switch to **Unified** in the diff toolbar. The
+   **Open file** action loads the working tree file in a normal editor tab.
 6. Click the branch button to list local branches and switch to one.
 7. **Fetch** updates remote refs (`git fetch --prune`); **Pull** fast-forwards
    from the upstream and explains how to proceed when the branches diverge;
@@ -504,7 +504,6 @@ npm run check:json
   | `dsh-side:favorites` | Per-root favorites map |
   | `dsh-side:favorites-open` | Favorites section open state |
   | `dsh-side:word-wrap` | Word-wrap toggle |
-  | `dsh-side:diff-split` | Split-diff pane ratio (25–75, default 50) |
   | `dsh-side:hidden-roots` | Locally hidden directory paths |
 
 - **Localization**: runtime strings live in `client.js` (`zh`/`en` dicts); the

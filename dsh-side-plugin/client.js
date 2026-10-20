@@ -30,7 +30,6 @@ window.__ModuleLoader__.load({
     const FAVORITES_OPEN_KEY = 'dsh-side:favorites-open'
     const HIDDEN_ROOTS_KEY = 'dsh-side:hidden-roots'
     const WRAP_KEY = 'dsh-side:word-wrap'
-    const DIFF_SPLIT_KEY = 'dsh-side:diff-split'
 
     /** Stable empty list for a slot without the workspaces hook. */
     const EMPTY_WORKSPACES = []
@@ -222,7 +221,6 @@ window.__ModuleLoader__.load({
       'git.diffReadOnly': '只读',
       'git.loadingDiff': '正在读取差异…',
       'git.refreshDiff': '刷新差异',
-      'git.diffResizeHint': '拖动调整左右宽度，双击恢复均分',
       'git.diffWorking': '工作区',
       'git.untracked': '未跟踪',
       'git.conflict': '冲突',
@@ -455,7 +453,6 @@ window.__ModuleLoader__.load({
       'git.diffReadOnly': 'Read-only',
       'git.loadingDiff': 'Loading diff…',
       'git.refreshDiff': 'Refresh diff',
-      'git.diffResizeHint': 'Drag to resize the panes; double-click to reset',
       'git.diffWorking': 'Working tree',
       'git.untracked': 'Untracked',
       'git.conflict': 'Conflict',
@@ -2432,6 +2429,50 @@ window.__ModuleLoader__.load({
       }
     }
 
+    /**
+     * Approximate display width of one diff line in monospace columns. Tabs and
+     * wide CJK/emoji characters occupy two columns; the result feeds the single
+     * horizontal scrollbar so both sides can be measured together.
+     */
+    function diffLineWidth(text) {
+      let width = 0
+      for (const char of text) {
+        if (char === '\t') {
+          width += 2
+          continue
+        }
+        const code = char.codePointAt(0) ?? 0
+        const wide =
+          (code >= 0x1100 && code <= 0x115f) ||
+          code === 0x2329 ||
+          code === 0x232a ||
+          (code >= 0x2e80 && code <= 0xa4cf) ||
+          (code >= 0xac00 && code <= 0xd7a3) ||
+          (code >= 0xf900 && code <= 0xfaff) ||
+          (code >= 0xfe10 && code <= 0xfe19) ||
+          (code >= 0xfe30 && code <= 0xfe6f) ||
+          (code >= 0xff00 && code <= 0xff60) ||
+          (code >= 0xffe0 && code <= 0xffe6) ||
+          (code >= 0x1f300 && code <= 0x1f64f) ||
+          (code >= 0x1f900 && code <= 0x1f9ff)
+        width += wide ? 2 : 1
+      }
+      return width
+    }
+
+    /** Widest rendered line, split across the two equal columns. */
+    function splitDiffWidth(rows) {
+      let width = 40
+      for (const row of rows) {
+        if (row.kind === 'hunk' || row.kind === 'meta') {
+          width = Math.max(width, Math.ceil(diffLineWidth(row.text) / 2))
+        } else {
+          width = Math.max(width, diffLineWidth(row.oldText), diffLineWidth(row.newText))
+        }
+      }
+      return Math.min(800, width)
+    }
+
     /* ------------------------------------------------------------------ *
      * Git panel
      * ------------------------------------------------------------------ */
@@ -2443,37 +2484,13 @@ window.__ModuleLoader__.load({
     function DiffView({ tab, t }) {
       const text = tab.diff !== undefined && typeof tab.diff.text === 'string' ? tab.diff.text : ''
       const parsed = useMemo(() => parseUnifiedDiff(text), [text])
-      const [splitRatio, setSplitRatio] = useState(() => {
-        const stored = Number.parseFloat(readStorage(DIFF_SPLIT_KEY) ?? '')
-        return Number.isFinite(stored) ? Math.min(75, Math.max(25, stored)) : 50
-      })
-      const rememberSplit = (ratio) => {
-        writeStorage(DIFF_SPLIT_KEY, ratio.toFixed(1))
-      }
-      const startResize = (event) => {
-        event.preventDefault()
-        const container = event.currentTarget.closest('.ds-diffview')
-        if (container === null) return
-        const table = container.querySelector('.ds-git-split')
-        const bounds = (table ?? container).getBoundingClientRect()
-        if (bounds.width <= 0) return
-        let latest = splitRatio
-        const move = (moveEvent) => {
-          latest = Math.min(75, Math.max(25, ((moveEvent.clientX - bounds.left) / bounds.width) * 100))
-          setSplitRatio(latest)
-        }
-        const finish = () => {
-          window.removeEventListener('pointermove', move)
-          window.removeEventListener('pointerup', finish)
-          rememberSplit(latest)
-        }
-        window.addEventListener('pointermove', move)
-        window.addEventListener('pointerup', finish)
-      }
-      const resetSplit = () => {
-        setSplitRatio(50)
-        rememberSplit(50)
-      }
+      const displayWidth = useMemo(() => splitDiffWidth(parsed.rows), [parsed])
+      const viewRef = useRef(null)
+      const barRef = useRef(null)
+      useEffect(() => {
+        if (viewRef.current !== null) viewRef.current.style.setProperty('--ds-diff-scroll', '0px')
+        if (barRef.current !== null) barRef.current.scrollLeft = 0
+      }, [text, tab.diffMode])
       if (tab.loading) {
         return h('div', { className: 'ds-empty' }, h('span', { className: 'ds-spinner' }), t('git.loadingDiff'))
       }
@@ -2484,118 +2501,103 @@ window.__ModuleLoader__.load({
         return h('div', { className: 'ds-empty' }, t('git.noDiff'))
       }
       const split = tab.diffMode !== 'unified' && parsed.rows.length > 0
+      const renderCode = (value, parts, side) =>
+        h(
+          'span',
+          { className: 'ds-git-split-code' },
+          parts === null ? value : parts[side].prefix,
+          parts !== null && parts[side].middle.length > 0
+            ? h('span', { className: 'ds-git-split-emph' }, parts[side].middle)
+            : null,
+          parts === null ? null : parts[side].suffix,
+        )
+      const splitBody = h(
+        React.Fragment,
+        null,
+        h(
+          'div',
+          { className: 'ds-git-diff-split-scroll' },
+          parsed.truncated
+            ? h('div', { className: 'ds-git-diff-note' }, t('git.diffTruncated', { n: String(MAX_SPLIT_ROWS) }))
+            : null,
+          h(
+            'table',
+            { className: 'ds-git-split' },
+            h(
+              'colgroup',
+              null,
+              h('col', { style: { width: '50%' } }),
+              h('col', { style: { width: '50%' } }),
+            ),
+            h(
+              'thead',
+              null,
+              h('tr', null, h('th', null, t('git.diffOldSide')), h('th', null, t('git.diffNewSide'))),
+            ),
+            h(
+              'tbody',
+              null,
+              parsed.rows.map((row, index) => {
+                if (row.kind === 'hunk' || row.kind === 'meta') {
+                  return h(
+                    'tr',
+                    { key: index, className: row.kind === 'hunk' ? 'ds-git-split-hunk' : 'ds-git-split-meta' },
+                    h('td', { colSpan: 2 }, row.text),
+                  )
+                }
+                const oldEmpty = row.oldNumber === null
+                const newEmpty = row.newNumber === null
+                const parts = row.kind === 'change' ? splitChangeParts(row.oldText, row.newText) : null
+                return h(
+                  'tr',
+                  { key: index, className: 'ds-git-split-row', 'data-kind': row.kind },
+                  h(
+                    'td',
+                    { className: `ds-git-split-cell ds-git-split-old${oldEmpty ? ' ds-git-split-empty' : ''}` },
+                    h(
+                      'div',
+                      { className: 'ds-git-split-clip' },
+                      h('span', { className: 'ds-git-split-ln' }, oldEmpty ? '' : String(row.oldNumber)),
+                      h('div', { className: 'ds-git-split-codebox' }, renderCode(row.oldText, parts, 'old')),
+                    ),
+                  ),
+                  h(
+                    'td',
+                    { className: `ds-git-split-cell ds-git-split-new${newEmpty ? ' ds-git-split-empty' : ''}` },
+                    h(
+                      'div',
+                      { className: 'ds-git-split-clip' },
+                      h('span', { className: 'ds-git-split-ln' }, newEmpty ? '' : String(row.newNumber)),
+                      h('div', { className: 'ds-git-split-codebox' }, renderCode(row.newText, parts, 'new')),
+                    ),
+                  ),
+                )
+              }),
+            ),
+          ),
+        ),
+        h(
+          'div',
+          {
+            className: 'ds-git-diff-hscroll',
+            ref: barRef,
+            onScroll: (event) => {
+              if (viewRef.current !== null) {
+                viewRef.current.style.setProperty('--ds-diff-scroll', `${String(event.currentTarget.scrollLeft)}px`)
+              }
+            },
+          },
+          h('div', {
+            className: 'ds-git-diff-hscroll-inner',
+            style: { width: `calc(50% + ${String(displayWidth)}ch + 72px)` },
+          }),
+        ),
+      )
       return h(
         'div',
-        { className: 'ds-diffview' },
+        { className: 'ds-diffview', ref: viewRef },
         split
-          ? h(
-              'div',
-              { className: 'ds-git-diff-split-scroll' },
-              parsed.truncated
-                ? h('div', { className: 'ds-git-diff-note' }, t('git.diffTruncated', { n: String(MAX_SPLIT_ROWS) }))
-                : null,
-              h(
-                'table',
-                { className: 'ds-git-split' },
-                h(
-                  'colgroup',
-                  null,
-                  h('col', { style: { width: `${splitRatio.toFixed(2)}%` } }),
-                  h('col', null),
-                ),
-                h(
-                  'thead',
-                  null,
-                  h(
-                    'tr',
-                    null,
-                    h(
-                      'th',
-                      null,
-                      t('git.diffOldSide'),
-                      h('span', {
-                        className: 'ds-git-split-handle',
-                        role: 'separator',
-                        'aria-orientation': 'vertical',
-                        'aria-valuemin': 25,
-                        'aria-valuemax': 75,
-                        'aria-valuenow': Math.round(splitRatio),
-                        tabIndex: 0,
-                        title: t('git.diffResizeHint'),
-                        onPointerDown: startResize,
-                        onDoubleClick: resetSplit,
-                        onKeyDown: (event) => {
-                          if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
-                          event.preventDefault()
-                          const next = Math.min(
-                            75,
-                            Math.max(25, splitRatio + (event.key === 'ArrowLeft' ? -2 : 2)),
-                          )
-                          setSplitRatio(next)
-                          rememberSplit(next)
-                        },
-                      }),
-                    ),
-                    h('th', null, t('git.diffNewSide')),
-                  ),
-                ),
-                h(
-                  'tbody',
-                  null,
-                  parsed.rows.map((row, index) => {
-                    if (row.kind === 'hunk' || row.kind === 'meta') {
-                      return h(
-                        'tr',
-                        {
-                          key: index,
-                          className: row.kind === 'hunk' ? 'ds-git-split-hunk' : 'ds-git-split-meta',
-                        },
-                        h('td', { colSpan: 2 }, row.text),
-                      )
-                    }
-                    const oldEmpty = row.oldNumber === null
-                    const newEmpty = row.newNumber === null
-                    const parts = row.kind === 'change' ? splitChangeParts(row.oldText, row.newText) : null
-                    return h(
-                      'tr',
-                      { key: index, className: 'ds-git-split-row', 'data-kind': row.kind },
-                      h(
-                        'td',
-                        {
-                          className: `ds-git-split-cell ds-git-split-old${oldEmpty ? ' ds-git-split-empty' : ''}`,
-                        },
-                        h('span', { className: 'ds-git-split-ln' }, oldEmpty ? '' : String(row.oldNumber)),
-                        h(
-                          'span',
-                          { className: 'ds-git-split-code' },
-                          parts === null ? row.oldText : parts.old.prefix,
-                          parts !== null && parts.old.middle.length > 0
-                            ? h('span', { className: 'ds-git-split-emph' }, parts.old.middle)
-                            : null,
-                          parts === null ? null : parts.old.suffix,
-                        ),
-                      ),
-                      h(
-                        'td',
-                        {
-                          className: `ds-git-split-cell ds-git-split-new${newEmpty ? ' ds-git-split-empty' : ''}`,
-                        },
-                        h('span', { className: 'ds-git-split-ln' }, newEmpty ? '' : String(row.newNumber)),
-                        h(
-                          'span',
-                          { className: 'ds-git-split-code' },
-                          parts === null ? row.newText : parts.new.prefix,
-                          parts !== null && parts.new.middle.length > 0
-                            ? h('span', { className: 'ds-git-split-emph' }, parts.new.middle)
-                            : null,
-                          parts === null ? null : parts.new.suffix,
-                        ),
-                      ),
-                    )
-                  }),
-                ),
-              ),
-            )
+          ? splitBody
           : h(
               React.Fragment,
               null,
@@ -6602,6 +6604,13 @@ window.__ModuleLoader__.load({
 }
 .ds-diffview { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow: hidden; }
 .ds-diffview .ds-git-diff-code { min-height: 0; }
+.ds-git-diff-hscroll {
+  flex: 0 0 auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: var(--dsw-alias-bg-layer-1);
+}
+.ds-git-diff-hscroll-inner { height: 1px; }
 .ds-glyph-diff { color: var(--dsw-alias-brand-primary); }
 .ds-tab-tag {
   flex: 0 0 auto;
@@ -6615,7 +6624,8 @@ window.__ModuleLoader__.load({
 .ds-git-diff-split-scroll {
   flex: 1 1 auto;
   min-height: 160px;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   background: var(--dsw-alias-bg-layer-1);
   color: var(--dsw-alias-label-primary);
   font-family: var(--ds-mono);
@@ -6648,46 +6658,25 @@ window.__ModuleLoader__.load({
 .ds-git-split thead th:first-child { border-right: 1px solid var(--dsw-alias-border-l1); }
 .ds-git-split td { padding: 0; vertical-align: top; }
 .ds-git-split-new { border-left: 1px solid var(--dsw-alias-border-l1); }
-.ds-git-split-handle {
-  position: absolute;
-  top: 0;
-  right: -3px;
-  bottom: 0;
-  z-index: 3;
-  width: 7px;
-  cursor: col-resize;
-  touch-action: none;
-}
-.ds-git-split-handle::after {
-  content: '';
-  position: absolute;
-  top: 3px;
-  bottom: 3px;
-  left: 3px;
-  width: 1px;
-  background: var(--dsw-alias-border-l2);
-}
-.ds-git-split-handle:hover::after,
-.ds-git-split-handle:active::after { background: var(--dsw-alias-brand-primary); }
+.ds-git-split-clip { display: flex; align-items: stretch; width: 100%; overflow: hidden; }
 .ds-git-split-ln {
-  display: inline-block;
+  flex: 0 0 52px;
   width: 52px;
   padding: 0 7px 0 4px;
   box-sizing: border-box;
   text-align: right;
   color: var(--dsw-alias-label-secondary);
   font-size: 10.5px;
-  vertical-align: top;
   user-select: none;
 }
+.ds-git-split-codebox { flex: 1 1 auto; min-width: 0; overflow: hidden; }
 .ds-git-split-code {
   display: inline-block;
-  width: calc(100% - 52px);
+  width: max-content;
   padding: 0 12px 0 2px;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  vertical-align: top;
+  white-space: pre;
   tab-size: 2;
+  transform: translateX(calc(-1 * var(--ds-diff-scroll, 0px)));
 }
 .ds-git-split-row[data-kind="del"] .ds-git-split-old:not(.ds-git-split-empty),
 .ds-git-split-row[data-kind="change"] .ds-git-split-old:not(.ds-git-split-empty) {
@@ -6719,16 +6708,18 @@ window.__ModuleLoader__.load({
   background: color-mix(in srgb, var(--dsw-alias-brand-primary) 8%, var(--dsw-alias-bg-layer-1));
   color: var(--dsw-alias-label-secondary);
   font-size: 11px;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: pre;
 }
 .ds-git-split-meta td {
   padding: 2px 10px;
   color: var(--dsw-alias-label-secondary);
   font-size: 11px;
   font-style: italic;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: pre;
 }
 .ds-git-diff-code {
   flex: 1 1 auto;

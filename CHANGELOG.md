@@ -24,10 +24,10 @@ All notable changes to this project are documented here.
 
 - File diffs open as read-only tabs in the editor area (not a modal), in a
   side-by-side split view with aligned old/new line numbers, subtle color for
-  added/removed lines and emphasized changed spans. The split fits the editor
-  width by wrapping long lines; drag the divider to resize the panes (25–75%,
-  persisted, double-click resets) and switch Split/Unified from the diff
-  toolbar. Large diffs are capped with a notice that points at the unified view.
+  added/removed lines and emphasized changed spans. The divider stays centered;
+  one horizontal scrollbar at the bottom pans both sides together, and the split
+  can switch to Unified from the diff toolbar. Large diffs are capped with a
+  notice that points at the unified view.
 
 ## 1.0.0 — 2026-10-20
 
