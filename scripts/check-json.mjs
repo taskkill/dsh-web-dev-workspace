@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 
 const files = [
+  'package.json',
   'dsh-side-plugin/package.json',
   'dsh-side-plugin/locale/en.json',
   'dsh-side-plugin/locale/zh.json',

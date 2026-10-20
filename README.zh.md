@@ -23,8 +23,8 @@
 DSH Side 把 Harness Web UI 变成一个真正可用的编码工作区：它在左侧栏和右侧栏
 「开始」页中加入文件树与多标签编辑器，同时保持原有的对话和会话界面不变。
 
-这是一组**本地 bundle**（不是 npm 包）：从克隆下来的仓库目录，通过 Harness 的
-插件管理器安装；也可以直接让 Harness agent 帮你安装这三个本地目录。
+这是一个**本地组合 bundle**（不是 npm 包）：从克隆下来的仓库根目录，通过 Harness
+的插件管理器安装一次；也可以直接让 Harness agent 帮你安装。
 
 ## 目录
 
@@ -107,7 +107,7 @@ DSH Side 把 Harness Web UI 变成一个真正可用的编码工作区：它在�
 - 通过 SFTP 浏览、打开/保存文本、新建、重命名、删除、复制/移动和上传/下载；拖拽上传同样适用于远程目录。
 - 认证使用 SSH agent 或 `~/.ssh` 下的私钥（会读取 `~/.ssh/config` 的 HostName/User/Port/IdentityFile）；
   不提供密码输入，也不保存任何凭据。
-- SSH 支持依赖 `ssh2`：在 `dsh-side-plugin/` 目录执行一次 `npm install`。未安装时其它功能不受影响，
+- SSH 支持依赖 `ssh2`：在仓库根目录执行一次 `npm install`。未安装时其它功能不受影响，
   只有 SSH 操作会提示安装。
 - **主机密钥未做固定校验**（ssh2 接受连接时提供的密钥）；请只在可信网络/主机上使用远程目录。
 - Git 视图仅支持本地仓库；SSH 工作区会隐藏 Git 按钮。
@@ -126,18 +126,18 @@ DSH Side 把 Harness Web UI 变成一个真正可用的编码工作区：它在�
 - 带 **Web** profile 和 **插件管理器** 页面的 DeepSeek Harness。
 - 已在 **Linux** 上测试：DeepSeek Harness **`0.2.1-rc.2`**。更高版本可能可用，但
   Harness 的 slot/service API 不保证稳定；macOS/Windows 宿主未做显式验证。
-- 无需构建；三个 bundle 都是普通 ESM，直接在 Harness Host 中运行。SSH 远程目录是可选功能，需要 `ssh2`（在 `dsh-side-plugin/` 执行 `npm install`），其余功能不依赖额外包。
+- 无需构建；组合包是普通 ESM，直接在 Harness Host 中运行。SSH 远程目录是可选功能，需要 `ssh2`（在仓库根目录执行 `npm install`），其余功能不依赖额外包。
 - 较新的现代浏览器（使用了 `color-mix`、`ResizeObserver`、Clipboard API）。
-- SSH 远程目录：在 `dsh-side-plugin/` 执行 `npm install` 安装 `ssh2`，并准备好 SSH agent 或 `~/.ssh` 私钥。
+- SSH 远程目录：在仓库根目录执行 `npm install` 安装 `ssh2`，并准备好 SSH agent 或 `~/.ssh` 私钥。
 - Git 功能需要 Host 的 `PATH` 中有 `git`，并配置提交身份（`user.name` / `user.email`）。
 
-仓库包含**三个 bundle**：
+仓库现在是一个**组合 bundle**（`@local/dsh-side`），内部包含三个组件；安装时只需要填仓库根目录一次：
 
 | 目录 | 作用 |
 | --- | --- |
-| `dsh-side-plugin/` | 主插件：Host 文件 API + 浏览器目录/编辑器 UI。 |
-| `dsh-side-io/` | 仅 Host 的配套插件：二进制上传与强制下载路由。上传/下载依赖它，其余功能可单独使用。 |
-| `dsh-side-git/` | 仅 Host 的配套插件：Git 状态、暂存、提交、diff、分支、比较，以及 fetch/pull/push 同步。Git 视图依赖它。 |
+| `dsh-side-plugin/` | 主组件：Host 文件 API、SSH/SFTP、浏览器目录/编辑器 UI。 |
+| `dsh-side-io/` | 仅 Host 的组件：二进制上传与强制下载路由。 |
+| `dsh-side-git/` | 仅 Host 的组件：Git 状态、暂存、提交、diff、分支、比较与 fetch/pull/push。 |
 
 ### 从本地目录安装
 
@@ -148,55 +148,47 @@ DSH Side 把 Harness Web UI 变成一个真正可用的编码工作区：它在�
    cd dsh-side
    ```
 
-2. 打开 Harness Web UI → 左侧 **插件 / Plugins**。
+2. 如需 SSH 远程目录，在仓库根目录安装可选依赖：
 
-3. 点 **添加插件（Add plugin）** → **安装第三方插件（Install a third-party plugin）**，
-   填入主 bundle 的**绝对路径**：
-
-   ```text
-   /absolute/path/to/dsh-side/dsh-side-plugin
+   ```bash
+   npm install
    ```
 
-   确认信任提示并安装，完成后点 **立即启用（Enable now）**（或在已安装插件列表中打开）。
+3. 打开 Harness Web UI → 左侧 **插件 / Plugins**。
 
-4. 对二进制配套插件重复一次：
-
-   ```text
-   /absolute/path/to/dsh-side/dsh-side-io
-   ```
-
-5. 对 Git 配套插件重复一次：
+4. 点 **添加插件（Add plugin）** → **安装第三方插件（Install a third-party plugin）**，
+   填入**仓库根目录**的绝对路径：
 
    ```text
-   /absolute/path/to/dsh-side/dsh-side-git
+   /absolute/path/to/dsh-side
    ```
 
-6. 如果页面还没出现新入口，刷新一次 Web 页面。插件管理器会提示是否需要重启
-   Harness；通常新安装的 bundle 不需要重启即可生效。
+   确认信任提示并安装，完成后点 **立即启用（Enable now）**。
 
-> **为什么装三个？** 主 bundle 负责目录/编辑器，IO 配套插件负责二进制上传/下载，
-> Git 配套插件负责本地 Git 操作。三个都请保持启用；不装 IO 时上传/强制下载不可用，
-> 不装 Git 时 Git 视图会提示安装。
+5. 如果页面还没出现新入口，刷新一次 Web 页面。组合包包含 Host 侧组件，插件管理器
+   提示需要重启时重启一次 Harness 即可。
+
+> **为什么只装一个？** 根目录的 `cordis.patch.yml` 会一次性启动目录/编辑器、二进制
+> 上传下载和 Git 三个组件；它们共用同一条已鉴权的 `/api` 通道，不需要分别安装。
+> 三个子目录仍可单独安装用于开发调试。
 
 ### 通过 Harness agent 安装
 
 如果你正在使用 DSH agent，可以直接说：
 
 ```text
-请安装这三个本地 DSH bundle：
-/absolute/path/to/dsh-side/dsh-side-plugin
-/absolute/path/to/dsh-side/dsh-side-io
-/absolute/path/to/dsh-side/dsh-side-git
-并启用它们。
+请安装这个本地 DSH 组合包：
+/absolute/path/to/dsh-side
+并启用它。
 ```
 
-Agent 会走与插件管理器相同的安装流程。
+Agent 会走与插件管理器相同的安装流程（安装的是仓库根目录，不是子目录）。
 
 ### 更新与卸载
 
 - **更新**：在 **插件 → 已安装插件** 中卸载后，从新的本地路径重新安装；如果页面
   提供 Update 操作也可直接使用。
-- **卸载**：卸载三个 bundle。会移除 profile 的依赖/链接与插件行，不会删除你克隆的源码或工作区文件。
+- **卸载**：卸载 `@local/dsh-side` 这一个组合包即可。会移除 profile 的依赖/链接与插件行，不会删除你克隆的源码或工作区文件。
 - **浏览器数据**：偏好与收藏保存在浏览器 `localStorage`，卸载插件不会自动清除；
   如需彻底清理，可在浏览器站点数据中删除。
 
@@ -205,8 +197,8 @@ Agent 会走与插件管理器相同的安装流程。
 | 现象 | 处理 |
 | --- | --- |
 | 没有新的侧栏图标 / 开始页卡片 | 刷新页面；确认主 bundle 已启用。 |
-| 上传或下载失败 | 确认 IO 配套插件 `@local/dsh-side-io` 已安装并启用。 |
-| Git 视图提示未安装 | 安装并启用 `@local/dsh-side-git`。 |
+| 上传或下载失败 | 确认组合包 `@local/dsh-side` 已安装并启用。 |
+| Git 视图提示未安装 | 确认组合包 `@local/dsh-side` 已启用；SSH 远程工作区不提供 Git。 |
 | Git 视图提示不是仓库根目录 | 直接打开仓库根目录作为工作区；Git 操作只允许在该根目录内。 |
 | 获取/拉取/推送提示远程要求认证 | 在 Host 上配置 SSH 密钥或 Git 凭据助手；插件不会提示输入密码，也不保存凭据。 |
 | 拉取提示已分叉 | 默认只做快进；请在终端对本地分支变基或合并后再拉取。 |
@@ -214,7 +206,7 @@ Agent 会走与插件管理器相同的安装流程。
 | 网络按钮是灰的 | 仓库没有配置远程，或当前分支没有上游（拉取按钮）。 |
 | 提交提示身份未知 | 在 Harness Host 上配置 `user.name` / `user.email`。 |
 | 提示只能访问已注册工作区 / outside-root | 先用地址栏打开一次该目录，使其注册为工作区。 |
-| 安装被拒绝 | 使用**绝对路径**，确认目录中有 `package.json` 和 `cordis.patch.yml`。 |
+| 安装被拒绝（例如未声明组合包） | 安装**仓库根目录**的绝对路径，确认根目录 `package.json` 有 `dsh.bundle` 且存在 `cordis.patch.yml`；不要安装子目录来获得完整功能。 |
 | 修改没有生效 | 客户端走 HMR；Host 侧修改需要按插件管理器提示重启 Harness。 |
 
 ## 使用
@@ -356,18 +348,21 @@ DSH Side 是**本地优先**插件，拥有文件系统访问能力。启用前�
 
 ```text
 dsh-side/
-├── dsh-side-plugin/          # 主 bundle：Host API + 浏览器 UI
+├── index.js                  # 组合 bundle 入口：启动文件/IO/Git 三个组件
+├── cordis.patch.yml          # 组合 bundle 的插件行
+├── dsh-side-plugin/          # 主组件：Host API + SSH + 浏览器 UI
 │   ├── index.js              # /api/dsh-side Host 路由
+│   ├── ssh.js                # 可选 SFTP 后端
 │   ├── client.js             # 主面板、侧栏入口、目录/编辑器 UI
 │   ├── cordis.patch.yml      # 插入 Host 插件行
 │   ├── locale/{en,zh}.json   # 插件管理器显示元数据
 │   └── icon.svg
-├── dsh-side-io/              # 仅 Host 的二进制配套插件
+├── dsh-side-io/              # 仅 Host 的二进制组件
 │   ├── index.js              # /api/dsh-side-io 上传/下载路由
 │   ├── cordis.patch.yml
 │   ├── locale/{en,zh}.json
 │   └── icon.svg
-├── dsh-side-git/             # 仅 Host 的 Git 配套插件
+├── dsh-side-git/             # 仅 Host 的 Git 组件
 │   ├── index.js              # /api/dsh-side-git status/stage/commit/diff/branch
 │   ├── cordis.patch.yml
 │   ├── locale/{en,zh}.json
@@ -379,7 +374,7 @@ dsh-side/
 ├── .gitignore
 ├── SECURITY.md
 ├── scripts/check-json.mjs
-└── package.json              # private workspace + 语法检查脚本
+└── package.json              # 组合 bundle 清单（dsh.bundle/dsh.client）
 ```
 
 ## 开发
@@ -397,7 +392,7 @@ npm run check:json
 - **客户端**：`client.js` 通过 `window.__ModuleLoader__.load` 注册懒加载工厂；
   React 来自浏览器模块表，样式只使用 Harness 主题 token。
 - **Host 侧**：每个 host bundle 的 `index.js` 导出 `apply`/`inject`，在 `ctx.connection.fetch` 上注册精确路由。
-- **开发安装**：通过插件管理器安装三个本地目录（或让 agent 安装）。客户端由 HMR 监听；
+- **开发安装**：通过插件管理器安装仓库根目录的组合包（或让 agent 安装）。客户端由 HMR 监听；
   Host 侧改动需要重启 Harness。若本地安装是拷贝而非链接，修改后需重新安装。
 - **客户端本地键**：
 

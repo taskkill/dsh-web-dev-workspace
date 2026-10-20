@@ -31,9 +31,9 @@ DSH Side turns the Harness Web UI into a practical coding workspace. It adds a
 file explorer and a tabbed editor to the left sidebar and to the right sidebar's
 Start page, while keeping the chat and the sessions exactly where they are.
 
-It is a set of **local bundles**, not npm packages: install them from a cloned checkout
-through the Harness Plugin Manager, or ask the Harness agent to install the three
-local bundle directories for you.
+It is one **local combined bundle**, not an npm package: install the repository
+root once through the Harness Plugin Manager, or ask the Harness agent to install
+it for you.
 
 ## Contents
 
@@ -171,7 +171,7 @@ local bundle directories for you.
 - Authentication uses the SSH agent or keys under `~/.ssh` (HostName, User, Port
   and IdentityFile from `~/.ssh/config` are honored). Passwords are never
   prompted for or stored.
-- SSH support requires `ssh2`: run `npm install` once in `dsh-side-plugin/`.
+- SSH support requires `ssh2`: run `npm install` once at the repository root.
   Without it every other feature still works; SSH operations report the missing
   dependency.
 - **Host keys are not pinned** (ssh2 accepts the key presented at connect time).
@@ -197,18 +197,18 @@ local bundle directories for you.
   inside the Harness host.
 - A current evergreen browser (the UI uses `color-mix`, `ResizeObserver`, and the
   Clipboard API).
-- For SSH remote folders: `npm install` in `dsh-side-plugin/` (installs `ssh2`) and
-  a configured SSH agent or key under `~/.ssh`.
+- For SSH remote folders: `npm install` at the repository root (installs `ssh2`)
+  and a configured SSH agent or key under `~/.ssh`.
 - For Git features: `git` on the Harness host's `PATH`, and a configured Git
   identity for commits (`user.name` / `user.email`).
 
-The repository contains **three bundles**:
+The repository is now one **combined bundle** (`@local/dsh-side`) with three internal components; install the repository root once:
 
 | Directory | Purpose |
 | --- | --- |
-| `dsh-side-plugin/` | Main plugin: Host file API + browser explorer/editor UI. |
-| `dsh-side-io/` | Host-only companion: binary upload and forced-download routes. Required for upload/download; the rest works without it. |
-| `dsh-side-git/` | Host-only companion: Git status, stage, commit, diff, branches, compare, and fetch/pull/push. Required for the Git view. |
+| `dsh-side-plugin/` | Main component: Host file API, SSH/SFTP and the browser explorer/editor UI. |
+| `dsh-side-io/` | Host-only component: binary upload and forced-download routes. |
+| `dsh-side-git/` | Host-only component: Git status, stage, commit, diff, branches, compare and fetch/pull/push. |
 
 ### Install from a local checkout
 
@@ -219,60 +219,51 @@ The repository contains **three bundles**:
    cd dsh-side
    ```
 
-2. In the Harness Web UI, open **Plugins** in the left sidebar.
+2. For SSH remote folders, install the optional dependency at the repository root:
 
-3. Choose **Add plugin** → **Install a third-party plugin**, and enter the
-   **absolute** path to the main bundle:
-
-   ```text
-   /absolute/path/to/dsh-side/dsh-side-plugin
+   ```bash
+   npm install
    ```
 
-   Confirm the trust prompt, install, then **Enable now** (or switch the bundle on
-   from the Installed plugins list).
+3. In the Harness Web UI, open **Plugins** in the left sidebar.
 
-4. Repeat for the binary companion:
-
-   ```text
-   /absolute/path/to/dsh-side/dsh-side-io
-   ```
-
-5. Repeat for the Git companion:
+4. Choose **Add plugin** → **Install a third-party plugin**, and enter the
+   **absolute** path to the **repository root**:
 
    ```text
-   /absolute/path/to/dsh-side/dsh-side-git
+   /absolute/path/to/dsh-side
    ```
 
-6. Refresh the Web page if the new entries are not visible yet. The Plugin
-   Manager reports when a Harness restart is required; a freshly installed
-   bundle normally activates without one.
+   Confirm the trust prompt, install, then **Enable now**.
 
-> **Why three installs?** The main bundle owns the explorer/editor; the IO
-> companion keeps binary host I/O independent; the Git companion keeps local Git
-> operations independent. Keep all three enabled. Without the IO bundle, upload
-> and forced download are unavailable; without the Git bundle, the Git view shows
-> an install hint.
+5. Refresh the page if the entries are not visible. Because the combined bundle
+   also starts Host-side components, restart Harness once if the Plugin Manager
+   asks for it.
+
+> **Why one install?** The root `cordis.patch.yml` starts the explorer/editor,
+> binary I/O and Git components together on the same authenticated `/api`
+> channel. The three subdirectories remain independently installable for
+> development.
 
 ### Install through the Harness agent
 
-If you are working with the DSH agent, ask it to install the three local bundle
-directories:
+If you are working with the DSH agent, ask it to install the combined local
+bundle:
 
 ```text
-Install the local DSH bundles at /absolute/path/to/dsh-side/dsh-side-plugin,
-/absolute/path/to/dsh-side/dsh-side-io and
-/absolute/path/to/dsh-side/dsh-side-git, then enable them.
+Install the local DSH bundle at /absolute/path/to/dsh-side and enable it.
 ```
 
-The agent uses the same Plugin Manager installation path as the UI.
+The agent uses the same Plugin Manager installation path as the UI (the
+repository root, not a subdirectory).
 
 ### Update and uninstall
 
-- **Update**: in **Plugins → Installed plugins**, uninstall and reinstall each
-  bundle from the updated local path (or use the UI's update action when it is
-  offered).
-- **Uninstall**: uninstall all three bundles from **Installed plugins**. This removes
-  the profile dependency/link and the plugin rows; it does not delete your cloned
+- **Update**: in **Plugins → Installed plugins**, uninstall and reinstall the
+  combined bundle from the updated local path (or use the UI's update action when
+  it is offered).
+- **Uninstall**: uninstall `@local/dsh-side` from **Installed plugins**. This removes
+  the profile dependency/link and the plugin row; it does not delete your cloned
   source or workspace files.
 - **Browser state**: preferences and favorites live in the browser's
   `localStorage`. Uninstalling the plugin does not clear them; use your browser's
@@ -282,9 +273,9 @@ The agent uses the same Plugin Manager installation path as the UI.
 
 | Symptom | What to try |
 | --- | --- |
-| No new sidebar icon / Start card | Refresh the page. Confirm the main bundle is enabled in **Plugins**. |
-| Upload or download fails | Confirm `@local/dsh-side-io` (the IO companion) is installed and enabled. |
-| Git view says support is not installed | Install and enable `@local/dsh-side-git` (the Git companion). |
+| No new sidebar icon / Start card | Refresh the page. Confirm the combined bundle is enabled in **Plugins**. |
+| Upload or download fails | Confirm the combined bundle `@local/dsh-side` is installed and enabled. |
+| Git view says support is not installed | Confirm the combined bundle is enabled; SSH remote workspaces have no Git view. |
 | Git view says not the repository root | Open the repository root itself as the workspace; Git mutations are confined to that root. |
 | Fetch/pull/push says the remote requires authentication | Configure an SSH key or Git credential helper on the Host; the plugin never prompts for or stores credentials. |
 | Pull reports that branches diverged | Pull is fast-forward only; rebase or merge the branch in a terminal, then pull again. |
@@ -292,7 +283,7 @@ The agent uses the same Plugin Manager installation path as the UI.
 | Network buttons are disabled | The repository has no remote, or the branch has no upstream (Pull). |
 | Commit fails with identity unknown | Configure `user.name` and `user.email` on the Harness host. |
 | "只能访问已注册的工作区目录" / "outside-root" | Open the directory once through the address bar so it is registered as a workspace, then retry. |
-| Install rejected | Use an **absolute** local path, and check that the directory contains `package.json` and `cordis.patch.yml`. |
+| Install rejected (for example, no composite bundle declared) | Install the **repository root** absolute path; its `package.json` must declare `dsh.bundle` and `cordis.patch.yml` must exist. Do not install a subdirectory for the full feature set. |
 | A change is not live | Client-side changes use the browser HMR path; Host-side changes require a Harness restart, as reported by the Plugin Manager. |
 
 ## Usage
@@ -455,7 +446,7 @@ issue for security-sensitive reports.
 ## Compatibility and limitations
 
 - **No build and no npm publication**: the packages use the `@local/` scope and are
-  intended to be installed as local bundles. Rename the packages if you want to
+  intended to be installed as a local combined bundle. Rename the packages if you want to
   publish your own fork to a registry.
 - **No folder upload/download**: only individual files are transferred. Upload a
   folder by creating it in the UI and uploading its files, or zip it externally.
@@ -478,18 +469,21 @@ issue for security-sensitive reports.
 
 ```text
 dsh-side/
-├── dsh-side-plugin/          # main bundle: Host API + browser UI
-│   ├── index.js              # /api/dsh-side Host route
-│   ├── client.js             # main panel, sidebar card, explorer/editor UI
-│   ├── cordis.patch.yml      # inserts the host plugin row
-│   ├── locale/{en,zh}.json   # plugin display metadata
+├── index.js                  # combined bundle entry: files, IO, Git
+├── cordis.patch.yml          # combined bundle row
+├── dsh-side-plugin/          # main component: Host API, SSH, browser UI
+│   ├── index.js              # /api/dsh-side host routes
+│   ├── ssh.js                # optional SFTP backend
+│   ├── client.js             # main panel, sidebar entries, explorer/editor UI
+│   ├── cordis.patch.yml      # standalone component row
+│   ├── locale/{en,zh}.json   # plugin-manager metadata
 │   └── icon.svg
-├── dsh-side-io/              # host-only binary companion
-│   ├── index.js              # /api/dsh-side-io upload/download route
+├── dsh-side-io/              # host-only binary component
+│   ├── index.js              # /api/dsh-side-io upload/download
 │   ├── cordis.patch.yml
 │   ├── locale/{en,zh}.json
 │   └── icon.svg
-├── dsh-side-git/             # host-only Git companion
+├── dsh-side-git/             # host-only Git component
 │   ├── index.js              # /api/dsh-side-git status/stage/commit/diff/branch
 │   ├── cordis.patch.yml
 │   ├── locale/{en,zh}.json
@@ -501,7 +495,7 @@ dsh-side/
 ├── .gitignore
 ├── SECURITY.md
 ├── scripts/check-json.mjs
-└── package.json              # private workspace + syntax-check scripts
+└── package.json              # combined bundle manifest (dsh.bundle/dsh.client)
 ```
 
 ## Development

@@ -10,8 +10,16 @@ Chinese overview: [`README.zh.md`](../README.zh.md).
 
 ## Install
 
-The plugin is a **local bundle**, not an npm package. Install it from a cloned
-checkout through the Harness Plugin Manager:
+The plugin is a **local bundle**, not an npm package. Normally install the combined
+bundle from the repository root once; it starts this component together with the
+IO and Git components:
+
+```text
+/absolute/path/to/dsh-side
+```
+
+Installing this directory alone is supported for development, but binary I/O and
+the Git view then need their own installs. To install just this component:
 
 1. Clone the repository:
 
@@ -26,16 +34,12 @@ checkout through the Harness Plugin Manager:
    /absolute/path/to/dsh-side/dsh-side-plugin
    ```
 
-3. Install and enable it, then install the two companion bundles the same way:
-
-   ```text
-   /absolute/path/to/dsh-side/dsh-side-io
-   /absolute/path/to/dsh-side/dsh-side-git
-   ```
+3. Install and enable it. For the full feature set install the combined bundle
+   at the repository root instead.
 
 4. Refresh the page if the new entries are not visible.
 
-You can also ask the Harness agent to install all three local bundle directories. The
+You can also ask the Harness agent to install the combined bundle at the repository root. The
 full installation, update, uninstall and troubleshooting notes live in the
 [root README](../README.md#installation).
 
@@ -107,7 +111,7 @@ third-party runtime dependencies.
 - Browse, edit/save, create, rename, delete, copy/move and upload/download on the
   remote root; drag-and-drop upload and the context menu use the same paths as
   local workspaces. Git is local-only and its button is hidden for SSH roots.
-- Requires the optional `ssh2` dependency: run `npm install` in this directory.
+- Requires the optional `ssh2` dependency: run `npm install` at the repository root (or in this directory when installing the component standalone).
   Without it the plugin still loads; SSH operations report the missing dependency.
 - Host keys are not pinned; connect only to trusted hosts.
 

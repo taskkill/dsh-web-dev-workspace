@@ -4,6 +4,13 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Packaging
+
+- The three components are now one combined bundle at the repository root
+  (`@local/dsh-side`, `index.js` + `cordis.patch.yml`). Install the root once;
+  the bundle starts the explorer/editor, binary I/O and Git components together.
+  Subdirectory installs remain possible for development only.
+
 ### Git
 
 - Fetch, pull and push from the Git panel, with ahead/behind badges on the

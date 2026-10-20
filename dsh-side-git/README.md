@@ -10,8 +10,9 @@ staging, commits, diffs, branches, comparison, and explicit fetch/pull/push.
 
 ## Install
 
-Install it from a cloned checkout through the Harness Plugin Manager, alongside
-the main and IO bundles:
+Normally the combined bundle at the repository root installs this component
+automatically. To install it alone for development, use the Harness Plugin
+Manager:
 
 1. Open **Plugins → Add plugin → Install a third-party plugin**.
 2. Enter the absolute path to this directory:

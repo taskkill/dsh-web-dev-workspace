@@ -1,0 +1,4 @@
+# Combined DSH Side bundle: one entry starts the files, IO and Git components.
+- insert:
+    - id: dsh-side
+      name: '@local/dsh-side'
