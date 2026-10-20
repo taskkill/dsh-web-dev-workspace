@@ -187,6 +187,8 @@ it for you.
   User-Agent), so use browser DevTools for full mobile emulation.
 - The start page reads listening Host ports (Linux `/proc/net/tcp`), can rescan,
   and offers one-click local dev-server links; other platforms show common ports.
+  **Protocol** (Auto, HTTP or HTTPS) and **Host** fields apply to every port
+  shortcut (default Auto + `localhost`, persisted).
 - Local dev servers and private addresses are embedded directly in a sandboxed
   `iframe`; the Harness origin itself is never embedded.
 - Public pages load directly by default, which keeps cookies, modules and SPAs

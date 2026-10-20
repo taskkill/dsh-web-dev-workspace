@@ -21,9 +21,13 @@ All notable changes to this project are documented here.
 
 - Add browser tabs with an address bar, history, reload and external open, so a
   running dev server can be previewed next to the code.
+- Make the HTTPS mixed-content warning dismissible; it returns on reload,
+  navigation or Direct/Proxy changes.
 - Add a Maximize editor/Restore layout button that hides the explorer and lets
   the editor or browser fill the file-workspace component without browser
   fullscreen.
+- Add persisted Protocol (Auto/HTTP/HTTPS) and Host fields on the browser start
+  page so all detected/common port shortcuts can use one scheme and host.
 - Add PC/Mobile viewport switching with iPhone/Pixel/iPad presets, landscape
   rotation and automatic scaling to the panel.
 - The start page detects listening local TCP ports (Linux `/proc/net/tcp`) and

@@ -54,6 +54,40 @@ window.__ModuleLoader__.load({
     /** Remember the last PC/mobile viewport choice. */
     const BROWSER_VIEW_KEY = 'dsh-web-filebrowser:browser-view'
 
+    /** Hostname used for all detected/common port shortcuts. */
+    const PREVIEW_HOST_KEY = 'dsh-web-filebrowser:preview-host'
+    const PREVIEW_SCHEME_KEY = 'dsh-web-filebrowser:preview-scheme'
+
+    function normalizePreviewScheme(value) {
+      return value === 'http' || value === 'https' ? value : 'auto'
+    }
+
+    function previewPortScheme(scheme, port) {
+      const normalized = normalizePreviewScheme(scheme)
+      if (normalized !== 'auto') return normalized
+      return port === 443 || port === 8443 ? 'https' : 'http'
+    }
+
+    function normalizePreviewHost(value) {
+      let host = typeof value === 'string' ? value.trim() : ''
+      if (host.length === 0) return 'localhost'
+      if (/^[a-z][a-z0-9+.-]*:\/\//iu.test(host)) {
+        try {
+          host = new URL(host).hostname
+        } catch {
+          return 'localhost'
+        }
+      }
+      if (host.startsWith('[')) {
+        const end = host.indexOf(']')
+        return end > 0 ? host.slice(0, end + 1) : 'localhost'
+      }
+      const slash = host.indexOf('/')
+      if (slash >= 0) host = host.slice(0, slash)
+      if (/^[^:]+:\d+$/u.test(host)) host = host.slice(0, host.lastIndexOf(':'))
+      return host.length > 0 ? host : 'localhost'
+    }
+
     function browserDeviceSize(tab) {
       const preset = BROWSER_DEVICES[tab.mobilePreset] ?? BROWSER_DEVICES.iphone14
       return tab.orientation === 'landscape'
@@ -208,6 +242,12 @@ window.__ModuleLoader__.load({
       'browser.reload': '刷新',
       'browser.address': '地址',
       'browser.placeholder': '输入 localhost:5173 或 https://…',
+      'browser.host': '主机',
+      'browser.scheme': '协议',
+      'browser.schemeAuto': '自动',
+      'browser.hostHint': '端口快捷方式统一使用此协议和主机',
+      'browser.hostReset': '重置为 localhost',
+      'browser.resetDefaults': '重置',
       'browser.openExternal': '在外部浏览器打开',
       'browser.badUrl': '只支持 http/https 地址',
       'browser.startTitle': '预览运行中的页面',
@@ -520,6 +560,12 @@ window.__ModuleLoader__.load({
       'browser.reload': 'Reload',
       'browser.address': 'Address',
       'browser.placeholder': 'Enter localhost:5173 or https://…',
+      'browser.host': 'Host',
+      'browser.scheme': 'Protocol',
+      'browser.schemeAuto': 'Auto',
+      'browser.hostHint': 'Port shortcuts use this protocol and host',
+      'browser.hostReset': 'Reset to localhost',
+      'browser.resetDefaults': 'Reset',
       'browser.openExternal': 'Open in external browser',
       'browser.badUrl': 'Only http/https addresses are supported',
       'browser.startTitle': 'Preview a running page',
@@ -4005,7 +4051,7 @@ window.__ModuleLoader__.load({
     }
 
     /** Start page shown by a fresh browser tab. */
-    function BrowserStart({ t, onOpen }) {
+    function BrowserStart({ t, onOpen, host, onHostChange, scheme, onSchemeChange }) {
       const [scan, setScan] = useState({ status: 'loading', ports: [], supported: false })
       const [scanNonce, setScanNonce] = useState(0)
       useEffect(() => {
@@ -4038,10 +4084,13 @@ window.__ModuleLoader__.load({
               key: String(port),
               type: 'button',
               className: 'ds-browser-port',
-              onClick: () => onOpen(`${port === 443 || port === 8443 ? 'https' : 'http'}://localhost:${String(port)}`),
+              onClick: () =>
+              onOpen(
+                `${previewPortScheme(scheme, port)}://${normalizePreviewHost(host)}:${String(port)}`,
+              ),
             },
             h('span', { className: 'ds-browser-port-num' }, `:${String(port)}`),
-            h('span', { className: 'ds-browser-port-host' }, 'localhost'),
+            h('span', { className: 'ds-browser-port-host' }, normalizePreviewHost(host)),
           ),
         )
       return h(
@@ -4057,6 +4106,46 @@ window.__ModuleLoader__.load({
             h('div', { className: 'ds-browser-hero-title' }, t('browser.startTitle')),
             h('div', { className: 'ds-browser-hero-text' }, t('browser.startHint')),
           ),
+        ),
+        h(
+          'div',
+          { className: 'ds-browser-hostbar' },
+          h('span', { className: 'ds-browser-host-label' }, t('browser.scheme')),
+          h(
+            'select',
+            {
+              className: 'ds-browser-scheme-select',
+              value: normalizePreviewScheme(scheme),
+              title: t('browser.scheme'),
+              onChange: (event) => onSchemeChange(event.target.value),
+            },
+            h('option', { value: 'auto' }, t('browser.schemeAuto')),
+            h('option', { value: 'http' }, 'http'),
+            h('option', { value: 'https' }, 'https'),
+          ),
+          h('span', { className: 'ds-browser-host-label' }, t('browser.host')),
+          h('input', {
+            className: 'ds-browser-host-input',
+            value: host,
+            placeholder: 'localhost',
+            spellCheck: false,
+            'aria-label': t('browser.host'),
+            onChange: (event) => onHostChange(event.target.value),
+          }),
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'ds-linkbtn',
+              title: t('browser.resetDefaults'),
+              onClick: () => {
+                onHostChange('localhost')
+                onSchemeChange('auto')
+              },
+            },
+            t('browser.resetDefaults'),
+          ),
+          h('span', { className: 'ds-browser-host-hint' }, t('browser.hostHint')),
         ),
         h(
           'div',
@@ -4093,7 +4182,7 @@ window.__ModuleLoader__.load({
     }
 
     /** Embedded page for one browser tab, with a same-origin guard and fallbacks. */
-    function BrowserPanel({ tab, t, onNavigate, onFinished, onExternal }) {
+    function BrowserPanel({ tab, t, onNavigate, onFinished, onExternal, onDismissMixed, host, onHostChange, scheme, onSchemeChange }) {
       const frameRef = useRef(null)
       const stageRef = useRef(null)
       const [stageSize, setStageSize] = useState({ width: 0, height: 0 })
@@ -4127,7 +4216,7 @@ window.__ModuleLoader__.load({
         window.addEventListener('message', onMessage)
         return () => window.removeEventListener('message', onMessage)
       }, [onNavigate, onExternal])
-      if (tab.url.length === 0) return h(BrowserStart, { t, onOpen: onNavigate })
+      if (tab.url.length === 0) return h(BrowserStart, { t, onOpen: onNavigate, host, onHostChange, scheme, onSchemeChange })
       let sameOrigin = false
       try {
         const target = new URL(tab.url)
@@ -4212,12 +4301,22 @@ window.__ModuleLoader__.load({
         tab.loading
           ? h('div', { className: 'ds-browser-loading' }, h('span', { className: 'ds-spinner' }), h('span', null, t('hint.loadingFile')))
           : null,
-        mixed
+        mixed && tab.mixedDismissed !== true
           ? h(
               'div',
               { className: 'ds-browser-note' },
-              h('span', null, t('browser.mixed')),
+              h('span', { className: 'ds-browser-note-text' }, t('browser.mixed')),
               h('button', { type: 'button', className: 'ds-linkbtn', onClick: onExternal }, t('browser.openExternal')),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-browser-note-close',
+                  title: t('action.cancel'),
+                  onClick: onDismissMixed,
+                },
+                h(CloseIcon),
+              ),
             )
           : null,
       )
@@ -4440,6 +4539,8 @@ window.__ModuleLoader__.load({
         const [terminalPanelOpen, setTerminalPanelOpen] = useState(false)
         const [terminalPanelHeight, setTerminalPanelHeight] = useState(240)
         const [terminalPanelActive, setTerminalPanelActive] = useState(null)
+        const [previewHost, setPreviewHost] = useState(() => readStorage(PREVIEW_HOST_KEY) ?? 'localhost')
+        const [previewScheme, setPreviewScheme] = useState(() => normalizePreviewScheme(readStorage(PREVIEW_SCHEME_KEY)))
         const [sshOpen, setSshOpen] = useState(false)
         const [sshSpec, setSshSpec] = useState('')
         const [sshBusy, setSshBusy] = useState(false)
@@ -5875,6 +5976,7 @@ window.__ModuleLoader__.load({
             url,
             input: url,
             proxy: isDirectPreviewUrl(url) ? false : tab.proxy === true,
+            mixedDismissed: false,
             name: browserTitle(url),
             historyIndex: index,
             reloadKey: (tab.reloadKey ?? 0) + 1,
@@ -5882,11 +5984,23 @@ window.__ModuleLoader__.load({
           })
         }
 
+        function updatePreviewHost(value) {
+          setPreviewHost(value)
+          writeStorage(PREVIEW_HOST_KEY, value)
+        }
+
+        function updatePreviewScheme(value) {
+          const next = normalizePreviewScheme(value)
+          setPreviewScheme(next)
+          writeStorage(PREVIEW_SCHEME_KEY, next)
+        }
+
         function toggleBrowserProxy(tab) {
           if (tab === undefined || tab.mode !== 'browser' || isDirectPreviewUrl(tab.url)) return
           patchTab(tab.path, {
             proxy: tab.proxy !== true,
             reloadKey: (tab.reloadKey ?? 0) + 1,
+            mixedDismissed: false,
             loading: true,
           })
         }
@@ -5894,7 +6008,7 @@ window.__ModuleLoader__.load({
         function reloadBrowser(tabPath) {
           const tab = store.get().tabs.find((entry) => entry.path === tabPath)
           if (tab === undefined || tab.mode !== 'browser' || tab.url.length === 0) return
-          patchTab(tabPath, { reloadKey: (tab.reloadKey ?? 0) + 1, loading: true })
+          patchTab(tabPath, { reloadKey: (tab.reloadKey ?? 0) + 1, loading: true, mixedDismissed: false })
         }
 
         function closeNow(relative) {
@@ -7836,6 +7950,11 @@ window.__ModuleLoader__.load({
                                   t,
                                   onNavigate: (url) => navigateBrowser(tab.path, url),
                                   onFinished: () => patchTab(tab.path, { loading: false }),
+                                  onDismissMixed: () => patchTab(tab.path, { mixedDismissed: true }),
+                                  host: previewHost,
+                                  onHostChange: updatePreviewHost,
+                                  scheme: previewScheme,
+                                  onSchemeChange: updatePreviewScheme,
                                   onExternal: (targetUrl) => {
                                     const target = normalizeBrowserUrl(
                                       typeof targetUrl === 'string' && targetUrl.length > 0 ? targetUrl : tab.url,
@@ -9920,7 +10039,23 @@ window.__ModuleLoader__.load({
   font-size: 11.5px;
   box-shadow: 0 6px 24px color-mix(in srgb, var(--dsw-alias-label-primary) 16%, transparent);
 }
+.ds-browser-note-text { flex: 1 1 auto; min-width: 0; }
 .ds-browser-note .ds-linkbtn { margin-left: auto; flex: 0 0 auto; }
+.ds-browser-note-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+.ds-browser-note-close:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 10%, transparent); color: var(--dsw-alias-label-primary); }
 .ds-browser-start {
   display: flex;
   flex: 1 1 auto;
@@ -9945,6 +10080,44 @@ window.__ModuleLoader__.load({
 .ds-browser-hero-icon svg { width: 22px; height: 22px; }
 .ds-browser-hero-title { font-size: 16px; font-weight: 600; }
 .ds-browser-hero-text { max-width: 560px; color: var(--dsw-alias-label-secondary); font-size: 12px; }
+.ds-browser-hostbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  width: 100%;
+  max-width: 680px;
+  padding: 7px 10px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1);
+}
+.ds-browser-host-label { color: var(--dsw-alias-label-secondary); font-size: 11px; font-weight: 600; }
+.ds-browser-scheme-select {
+  height: 26px;
+  padding: 0 4px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 5px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 11px;
+  outline: none;
+}
+.ds-browser-host-input {
+  width: 180px;
+  height: 26px;
+  padding: 0 7px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 5px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font-family: var(--ds-mono);
+  font-size: 11.5px;
+  outline: none;
+}
+.ds-browser-host-input:focus { border-color: var(--dsw-alias-brand-primary); }
+.ds-browser-host-hint { color: var(--dsw-alias-label-secondary); font-size: 10.5px; }
 .ds-browser-section { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 680px; }
 .ds-browser-section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .ds-browser-section-title { color: var(--dsw-alias-label-secondary); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }

@@ -131,7 +131,9 @@ DSH Web Filebrowser 把 Harness Web UI 变成一个真正可用的编码工作�
 - 工具栏可切换 **PC / 手机** 视口；手机模式支持 iPhone 14、iPhone SE、Pixel 7、iPad
   预设和横竖屏切换，画面会按面板大小自动缩放。只模拟 CSS 视口宽度，不模拟触摸事件或
   User-Agent，需要完整移动端模拟时请用浏览器 DevTools。
-- 启动页会读取 Host 的监听端口（Linux 的 `/proc/net/tcp`），可点「重新检测」刷新，一键打开本地开发服务器；
+- 启动页会读取 Host 的监听端口（Linux 的 `/proc/net/tcp`），可点「重新检测」刷新；
+  「协议 / 主机」统一设置所有端口快捷方式：协议可选自动（443/8443 用 HTTPS）、HTTP 或 HTTPS，
+  主机默认 `localhost`（会保存），一键打开本地开发服务器；
   其它平台或没有检测结果时显示常用端口。
 - 本地开发服务器和内网地址直接放进受限 `iframe`；Harness 同源页面禁止嵌入。
 - 公网页面默认**直连**，保留 Cookie、模块脚本和 SPA 行为。如果站点拒绝 iframe，
