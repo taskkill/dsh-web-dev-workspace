@@ -15,6 +15,8 @@
  */
 
 import { createReadStream, promises as fsp } from 'node:fs'
+import { lookup as dnsLookup } from 'node:dns/promises'
+import { isIP } from 'node:net'
 import path from 'node:path'
 import { Readable } from 'node:stream'
 import * as ssh from './ssh.js'
@@ -24,6 +26,15 @@ const ROUTE = '/api/dsh-web-filebrowser'
 
 /** Binary upload route for SSH workspaces. */
 const ROUTE_SSH_UPLOAD = '/api/dsh-web-filebrowser-ssh'
+
+/** Same-origin proxy used by the built-in browser for public pages. */
+const PROXY_ROUTE = '/api/dsh-web-filebrowser-proxy'
+
+/** Largest response the preview proxy will read. */
+const MAX_PROXY_BYTES = 8 * 1024 * 1024
+
+/** Time budget for one proxied request, including its body. */
+const PROXY_TIMEOUT_MS = 20000
 
 /**
  * Deprecated aliases for tabs opened before the rename. They keep the old
@@ -105,6 +116,7 @@ export function apply(ctx) {
     register(LEGACY_ROUTE, ['GET', 'POST'], (request) => handleRequest(ctx, request), 'its legacy API route')
     register(ROUTE_SSH_UPLOAD, ['POST'], (request) => handleSshUpload(request), 'the SSH upload route')
     register(LEGACY_ROUTE_SSH_UPLOAD, ['POST'], (request) => handleSshUpload(request), 'the legacy SSH upload route')
+    register(PROXY_ROUTE, ['GET'], (request) => handleProxy(request), 'the external preview proxy')
     return () => {
       disposed = true
       for (const dispose of disposers) dispose()
@@ -163,6 +175,8 @@ async function dispatch(ctx, op, body) {
   switch (op) {
     case 'roots':
       return listRoots(ctx)
+    case 'ports':
+      return listListeningPorts()
     case 'list':
       return listDirectory(ctx, body)
     case 'read':
@@ -223,6 +237,38 @@ async function listRoots(ctx) {
     }
   }
   return { roots, defaultRoot: roots[0]?.path ?? null }
+}
+
+/**
+ * List listening TCP ports so the built-in browser can suggest local dev
+ * servers. Linux exposes this through /proc/net/tcp{,6}; other hosts simply
+ * report that scanning is unsupported.
+ * @returns port list with convenience localhost URLs.
+ */
+async function listListeningPorts() {
+  const ports = new Set()
+  let supported = false
+  for (const file of ['/proc/net/tcp', '/proc/net/tcp6']) {
+    let text
+    try {
+      text = await fsp.readFile(file, 'utf8')
+      supported = true
+    } catch {
+      continue
+    }
+    for (const line of text.split('\n').slice(1)) {
+      const fields = line.trim().split(/\s+/)
+      if (fields.length < 4 || fields[3] !== '0A') continue
+      const colon = fields[1].lastIndexOf(':')
+      if (colon < 1) continue
+      const port = Number.parseInt(fields[1].slice(colon + 1), 16)
+      if (Number.isInteger(port) && port > 0 && port <= 65535) ports.add(port)
+    }
+  }
+  return {
+    supported,
+    ports: [...ports].sort((left, right) => left - right).map((port) => ({ port, url: `http://localhost:${String(port)}` })),
+  }
 }
 
 /**
@@ -678,6 +724,191 @@ async function handleSshUpload(request) {
     console.error('dsh-web-filebrowser: SSH upload failed', error)
     return json({ ok: false, error: failure('internal', error instanceof Error ? error.message : String(error)) }, 200)
   }
+}
+
+/**
+ * Proxy one public HTML page for the built-in browser.
+ *
+ * The target is fetched by the Host (not the browser), so a site that sends
+ * X-Frame-Options/CSP cannot block the frame. Only public addresses are allowed
+ * and the result is served into a sandboxed, opaque-origin iframe.
+ * @param request - incoming GET request with the target in ?url=.
+ * @returns injected HTML or a binary response.
+ */
+async function handleProxy(request) {
+  let target
+  try {
+    target = new URL(new URL(request.url).searchParams.get('url') ?? '')
+  } catch {
+    return proxyError(400, '预览地址无效')
+  }
+  if (target.protocol !== 'http:' && target.protocol !== 'https:') {
+    return proxyError(400, '只支持 http/https 地址')
+  }
+  if (target.username.length > 0 || target.password.length > 0) {
+    return proxyError(400, '预览地址不能包含用户名或密码')
+  }
+  try {
+    const { response, finalUrl } = await fetchProxied(target)
+    const declared = Number(response.headers.get('content-length') ?? '0')
+    if (Number.isFinite(declared) && declared > MAX_PROXY_BYTES) {
+      return proxyError(413, '目标页面超过 8 MB，无法预览')
+    }
+    const buffer = Buffer.from(await response.arrayBuffer())
+    if (buffer.length > MAX_PROXY_BYTES) return proxyError(413, '目标页面超过 8 MB，无法预览')
+    const type = (response.headers.get('content-type') ?? '').toLowerCase()
+    if (!type.includes('text/html') && !type.includes('application/xhtml+xml')) {
+      return new Response(buffer, {
+        status: response.status,
+        headers: {
+          'content-type': type.length > 0 ? type : 'application/octet-stream',
+          'cache-control': 'no-store',
+          'x-content-type-options': 'nosniff',
+        },
+      })
+    }
+    const charset = /charset\s*=\s*["']?([^;"'\s]+)/iu.exec(type)?.[1] ?? 'utf-8'
+    let html
+    try {
+      html = new TextDecoder(charset).decode(buffer)
+    } catch {
+      html = buffer.toString('utf8')
+    }
+    const body = injectProxyHtml(html, finalUrl.href)
+    return new Response(body, {
+      status: response.status === 204 ? 200 : response.status,
+      headers: {
+        'content-type': 'text/html; charset=utf-8',
+        'cache-control': 'no-store',
+        'x-content-type-options': 'nosniff',
+        'referrer-policy': 'no-referrer',
+      },
+    })
+  } catch (error) {
+    return proxyError(502, `无法加载 ${target.host}：${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
+/** Follow up to five redirects, validating every hop against the public-IP guard. */
+async function fetchProxied(initial) {
+  let current = initial
+  for (let hop = 0; hop < 5; hop += 1) {
+    await assertPublicTarget(current)
+    const response = await fetch(current, {
+      redirect: 'manual',
+      signal: AbortSignal.timeout(PROXY_TIMEOUT_MS),
+      headers: {
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8',
+      },
+    })
+    if ([301, 302, 303, 307, 308].includes(response.status)) {
+      const location = response.headers.get('location')
+      try {
+        await response.body?.cancel()
+      } catch {
+        /* redirect body already closed */
+      }
+      if (location === null || location.length === 0) return { response, finalUrl: current }
+      current = new URL(location, current)
+      continue
+    }
+    return { response, finalUrl: current }
+  }
+  throw new Error('重定向次数过多')
+}
+
+/** Reject loopback, private, link-local and reserved addresses (basic SSRF guard). */
+async function assertPublicTarget(target) {
+  if (target.protocol !== 'http:' && target.protocol !== 'https:') throw new Error('只支持 http/https 地址')
+  if (target.username.length > 0 || target.password.length > 0) throw new Error('地址不能包含凭据')
+  const host = target.hostname.replace(/^\[/u, '').replace(/\]$/u, '').toLowerCase()
+  if (host.length === 0 || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal')) {
+    throw new Error('不允许访问本机或内网地址')
+  }
+  const addresses = isIP(host) !== 0 ? [host] : (await dnsLookup(host, { all: true, verbatim: true })).map((record) => record.address)
+  if (addresses.length === 0) throw new Error('域名没有解析结果')
+  if (addresses.some((address) => !isPublicAddress(address))) throw new Error('不允许访问内网地址')
+}
+
+function isPublicAddress(address) {
+  const version = isIP(address)
+  if (version === 4) {
+    const parts = address.split('.').map(Number)
+    if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return false
+    const [a, b, c] = parts
+    if (a === 0 || a === 10 || a === 127) return false
+    if (a === 100 && b >= 64 && b <= 127) return false
+    if (a === 169 && b === 254) return false
+    if (a === 172 && b >= 16 && b <= 31) return false
+    if (a === 192 && b === 168) return false
+    if (a === 192 && b === 0 && c === 0) return false
+    if (a === 192 && b === 0 && c === 2) return false
+    if (a === 198 && (b === 18 || b === 19)) return false
+    if (a === 198 && b === 51 && c === 100) return false
+    if (a === 203 && b === 0 && c === 113) return false
+    if (a >= 224) return false
+    return true
+  }
+  if (version === 6) {
+    const value = address.toLowerCase()
+    if (value === '::' || value === '::1') return false
+    if (value.startsWith('fc') || value.startsWith('fd')) return false
+    if (/^fe[89ab]/u.test(value)) return false
+    if (value.startsWith('ff')) return false
+    if (value.startsWith('2001:db8')) return false
+    const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/u.exec(value)
+    if (mapped !== null) return isPublicAddress(mapped[1])
+    const mappedHex = /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/u.exec(value)
+    if (mappedHex !== null) {
+      const high = Number.parseInt(mappedHex[1], 16)
+      const low = Number.parseInt(mappedHex[2], 16)
+      const ipv4 = [high >> 8, high & 255, low >> 8, low & 255].join('.')
+      return isPublicAddress(ipv4)
+    }
+    return true
+  }
+  return false
+}
+
+/** Inject a <base>, strip document-level frame restrictions and install the link bridge. */
+function injectProxyHtml(html, target) {
+  const cleaned = html
+    .replace(/<meta\b[^>]*http-equiv\s*=\s*["']?content-security-policy["']?[^>]*>/giu, '')
+    .replace(/<meta\b[^>]*http-equiv\s*=\s*["']?refresh["']?[^>]*>/giu, '')
+  const base = `<base href="${escapeHtml(target)}">`
+  const bridge = `<script>${proxyBridgeScript(target)}</script>`
+  const head = /<head[^>]*>/iu.exec(cleaned)
+  if (head !== null) {
+    const index = head.index + head[0].length
+    return cleaned.slice(0, index) + base + bridge + cleaned.slice(index)
+  }
+  return base + bridge + cleaned
+}
+
+/** Small page script that forwards link/form navigation back to the parent tab. */
+function proxyBridgeScript(target) {
+  const encoded = JSON.stringify(target).replace(/</gu, '\\u003c')
+  return `(function(){var T=${encoded};function send(type,url){try{parent.postMessage({type:type,url:url},'*')}catch(e){}}document.addEventListener('click',function(event){if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;var node=event.target;var anchor=node&&node.closest?node.closest('a[href]'):null;if(!anchor||anchor.hasAttribute('download'))return;var kind=anchor.getAttribute('target');if(kind&&kind!=='_self'&&kind!=='_top')return;var raw=anchor.getAttribute('href');if(raw&&raw.charAt(0)==='#')return;var href=anchor.href;if(!/^https?:/i.test(href))return;if(href.indexOf(location.origin)===0)return;if(href.indexOf('#')>=0&&href.split('#')[0]===T.split('#')[0])return;event.preventDefault();send('dsh-browser-navigate',href);},true);document.addEventListener('submit',function(event){var form=event.target;if(!form||form.tagName!=='FORM')return;var method=(form.getAttribute('method')||'get').toLowerCase();var action;try{action=new URL(form.getAttribute('action')||T,T).href}catch(e){return}if(method!=='get'){event.preventDefault();send('dsh-browser-external',action);return}event.preventDefault();var url;try{url=new URL(action)}catch(e){return}var data;try{data=new FormData(form)}catch(e){return}data.forEach(function(value,key){if(typeof value==='string')url.searchParams.append(key,value)});send('dsh-browser-navigate',url.href);},true);})();`
+}
+
+function proxyError(status, message) {
+  return new Response(
+    `<!doctype html><html><head><meta charset="utf-8"><title>预览失败</title><style>body{font:14px system-ui,sans-serif;margin:40px;color:#333}h1{font-size:18px}p{line-height:1.6;color:#666}</style></head><body><h1>无法预览此页面</h1><p>${escapeHtml(message)}</p><p>请用工具栏的外部浏览器按钮打开。</p></body></html>`,
+    {
+      status,
+      headers: {
+        'content-type': 'text/html; charset=utf-8',
+        'cache-control': 'no-store',
+        'x-content-type-options': 'nosniff',
+      },
+    },
+  )
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/&/gu, '&amp;').replace(/</gu, '&lt;').replace(/>/gu, '&gt;').replace(/"/gu, '&quot;')
 }
 
 /** JSON response helper. */

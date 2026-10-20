@@ -35,7 +35,7 @@ General UI bugs, missing features and questions belong in public issues.
 
 ## Design notes
 
-- Both exact API routes live on the authenticated `/api` channel; the plugin does
+- The exact API routes live on the authenticated `/api` channel; the plugin does
   not mint a token or open an additional port.
 - Every operation resolves its root and checks containment after resolving
   symlinks. Path segments are validated before the filesystem call.
@@ -49,6 +49,20 @@ General UI bugs, missing features and questions belong in public issues.
   prompts are disabled, and the plugin stores no credentials (the Host's SSH key or
   credential helper is the only authentication path). Commits and pushes run the
   repository's configured hooks.
+- The built-in browser embeds local/private `http(s)` pages directly in a
+  sandboxed iframe without top-navigation permission; same-origin Harness and
+  loopback same-port pages are refused to avoid clickjacking.
+- Public pages load directly by default. When the user switches a tab to Proxy,
+  the Host fetches the page. It only resolves and fetches public IPs (loopback,
+  private, link-local and reserved ranges are rejected on every redirect), does
+  not forward cookies or credentials, caps responses at 8 MB, strips
+  `X-Frame-Options`/CSP frame restrictions, and serves the HTML into a sandbox
+  **without `allow-same-origin`** and without `allow-forms`. Injected pages
+  therefore cannot read Harness state. Proxy rendering is intentionally
+  incomplete for authenticated or JavaScript-heavy sites.
+- Local port detection reads Linux `/proc/net/tcp{,6}` and returns listening port
+  numbers only (no process names or command lines) over the owner-authenticated
+  API.
 - SSH remote folders authenticate with the Host's SSH agent or `~/.ssh` keys and
   never collect passwords. `ssh2` does not pin host keys, so connect only to hosts
   you trust.

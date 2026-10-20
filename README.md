@@ -6,8 +6,9 @@
 
 <p align="center">
   A VS Code-style workspace for the <strong>DeepSeek Harness</strong> Web UI:
-  browse, edit, preview, favorite, upload and download workspace files — and
-  commit, compare and sync Git changes — without leaving the chat.
+  browse, edit, preview, favorite, upload and download workspace files, commit,
+  compare and sync Git changes, and preview a local dev server in the built-in
+  browser — without leaving the chat.
 </p>
 
 <p align="center">
@@ -136,7 +137,7 @@ it for you.
 
 ### Git source control
 
-- A **Git** button in the explorer header switches between the file tree and a
+- A **Git** tab at the bottom of the sidebar switches between the file tree and a
   source-control view for the selected workspace.
 - Shows the current branch, upstream, ahead/behind counts, unborn/detached state,
   staged changes, working-tree changes and untracked files.
@@ -160,6 +161,38 @@ it for you.
 
 
 ### Snapshot Preview
+### Built-in browser
+
+- Open a browser tab from the **globe button** in the panel header, the
+  **Built-in browser** action on the welcome page, or `Alt+B`.
+- The address bar accepts `localhost:5173`, `:3000`, `https://example.com` and
+  similar; back, forward, reload and external-open are built in.
+- The **Maximize editor** button at the panel's top-right hides the explorer so
+  the editor/built-in browser fills the file-workspace component itself (no
+  browser fullscreen); press Esc or click Restore to bring the tree back.
+- The toolbar switches between **PC** and **Mobile** viewports. Mobile offers
+  iPhone 14 / iPhone SE / Pixel 7 / iPad presets plus portrait-landscape rotation,
+  scaled to fit the panel. Only the CSS viewport is emulated (no touch events or
+  User-Agent), so use browser DevTools for full mobile emulation.
+- The start page reads listening Host ports (Linux `/proc/net/tcp`), can rescan,
+  and offers one-click local dev-server links; other platforms show common ports.
+- Local dev servers and private addresses are embedded directly in a sandboxed
+  `iframe`; the Harness origin itself is never embedded.
+- Public pages load directly by default, which keeps cookies, modules and SPAs
+  working. If a site refuses framing, switch the toolbar control from **Direct**
+  to **Proxy**: the Host fetches the HTML, strips `X-Frame-Options`/CSP frame
+  restrictions and injects a `<base>` plus a small link/form bridge. The proxy
+  forwards no cookies/login state, so authenticated or module-heavy SPAs may
+  render incompletely; use the external browser then.
+- The proxy only accepts public `http/https` addresses, rejects loopback/private
+  IPs, follows at most five redirects and caps pages at 8 MB. Local/private URLs
+  always stay direct.
+- Port scanning returns port numbers only (no process command lines) over the same
+  owner-authenticated API.
+- This is a restricted preview, not a full browser: direct local iframes cannot
+  sync their internal navigation to the address bar, and complex public pages may
+  not work. Use the external browser for full navigation or login.
+
 ### SSH remote folders
 
 - Add a remote directory from the **Add SSH remote…** entry at the bottom of the
@@ -176,7 +209,7 @@ it for you.
   dependency.
 - **Host keys are not pinned** (ssh2 accepts the key presented at connect time).
   Only use remote folders on trusted hosts and networks.
-- Git is local-only: the Git button is hidden for SSH roots.
+- Git is local-only: the Git tab is hidden for SSH roots.
 
   <img alt="dshwfb" src="./docs/1.png" width="500px" />
   <img alt="dshwfb" src="./docs/2.png" width="500px" />
@@ -312,6 +345,7 @@ repository root, not a subdirectory).
 | `Enter` | Open the selected file / toggle the selected folder |
 | `←` / `→` | Collapse/expand the focused folder |
 | `Alt + Home` | Jump to the current workspace root |
+| `Alt + B` | Open a built-in browser tab |
 | `Ctrl/⌘ + Enter` | Commit staged changes from the Git message box |
 | `Escape` | Close a menu/modal or clear the address input |
 
@@ -340,8 +374,8 @@ repository root, not a subdirectory).
 
 ### Git workflow
 
-1. Click the **Git** (branch) button in the explorer header. The file tree is
-   replaced by the source-control view; click it again to return.
+1. Click the **Git** tab at the bottom of the sidebar. The file tree is replaced
+   by the source-control view; click **Explorer** to return.
 2. If the workspace is not a repository, choose **Initialize repository**. If it
    is a subdirectory of a larger repository, open the repository root instead.
 3. Use **+** on a changed file to stage it, or **Stage all**; use **−** / **Unstage
@@ -383,11 +417,15 @@ flowchart TB
     MAIN["/api/dsh-web-filebrowser<br/>JSON file ops + raw preview"]
     IO["/api/dsh-web-filebrowser-io<br/>binary upload + attachment download"]
     GIT["/api/dsh-web-filebrowser-git<br/>local Git operations"]
+    PROXY["/api/dsh-web-filebrowser-proxy<br/>public HTML preview"]
+    NET["Public web"]
     FS["Workspace filesystem"]
     REG["Workspace registry"]
     API --> MAIN
     API --> IO
     API --> GIT
+    API --> PROXY
+    PROXY --> NET
     MAIN --> FS
     IO --> FS
     GIT --> FS
@@ -396,6 +434,7 @@ flowchart TB
   end
 
   UI -- "same-origin fetch" --> API
+  UI -. "public preview iframe" .-> PROXY
 ```
 
 - The browser half registers `main` key `files`, a `sidebar.panellist` entry and

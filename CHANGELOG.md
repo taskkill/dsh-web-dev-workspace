@@ -4,6 +4,31 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Sidebar tabs
+
+- Explorer and Git are now switched by two tabs at the bottom of the sidebar;
+  the Git panel stays mounted so a draft commit message survives tab switches.
+  The Git tab is hidden for SSH roots. Tabs are compact (26 px) to leave room for
+  future sidebar views.
+
+### Built-in browser
+
+- Add browser tabs with an address bar, history, reload and external open, so a
+  running dev server can be previewed next to the code.
+- Add a Maximize editor/Restore layout button that hides the explorer and lets
+  the editor or browser fill the file-workspace component without browser
+  fullscreen.
+- Add PC/Mobile viewport switching with iPhone/Pixel/iPad presets, landscape
+  rotation and automatic scaling to the panel.
+- The start page detects listening local TCP ports (Linux `/proc/net/tcp`) and
+  offers one-click links, with common-port fallbacks elsewhere.
+- Preview uses a sandboxed iframe limited to http/https; the Harness origin and
+  loopback same-port pages are refused. Public pages load directly by default;
+  a Direct/Proxy toolbar toggle switches to a Host-side proxy (public IPs only,
+  no cookies, 8 MB cap) that strips frame headers and injects a base/link bridge.
+  Complex or authenticated sites may still render incompletely, with an
+  external-browser fallback.
+
 ### Packaging
 
 - Rename the project and package identity from `dsh-side` to

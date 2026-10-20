@@ -34,6 +34,30 @@ window.__ModuleLoader__.load({
     const SSH_ROOTS_KEY = 'dsh-web-filebrowser:ssh-roots'
     const SSH_UPLOAD_PATH = 'api/dsh-web-filebrowser-ssh'
 
+    /** Host-side HTML proxy for public preview pages. */
+    const PROXY_PATH = 'api/dsh-web-filebrowser-proxy'
+
+    /** Suggested local dev-server ports when /proc port scanning is unavailable. */
+    const BROWSER_COMMON_PORTS = [3000, 5173, 8080, 8000, 4173, 4321, 8888]
+
+    /** Device presets for the mobile preview viewport. */
+    const BROWSER_DEVICES = {
+      iphone14: { label: 'iPhone 14', width: 390, height: 844 },
+      iphoneSE: { label: 'iPhone SE', width: 375, height: 667 },
+      pixel7: { label: 'Pixel 7', width: 412, height: 915 },
+      ipad: { label: 'iPad', width: 768, height: 1024 },
+    }
+
+    /** Remember the last PC/mobile viewport choice. */
+    const BROWSER_VIEW_KEY = 'dsh-web-filebrowser:browser-view'
+
+    function browserDeviceSize(tab) {
+      const preset = BROWSER_DEVICES[tab.mobilePreset] ?? BROWSER_DEVICES.iphone14
+      return tab.orientation === 'landscape'
+        ? { width: preset.height, height: preset.width, label: preset.label }
+        : { width: preset.width, height: preset.height, label: preset.label }
+    }
+
     /**
      * Copy preferences saved under the old prefix to the new
      * dsh-web-filebrowser keys. Existing new keys win; old keys are left in
@@ -70,6 +94,7 @@ window.__ModuleLoader__.load({
       'guide.description': '浏览并编辑文件，支持代码高亮、Markdown 与 PDF 预览。',
       'compact.back': '返回目录',
       explorer: '资源管理器',
+      'side.tabs': '侧栏视图',
       favorites: '收藏夹',
       'favorite.add': '收藏',
       'favorite.remove': '取消收藏',
@@ -90,6 +115,8 @@ window.__ModuleLoader__.load({
       'action.overwrite': '强制覆盖',
       'action.open': '打开',
       'action.openInBrowser': '在浏览器中打开',
+      'action.maximize': '最大化编辑区',
+      'action.restore': '还原布局',
       'action.rename': '重命名',
       'action.delete': '删除',
       'action.copyPath': '复制相对路径',
@@ -153,6 +180,37 @@ window.__ModuleLoader__.load({
       'hint.preview': 'Markdown 预览',
       'hint.other': '其他',
       'status.encoding': 'UTF-8',
+      'browser.open': '内置浏览器',
+      'browser.newTab': '新浏览器标签',
+      'browser.back': '后退',
+      'browser.forward': '前进',
+      'browser.reload': '刷新',
+      'browser.address': '地址',
+      'browser.placeholder': '输入 localhost:5173 或 https://…',
+      'browser.openExternal': '在外部浏览器打开',
+      'browser.badUrl': '只支持 http/https 地址',
+      'browser.startTitle': '预览运行中的页面',
+      'browser.startHint': '在地址栏输入开发服务器地址并回车，或直接点下面的本地端口。',
+      'browser.detected': '检测到的本地端口',
+      'browser.rescan': '重新检测',
+      'browser.viewport': '预览视口',
+      'browser.pc': 'PC',
+      'browser.mobile': '手机',
+      'browser.direct': '直连',
+      'browser.proxy': '代理',
+      'browser.proxyHint': '直连失败（拒绝连接）时切换到代理；代理不携带 Cookie/登录态，SPA 或复杂页面可能显示不完整',
+      'browser.pcHint': '按当前面板宽度预览',
+      'browser.mobileHint': '固定手机宽度预览；仅模拟视口，不模拟触摸和 User-Agent',
+      'browser.device': '设备尺寸',
+      'browser.rotate': '横竖屏切换',
+      'browser.scanning': '正在检测端口…',
+      'browser.noPorts': '没有检测到本地端口，可以直接输入地址。',
+      'browser.scanUnsupported': '当前平台不支持端口自动检测，可以直接输入地址。',
+      'browser.common': '常用端口',
+      'browser.startFooter': '本地开发服务器和公网页面默认直连内嵌；若公网页面显示空白或「拒绝连接」，点工具栏「代理」重试。代理不携带 Cookie/登录态，SPA 可能不完整，必要时请用外部浏览器。',
+      'browser.sameOrigin': '不能内嵌 Harness 自身页面',
+      'browser.sameOriginHint': '该地址与当前 Harness 页面同源，嵌入会有点击劫持风险；请在外部浏览器打开。',
+      'browser.mixed': '当前页面是 HTTPS，HTTP 预览可能被浏览器拦截；如空白请用外部浏览器打开。',
       'status.lines': '{count} 行',
       'status.cursor': '第 {line} 行，第 {column} 列',
       'error.roots': '读取工作区列表失败：{message}',
@@ -321,6 +379,7 @@ window.__ModuleLoader__.load({
       'guide.description': 'Browse and edit files with highlighting, Markdown, and PDF previews.',
       'compact.back': 'Back to explorer',
       explorer: 'Explorer',
+      'side.tabs': 'Sidebar views',
       favorites: 'Favorites',
       'favorite.add': 'Add to favorites',
       'favorite.remove': 'Remove from favorites',
@@ -341,6 +400,8 @@ window.__ModuleLoader__.load({
       'action.overwrite': 'Overwrite',
       'action.open': 'Open',
       'action.openInBrowser': 'Open in browser',
+      'action.maximize': 'Maximize editor',
+      'action.restore': 'Restore layout',
       'action.rename': 'Rename',
       'action.delete': 'Delete',
       'action.copyPath': 'Copy relative path',
@@ -404,6 +465,37 @@ window.__ModuleLoader__.load({
       'hint.preview': 'Markdown preview',
       'hint.other': 'Other',
       'status.encoding': 'UTF-8',
+      'browser.open': 'Built-in browser',
+      'browser.newTab': 'New browser tab',
+      'browser.back': 'Back',
+      'browser.forward': 'Forward',
+      'browser.reload': 'Reload',
+      'browser.address': 'Address',
+      'browser.placeholder': 'Enter localhost:5173 or https://…',
+      'browser.openExternal': 'Open in external browser',
+      'browser.badUrl': 'Only http/https addresses are supported',
+      'browser.startTitle': 'Preview a running page',
+      'browser.startHint': 'Enter a dev-server address and press Enter, or pick a detected local port below.',
+      'browser.detected': 'Detected local ports',
+      'browser.rescan': 'Rescan',
+      'browser.viewport': 'Preview viewport',
+      'browser.pc': 'PC',
+      'browser.mobile': 'Mobile',
+      'browser.direct': 'Direct',
+      'browser.proxy': 'Proxy',
+      'browser.proxyHint': 'Switch to Proxy when direct embedding is refused; the proxy carries no cookies/login state and may render SPAs incompletely',
+      'browser.pcHint': 'Preview at the current panel width',
+      'browser.mobileHint': 'Fixed mobile viewport; viewport only, without touch or User-Agent emulation',
+      'browser.device': 'Device size',
+      'browser.rotate': 'Rotate viewport',
+      'browser.scanning': 'Scanning ports…',
+      'browser.noPorts': 'No listening local ports detected; enter an address above.',
+      'browser.scanUnsupported': 'Port scanning is not available on this platform; enter an address above.',
+      'browser.common': 'Common ports',
+      'browser.startFooter': 'Local dev servers and public pages load directly by default. If a public page is blank or refused, switch to Proxy in the toolbar. The proxy carries no cookies/login state, so SPAs may be incomplete; use the external browser when needed.',
+      'browser.sameOrigin': 'The Harness page cannot be embedded',
+      'browser.sameOriginHint': 'This address has the same origin as the Harness UI, so embedding it would allow clickjacking. Open it in an external browser instead.',
+      'browser.mixed': 'This Harness page is HTTPS; an HTTP preview may be blocked by the browser. Use the external browser if it stays blank.',
       'status.lines': '{count} lines',
       'status.cursor': 'Ln {line}, Col {column}',
       'error.roots': 'Could not read the workspace list: {message}',
@@ -620,6 +712,29 @@ window.__ModuleLoader__.load({
 
     function apiUrl() {
       return new URL(API_PATH, document.baseURI).href
+    }
+
+    function proxyUrl(target) {
+      const url = new URL(PROXY_PATH, document.baseURI)
+      url.searchParams.set('url', target)
+      return url.href
+    }
+
+    function isDirectPreviewUrl(target) {
+      try {
+        const host = new URL(target).hostname.toLowerCase().replace(/^\[/u, '').replace(/\]$/u, '')
+        if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) return true
+        if (host === '::1') return true
+        const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/u.exec(host)
+        if (ipv4 !== null) {
+          const first = Number(ipv4[1])
+          const second = Number(ipv4[2])
+          return first === 10 || first === 127 || (first === 192 && second === 168) || (first === 172 && second >= 16 && second <= 31) || (first === 169 && second === 254)
+        }
+        return false
+      } catch {
+        return false
+      }
     }
 
     function rawUrl(root, relative) {
@@ -1825,6 +1940,38 @@ window.__ModuleLoader__.load({
 
     function ExternalIcon() {
       return icon(14, h('path', { d: 'M6.5 3.25H3.25v9.5h9.5V9.5' }), h('path', { d: 'M9 2.75h4.25V7' }), h('path', { d: 'M13.25 2.75 7.5 8.5' }))
+    }
+
+    function GlobeIcon() {
+      return icon(15, h('circle', { cx: 8, cy: 8, r: 6.25 }), h('path', { d: 'M1.75 8h12.5' }), h('path', { d: 'M8 1.75c2.1 2 2.1 10.5 0 12.5M8 1.75c-2.1 2-2.1 10.5 0 12.5' }))
+    }
+
+    function ArrowLeftIcon() {
+      return icon(14, h('path', { d: 'M12.5 8h-10M6.5 3.5 2 8l4.5 4.5' }))
+    }
+
+    function ArrowRightIcon() {
+      return icon(14, h('path', { d: 'M3.5 8h10M9.5 3.5 14 8l-4.5 4.5' }))
+    }
+
+    function MonitorIcon() {
+      return icon(15, h('rect', { x: 1.75, y: 2.5, width: 12.5, height: 8.5, rx: 1 }), h('path', { d: 'M8 11v2.5M5 13.5h6' }))
+    }
+
+    function PhoneIcon() {
+      return icon(15, h('rect', { x: 4.25, y: 1.75, width: 7.5, height: 12.5, rx: 1.5 }), h('path', { d: 'M7 12.5h2' }))
+    }
+
+    function RotateIcon() {
+      return icon(15, h('path', { d: 'M12.75 6.5V3.25H9.5' }), h('path', { d: 'M12.5 3.5a5.5 5.5 0 1 0 1 6.5' }))
+    }
+
+    function MaximizeIcon() {
+      return icon(15, h('path', { d: 'M6 2H2v4M9 2h4v4M2 9v4h4M13 9v4H9' }))
+    }
+
+    function MinimizeIcon() {
+      return icon(15, h('path', { d: 'M6 2v4H2M9 2v4h4M2 9h4v4M13 9H9v4' }))
     }
 
     function CloseIcon() {
@@ -3563,6 +3710,225 @@ window.__ModuleLoader__.load({
       )
     }
 
+    /** Start page shown by a fresh browser tab. */
+    function BrowserStart({ t, onOpen }) {
+      const [scan, setScan] = useState({ status: 'loading', ports: [], supported: false })
+      const [scanNonce, setScanNonce] = useState(0)
+      useEffect(() => {
+        let alive = true
+        call('ports')
+          .then((value) => {
+            if (!alive) return
+            setScan({
+              status: 'ready',
+              supported: value?.supported === true,
+              ports: Array.isArray(value?.ports) ? value.ports : [],
+            })
+          })
+          .catch(() => {
+            if (alive) setScan({ status: 'failed', supported: false, ports: [] })
+          })
+        return () => {
+          alive = false
+        }
+      }, [scanNonce])
+      const selfPort = Number(window.location.port || (window.location.protocol === 'https:' ? '443' : '80'))
+      const detected = scan.ports.filter((item) => item !== null && typeof item === 'object' && Number.isInteger(item.port) && item.port !== selfPort)
+      const known = new Set(detected.map((item) => item.port))
+      const common = BROWSER_COMMON_PORTS.filter((port) => !known.has(port))
+      const chips = (ports) =>
+        ports.map((port) =>
+          h(
+            'button',
+            {
+              key: String(port),
+              type: 'button',
+              className: 'ds-browser-port',
+              onClick: () => onOpen(`${port === 443 || port === 8443 ? 'https' : 'http'}://localhost:${String(port)}`),
+            },
+            h('span', { className: 'ds-browser-port-num' }, `:${String(port)}`),
+            h('span', { className: 'ds-browser-port-host' }, 'localhost'),
+          ),
+        )
+      return h(
+        'div',
+        { className: 'ds-browser-start' },
+        h(
+          'div',
+          { className: 'ds-browser-hero' },
+          h('span', { className: 'ds-browser-hero-icon' }, h(GlobeIcon)),
+          h(
+            'div',
+            null,
+            h('div', { className: 'ds-browser-hero-title' }, t('browser.startTitle')),
+            h('div', { className: 'ds-browser-hero-text' }, t('browser.startHint')),
+          ),
+        ),
+        h(
+          'div',
+          { className: 'ds-browser-section' },
+          h(
+            'div',
+            { className: 'ds-browser-section-head' },
+            h('div', { className: 'ds-browser-section-title' }, t('browser.detected')),
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'ds-linkbtn',
+                disabled: scan.status === 'loading',
+                onClick: () => setScanNonce((value) => value + 1),
+              },
+              t('browser.rescan'),
+            ),
+          ),
+          scan.status === 'loading'
+            ? h('div', { className: 'ds-browser-muted' }, t('browser.scanning'))
+            : detected.length > 0
+              ? h('div', { className: 'ds-browser-ports' }, chips(detected.map((item) => item.port)))
+              : h('div', { className: 'ds-browser-muted' }, scan.supported ? t('browser.noPorts') : t('browser.scanUnsupported')),
+        ),
+        h(
+          'div',
+          { className: 'ds-browser-section' },
+          h('div', { className: 'ds-browser-section-title' }, t('browser.common')),
+          h('div', { className: 'ds-browser-ports' }, chips(common)),
+        ),
+        h('div', { className: 'ds-browser-start-hint' }, t('browser.startFooter')),
+      )
+    }
+
+    /** Embedded page for one browser tab, with a same-origin guard and fallbacks. */
+    function BrowserPanel({ tab, t, onNavigate, onFinished, onExternal }) {
+      const frameRef = useRef(null)
+      const stageRef = useRef(null)
+      const [stageSize, setStageSize] = useState({ width: 0, height: 0 })
+      useEffect(() => {
+        const element = stageRef.current
+        if (element === null) return
+        const measure = () => setStageSize({ width: element.clientWidth, height: element.clientHeight })
+        measure()
+        if (typeof ResizeObserver === 'undefined') {
+          window.addEventListener('resize', measure)
+          return () => window.removeEventListener('resize', measure)
+        }
+        const observer = new ResizeObserver(measure)
+        observer.observe(element)
+        return () => observer.disconnect()
+      }, [tab.device, tab.url])
+      useEffect(() => {
+        if (!tab.loading || tab.url.length === 0) return
+        const timer = window.setTimeout(() => onFinished(), 12000)
+        return () => window.clearTimeout(timer)
+      }, [tab.loading, tab.url, tab.reloadKey, onFinished])
+      useEffect(() => {
+        const onMessage = (event) => {
+          const frame = frameRef.current
+          if (frame === null || event.source !== frame.contentWindow) return
+          const data = event.data
+          if (data === null || typeof data !== 'object' || typeof data.url !== 'string') return
+          if (data.type === 'dsh-browser-navigate') onNavigate(data.url)
+          else if (data.type === 'dsh-browser-external') onExternal(data.url)
+        }
+        window.addEventListener('message', onMessage)
+        return () => window.removeEventListener('message', onMessage)
+      }, [onNavigate, onExternal])
+      if (tab.url.length === 0) return h(BrowserStart, { t, onOpen: onNavigate })
+      let sameOrigin = false
+      try {
+        const target = new URL(tab.url)
+        const current = window.location
+        const loopback = (host) => host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '[::1]'
+        sameOrigin =
+          target.origin === current.origin ||
+          (target.port === current.port && loopback(target.hostname) && loopback(current.hostname))
+      } catch {
+        sameOrigin = true
+      }
+      if (sameOrigin) {
+        return h(
+          'div',
+          { className: 'ds-browser ds-browser-blocked' },
+          h(
+            'div',
+            { className: 'ds-empty' },
+            h('div', { className: 'ds-empty-title' }, t('browser.sameOrigin')),
+            h('div', { className: 'ds-empty-text' }, t('browser.sameOriginHint')),
+            h(
+              'button',
+              { type: 'button', className: 'ds-btn', onClick: onExternal },
+              h(ExternalIcon),
+              t('browser.openExternal'),
+            ),
+          ),
+        )
+      }
+      const mixed = window.location.protocol === 'https:' && tab.url.startsWith('http://')
+      const mobile = tab.device === 'mobile'
+      const device = browserDeviceSize(tab)
+      const availableWidth = stageSize.width > 0 ? stageSize.width : device.width
+      const availableHeight = stageSize.height > 0 ? stageSize.height : device.height
+      const scale = mobile
+        ? Math.min(1, Math.max(0.2, (availableWidth - 24) / device.width), Math.max(0.2, (availableHeight - 24) / device.height))
+        : 1
+      const frame = h('iframe', {
+        key: `${tab.path}:${String(tab.reloadKey)}`,
+        ref: frameRef,
+        className: 'ds-browser-frame',
+        src: tab.proxy === true ? proxyUrl(tab.url) : tab.url,
+        title: tab.name,
+        sandbox:
+          tab.proxy === true
+            ? 'allow-scripts allow-popups allow-modals allow-downloads'
+            : 'allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads',
+        allow: 'clipboard-read; clipboard-write; fullscreen; autoplay',
+        onLoad: onFinished,
+      })
+      return h(
+        'div',
+        { className: 'ds-browser' },
+        h(
+          'div',
+          { className: mobile ? 'ds-browser-stage ds-browser-stage-mobile' : 'ds-browser-stage', ref: stageRef },
+          h(
+            'div',
+            {
+              className: mobile ? 'ds-browser-device-wrap' : 'ds-browser-device-wrap ds-browser-device-wrap-pc',
+              style: mobile
+                ? { width: `${String(device.width * scale)}px`, height: `${String(device.height * scale)}px` }
+                : undefined,
+            },
+            h(
+              'div',
+              {
+                className: mobile ? 'ds-browser-device' : 'ds-browser-device ds-browser-device-pc',
+                style: mobile
+                  ? {
+                      width: `${String(device.width)}px`,
+                      height: `${String(device.height)}px`,
+                      transform: `scale(${String(scale)})`,
+                    }
+                  : undefined,
+                'data-device': mobile ? device.label : 'PC',
+              },
+              frame,
+            ),
+          ),
+        ),
+        tab.loading
+          ? h('div', { className: 'ds-browser-loading' }, h('span', { className: 'ds-spinner' }), h('span', null, t('hint.loadingFile')))
+          : null,
+        mixed
+          ? h(
+              'div',
+              { className: 'ds-browser-note' },
+              h('span', null, t('browser.mixed')),
+              h('button', { type: 'button', className: 'ds-linkbtn', onClick: onExternal }, t('browser.openExternal')),
+            )
+          : null,
+      )
+    }
+
     /* ------------------------------------------------------------------ *
      * Page
      * ------------------------------------------------------------------ */
@@ -3590,6 +3956,7 @@ window.__ModuleLoader__.load({
         const [moreAt, setMoreAt] = useState({ top: 0, left: 0 })
         const [clipboard, setClipboard] = useState(null)
         const [dropTarget, setDropTarget] = useState(null)
+        const [maximized, setMaximized] = useState(false)
         const [sshOpen, setSshOpen] = useState(false)
         const [sshSpec, setSshSpec] = useState('')
         const [sshBusy, setSshBusy] = useState(false)
@@ -3602,6 +3969,20 @@ window.__ModuleLoader__.load({
         const uploadTargetRef = useRef({ root: null, parent: '' })
         const dragPathRef = useRef(null)
         const downloadAnchorRef = useRef(null)
+        const browserCounterRef = useRef(0)
+
+        useEffect(() => {
+          if (!maximized) return
+          const onKey = (event) => {
+            if (event.key === 'Escape') setMaximized(false)
+          }
+          window.addEventListener('keydown', onKey)
+          return () => window.removeEventListener('keydown', onKey)
+        }, [maximized])
+
+        function toggleMaximize() {
+          setMaximized((value) => !value)
+        }
 
         useEffect(() => {
           const dispose = ctx.locale.subscribe(() => setLocaleVersion((value) => value + 1))
@@ -3707,8 +4088,10 @@ window.__ModuleLoader__.load({
         const activeTab = state.tabs.find((tab) => tab.path === state.active) ?? null
         const rootIsOpen = state.expanded[''] !== undefined
         const compact = containerWidth > 0 && containerWidth < 640
-        const showSide = !compact || compactView === 'tree' || activeTab === null
-        const showMain = !compact || (activeTab !== null && compactView === 'editor')
+        const gitAvailable = !isSshRootPath(state.root)
+        const showGit = paneView === 'git' && gitAvailable
+        const showSide = !maximized && (!compact || compactView === 'tree' || activeTab === null)
+        const showMain = maximized || !compact || (activeTab !== null && compactView === 'editor')
         const canCollapse = Object.keys(state.expanded).some((entry) => entry !== '')
         const rootFavorites = state.root === null ? [] : state.favorites[state.root] ?? []
         const favoritePaths = new Set(rootFavorites.map((item) => item.path))
@@ -4677,6 +5060,178 @@ window.__ModuleLoader__.load({
           await loadDiffInto(key, root, request)
         }
 
+        function readBrowserView() {
+          const fallback = { device: 'pc', preset: 'iphone14', orientation: 'portrait' }
+          const raw = readStorage(BROWSER_VIEW_KEY)
+          if (typeof raw !== 'string' || raw.length === 0) return fallback
+          try {
+            const value = JSON.parse(raw)
+            return {
+              device: value?.device === 'mobile' ? 'mobile' : 'pc',
+              preset: Object.prototype.hasOwnProperty.call(BROWSER_DEVICES, value?.preset) ? value.preset : 'iphone14',
+              orientation: value?.orientation === 'landscape' ? 'landscape' : 'portrait',
+            }
+          } catch {
+            return fallback
+          }
+        }
+
+        function setBrowserView(tab, patch) {
+          const next = { ...tab, ...patch }
+          patchTab(tab.path, patch)
+          writeStorage(
+            BROWSER_VIEW_KEY,
+            JSON.stringify({ device: next.device, preset: next.mobilePreset, orientation: next.orientation }),
+          )
+        }
+
+        /** Short tab title for a browser URL. */
+        function browserTitle(url) {
+          try {
+            const parsed = new URL(url)
+            const suffix = parsed.pathname === '/' || parsed.pathname === '' ? '' : parsed.pathname
+            return `${parsed.host}${suffix}`.slice(0, 72)
+          } catch {
+            return url.slice(0, 72)
+          }
+        }
+
+        /**
+         * Normalize an address typed into the browser bar. Bare localhost/IP
+         * hosts default to http, public hosts to https; only http(s) is allowed.
+         */
+        function normalizeBrowserUrl(raw, base) {
+          let value = typeof raw === 'string' ? raw.trim() : ''
+          if (value.length === 0) return null
+          if (value.startsWith('/') || value.startsWith('./') || value.startsWith('../') || value.startsWith('?')) {
+            if (typeof base !== 'string' || base.length === 0) return null
+            try {
+              const relative = new URL(value, base)
+              return relative.protocol === 'http:' || relative.protocol === 'https:' ? relative.href : null
+            } catch {
+              return null
+            }
+          }
+          if (value.startsWith('//')) value = `https:${value}`
+          else if (/^https?:\/\//iu.test(value)) {
+            /* already absolute */
+          } else if (/^[a-z][a-z0-9+.-]*:\/\//iu.test(value)) {
+            return null
+          } else if (/^:(\d{2,5})([/?#].*)?$/u.test(value)) {
+            value = `http://localhost${value}`
+          } else if (/^\d{2,5}([/?#].*)?$/u.test(value)) {
+            value = `http://localhost:${value}`
+          } else if (/^(localhost|127(?:\.\d{1,3}){3}|(?:\d{1,3}\.){3}\d{1,3}|\[[0-9a-f:]+\])(?::\d{1,5})?(?:[/?#]|$)/iu.test(value)) {
+            value = `http://${value}`
+          } else if (/^[^\s/:]+(?::\d{1,5})?(?:[/?#]|$)/u.test(value)) {
+            value = `https://${value}`
+          } else {
+            return null
+          }
+          try {
+            const parsed = new URL(value)
+            return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.href : null
+          } catch {
+            return null
+          }
+        }
+
+        function openBrowser(rawUrl) {
+          const normalized = typeof rawUrl === 'string' && rawUrl.trim().length > 0 ? normalizeBrowserUrl(rawUrl) : null
+          if (typeof rawUrl === 'string' && rawUrl.trim().length > 0 && normalized === null) {
+            setBanner({ kind: 'error', message: t('browser.badUrl') })
+            return
+          }
+          browserCounterRef.current += 1
+          const id = `browser:${String(Date.now())}:${String(browserCounterRef.current)}`
+          const view = readBrowserView()
+          const tab = {
+            path: id,
+            name: normalized === null ? t('browser.newTab') : browserTitle(normalized),
+            mode: 'browser',
+            language: { id: 'browser', label: 'Browser' },
+            content: '',
+            saved: '',
+            version: null,
+            dirty: false,
+            loading: false,
+            error: null,
+            code: null,
+            view: 'edit',
+            url: normalized ?? '',
+            input: normalized ?? '',
+            proxy: false,
+            device: view.device,
+            mobilePreset: view.preset,
+            orientation: view.orientation,
+            history: normalized === null ? [] : [normalized],
+            historyIndex: normalized === null ? -1 : 0,
+            reloadKey: 0,
+          }
+          store.set((current) => ({
+            ...current,
+            tabs: [...current.tabs, tab],
+            active: id,
+          }))
+          setCompactView('editor')
+          setCursor({ line: 1, column: 1 })
+        }
+
+        function navigateBrowser(tabPath, rawUrl) {
+          const tab = store.get().tabs.find((entry) => entry.path === tabPath)
+          if (tab === undefined || tab.mode !== 'browser') return
+          const normalized = normalizeBrowserUrl(rawUrl, tab.url)
+          if (normalized === null) {
+            setBanner({ kind: 'error', message: t('browser.badUrl') })
+            return
+          }
+          const history = tab.history.slice(0, Math.max(0, tab.historyIndex + 1))
+          history.push(normalized)
+          const trimmed = history.slice(-50)
+          patchTab(tabPath, {
+            url: normalized,
+            input: normalized,
+            proxy: isDirectPreviewUrl(normalized) ? false : tab.proxy === true,
+            name: browserTitle(normalized),
+            history: trimmed,
+            historyIndex: trimmed.length - 1,
+            reloadKey: (tab.reloadKey ?? 0) + 1,
+            loading: true,
+          })
+        }
+
+        function browserStep(tabPath, delta) {
+          const tab = store.get().tabs.find((entry) => entry.path === tabPath)
+          if (tab === undefined || tab.mode !== 'browser') return
+          const index = tab.historyIndex + delta
+          if (index < 0 || index >= tab.history.length) return
+          const url = tab.history[index]
+          patchTab(tabPath, {
+            url,
+            input: url,
+            proxy: isDirectPreviewUrl(url) ? false : tab.proxy === true,
+            name: browserTitle(url),
+            historyIndex: index,
+            reloadKey: (tab.reloadKey ?? 0) + 1,
+            loading: true,
+          })
+        }
+
+        function toggleBrowserProxy(tab) {
+          if (tab === undefined || tab.mode !== 'browser' || isDirectPreviewUrl(tab.url)) return
+          patchTab(tab.path, {
+            proxy: tab.proxy !== true,
+            reloadKey: (tab.reloadKey ?? 0) + 1,
+            loading: true,
+          })
+        }
+
+        function reloadBrowser(tabPath) {
+          const tab = store.get().tabs.find((entry) => entry.path === tabPath)
+          if (tab === undefined || tab.mode !== 'browser' || tab.url.length === 0) return
+          patchTab(tabPath, { reloadKey: (tab.reloadKey ?? 0) + 1, loading: true })
+        }
+
         function closeNow(relative) {
           const current = store.get()
           const index = current.tabs.findIndex((tab) => tab.path === relative)
@@ -5007,6 +5562,11 @@ window.__ModuleLoader__.load({
         }
 
         function onRootKeyDown(event) {
+          if (event.altKey && event.key.toLowerCase() === 'b') {
+            event.preventDefault()
+            openBrowser()
+            return
+          }
           if (event.altKey && event.key === 'Home') {
             event.preventDefault()
             jumpToWorkspaceRoot()
@@ -5253,6 +5813,151 @@ window.__ModuleLoader__.load({
         }
 
         function editorToolbar(tab) {
+          if (tab.mode === 'browser') {
+            const canBack = tab.historyIndex > 0
+            const canForward = tab.historyIndex < tab.history.length - 1
+            return h(
+              'div',
+              { className: 'ds-edit-toolbar ds-browser-toolbar' },
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-iconbtn ds-iconbtn-sm',
+                  title: t('browser.back'),
+                  disabled: !canBack,
+                  onClick: () => browserStep(tab.path, -1),
+                },
+                h(ArrowLeftIcon),
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-iconbtn ds-iconbtn-sm',
+                  title: t('browser.forward'),
+                  disabled: !canForward,
+                  onClick: () => browserStep(tab.path, 1),
+                },
+                h(ArrowRightIcon),
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-iconbtn ds-iconbtn-sm',
+                  title: t('browser.reload'),
+                  disabled: tab.url.length === 0,
+                  onClick: () => reloadBrowser(tab.path),
+                },
+                h(RefreshIcon),
+              ),
+              h(
+                'div',
+                { className: 'ds-browser-device-switch', role: 'group', 'aria-label': t('browser.viewport') },
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-browser-device-btn',
+                    'data-active': tab.device !== 'mobile' ? 'true' : undefined,
+                    title: t('browser.pcHint'),
+                    onClick: () => setBrowserView(tab, { device: 'pc' }),
+                  },
+                  h(MonitorIcon),
+                  h('span', null, t('browser.pc')),
+                ),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-browser-device-btn',
+                    'data-active': tab.device === 'mobile' ? 'true' : undefined,
+                    title: t('browser.mobileHint'),
+                    onClick: () => setBrowserView(tab, { device: 'mobile' }),
+                  },
+                  h(PhoneIcon),
+                  h('span', null, t('browser.mobile')),
+                ),
+              ),
+              tab.url.length === 0 || isDirectPreviewUrl(tab.url)
+                ? null
+                : h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-browser-proxy-btn',
+                      'data-active': tab.proxy === true ? 'true' : undefined,
+                      title: t('browser.proxyHint'),
+                      onClick: () => toggleBrowserProxy(tab),
+                    },
+                    tab.proxy === true ? t('browser.proxy') : t('browser.direct'),
+                  ),
+              h(
+                'form',
+                {
+                  className: 'ds-browser-address-form',
+                  onSubmit: (event) => {
+                    event.preventDefault()
+                    navigateBrowser(tab.path, tab.input)
+                  },
+                },
+                h('input', {
+                  className: 'ds-browser-address',
+                  value: tab.input,
+                  placeholder: t('browser.placeholder'),
+                  spellCheck: false,
+                  autoFocus: tab.url.length === 0,
+                  'aria-label': t('browser.address'),
+                  onChange: (event) => patchTab(tab.path, { input: event.target.value }),
+                  onKeyDown: (event) => {
+                    if (event.key === 'Escape') {
+                      event.preventDefault()
+                      patchTab(tab.path, { input: tab.url })
+                    }
+                  },
+                }),
+              ),
+              tab.device === 'mobile'
+                ? h(
+                    'select',
+                    {
+                      className: 'ds-browser-preset',
+                      value: tab.mobilePreset ?? 'iphone14',
+                      title: t('browser.device'),
+                      onChange: (event) => setBrowserView(tab, { mobilePreset: event.target.value }),
+                    },
+                    Object.entries(BROWSER_DEVICES).map(([key, item]) => h('option', { key, value: key }, item.label)),
+                  )
+                : null,
+              tab.device === 'mobile'
+                ? h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-iconbtn ds-iconbtn-sm',
+                      title: t('browser.rotate'),
+                      onClick: () =>
+                        setBrowserView(tab, {
+                          orientation: tab.orientation === 'landscape' ? 'portrait' : 'landscape',
+                        }),
+                    },
+                    h(RotateIcon),
+                  )
+                : null,
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-iconbtn ds-iconbtn-sm',
+                  title: t('browser.openExternal'),
+                  disabled: tab.url.length === 0,
+                  onClick: () => window.open(tab.url, '_blank', 'noopener,noreferrer'),
+                },
+                h(ExternalIcon),
+              ),
+            )
+          }
           if (tab.mode === 'diff') {
             return h(
               'div',
@@ -5614,12 +6319,12 @@ window.__ModuleLoader__.load({
           )
         }
 
-        const segments = activeTab === null || activeTab.mode === 'diff' ? [] : breadcrumbSegments(activeTab)
+        const segments = activeTab === null || activeTab.mode === 'diff' || activeTab.mode === 'browser' ? [] : breadcrumbSegments(activeTab)
         const lineCount = activeTab !== null && isTextMode(activeTab.mode) ? activeTab.content.split('\n').length : 0
 
         return h(
           'div',
-          { className: 'ds-root', ref: rootRef, onKeyDown: onRootKeyDown, 'data-compact': compact ? 'true' : undefined },
+          { className: 'ds-root', ref: rootRef, onKeyDown: onRootKeyDown, 'data-compact': compact ? 'true' : undefined, 'data-maximized': maximized ? 'true' : undefined },
           h('style', null, CSS),
           h('input', {
             ref: uploadInputRef,
@@ -5724,6 +6429,28 @@ window.__ModuleLoader__.load({
               },
               h(NewFolderIcon),
             ),
+            h('span', { className: 'ds-vr' }),
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'ds-iconbtn ds-header-browser',
+                title: t('browser.open'),
+                onClick: () => openBrowser(),
+              },
+              h(GlobeIcon),
+            ),
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'ds-iconbtn ds-maximize-btn',
+                title: maximized ? t('action.restore') : t('action.maximize'),
+                'aria-pressed': maximized,
+                onClick: toggleMaximize,
+              },
+              maximized ? h(MinimizeIcon) : h(MaximizeIcon),
+            ),
           ),
           banner === null
             ? null
@@ -5751,13 +6478,13 @@ window.__ModuleLoader__.load({
               'aside',
               {
                 className: 'ds-side',
-                'data-view': paneView,
+                'data-view': showGit ? 'git' : 'files',
                 style: { width: compact ? '100%' : `${String(state.treeWidth)}px`, display: showSide ? undefined : 'none' },
               },
               h(
                 'div',
                 { className: 'ds-pane-head' },
-                h('span', null, paneView === 'git' ? t('git.title') : t('explorer')),
+                h('span', null, showGit ? t('git.title') : t('explorer')),
                 h(
                   'span',
                   { className: 'ds-pane-actions' },
@@ -5882,26 +6609,12 @@ window.__ModuleLoader__.load({
                         )
                       : null,
                   ),
-                  isSshRootPath(state.root)
-                    ? null
-                    : h(
-                    'button',
-                    {
-                      type: 'button',
-                      className: 'ds-iconbtn ds-iconbtn-sm ds-git-toggle',
-                      title: paneView === 'git' ? t('git.backToFiles') : t('git.toggle'),
-                      'aria-pressed': paneView === 'git',
-                      'data-active': paneView === 'git' ? 'true' : undefined,
-                      onClick: () => {
-                        setPaneView((view) => (view === 'git' ? 'files' : 'git'))
-                        setMoreOpen(false)
-                      },
-                    },
-                    h(GitIcon),
-                  ),
                 ),
               ),
               h(
+                'div',
+                { className: 'ds-side-view', style: { display: showGit ? 'none' : 'flex' } },
+                h(
                 'div',
                 { className: 'ds-favorites' },
                 h(
@@ -6040,26 +6753,69 @@ window.__ModuleLoader__.load({
                             ),
                           ),
                     ),
-              paneView === 'git'
-                ? h(GitPanel, {
-                    root: state.root,
-                    t,
-                    onOpenDiff: (request) => void openDiffView(request),
-                    showToast,
-                    onFilesChanged: () => void refreshTree(),
-                  })
+              ),
+              gitAvailable
+                ? h(
+                    'div',
+                    { className: 'ds-side-view ds-side-view-git', style: { display: showGit ? 'flex' : 'none' } },
+                    h(GitPanel, {
+                      root: state.root,
+                      t,
+                      onOpenDiff: (request) => void openDiffView(request),
+                      showToast,
+                      onFilesChanged: () => void refreshTree(),
+                    }),
+                  )
                 : null,
               h(
                 'div',
                 { className: 'ds-side-foot' },
                 h('span', { className: 'ds-side-path', title: state.root ?? '' }, state.root ?? ''),
               ),
+              gitAvailable
+                ? h(
+                    'div',
+                    { className: 'ds-side-tabs', role: 'tablist', 'aria-label': t('side.tabs') },
+                    h(
+                      'button',
+                      {
+                        type: 'button',
+                        role: 'tab',
+                        className: 'ds-side-tab',
+                        'data-active': showGit ? undefined : 'true',
+                        'aria-selected': !showGit,
+                        onClick: () => {
+                          setPaneView('files')
+                          setMoreOpen(false)
+                        },
+                      },
+                      h(FolderIcon, { open: !showGit }),
+                      h('span', null, t('explorer')),
+                    ),
+                    h(
+                      'button',
+                      {
+                        type: 'button',
+                        role: 'tab',
+                        className: 'ds-side-tab',
+                        'data-active': showGit ? 'true' : undefined,
+                        'aria-selected': showGit,
+                        onClick: () => {
+                          setPaneView('git')
+                          setMoreOpen(false)
+                        },
+                      },
+                      h(GitIcon),
+                      h('span', null, t('git.title')),
+                    ),
+                  )
+                : null,
             ),
             h('div', {
               className: 'ds-splitter',
               role: 'separator',
               'aria-orientation': 'vertical',
-              style: compact ? { display: 'none' } : undefined,
+              style: compact || maximized ? { display: 'none' } : undefined,
               onPointerDown: beginSplitDrag,
             }),
             h(
@@ -6076,14 +6832,24 @@ window.__ModuleLoader__.load({
                       h('div', { className: 'ds-welcome-title' }, t('welcomeTitle')),
                       h('div', { className: 'ds-welcome-text' }, t('welcomeHint')),
                       h('div', { className: 'ds-kbdline' }, t('welcomeShortcuts')),
-                      state.root === null
-                        ? null
-                        : h(
-                            'button',
-                            { type: 'button', className: 'ds-btn ds-btn-primary', onClick: () => startCreate('file') },
-                            h(NewFileIcon),
-                            t('welcomeNewFile'),
-                          ),
+                      h(
+                        React.Fragment,
+                        null,
+                        state.root === null
+                          ? null
+                          : h(
+                              'button',
+                              { type: 'button', className: 'ds-btn ds-btn-primary', onClick: () => startCreate('file') },
+                              h(NewFileIcon),
+                              t('welcomeNewFile'),
+                            ),
+                        h(
+                          'button',
+                          { type: 'button', className: 'ds-btn', onClick: () => openBrowser() },
+                          h(GlobeIcon),
+                          t('browser.open'),
+                        ),
+                      ),
                     ),
                   )
                 : h(
@@ -6099,11 +6865,22 @@ window.__ModuleLoader__.load({
                             key: tab.path,
                             className: 'ds-tab',
                             role: 'tab',
-                            'data-active': tab.path === state.active ? 'true' : undefined,
+                            'data-active': tab.path === state.active ? 'true' : 'false',
                             'aria-selected': tab.path === state.active,
-                            title: tab.mode === 'diff' ? `${tab.diff?.path ?? ''} · ${tab.diff?.tag ?? ''}` : tab.path,
+                            title:
+                              tab.mode === 'browser'
+                                ? tab.url.length > 0
+                                  ? tab.url
+                                  : t('browser.newTab')
+                                : tab.mode === 'diff'
+                                  ? `${tab.diff?.path ?? ''} · ${tab.diff?.tag ?? ''}`
+                                  : tab.path,
                             onClick: () => {
-                              store.set((current) => ({ ...current, active: tab.path, selected: tab.diff?.path ?? tab.path }))
+                              store.set((current) => ({
+                                ...current,
+                                active: tab.path,
+                                selected: tab.mode === 'browser' ? current.selected : (tab.diff?.path ?? tab.path),
+                              }))
                               setCursor({ line: 1, column: 1 })
                               setCompactView('editor')
                             },
@@ -6114,7 +6891,9 @@ window.__ModuleLoader__.load({
                               }
                             },
                           },
-                          tab.mode === 'diff'
+                          tab.mode === 'browser'
+                            ? h('span', { className: 'ds-glyph ds-glyph-browser' }, h(GlobeIcon))
+                            : tab.mode === 'diff'
                             ? h('span', { className: 'ds-glyph ds-glyph-diff' }, h(CompareIcon))
                             : isTextMode(tab.mode)
                               ? h(FileGlyph, { name: tab.name, size: 14 })
@@ -6170,7 +6949,18 @@ window.__ModuleLoader__.load({
                               h(FolderIcon, { open: true }),
                               h('span', null, state.rootTitle || t('workspace.label')),
                             ),
-                            activeTab.mode === 'diff'
+                            activeTab.mode === 'browser'
+                              ? h(
+                                  React.Fragment,
+                                  null,
+                                  h('span', { className: 'ds-crumb-sep' }, '/'),
+                                  h(
+                                    'span',
+                                    { className: 'ds-crumb ds-crumb-browser', title: activeTab.url },
+                                    activeTab.url.length > 0 ? activeTab.url : t('browser.newTab'),
+                                  ),
+                                )
+                              : activeTab.mode === 'diff'
                               ? h(
                                   React.Fragment,
                                   null,
@@ -6214,7 +7004,33 @@ window.__ModuleLoader__.load({
                             h('span', { className: 'ds-spacer' }),
                             editorToolbar(activeTab),
                           ),
-                          tabBody(activeTab),
+                          state.tabs
+                            .filter((tab) => tab.mode === 'browser')
+                            .map((tab) =>
+                              h(
+                                'div',
+                                {
+                                  key: tab.path,
+                                  className: 'ds-browser-pane',
+                                  'data-active': tab.path === state.active ? 'true' : 'false',
+                                  style: { display: tab.path === state.active ? 'flex' : 'none' },
+                                },
+                                h(BrowserPanel, {
+                                  tab,
+                                  t,
+                                  onNavigate: (url) => navigateBrowser(tab.path, url),
+                                  onFinished: () => patchTab(tab.path, { loading: false }),
+                                  onExternal: (targetUrl) => {
+                                    const target = normalizeBrowserUrl(
+                                      typeof targetUrl === 'string' && targetUrl.length > 0 ? targetUrl : tab.url,
+                                      tab.url,
+                                    )
+                                    if (target !== null) window.open(target, '_blank', 'noopener,noreferrer')
+                                  },
+                                }),
+                              ),
+                            ),
+                          activeTab.mode === 'browser' ? null : tabBody(activeTab),
                           h(
                             'footer',
                             { className: 'ds-statusbar' },
@@ -6233,7 +7049,11 @@ window.__ModuleLoader__.load({
                             h(
                               'span',
                               { className: 'ds-status-item' },
-                              activeTab.mode === 'diff'
+                              activeTab.mode === 'browser'
+                                ? activeTab.url.length > 0
+                                  ? activeTab.url
+                                  : t('browser.newTab')
+                                : activeTab.mode === 'diff'
                                 ? t('git.diffReadOnly')
                                 : activeTab.dirty
                                   ? t('hint.unsaved')
@@ -6436,7 +7256,7 @@ window.__ModuleLoader__.load({
                     value: sshSpec,
                     placeholder: 'ssh://user@host:22/var/www',
                     spellCheck: false,
-                    autoFocus: true,
+                    autoFocus: tab.url.length === 0,
                     disabled: sshBusy,
                     onChange: (event) => {
                       setSshSpec(event.target.value)
@@ -6541,6 +7361,8 @@ window.__ModuleLoader__.load({
   font-size: 13px;
   line-height: 1.45;
 }
+.ds-root[data-maximized="true"] .ds-side,
+.ds-root[data-maximized="true"] .ds-splitter { display: none; }
 .ds-root *, .ds-root *::before, .ds-root *::after { box-sizing: border-box; }
 .ds-header {
   display: flex;
@@ -7476,6 +8298,39 @@ window.__ModuleLoader__.load({
 .ds-git-compare-file { cursor: pointer; }
 .ds-git-compare-file[data-busy="true"] { opacity: 0.55; }
 .ds-git-compare-busy { flex: 0 0 auto; padding: 0; font-size: 10px; }
+.ds-side-view { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow: hidden; }
+.ds-side-tabs {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: stretch;
+  border-top: 1px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-alias-bg-layer-1);
+}
+.ds-side-tab {
+  display: inline-flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  height: 26px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.ds-side-tab:hover { color: var(--dsw-alias-label-primary); background: color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent); }
+.ds-side-tab[data-active="true"] {
+  color: var(--dsw-alias-brand-primary);
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 9%, transparent);
+  box-shadow: inset 0 2px 0 var(--dsw-alias-brand-primary);
+}
+.ds-side-tab svg { flex: 0 0 auto; width: 12px; height: 12px; }
+.ds-side-tab span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ds-side-foot {
   flex: 0 0 auto;
   padding: 5px 10px;
@@ -7869,6 +8724,216 @@ window.__ModuleLoader__.load({
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.ds-browser-toolbar { gap: 4px; }
+.ds-browser-address-form { display: flex; flex: 1 1 auto; min-width: 0; }
+.ds-browser-address {
+  width: 100%;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font-family: var(--ds-mono);
+  font-size: 11.5px;
+  outline: none;
+}
+.ds-browser-address:focus { border-color: var(--dsw-alias-brand-primary); }
+.ds-glyph-browser { color: var(--dsw-alias-brand-primary); }
+.ds-glyph-browser svg { width: 14px; height: 14px; }
+.ds-crumb-browser {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dsw-alias-label-secondary);
+  font-family: var(--ds-mono);
+  font-size: 11px;
+}
+.ds-browser-pane { display: flex; flex: 1 1 auto; width: 100%; min-height: 0; }
+.ds-browser-pane[data-active="false"] { display: none; }
+.ds-browser-device-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  padding: 2px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 7px;
+  background: var(--dsw-alias-bg-base);
+}
+.ds-browser-device-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+.ds-browser-device-btn svg { width: 13px; height: 13px; }
+.ds-browser-device-btn[data-active="true"] { background: color-mix(in srgb, var(--dsw-alias-brand-primary) 14%, transparent); color: var(--dsw-alias-brand-primary); }
+.ds-browser-proxy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  height: 24px;
+  padding: 0 7px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+.ds-browser-proxy-btn[data-active="true"] { border-color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent); color: var(--dsw-alias-brand-primary); }
+.ds-browser-preset {
+  flex: 0 0 auto;
+  height: 26px;
+  max-width: 106px;
+  padding: 0 4px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 10.5px;
+  outline: none;
+}
+.ds-browser-stage {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+.ds-browser-stage-mobile {
+  padding: 12px;
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--dsw-alias-brand-primary) 8%, transparent), transparent 60%),
+    var(--dsw-alias-bg-layer-1);
+}
+.ds-browser-device-wrap { position: relative; flex: 0 0 auto; }
+.ds-browser-device {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+  border-radius: 20px;
+  outline: 6px solid #1c1c1e;
+  background: #fff;
+  box-shadow: 0 18px 50px color-mix(in srgb, var(--dsw-alias-label-primary) 28%, transparent);
+  transform-origin: top left;
+}
+.ds-browser-device-pc {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+  transform: none;
+}
+.ds-browser-device-wrap-pc { width: 100%; height: 100%; }
+.ds-browser-device-pc .ds-browser-frame { border-radius: 0; }
+.ds-browser-device .ds-browser-frame { width: 100%; height: 100%; border-radius: 14px; }
+.ds-browser {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  background: var(--dsw-alias-bg-layer-1);
+}
+.ds-browser-frame { flex: 1 1 auto; width: 100%; height: 100%; min-height: 0; border: 0; background: #fff; }
+.ds-browser-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: color-mix(in srgb, var(--dsw-alias-bg-base) 72%, transparent);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  pointer-events: none;
+}
+.ds-browser-note {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--dsw-alias-state-warn-primary);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-overlay);
+  color: var(--dsw-alias-label-primary);
+  font-size: 11.5px;
+  box-shadow: 0 6px 24px color-mix(in srgb, var(--dsw-alias-label-primary) 16%, transparent);
+}
+.ds-browser-note .ds-linkbtn { margin-left: auto; flex: 0 0 auto; }
+.ds-browser-start {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 24px;
+  min-height: 0;
+  overflow: auto;
+  padding: 32px;
+}
+.ds-browser-hero { display: flex; align-items: center; gap: 12px; }
+.ds-browser-hero-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent);
+  color: var(--dsw-alias-brand-primary);
+}
+.ds-browser-hero-icon svg { width: 22px; height: 22px; }
+.ds-browser-hero-title { font-size: 16px; font-weight: 600; }
+.ds-browser-hero-text { max-width: 560px; color: var(--dsw-alias-label-secondary); font-size: 12px; }
+.ds-browser-section { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 680px; }
+.ds-browser-section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ds-browser-section-title { color: var(--dsw-alias-label-secondary); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.ds-browser-ports { display: flex; flex-wrap: wrap; gap: 8px; }
+.ds-browser-port {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 96px;
+  padding: 7px 10px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ds-browser-port:hover { border-color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 8%, transparent); }
+.ds-browser-port-num { color: var(--dsw-alias-brand-primary); font-family: var(--ds-mono); font-size: 12px; font-weight: 600; }
+.ds-browser-port-host { color: var(--dsw-alias-label-secondary); font-size: 10px; }
+.ds-browser-muted { color: var(--dsw-alias-label-secondary); font-size: 12px; }
+.ds-browser-start-hint { max-width: 620px; color: var(--dsw-alias-label-secondary); font-size: 11px; line-height: 1.6; }
+.ds-browser-blocked { align-items: center; justify-content: center; }
 .ds-pdfwrap { display: flex; flex: 1 1 auto; min-height: 0; }
 .ds-pdf { flex: 1 1 auto; width: 100%; height: 100%; border: 0; background: var(--dsw-alias-bg-layer-1); }
 .ds-imageview { display: flex; flex: 1 1 auto; align-items: center; justify-content: center; min-height: 0; overflow: auto; padding: 24px; background: var(--dsw-alias-bg-layer-1); }

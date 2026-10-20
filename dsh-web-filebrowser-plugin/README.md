@@ -50,7 +50,7 @@ third-party runtime dependencies.
 
 - **Left Sidebar** panel icon (`sidebar.panellist`, id `files`) opens the full
   workspace in the centre column.
-- A **Git** button in the explorer header switches to the source-control view.
+- A **Git** tab at the bottom of the sidebar switches to the source-control view; the Explorer tab returns to the tree.
 - **Right Sidebar Start / guide page** lists a third card, "Code Workspace", next
   to "Workspace files" and "New terminal". Picking it opens the same workspace as
   a right-sidebar tab. In a narrow sidebar the page switches to a compact
@@ -103,6 +103,24 @@ third-party runtime dependencies.
   browser, favorite, new file/folder, upload, copy, cut, paste, rename, delete,
   download, copy relative path.
 
+### Built-in browser
+
+- Browser tabs (globe button, welcome action or `Alt+B`) preview a running dev
+  server beside the code, with an address bar, history, reload and external open.
+  A Maximize editor/Restore layout button hides the explorer so the editor or
+  browser fills the component; it does not enter browser fullscreen.
+- PC/Mobile viewport switching includes iPhone 14, iPhone SE, Pixel 7 and iPad
+  presets, portrait/landscape rotation and fit-to-panel scaling. It emulates the
+  CSS viewport only, not touch events or the User-Agent.
+- The start page detects listening local TCP ports on Linux (`ports` op); other
+  platforms fall back to common ports.
+- Local/private and public pages are embedded directly by default. When a public
+  site refuses framing, the toolbar's **Proxy** mode uses
+  `/api/dsh-web-filebrowser-proxy`: it fetches public addresses only, strips frame
+  headers, injects a base/link bridge and serves the HTML into an opaque-origin
+  sandbox (no cookies/login state). Complex or authenticated public sites may
+  still render incompletely; use the external browser for full navigation.
+
 ### SSH remote folders
 
 - Add `ssh://user@host:port/absolute/path` from the workspace picker or the address
@@ -110,7 +128,7 @@ third-party runtime dependencies.
   (`~/.ssh/config` HostName/User/Port/IdentityFile are honored).
 - Browse, edit/save, create, rename, delete, copy/move and upload/download on the
   remote root; drag-and-drop upload and the context menu use the same paths as
-  local workspaces. Git is local-only and its button is hidden for SSH roots.
+  local workspaces. Git is local-only and its bottom tab is hidden for SSH roots.
 - Requires the optional `ssh2` dependency: run `npm install` at the repository root (or in this directory when installing the component standalone).
   Without it the plugin still loads; SSH operations report the missing dependency.
 - Host keys are not pinned; connect only to trusted hosts.
@@ -179,8 +197,9 @@ third-party runtime dependencies.
 
   | Method | Operation |
   | --- | --- |
-  | `POST` | JSON operations: `roots`, `list`, `read`, `write`, `createFile`, `createDir`, `rename`, `move`, `copy`, `delete`, `stat`, `sshTest` |
+  | `POST` | JSON operations: `roots`, `list`, `read`, `write`, `createFile`, `createDir`, `rename`, `move`, `copy`, `delete`, `stat`, `sshTest`, `ports` |
   | `GET` | `?op=raw&root=…&path=…` streams a file for preview/download links |
+  | `GET` | `/api/dsh-web-filebrowser-proxy?url=…` fetches a public HTML page for the built-in browser |
 
 - The Client half (`client.js`) registers the `files` key in the `main` slot and a
   matching entry in `sidebar.panellist`, so the sidebar icon opens this page. It
