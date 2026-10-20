@@ -30,6 +30,7 @@ window.__ModuleLoader__.load({
     const FAVORITES_OPEN_KEY = 'dsh-side:favorites-open'
     const HIDDEN_ROOTS_KEY = 'dsh-side:hidden-roots'
     const WRAP_KEY = 'dsh-side:word-wrap'
+    const DIFF_SPLIT_KEY = 'dsh-side:diff-split'
 
     /** Stable empty list for a slot without the workspaces hook. */
     const EMPTY_WORKSPACES = []
@@ -209,6 +210,19 @@ window.__ModuleLoader__.load({
       'git.checkoutOk': '已切换分支',
       'git.initOk': '已初始化 Git 仓库',
       'git.diffStaged': '已暂存',
+      'git.diffMode': '差异视图',
+      'git.diffSplit': '并排',
+      'git.diffSplitHint': '左右并排查看改动',
+      'git.diffUnified': '统一',
+      'git.diffUnifiedHint': '以统一 diff 查看',
+      'git.diffOldSide': '原始',
+      'git.diffNewSide': '修改后',
+      'git.diffTruncated': '差异过大，仅显示前 {n} 行；切换「统一」可查看完整内容。',
+      'git.diffSplitUnavailable': '该差异无法并排显示，已使用统一视图。',
+      'git.diffReadOnly': '只读',
+      'git.loadingDiff': '正在读取差异…',
+      'git.refreshDiff': '刷新差异',
+      'git.diffResizeHint': '拖动调整左右宽度，双击恢复均分',
       'git.diffWorking': '工作区',
       'git.untracked': '未跟踪',
       'git.conflict': '冲突',
@@ -429,6 +443,19 @@ window.__ModuleLoader__.load({
       'git.checkoutOk': 'Branch switched',
       'git.initOk': 'Git repository initialized',
       'git.diffStaged': 'Staged',
+      'git.diffMode': 'Diff view',
+      'git.diffSplit': 'Split',
+      'git.diffSplitHint': 'View changes side by side',
+      'git.diffUnified': 'Unified',
+      'git.diffUnifiedHint': 'View as a unified diff',
+      'git.diffOldSide': 'Original',
+      'git.diffNewSide': 'Modified',
+      'git.diffTruncated': 'Diff is large; showing the first {n} rows. Switch to Unified for the full diff.',
+      'git.diffSplitUnavailable': 'This diff cannot be shown side by side; using the unified view.',
+      'git.diffReadOnly': 'Read-only',
+      'git.loadingDiff': 'Loading diff…',
+      'git.refreshDiff': 'Refresh diff',
+      'git.diffResizeHint': 'Drag to resize the panes; double-click to reset',
       'git.diffWorking': 'Working tree',
       'git.untracked': 'Untracked',
       'git.conflict': 'Conflict',
@@ -2277,16 +2304,315 @@ window.__ModuleLoader__.load({
     }
 
     /* ------------------------------------------------------------------ *
+     * Diff parsing for the side-by-side view
+     * ------------------------------------------------------------------ */
+
+    /** Rows the split view renders before it asks for the unified view. */
+    const MAX_SPLIT_ROWS = 4000
+
+    /**
+     * Turn one unified diff into aligned old/new rows. File metadata
+     * (`diff --git`, `index`, `---`, `+++`) is dropped because the modal header
+     * already names the file; hunks, context, deletions and additions are kept.
+     * Consecutive deletions and additions are paired row by row.
+     * @param {string} text Unified diff text.
+     * @returns {{rows: Array<object>, truncated: boolean}}
+     */
+    function parseUnifiedDiff(text) {
+      const rows = []
+      let truncated = false
+      let oldLine = 0
+      let newLine = 0
+      let inHunk = false
+      let pendingOld = []
+      let pendingNew = []
+      let noNewline = false
+
+      const flush = () => {
+        const count = Math.max(pendingOld.length, pendingNew.length)
+        for (let index = 0; index < count; index += 1) {
+          if (rows.length >= MAX_SPLIT_ROWS) {
+            truncated = true
+            break
+          }
+          const before = pendingOld[index]
+          const after = pendingNew[index]
+          rows.push({
+            kind: before && after ? 'change' : before ? 'del' : 'add',
+            oldNumber: before ? before.number : null,
+            newNumber: after ? after.number : null,
+            oldText: before ? before.text : '',
+            newText: after ? after.text : '',
+          })
+        }
+        pendingOld = []
+        pendingNew = []
+        if (noNewline) {
+          if (rows.length < MAX_SPLIT_ROWS) rows.push({ kind: 'meta', text: '\\ No newline at end of file' })
+          else truncated = true
+          noNewline = false
+        }
+      }
+
+      const pushRow = (row) => {
+        if (rows.length >= MAX_SPLIT_ROWS) {
+          truncated = true
+          return
+        }
+        rows.push(row)
+      }
+
+      for (const raw of text.split('\n')) {
+        if (truncated) break
+        const line = raw.endsWith('\r') ? raw.slice(0, -1) : raw
+        if (line.startsWith('@@')) {
+          flush()
+          if (truncated) break
+          const match = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/u.exec(line)
+          if (match !== null) {
+            oldLine = Number(match[1])
+            newLine = Number(match[2])
+            inHunk = true
+          }
+          pushRow({ kind: 'hunk', text: line })
+          continue
+        }
+        if (!inHunk) continue
+        if (line.startsWith('\\')) {
+          noNewline = true
+          continue
+        }
+        if (line.startsWith('-')) {
+          pendingOld.push({ number: oldLine, text: line.slice(1) })
+          oldLine += 1
+          continue
+        }
+        if (line.startsWith('+')) {
+          pendingNew.push({ number: newLine, text: line.slice(1) })
+          newLine += 1
+          continue
+        }
+        if (line.startsWith(' ')) {
+          flush()
+          if (truncated) break
+          pushRow({
+            kind: 'context',
+            oldNumber: oldLine,
+            newNumber: newLine,
+            oldText: line.slice(1),
+            newText: line.slice(1),
+          })
+          oldLine += 1
+          newLine += 1
+        }
+      }
+      flush()
+      return { rows, truncated }
+    }
+
+    /**
+     * Split a paired change into the unchanged prefix/suffix and the differing
+     * middle, so the split view can emphasize only what changed.
+     * @param {string} before Old line.
+     * @param {string} after New line.
+     * @returns {{old: {prefix: string, middle: string, suffix: string}, new: {prefix: string, middle: string, suffix: string}}}
+     */
+    function splitChangeParts(before, after) {
+      let start = 0
+      while (start < before.length && start < after.length && before[start] === after[start]) start += 1
+      let oldEnd = before.length
+      let newEnd = after.length
+      while (oldEnd > start && newEnd > start && before[oldEnd - 1] === after[newEnd - 1]) {
+        oldEnd -= 1
+        newEnd -= 1
+      }
+      return {
+        old: { prefix: before.slice(0, start), middle: before.slice(start, oldEnd), suffix: before.slice(oldEnd) },
+        new: { prefix: after.slice(0, start), middle: after.slice(start, newEnd), suffix: after.slice(newEnd) },
+      }
+    }
+
+    /* ------------------------------------------------------------------ *
      * Git panel
      * ------------------------------------------------------------------ */
 
-    function GitPanel({ root, t, onOpenFile, showToast, onFilesChanged }) {
+    /**
+     * Read-only diff surface shown in the editor area. The split/unified choice
+     * lives on the tab so the toolbar and the body stay in sync.
+     */
+    function DiffView({ tab, t }) {
+      const text = tab.diff !== undefined && typeof tab.diff.text === 'string' ? tab.diff.text : ''
+      const parsed = useMemo(() => parseUnifiedDiff(text), [text])
+      const [splitRatio, setSplitRatio] = useState(() => {
+        const stored = Number.parseFloat(readStorage(DIFF_SPLIT_KEY) ?? '')
+        return Number.isFinite(stored) ? Math.min(75, Math.max(25, stored)) : 50
+      })
+      const rememberSplit = (ratio) => {
+        writeStorage(DIFF_SPLIT_KEY, ratio.toFixed(1))
+      }
+      const startResize = (event) => {
+        event.preventDefault()
+        const container = event.currentTarget.closest('.ds-diffview')
+        if (container === null) return
+        const table = container.querySelector('.ds-git-split')
+        const bounds = (table ?? container).getBoundingClientRect()
+        if (bounds.width <= 0) return
+        let latest = splitRatio
+        const move = (moveEvent) => {
+          latest = Math.min(75, Math.max(25, ((moveEvent.clientX - bounds.left) / bounds.width) * 100))
+          setSplitRatio(latest)
+        }
+        const finish = () => {
+          window.removeEventListener('pointermove', move)
+          window.removeEventListener('pointerup', finish)
+          rememberSplit(latest)
+        }
+        window.addEventListener('pointermove', move)
+        window.addEventListener('pointerup', finish)
+      }
+      const resetSplit = () => {
+        setSplitRatio(50)
+        rememberSplit(50)
+      }
+      if (tab.loading) {
+        return h('div', { className: 'ds-empty' }, h('span', { className: 'ds-spinner' }), t('git.loadingDiff'))
+      }
+      if (tab.error !== null) {
+        return h('div', { className: 'ds-diffview' }, h('div', { className: 'ds-git-error' }, tab.error))
+      }
+      if (text.trim().length === 0) {
+        return h('div', { className: 'ds-empty' }, t('git.noDiff'))
+      }
+      const split = tab.diffMode !== 'unified' && parsed.rows.length > 0
+      return h(
+        'div',
+        { className: 'ds-diffview' },
+        split
+          ? h(
+              'div',
+              { className: 'ds-git-diff-split-scroll' },
+              parsed.truncated
+                ? h('div', { className: 'ds-git-diff-note' }, t('git.diffTruncated', { n: String(MAX_SPLIT_ROWS) }))
+                : null,
+              h(
+                'table',
+                { className: 'ds-git-split' },
+                h(
+                  'colgroup',
+                  null,
+                  h('col', { style: { width: `${splitRatio.toFixed(2)}%` } }),
+                  h('col', null),
+                ),
+                h(
+                  'thead',
+                  null,
+                  h(
+                    'tr',
+                    null,
+                    h(
+                      'th',
+                      null,
+                      t('git.diffOldSide'),
+                      h('span', {
+                        className: 'ds-git-split-handle',
+                        role: 'separator',
+                        'aria-orientation': 'vertical',
+                        'aria-valuemin': 25,
+                        'aria-valuemax': 75,
+                        'aria-valuenow': Math.round(splitRatio),
+                        tabIndex: 0,
+                        title: t('git.diffResizeHint'),
+                        onPointerDown: startResize,
+                        onDoubleClick: resetSplit,
+                        onKeyDown: (event) => {
+                          if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+                          event.preventDefault()
+                          const next = Math.min(
+                            75,
+                            Math.max(25, splitRatio + (event.key === 'ArrowLeft' ? -2 : 2)),
+                          )
+                          setSplitRatio(next)
+                          rememberSplit(next)
+                        },
+                      }),
+                    ),
+                    h('th', null, t('git.diffNewSide')),
+                  ),
+                ),
+                h(
+                  'tbody',
+                  null,
+                  parsed.rows.map((row, index) => {
+                    if (row.kind === 'hunk' || row.kind === 'meta') {
+                      return h(
+                        'tr',
+                        {
+                          key: index,
+                          className: row.kind === 'hunk' ? 'ds-git-split-hunk' : 'ds-git-split-meta',
+                        },
+                        h('td', { colSpan: 2 }, row.text),
+                      )
+                    }
+                    const oldEmpty = row.oldNumber === null
+                    const newEmpty = row.newNumber === null
+                    const parts = row.kind === 'change' ? splitChangeParts(row.oldText, row.newText) : null
+                    return h(
+                      'tr',
+                      { key: index, className: 'ds-git-split-row', 'data-kind': row.kind },
+                      h(
+                        'td',
+                        {
+                          className: `ds-git-split-cell ds-git-split-old${oldEmpty ? ' ds-git-split-empty' : ''}`,
+                        },
+                        h('span', { className: 'ds-git-split-ln' }, oldEmpty ? '' : String(row.oldNumber)),
+                        h(
+                          'span',
+                          { className: 'ds-git-split-code' },
+                          parts === null ? row.oldText : parts.old.prefix,
+                          parts !== null && parts.old.middle.length > 0
+                            ? h('span', { className: 'ds-git-split-emph' }, parts.old.middle)
+                            : null,
+                          parts === null ? null : parts.old.suffix,
+                        ),
+                      ),
+                      h(
+                        'td',
+                        {
+                          className: `ds-git-split-cell ds-git-split-new${newEmpty ? ' ds-git-split-empty' : ''}`,
+                        },
+                        h('span', { className: 'ds-git-split-ln' }, newEmpty ? '' : String(row.newNumber)),
+                        h(
+                          'span',
+                          { className: 'ds-git-split-code' },
+                          parts === null ? row.newText : parts.new.prefix,
+                          parts !== null && parts.new.middle.length > 0
+                            ? h('span', { className: 'ds-git-split-emph' }, parts.new.middle)
+                            : null,
+                          parts === null ? null : parts.new.suffix,
+                        ),
+                      ),
+                    )
+                  }),
+                ),
+              ),
+            )
+          : h(
+              React.Fragment,
+              null,
+              tab.diffMode !== 'unified'
+                ? h('div', { className: 'ds-git-diff-note' }, t('git.diffSplitUnavailable'))
+                : null,
+              h('pre', { className: 'ds-git-diff-code' }, h(Highlighted, { code: text, language: 'diff' })),
+            ),
+      )
+    }
+
+    function GitPanel({ root, t, onOpenDiff, showToast, onFilesChanged }) {
       const [status, setStatus] = useState(null)
       const [loading, setLoading] = useState(root !== null)
       const [error, setError] = useState(null)
       const [busy, setBusy] = useState(false)
       const [message, setMessage] = useState('')
-      const [diff, setDiff] = useState(null)
       const [branchOpen, setBranchOpen] = useState(false)
       const [branches, setBranches] = useState([])
       const [branchBusy, setBranchBusy] = useState(false)
@@ -2297,7 +2623,6 @@ window.__ModuleLoader__.load({
       const [compareData, setCompareData] = useState(null)
       const [compareLoading, setCompareLoading] = useState(false)
       const [compareError, setCompareError] = useState(null)
-      const [compareFile, setCompareFile] = useState(null)
 
       async function loadStatus(silent = false) {
         if (root === null) {
@@ -2320,7 +2645,6 @@ window.__ModuleLoader__.load({
         setStatus(null)
         setError(null)
         setMessage('')
-        setDiff(null)
         setBranchOpen(false)
         setCompareOpen(false)
         setCompareData(null)
@@ -2330,16 +2654,15 @@ window.__ModuleLoader__.load({
       }, [root])
 
       useEffect(() => {
-        if (diff === null && !branchOpen && !compareOpen) return undefined
+        if (!branchOpen && !compareOpen) return undefined
         const onKey = (event) => {
           if (event.key !== 'Escape') return
-          setDiff(null)
           setBranchOpen(false)
           setCompareOpen(false)
         }
         window.addEventListener('keydown', onKey)
         return () => window.removeEventListener('keydown', onKey)
-      }, [diff, branchOpen, compareOpen])
+      }, [branchOpen, compareOpen])
 
       async function perform(action) {
         if (busy) return
@@ -2510,35 +2833,6 @@ window.__ModuleLoader__.load({
         }
       }
 
-      async function openCompareDiff(file) {
-        if (compareFile !== null) return
-        setCompareFile(file.path)
-        try {
-          const value = await callGit('compare-diff', { root, base: compareBase, path: file.path })
-          setDiff({
-            path: file.path,
-            tag: compareBase,
-            staged: false,
-            untracked: false,
-            loading: false,
-            text: typeof value?.diff === 'string' ? value.diff : '',
-            error: null,
-          })
-        } catch (failure) {
-          setDiff({
-            path: file.path,
-            tag: compareBase,
-            staged: false,
-            untracked: false,
-            loading: false,
-            text: '',
-            error: failure,
-          })
-        } finally {
-          setCompareFile(null)
-        }
-      }
-
       function gitFailureText(failure) {
         const keys = {
           'auth-required': 'git.authRequired',
@@ -2557,23 +2851,13 @@ window.__ModuleLoader__.load({
         return key === undefined ? errorText(failure) : t(key)
       }
 
-      async function openDiff(entry, staged) {
-        setDiff({ path: entry.path, staged, untracked: entry.untracked, loading: true, text: '', error: null })
-        try {
-          const value = await callGit('diff', {
-            root,
-            path: entry.path,
-            staged,
-            untracked: !staged && entry.untracked,
-          })
-          setDiff((current) =>
-            current !== null && current.path === entry.path && current.staged === staged
-              ? { ...current, loading: false, text: typeof value?.diff === 'string' ? value.diff : '' }
-              : current,
-          )
-        } catch (failure) {
-          setDiff((current) => (current === null ? null : { ...current, loading: false, error: failure }))
-        }
+      function requestDiff(entry, staged) {
+        const tag = staged
+          ? t('git.diffStaged')
+          : entry.untracked
+            ? t('git.untracked')
+            : t('git.diffWorking')
+        onOpenDiff({ path: entry.path, staged, untracked: !staged && entry.untracked === true, tag })
       }
 
       async function openBranches() {
@@ -2653,12 +2937,12 @@ window.__ModuleLoader__.load({
             role: 'button',
             tabIndex: 0,
             title: entry.oldPath === null || entry.oldPath === undefined ? entry.path : `${entry.oldPath} → ${entry.path}`,
-            onClick: () => void openDiff(entry, staged),
+            onClick: () => requestDiff(entry, staged),
             onKeyDown: (event) => {
               if (event.target !== event.currentTarget) return
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault()
-                void openDiff(entry, staged)
+                void requestDiff(entry, staged)
               }
             },
           },
@@ -2689,69 +2973,6 @@ window.__ModuleLoader__.load({
           ),
         )
       }
-
-      const diffModal =
-        diff === null
-          ? null
-          : h(
-              'div',
-              {
-                className: 'ds-modal-backdrop',
-                onPointerDown: (event) => {
-                  if (event.target === event.currentTarget) setDiff(null)
-                },
-              },
-              h(
-                'div',
-                { className: 'ds-modal ds-git-diff-modal', role: 'dialog', 'aria-modal': true },
-                h(
-                  'div',
-                  { className: 'ds-git-diff-head' },
-                  h('span', { className: 'ds-git-diff-title', title: diff.path }, diff.path),
-                  h(
-                    'span',
-                    { className: 'ds-git-diff-tag' },
-                    diff.tag ??
-                      (diff.staged ? t('git.diffStaged') : diff.untracked ? t('git.untracked') : t('git.diffWorking')),
-                  ),
-                  h('span', { className: 'ds-spacer' }),
-                  h(
-                    'button',
-                    { type: 'button', className: 'ds-iconbtn ds-iconbtn-sm', title: t('git.close'), onClick: () => setDiff(null) },
-                    h(CloseIcon),
-                  ),
-                ),
-                diff.loading
-                  ? spinner
-                  : diff.error
-                    ? h('div', { className: 'ds-git-error' }, errorText(diff.error))
-                    : diff.text.trim().length === 0
-                      ? h('div', { className: 'ds-git-hint' }, t('git.noDiff'))
-                      : h(
-                          'pre',
-                          { className: 'ds-git-diff-code' },
-                          h(Highlighted, { code: diff.text, language: 'diff' }),
-                        ),
-                h(
-                  'div',
-                  { className: 'ds-modal-actions' },
-                  h(
-                    'button',
-                    {
-                      type: 'button',
-                      className: 'ds-btn',
-                      onClick: () => {
-                        const target = diff.path
-                        setDiff(null)
-                        onOpenFile(target)
-                      },
-                    },
-                    t('git.openFile'),
-                  ),
-                  h('button', { type: 'button', className: 'ds-btn', onClick: () => setDiff(null) }, t('git.close')),
-                ),
-              ),
-            )
 
       const branchModal = !branchOpen
         ? null
@@ -2817,7 +3038,6 @@ window.__ModuleLoader__.load({
       }
 
       function renderCompareFile(file) {
-        const busyFile = compareFile === file.path
         return h(
           'div',
           {
@@ -2826,13 +3046,16 @@ window.__ModuleLoader__.load({
             role: 'button',
             tabIndex: 0,
             title: file.oldPath ? `${file.oldPath} → ${file.path}` : file.path,
-            'data-busy': busyFile ? 'true' : undefined,
-            onClick: () => void openCompareDiff(file),
+            onClick: () => {
+              setCompareOpen(false)
+              onOpenDiff({ path: file.path, base: compareBase, tag: compareBase })
+            },
             onKeyDown: (event) => {
               if (event.target !== event.currentTarget) return
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault()
-                void openCompareDiff(file)
+                setCompareOpen(false)
+                onOpenDiff({ path: file.path, base: compareBase, tag: compareBase })
               }
             },
           },
@@ -2842,7 +3065,6 @@ window.__ModuleLoader__.load({
             file.status,
           ),
           h('span', { className: 'ds-git-path' }, file.path),
-          busyFile ? h('span', { className: 'ds-git-hint ds-git-compare-busy' }, t('git.busy')) : null,
         )
       }
 
@@ -2993,7 +3215,6 @@ window.__ModuleLoader__.load({
           'div',
           { className: 'ds-git' },
           loading ? spinner : h('div', { className: 'ds-git-empty' }, errorCard ?? h('div', { className: 'ds-git-hint' }, t('git.notRepo'))),
-          diffModal,
           branchModal,
           compareModal,
         )
@@ -3018,7 +3239,6 @@ window.__ModuleLoader__.load({
                 ),
             errorCard,
           ),
-          diffModal,
           branchModal,
           compareModal,
         )
@@ -3217,7 +3437,6 @@ window.__ModuleLoader__.load({
           ),
         ),
         compareModal,
-        diffModal,
         branchModal,
       )
     }
@@ -3936,6 +4155,69 @@ window.__ModuleLoader__.load({
           }
         }
 
+        function diffTabKey(request) {
+          if (typeof request.base === 'string' && request.base.length > 0) {
+            return `diff:${request.base}:${request.path}`
+          }
+          if (request.staged === true) return `diff:staged:${request.path}`
+          if (request.untracked === true) return `diff:untracked:${request.path}`
+          return `diff:working:${request.path}`
+        }
+
+        async function loadDiffInto(key, root, request) {
+          patchTab(key, { loading: true, error: null, code: null })
+          try {
+            const value =
+              typeof request.base === 'string' && request.base.length > 0
+                ? await callGit('compare-diff', { root, base: request.base, path: request.path })
+                : await callGit('diff', {
+                    root,
+                    path: request.path,
+                    staged: request.staged === true,
+                    untracked: request.untracked === true,
+                  })
+            patchTab(key, {
+              loading: false,
+              error: null,
+              diff: { ...request, text: typeof value?.diff === 'string' ? value.diff : '' },
+            })
+          } catch (error) {
+            patchTab(key, { loading: false, error: errorText(error), code: errorCode(error) })
+          }
+        }
+
+        /** Open one file diff as a read-only editor tab instead of a modal. */
+        async function openDiffView(request) {
+          const root = store.get().root
+          if (root === null || request === null || typeof request !== 'object' || typeof request.path !== 'string') return
+          const key = diffTabKey(request)
+          setCompactView('editor')
+          const existing = store.get().tabs.find((tab) => tab.path === key)
+          if (existing !== undefined) {
+            store.set((current) => ({ ...current, active: key, selected: request.path }))
+            if (!existing.loading) await loadDiffInto(key, root, request)
+            return
+          }
+          const tab = {
+            path: key,
+            name: basename(request.path),
+            mode: 'diff',
+            language: { id: 'diff', label: 'Diff' },
+            content: '',
+            saved: '',
+            version: null,
+            dirty: false,
+            loading: true,
+            error: null,
+            code: null,
+            view: 'edit',
+            diffMode: 'split',
+            diff: { ...request, text: '' },
+          }
+          store.set((current) => ({ ...current, tabs: [...current.tabs, tab], active: key, selected: request.path }))
+          await loadDiffInto(key, root, request)
+        }
+
         function closeNow(relative) {
           const current = store.get()
           const index = current.tabs.findIndex((tab) => tab.path === relative)
@@ -4469,6 +4751,65 @@ window.__ModuleLoader__.load({
         }
 
         function editorToolbar(tab) {
+          if (tab.mode === 'diff') {
+            return h(
+              'div',
+              { className: 'ds-edit-toolbar' },
+              h(
+                'div',
+                { className: 'ds-git-diff-modes', role: 'group', 'aria-label': t('git.diffMode') },
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-git-diff-mode',
+                    'data-active': tab.diffMode !== 'unified' ? 'true' : undefined,
+                    title: t('git.diffSplitHint'),
+                    onClick: () => patchTab(tab.path, { diffMode: 'split' }),
+                  },
+                  t('git.diffSplit'),
+                ),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-git-diff-mode',
+                    'data-active': tab.diffMode === 'unified' ? 'true' : undefined,
+                    title: t('git.diffUnifiedHint'),
+                    onClick: () => patchTab(tab.path, { diffMode: 'unified' }),
+                  },
+                  t('git.diffUnified'),
+                ),
+              ),
+              h('span', { className: 'ds-spacer' }),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-toolbtn',
+                  title: t('git.refreshDiff'),
+                  disabled: tab.loading,
+                  onClick: () => void loadDiffInto(tab.path, state.root, tab.diff),
+                },
+                h(RefreshIcon),
+                h('span', { className: 'ds-tool-label' }, t('git.refreshDiff')),
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-toolbtn',
+                  title: t('git.openFile'),
+                  disabled: typeof tab.diff?.path !== 'string',
+                  onClick: () => {
+                    if (typeof tab.diff?.path === 'string') void openFile(tab.diff.path)
+                  },
+                },
+                h(PageIcon),
+                h('span', { className: 'ds-tool-label' }, t('git.openFile')),
+              ),
+            )
+          }
           const isMarkdown = tab.mode === 'markdown'
           return h(
             'div',
@@ -4580,6 +4921,7 @@ window.__ModuleLoader__.load({
         }
 
         function tabBody(tab) {
+          if (tab.mode === 'diff') return h(DiffView, { tab, t })
           if (tab.loading) {
             return h('div', { className: 'ds-empty' }, h('span', { className: 'ds-spinner' }), t('hint.loadingFile'))
           }
@@ -4753,7 +5095,7 @@ window.__ModuleLoader__.load({
           )
         }
 
-        const segments = breadcrumbSegments(activeTab)
+        const segments = activeTab === null || activeTab.mode === 'diff' ? [] : breadcrumbSegments(activeTab)
         const lineCount = activeTab !== null && isTextMode(activeTab.mode) ? activeTab.content.split('\n').length : 0
 
         return h(
@@ -5177,7 +5519,7 @@ window.__ModuleLoader__.load({
                 ? h(GitPanel, {
                     root: state.root,
                     t,
-                    onOpenFile: (target) => void openFile(target),
+                    onOpenDiff: (request) => void openDiffView(request),
                     showToast,
                     onFilesChanged: () => void refreshTree(),
                   })
@@ -5234,9 +5576,9 @@ window.__ModuleLoader__.load({
                             role: 'tab',
                             'data-active': tab.path === state.active ? 'true' : undefined,
                             'aria-selected': tab.path === state.active,
-                            title: tab.path,
+                            title: tab.mode === 'diff' ? `${tab.diff?.path ?? ''} · ${tab.diff?.tag ?? ''}` : tab.path,
                             onClick: () => {
-                              store.set((current) => ({ ...current, active: tab.path, selected: tab.path }))
+                              store.set((current) => ({ ...current, active: tab.path, selected: tab.diff?.path ?? tab.path }))
                               setCursor({ line: 1, column: 1 })
                               setCompactView('editor')
                             },
@@ -5247,14 +5589,19 @@ window.__ModuleLoader__.load({
                               }
                             },
                           },
-                          isTextMode(tab.mode)
-                            ? h(FileGlyph, { name: tab.name, size: 14 })
-                            : h(
+                          tab.mode === 'diff'
+                            ? h('span', { className: 'ds-glyph ds-glyph-diff' }, h(CompareIcon))
+                            : isTextMode(tab.mode)
+                              ? h(FileGlyph, { name: tab.name, size: 14 })
+                              : h(
                                 'span',
                                 { className: `ds-glyph ds-glyph-${tab.mode === 'pdf' ? 'pdf' : tab.mode === 'image' ? 'image' : 'plain'}` },
                                 tab.mode === 'pdf' ? h(PageIcon) : h(PageIcon),
                               ),
                           h('span', { className: 'ds-tab-name' }, tab.name),
+                          tab.mode === 'diff' && tab.diff?.tag
+                            ? h('span', { className: 'ds-tab-tag', title: tab.diff.tag }, tab.diff.tag)
+                            : null,
                           tab.dirty ? h('span', { className: 'ds-dot', title: t('hint.unsaved') }) : null,
                           h(
                             'button',
@@ -5298,30 +5645,47 @@ window.__ModuleLoader__.load({
                               h(FolderIcon, { open: true }),
                               h('span', null, state.rootTitle || t('workspace.label')),
                             ),
-                            segments.map((segment, index) =>
-                              h(
-                                React.Fragment,
-                                { key: segment.path },
-                                h('span', { className: 'ds-crumb-sep' }, '/'),
-                                h(
-                                  'button',
-                                  {
-                                    type: 'button',
-                                    className: 'ds-crumb',
-                                    onClick: () => {
-                                      void ensureExpanded(dirname(segment.path))
-                                      if (index === segments.length - 1) {
-                                        store.set((current) => ({ ...current, selected: segment.path }))
-                                      } else {
-                                        void ensureExpanded(segment.path)
-                                        store.set((current) => ({ ...current, selected: segment.path }))
-                                      }
+                            activeTab.mode === 'diff'
+                              ? h(
+                                  React.Fragment,
+                                  null,
+                                  h('span', { className: 'ds-crumb-sep' }, '/'),
+                                  h(
+                                    'span',
+                                    {
+                                      className: 'ds-crumb ds-crumb-diff',
+                                      title: activeTab.diff?.path ?? '',
                                     },
-                                  },
-                                  segment.label,
+                                    activeTab.diff?.path ?? '',
+                                  ),
+                                  activeTab.diff?.tag
+                                    ? h('span', { className: 'ds-git-diff-tag' }, activeTab.diff.tag)
+                                    : null,
+                                )
+                              : segments.map((segment, index) =>
+                                  h(
+                                    React.Fragment,
+                                    { key: segment.path },
+                                    h('span', { className: 'ds-crumb-sep' }, '/'),
+                                    h(
+                                      'button',
+                                      {
+                                        type: 'button',
+                                        className: 'ds-crumb',
+                                        onClick: () => {
+                                          void ensureExpanded(dirname(segment.path))
+                                          if (index === segments.length - 1) {
+                                            store.set((current) => ({ ...current, selected: segment.path }))
+                                          } else {
+                                            void ensureExpanded(segment.path)
+                                            store.set((current) => ({ ...current, selected: segment.path }))
+                                          }
+                                        },
+                                      },
+                                      segment.label,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
                             h('span', { className: 'ds-spacer' }),
                             editorToolbar(activeTab),
                           ),
@@ -5329,11 +5693,27 @@ window.__ModuleLoader__.load({
                           h(
                             'footer',
                             { className: 'ds-statusbar' },
-                            h('span', { className: 'ds-status-item' }, isTextMode(activeTab.mode) ? activeTab.language.label : activeTab.mode.toUpperCase()),
+                            h(
+                              'span',
+                              { className: 'ds-status-item' },
+                              isTextMode(activeTab.mode)
+                                ? activeTab.language.label
+                                : activeTab.mode === 'diff'
+                                  ? `DIFF · ${activeTab.diff?.tag ?? ''}`
+                                  : activeTab.mode.toUpperCase(),
+                            ),
                             isTextMode(activeTab.mode)
                               ? h('span', { className: 'ds-status-item' }, t('status.lines', { count: String(lineCount) }))
                               : null,
-                            h('span', { className: 'ds-status-item' }, activeTab.dirty ? t('hint.unsaved') : t('hint.saved')),
+                            h(
+                              'span',
+                              { className: 'ds-status-item' },
+                              activeTab.mode === 'diff'
+                                ? t('git.diffReadOnly')
+                                : activeTab.dirty
+                                  ? t('hint.unsaved')
+                                  : t('hint.saved'),
+                            ),
                             h('span', { className: 'ds-spacer' }),
                             isTextMode(activeTab.mode)
                               ? h('span', { className: 'ds-status-item' }, t('status.cursor', { line: String(cursor.line), column: String(cursor.column) }))
@@ -6167,14 +6547,6 @@ window.__ModuleLoader__.load({
   overflow-wrap: anywhere;
 }
 .ds-git-error-text { flex: 1 1 auto; }
-.ds-modal.ds-git-diff-modal {
-  display: flex;
-  flex-direction: column;
-  width: min(920px, 100%);
-  max-height: 84vh;
-  padding: 0;
-  overflow: hidden;
-}
 .ds-git-diff-head {
   display: flex;
   align-items: center;
@@ -6200,6 +6572,164 @@ window.__ModuleLoader__.load({
   color: var(--dsw-alias-label-secondary);
   font-size: 10px;
 }
+.ds-git-diff-modes {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  padding: 2px;
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-layer-2);
+}
+.ds-git-diff-mode {
+  height: 20px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 10.5px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ds-git-diff-mode:hover { color: var(--dsw-alias-label-primary); }
+.ds-git-diff-mode[data-active="true"] {
+  background: var(--dsw-alias-bg-overlay);
+  color: var(--dsw-alias-label-primary);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--dsw-alias-label-primary) 14%, transparent);
+}
+.ds-diffview { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow: hidden; }
+.ds-diffview .ds-git-diff-code { min-height: 0; }
+.ds-glyph-diff { color: var(--dsw-alias-brand-primary); }
+.ds-tab-tag {
+  flex: 0 0 auto;
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 9.5px;
+}
+.ds-git-diff-split-scroll {
+  flex: 1 1 auto;
+  min-height: 160px;
+  overflow: auto;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  font-family: var(--ds-mono);
+  font-size: 12px;
+  line-height: 1.55;
+}
+.ds-git-diff-note {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 10%, transparent);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+}
+.ds-git-split { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.ds-git-split thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 4px 10px;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-secondary);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: left;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+}
+.ds-git-split thead th:first-child { border-right: 1px solid var(--dsw-alias-border-l1); }
+.ds-git-split td { padding: 0; vertical-align: top; }
+.ds-git-split-new { border-left: 1px solid var(--dsw-alias-border-l1); }
+.ds-git-split-handle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  bottom: 0;
+  z-index: 3;
+  width: 7px;
+  cursor: col-resize;
+  touch-action: none;
+}
+.ds-git-split-handle::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: 1px;
+  background: var(--dsw-alias-border-l2);
+}
+.ds-git-split-handle:hover::after,
+.ds-git-split-handle:active::after { background: var(--dsw-alias-brand-primary); }
+.ds-git-split-ln {
+  display: inline-block;
+  width: 52px;
+  padding: 0 7px 0 4px;
+  box-sizing: border-box;
+  text-align: right;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10.5px;
+  vertical-align: top;
+  user-select: none;
+}
+.ds-git-split-code {
+  display: inline-block;
+  width: calc(100% - 52px);
+  padding: 0 12px 0 2px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  vertical-align: top;
+  tab-size: 2;
+}
+.ds-git-split-row[data-kind="del"] .ds-git-split-old:not(.ds-git-split-empty),
+.ds-git-split-row[data-kind="change"] .ds-git-split-old:not(.ds-git-split-empty) {
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 11%, transparent);
+}
+.ds-git-split-row[data-kind="add"] .ds-git-split-new:not(.ds-git-split-empty),
+.ds-git-split-row[data-kind="change"] .ds-git-split-new:not(.ds-git-split-empty) {
+  background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 11%, transparent);
+}
+.ds-git-split-empty {
+  background: repeating-linear-gradient(
+    135deg,
+    transparent 0 5px,
+    color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent) 5px 6px
+  );
+}
+.ds-git-split-old .ds-git-split-emph {
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 24%, transparent);
+}
+.ds-git-split-new .ds-git-split-emph {
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 24%, transparent);
+}
+.ds-git-split-hunk td {
+  padding: 3px 10px;
+  border-top: 1px solid var(--dsw-alias-border-l1);
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 8%, var(--dsw-alias-bg-layer-1));
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ds-git-split-meta td {
+  padding: 2px 10px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  font-style: italic;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .ds-git-diff-code {
   flex: 1 1 auto;
   min-height: 160px;
@@ -6215,11 +6745,6 @@ window.__ModuleLoader__.load({
   tab-size: 2;
 }
 .ds-git-upstream { display: none; }
-.ds-git-diff-modal .ds-modal-actions {
-  margin-top: 0;
-  padding: 10px 14px;
-  border-top: 1px solid var(--dsw-alias-border-l1);
-}
 .ds-modal.ds-git-branch-modal { width: min(420px, 100%); }
 .ds-git-branch-list { max-height: 300px; overflow: auto; margin: 8px 0; }
 .ds-git-branch-item {
@@ -6397,6 +6922,13 @@ window.__ModuleLoader__.load({
 }
 .ds-breadcrumb-root { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; color: var(--dsw-alias-label-secondary); flex: 0 0 auto; }
 .ds-crumb-sep { color: var(--dsw-alias-border-l2); flex: 0 0 auto; }
+.ds-crumb-diff {
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .ds-crumb {
   padding: 2px 4px;
   border: 0;

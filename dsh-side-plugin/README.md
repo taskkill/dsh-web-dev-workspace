@@ -119,7 +119,7 @@ third-party runtime dependencies.
 
 - Branch, upstream and ahead/behind status; staged, unstaged and untracked files.
 - Stage/unstage a file or everything, commit with a message (`Ctrl/⌘+Enter`), view a
-  read-only unified diff, initialize a repository and switch local branches.
+  read-only diff in the editor (side-by-side by default, unified on demand), initialize a repository and switch local branches.
 - Fetch, pull and push from the Git toolbar; **Commit & push** commits and pushes
   in one step. The first push sets `origin/<branch>` as upstream.
 - Compare the current branch with upstream, a local branch or a remote branch:
