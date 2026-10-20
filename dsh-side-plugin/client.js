@@ -19,6 +19,9 @@ window.__ModuleLoader__.load({
     const IO_PATH = 'api/dsh-side-io'
     const MAX_UPLOAD_BYTES = 128 * 1024 * 1024
 
+    /** Local Git companion route (host bridge bundle). */
+    const GIT_PATH = 'api/dsh-side-git'
+
     /** Locale-store keys. */
     const ROOT_KEY = 'dsh-side:root'
     const WIDTH_KEY = 'dsh-side:tree-width'
@@ -171,6 +174,51 @@ window.__ModuleLoader__.load({
       'pdf.open': '在新标签页中打开 PDF',
       'image.open': '在新标签页中打开图片',
       'file.openExternal': '用浏览器打开',
+      'git.title': 'Git',
+      'git.toggle': 'Git 源代码管理',
+      'git.backToFiles': '返回文件树',
+      'git.loading': '正在读取 Git 状态…',
+      'git.refresh': '刷新 Git 状态',
+      'git.noRoot': '先选择一个工作区',
+      'git.notRepo': '当前工作区不是 Git 仓库',
+      'git.notRoot': '当前目录不是 Git 仓库根目录，请直接打开仓库根目录后再使用 Git。',
+      'git.init': '初始化仓库',
+      'git.initHint': '初始化后即可暂存、提交和切换分支。',
+      'git.branch': '分支',
+      'git.switchBranch': '切换分支',
+      'git.noBranches': '没有本地分支',
+      'git.current': '当前',
+      'git.detached': 'HEAD 分离',
+      'git.unborn': '尚无提交',
+      'git.ahead': '领先 {n}',
+      'git.behind': '落后 {n}',
+      'git.gone': '上游分支已消失',
+      'git.staged': '已暂存的更改',
+      'git.changes': '更改',
+      'git.clean': '工作区干净',
+      'git.stage': '暂存',
+      'git.unstage': '取消暂存',
+      'git.stageAll': '全部暂存',
+      'git.unstageAll': '全部取消暂存',
+      'git.commit': '提交',
+      'git.committing': '提交中…',
+      'git.commitPlaceholder': '提交信息（Ctrl/⌘+Enter 提交）',
+      'git.commitEmpty': '请输入提交信息',
+      'git.noStaged': '没有已暂存的更改',
+      'git.commitOk': '提交成功',
+      'git.checkoutOk': '已切换分支',
+      'git.initOk': '已初始化 Git 仓库',
+      'git.diffStaged': '已暂存',
+      'git.diffWorking': '工作区',
+      'git.untracked': '未跟踪',
+      'git.conflict': '冲突',
+      'git.noDiff': '没有可显示的差异',
+      'git.openFile': '打开文件',
+      'git.close': '关闭',
+      'git.retry': '重试',
+      'git.installHint': 'Git 支持未安装：请安装 @local/dsh-side-git',
+      'git.error': 'Git 操作失败',
+      'git.busy': '处理中…',
     }
 
     const en = {
@@ -309,6 +357,51 @@ window.__ModuleLoader__.load({
       'pdf.open': 'Open PDF in a new tab',
       'image.open': 'Open image in a new tab',
       'file.openExternal': 'Open with the browser',
+      'git.title': 'Git',
+      'git.toggle': 'Git source control',
+      'git.backToFiles': 'Back to files',
+      'git.loading': 'Reading Git status…',
+      'git.refresh': 'Refresh Git status',
+      'git.noRoot': 'Select a workspace first',
+      'git.notRepo': 'This workspace is not a Git repository',
+      'git.notRoot': 'This directory is not the repository root. Open the repository root to use Git.',
+      'git.init': 'Initialize repository',
+      'git.initHint': 'Initialize it to stage, commit and switch branches.',
+      'git.branch': 'Branch',
+      'git.switchBranch': 'Switch branch',
+      'git.noBranches': 'No local branches',
+      'git.current': 'Current',
+      'git.detached': 'HEAD detached',
+      'git.unborn': 'No commits yet',
+      'git.ahead': '{n} ahead',
+      'git.behind': '{n} behind',
+      'git.gone': 'Upstream is gone',
+      'git.staged': 'Staged changes',
+      'git.changes': 'Changes',
+      'git.clean': 'Working tree clean',
+      'git.stage': 'Stage',
+      'git.unstage': 'Unstage',
+      'git.stageAll': 'Stage all',
+      'git.unstageAll': 'Unstage all',
+      'git.commit': 'Commit',
+      'git.committing': 'Committing…',
+      'git.commitPlaceholder': 'Commit message (Ctrl/⌘+Enter to commit)',
+      'git.commitEmpty': 'Enter a commit message',
+      'git.noStaged': 'No staged changes',
+      'git.commitOk': 'Committed',
+      'git.checkoutOk': 'Branch switched',
+      'git.initOk': 'Git repository initialized',
+      'git.diffStaged': 'Staged',
+      'git.diffWorking': 'Working tree',
+      'git.untracked': 'Untracked',
+      'git.conflict': 'Conflict',
+      'git.noDiff': 'No diff to show',
+      'git.openFile': 'Open file',
+      'git.close': 'Close',
+      'git.retry': 'Retry',
+      'git.installHint': 'Git support is not installed. Install @local/dsh-side-git.',
+      'git.error': 'Git operation failed',
+      'git.busy': 'Working…',
     }
 
     /* ------------------------------------------------------------------ *
@@ -446,6 +539,41 @@ window.__ModuleLoader__.load({
       return payload.value
     }
 
+    function gitApiUrl() {
+      return new URL(GIT_PATH, document.baseURI).href
+    }
+
+    async function callGit(op, params = {}) {
+      let response
+      try {
+        response = await fetch(gitApiUrl(), {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ op, ...params }),
+        })
+      } catch (error) {
+        throw new SideRequestError('git-offline', `无法连接 Git 服务：${errorText(error)}`)
+      }
+      if (response.status === 404) {
+        throw new SideRequestError('git-bridge-missing', 'Git 支持未安装：请安装 @local/dsh-side-git')
+      }
+      if (!response.ok) {
+        throw new SideRequestError(`http-${String(response.status)}`, `HTTP ${String(response.status)} ${response.statusText}`)
+      }
+      let payload
+      try {
+        payload = await response.json()
+      } catch {
+        throw new SideRequestError('bad-response', 'Git 服务返回了无法解析的响应')
+      }
+      if (payload === null || typeof payload !== 'object' || payload.ok !== true) {
+        const failure = payload?.error ?? {}
+        throw new SideRequestError(failure.code ?? 'git-error', failure.message ?? 'Git 操作失败')
+      }
+      return payload.value
+    }
+
     /* ------------------------------------------------------------------ *
      * File kinds and languages
      * ------------------------------------------------------------------ */
@@ -473,12 +601,30 @@ window.__ModuleLoader__.load({
     }
 
     const LANGUAGE_ROWS = [
+      [['kt', 'kts'], 'kotlin', 'Kotlin'],
+      [['scala', 'sc'], 'scala', 'Scala'],
+      [['swift'], 'swift', 'Swift'],
+      [['dart'], 'dart', 'Dart'],
+      [['groovy', 'gradle'], 'groovy', 'Groovy'],
+      [['r'], 'r', 'R'],
+      [['pl', 'pm'], 'perl', 'Perl'],
+      [['ps1', 'psm1'], 'powershell', 'PowerShell'],
+      [['fs', 'fsx', 'fsi'], 'fsharp', 'F#'],
+      [['vb', 'vbs'], 'vb', 'VB.NET'],
+      [['m'], 'objectivec', 'Objective-C'],
+      [['proto'], 'proto', 'Protocol Buffers'],
+      [['graphql', 'gql'], 'graphql', 'GraphQL'],
+      [['tf', 'tfvars', 'hcl'], 'terraform', 'Terraform'],
+      [['cmake'], 'cmake', 'CMake'],
+      [['dockerfile'], 'dockerfile', 'Dockerfile'],
+      [['mk'], 'makefile', 'Makefile'],
       [['js', 'mjs', 'cjs', 'jsx'], 'javascript', 'JavaScript'],
       [['ts', 'tsx', 'mts', 'cts'], 'typescript', 'TypeScript'],
       [['json', 'jsonc', 'json5'], 'json', 'JSON'],
       [['css', 'scss', 'less'], 'css', 'CSS'],
+      [['cshtml', 'razor'], 'razor', 'Razor'],
       [['html', 'htm', 'xhtml', 'vue', 'svelte'], 'html', 'HTML'],
-      [['xml', 'svg', 'plist'], 'html', 'XML'],
+      [['xml', 'svg', 'plist', 'xaml', 'csproj', 'props', 'targets', 'fsproj', 'vbproj'], 'html', 'XML'],
       [['py', 'pyw'], 'python', 'Python'],
       [['sh', 'bash', 'zsh', 'fish'], 'shell', 'Shell'],
       [['yml', 'yaml'], 'yaml', 'YAML'],
@@ -486,8 +632,8 @@ window.__ModuleLoader__.load({
       [['md', 'markdown', 'mdown', 'mkd', 'mdx'], 'markdown', 'Markdown'],
       [['rs'], 'rust', 'Rust'],
       [['go'], 'go', 'Go'],
-      [['java', 'kt', 'kts', 'scala'], 'java', 'Java'],
-      [['c', 'h', 'cc', 'cpp', 'cxx', 'hpp', 'm', 'mm'], 'cpp', 'C/C++'],
+      [['java'], 'java', 'Java'],
+      [['c', 'h', 'cc', 'cpp', 'cxx', 'hpp', 'mm'], 'cpp', 'C/C++'],
       [['cs', 'csx'], 'csharp', 'C#'],
       [['rb'], 'ruby', 'Ruby'],
       [['php'], 'php', 'PHP'],
@@ -499,6 +645,14 @@ window.__ModuleLoader__.load({
 
     function languageOf(name) {
       const ext = extensionOf(name)
+      const base = basename(name).toLowerCase()
+      if (base === 'dockerfile' || base.startsWith('dockerfile.') || base === 'containerfile' || base.startsWith('containerfile.')) {
+        return { id: 'dockerfile', label: 'Dockerfile' }
+      }
+      if (base === 'makefile' || base.startsWith('makefile.') || base === 'gnumakefile') {
+        return { id: 'makefile', label: 'Makefile' }
+      }
+      if (base === 'cmakelists.txt') return { id: 'cmake', label: 'CMake' }
       for (const [extensions, id, label] of LANGUAGE_ROWS) {
         if (extensions.includes(ext)) return { id, label }
       }
@@ -515,6 +669,11 @@ window.__ModuleLoader__.load({
       'import', 'in', 'instanceof', 'interface', 'let', 'new', 'of', 'package', 'private', 'protected', 'public',
       'readonly', 'return', 'set', 'static', 'super', 'switch', 'this', 'throw', 'try', 'type', 'typeof', 'var',
       'void', 'while', 'with', 'yield', 'enum', 'declare', 'namespace', 'keyof', 'satisfies', 'infer', 'abstract',
+    ])
+    const TS_KEYWORDS = new Set([
+      ...JS_KEYWORDS,
+      'override', 'accessor', 'using', 'any', 'unknown', 'never', 'number', 'string', 'boolean', 'bigint', 'symbol',
+      'object', 'global', 'module',
     ])
     const PY_KEYWORDS = new Set([
       'and', 'as', 'assert', 'async', 'await', 'break', 'class', 'continue', 'def', 'del', 'elif', 'else', 'except',
@@ -538,7 +697,12 @@ window.__ModuleLoader__.load({
       'float', 'for', 'goto', 'if', 'inline', 'int', 'long', 'register', 'restrict', 'return', 'short', 'signed',
       'sizeof', 'static', 'struct', 'switch', 'typedef', 'union', 'unsigned', 'void', 'volatile', 'while', 'class',
       'namespace', 'template', 'typename', 'public', 'private', 'protected', 'virtual', 'override', 'using',
-      'nullptr', 'true', 'false', 'new', 'delete', 'try', 'catch', 'throw', 'auto',
+      'nullptr', 'true', 'false', 'new', 'delete', 'try', 'catch', 'throw', 'auto', 'alignas', 'alignof',
+      'and', 'and_eq', 'asm', 'bitand', 'bitor', 'bool', 'char8_t', 'char16_t', 'char32_t', 'compl', 'concept',
+      'consteval', 'constexpr', 'constinit', 'const_cast', 'co_await', 'co_return', 'co_yield', 'decltype',
+      'dynamic_cast', 'explicit', 'export', 'final', 'friend', 'mutable', 'noexcept', 'not', 'not_eq', 'operator',
+      'or', 'or_eq', 'reinterpret_cast', 'requires', 'static_assert', 'static_cast', 'thread_local', 'typeid',
+      'wchar_t', 'xor', 'xor_eq', 'module', 'import',
     ])
     const CSHARP_KEYWORDS = new Set([
       'abstract', 'as', 'base', 'bool', 'break', 'byte', 'case', 'catch', 'char', 'checked', 'class', 'const',
@@ -567,6 +731,7 @@ window.__ModuleLoader__.load({
       'implements', 'import', 'instanceof', 'int', 'interface', 'long', 'native', 'new', 'package', 'private',
       'protected', 'public', 'return', 'short', 'static', 'strictfp', 'super', 'switch', 'synchronized', 'this',
       'throw', 'throws', 'transient', 'try', 'void', 'volatile', 'while', 'record', 'sealed', 'permits',
+      'var', 'yield', 'module', 'requires', 'exports', 'opens', 'provides', 'uses', 'to', 'with', 'transitive',
     ])
     const RUBY_KEYWORDS = new Set([
       'alias', 'and', 'begin', 'break', 'case', 'class', 'def', 'defined', 'do', 'else', 'elsif', 'end', 'ensure',
@@ -658,7 +823,7 @@ window.__ModuleLoader__.load({
       },
       typescript: {
         re: /\/\/[^\n]*|\/\*[\s\S]*?\*\/|`(?:\\[\s\S]|[^\\`])*`|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\b\d(?:[\w.]*)\b|[A-Za-z_$][\w$]*/gu,
-        classify: keywordClassifier(JS_KEYWORDS),
+        classify: keywordClassifier(TS_KEYWORDS),
       },
       json: {
         re: /"(?:\\.|[^"\\])*"|-?\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b|\b(?:true|false|null)\b/gu,
@@ -773,6 +938,309 @@ window.__ModuleLoader__.load({
       plain: null,
     }
 
+    /* ------------------------------------------------------------------ *
+     * Additional language support
+     * ------------------------------------------------------------------ */
+
+    const KOTLIN_KEYWORDS = new Set([
+      'abstract', 'actual', 'annotation', 'as', 'break', 'by', 'catch', 'class', 'companion', 'const',
+      'constructor', 'continue', 'crossinline', 'data', 'delegate', 'do', 'dynamic', 'else', 'enum', 'expect',
+      'external', 'false', 'field', 'file', 'final', 'finally', 'for', 'fun', 'get', 'if', 'import', 'in',
+      'infix', 'init', 'inline', 'inner', 'interface', 'internal', 'is', 'lateinit', 'noinline', 'null', 'object',
+      'open', 'operator', 'out', 'override', 'package', 'param', 'private', 'property', 'protected', 'public',
+      'reified', 'return', 'sealed', 'set', 'super', 'suspend', 'tailrec', 'this', 'throw', 'true', 'try',
+      'typealias', 'typeof', 'val', 'var', 'vararg', 'when', 'where', 'while',
+    ])
+
+    const SCALA_KEYWORDS = new Set([
+      'abstract', 'case', 'catch', 'class', 'def', 'do', 'else', 'enum', 'export', 'extends', 'extension', 'false',
+      'final', 'finally', 'for', 'forSome', 'given', 'if', 'implicit', 'import', 'inline', 'lazy', 'match', 'new',
+      'null', 'object', 'opaque', 'open', 'override', 'package', 'private', 'protected', 'return', 'sealed',
+      'super', 'then', 'this', 'throw', 'trait', 'transparent', 'true', 'try', 'type', 'using', 'val', 'var',
+      'while', 'with', 'yield', 'derives', 'end', 'infix', 'erased', 'tracking',
+    ])
+
+    const SWIFT_KEYWORDS = new Set([
+      'associatedtype', 'class', 'deinit', 'enum', 'extension', 'fileprivate', 'func', 'import', 'init', 'inout',
+      'internal', 'let', 'open', 'operator', 'private', 'precedencegroup', 'protocol', 'public', 'rethrows', 'static',
+      'struct', 'subscript', 'typealias', 'var', 'break', 'case', 'catch', 'continue', 'default', 'defer', 'do',
+      'else', 'fallthrough', 'for', 'guard', 'if', 'in', 'repeat', 'return', 'switch', 'throw', 'throws', 'try',
+      'where', 'while', 'as', 'any', 'await', 'async', 'actor', 'borrowing', 'consuming', 'dynamic', 'final', 'get',
+      'indirect', 'infix', 'isolated', 'lazy', 'mutating', 'nonisolated', 'nonmutating', 'optional', 'override',
+      'package', 'postfix', 'prefix', 'required', 'self', 'Self', 'set', 'some', 'super', 'sending', 'unowned',
+      'weak', 'willSet', 'didSet', 'true', 'false', 'nil',
+    ])
+
+    const DART_KEYWORDS = new Set([
+      'abstract', 'as', 'assert', 'async', 'await', 'base', 'break', 'case', 'catch', 'class', 'const', 'continue',
+      'covariant', 'default', 'deferred', 'do', 'dynamic', 'else', 'enum', 'export', 'extends', 'extension',
+      'external', 'factory', 'false', 'final', 'finally', 'for', 'Function', 'get', 'hide', 'if', 'implements',
+      'import', 'in', 'interface', 'is', 'late', 'library', 'mixin', 'new', 'null', 'on', 'operator', 'part',
+      'required', 'rethrow', 'return', 'sealed', 'set', 'show', 'static', 'super', 'switch', 'sync', 'this',
+      'throw', 'true', 'try', 'type', 'typedef', 'var', 'void', 'when', 'while', 'with', 'yield',
+    ])
+
+    const GROOVY_KEYWORDS = new Set([
+      'abstract', 'as', 'assert', 'break', 'case', 'catch', 'class', 'const', 'continue', 'def', 'default', 'do',
+      'else', 'enum', 'extends', 'false', 'final', 'finally', 'for', 'goto', 'if', 'implements', 'import', 'in',
+      'instanceof', 'interface', 'native', 'new', 'null', 'package', 'private', 'protected', 'public', 'return',
+      'static', 'strictfp', 'super', 'switch', 'synchronized', 'this', 'threadsafe', 'throw', 'throws', 'transient',
+      'true', 'try', 'volatile', 'while', 'trait', 'var', 'val', 'it',
+    ])
+
+    const R_KEYWORDS = new Set([
+      'if', 'else', 'for', 'while', 'repeat', 'function', 'return', 'next', 'break', 'in', 'library', 'require',
+      'source', 'print', 'cat', 'paste', 'c', 'list', 'data.frame', 'matrix', 'vector', 'factor', 'ggplot', 'aes',
+      'dplyr', 'mutate', 'filter', 'select', 'summarise', 'group_by',
+    ])
+
+    const PERL_KEYWORDS = new Set([
+      'my', 'our', 'local', 'sub', 'use', 'no', 'package', 'require', 'do', 'if', 'elsif', 'else', 'unless', 'while',
+      'until', 'for', 'foreach', 'continue', 'last', 'next', 'redo', 'return', 'die', 'warn', 'print', 'say', 'open',
+      'close', 'defined', 'undef', 'ref', 'bless', 'new', 'qw', 'q', 'qq', 'and', 'or', 'not', 'eq', 'ne', 'lt',
+      'gt', 'le', 'ge', 'cmp', 'scalar', 'wantarray', 'exists', 'delete', 'keys', 'values', 'each', 'push', 'pop',
+      'shift', 'unshift', 'splice', 'join', 'split', 'map', 'grep', 'sort', 'reverse', 'length', 'substr', 'index',
+      'rindex', 'sprintf', 'printf', 'chomp', 'chop', 'lc', 'uc', 'lcfirst', 'ucfirst',
+    ])
+
+    const POWERSHELL_KEYWORDS = new Set([
+      'function', 'param', 'begin', 'process', 'end', 'if', 'else', 'elseif', 'foreach', 'for', 'while', 'do',
+      'until', 'switch', 'try', 'catch', 'finally', 'throw', 'return', 'break', 'continue', 'class', 'enum', 'using',
+      'filter', 'workflow', 'in', 'not', 'and', 'or', 'true', 'false', 'null', 'trap', 'data', 'dynamicparam',
+    ])
+
+    const FSHARP_KEYWORDS = new Set([
+      'let', 'use', 'match', 'with', 'function', 'fun', 'type', 'module', 'namespace', 'open', 'member', 'interface',
+      'inherit', 'mutable', 'rec', 'and', 'async', 'task', 'yield', 'return', 'if', 'then', 'else', 'elif', 'for',
+      'in', 'while', 'do', 'done', 'try', 'finally', 'raise', 'new', 'static', 'abstract', 'override', 'default',
+      'struct', 'class', 'exception', 'delegate', 'val', 'void', 'null', 'true', 'false', 'base', 'this', 'upcast',
+      'downcast', 'box', 'unbox', 'lazy', 'seq', 'list', 'array', 'option', 'result', 'when',
+    ])
+
+    const VB_KEYWORDS = new Set([
+      'imports', 'namespace', 'class', 'module', 'sub', 'function', 'property', 'dim', 'as', 'new', 'public',
+      'private', 'protected', 'friend', 'shared', 'static', 'readonly', 'writeonly', 'if', 'then', 'else',
+      'elseif', 'end', 'for', 'each', 'next', 'while', 'do', 'loop', 'until', 'try', 'catch', 'finally', 'throw',
+      'return', 'select', 'case', 'with', 'using', 'inherits', 'implements', 'interface', 'enum', 'structure',
+      'byval', 'byref', 'optional', 'paramarray', 'handles', 'event', 'raiseevent', 'addhandler', 'removehandler',
+      'get', 'set', 'mybase', 'myclass', 'me', 'nothing', 'true', 'false', 'and', 'or', 'not', 'xor', 'mod', 'is',
+      'isnot', 'like', 'typeof', 'gettype', 'directcast', 'ctype', 'trycast', 'redim', 'erase', 'stop', 'goto',
+      'resume', 'on', 'error',
+    ])
+
+    const OBJC_KEYWORDS = new Set([
+      ...C_KEYWORDS,
+      'id', 'instancetype', 'BOOL', 'YES', 'NO', 'nil', 'Nil', 'self', 'super', 'nonatomic', 'strong', 'weak',
+      'copy', 'assign', 'retain', 'readonly', 'readwrite', 'atomic', 'nullable', 'nonnull',
+      '@interface', '@implementation', '@protocol', '@end', '@class', '@property', '@synthesize', '@dynamic',
+      '@selector', '@encode', '@import', '@autoreleasepool', '@try', '@catch', '@finally', '@throw',
+      '@synchronized', '@optional', '@required', '@public', '@protected', '@private', '@package', '@defs',
+      '@compatibility_alias', '@available',
+    ])
+
+    const PROTO_KEYWORDS = new Set([
+      'syntax', 'package', 'import', 'option', 'message', 'enum', 'service', 'rpc', 'returns', 'stream', 'repeated',
+      'optional', 'required', 'oneof', 'map', 'reserved', 'extend', 'extensions', 'group', 'weak', 'public',
+      'edition', 'double', 'float', 'int32', 'int64', 'uint32', 'uint64', 'sint32', 'sint64', 'fixed32', 'fixed64',
+      'sfixed32', 'sfixed64', 'bool', 'string', 'bytes',
+    ])
+
+    const GRAPHQL_KEYWORDS = new Set([
+      'query', 'mutation', 'subscription', 'fragment', 'on', 'type', 'interface', 'union', 'enum', 'input',
+      'scalar', 'schema', 'extend', 'directive', 'implements', 'repeatable', 'true', 'false', 'null',
+    ])
+
+    const TERRAFORM_KEYWORDS = new Set([
+      'resource', 'data', 'variable', 'output', 'module', 'provider', 'terraform', 'locals', 'dynamic', 'for', 'in',
+      'if', 'else', 'null', 'true', 'false', 'for_each', 'count', 'depends_on', 'lifecycle', 'provisioner',
+      'connection', 'backend', 'required_providers', 'required_version', 'source', 'version', 'can', 'try', 'flatten',
+      'concat', 'merge', 'lookup', 'file', 'templatefile', 'jsonencode', 'yamlencode', 'base64encode', 'cidrsubnet',
+      'local', 'var', 'path', 'each', 'self', 'string', 'number', 'bool', 'list', 'map', 'object', 'tuple', 'set',
+    ])
+
+    const CMAKE_KEYWORDS = new Set([
+      'if', 'elseif', 'else', 'endif', 'foreach', 'endforeach', 'function', 'endfunction', 'macro', 'endmacro',
+      'while', 'endwhile', 'break', 'continue', 'return', 'set', 'unset', 'option', 'project',
+      'cmake_minimum_required', 'include', 'find_package', 'add_executable', 'add_library', 'add_subdirectory',
+      'target_link_libraries', 'target_include_directories', 'target_compile_features', 'target_compile_definitions',
+      'install', 'message', 'list', 'string', 'file', 'configure_file', 'set_target_properties', 'enable_testing',
+      'add_test', 'include_directories', 'link_directories', 'add_custom_command', 'add_custom_target',
+    ])
+
+    const DOCKER_KEYWORDS = new Set([
+      'from', 'run', 'cmd', 'label', 'maintainer', 'expose', 'env', 'add', 'copy', 'entrypoint', 'volume', 'user',
+      'workdir', 'arg', 'onbuild', 'stopsignal', 'healthcheck', 'shell', 'as',
+    ])
+
+    /**
+     * Generic highlighter for C-like and hash-comment languages. It deliberately
+     * stays small: comments, strings, numbers, attributes, keywords, functions and
+     * capitalized types cover most source files, while dedicated highlighters below
+     * handle languages with unusual syntax.
+     */
+    function codeHighlighter(keywords, options = {}) {
+      const hash = options.hashComments === true
+      const slash = options.slashComments !== false
+      const atKeywords = options.atKeywords === true
+      const caseInsensitive = options.caseInsensitive === true
+      const attributes = options.attributes !== false
+      const constants = new Set(
+        (options.constants ?? ['true', 'false', 'null', 'nil', 'none', 'undefined']).map((value) => value.toLowerCase()),
+      )
+      const commentParts = []
+      if (hash) commentParts.push('#[^\\n]*')
+      if (slash) commentParts.push('\\/\\/[^\\n]*', '\\/\\*[\\s\\S]*?\\*\\/')
+      const parts = [
+        ...commentParts,
+        '"""[\\s\\S]*?"""',
+        "'''[\\s\\S]*?'''",
+        '"(?:\\\\.|[^"\\\\\\n])*"',
+        "'(?:\\\\.|[^'\\\\\\n])*'",
+        '`(?:\\\\.|[^`\\\\])*`',
+        '\\b(?:0[xX][0-9a-fA-F_]+|0[bB][01_]+|\\d[\\d_]*(?:\\.\\d+)?(?:[eE][+-]?\\d+)?)\\b',
+        attributes || atKeywords ? '@[A-Za-z_]\\w*' : '',
+        '[A-Za-z_]\\w*',
+      ].filter((part) => part.length > 0)
+      const re = new RegExp(parts.join('|'), 'gu')
+      const keywordSet = caseInsensitive ? new Set([...keywords].map((value) => value.toLowerCase())) : keywords
+      return {
+        re,
+        classify(text, code, index) {
+          if (text.startsWith('//') || text.startsWith('/*') || (hash && text.startsWith('#'))) return 'comment'
+          if (text.startsWith('"') || text.startsWith("'") || text.startsWith('`')) return 'string'
+          if (text.startsWith('@')) {
+            if (atKeywords && keywordSet.has(text)) return 'keyword'
+            return 'attr'
+          }
+          if (/^[0-9]/.test(text)) return 'number'
+          const key = caseInsensitive ? text.toLowerCase() : text
+          if (constants.has(key.toLowerCase())) return 'constant'
+          if (keywordSet.has(key)) return 'keyword'
+          const after = code.slice(index + text.length)
+          if (/^\s*\(/u.test(after)) return 'function'
+          if (/^[A-Z]/.test(text)) return 'type'
+          return 'plain'
+        },
+      }
+    }
+
+    Object.assign(HIGHLIGHTERS, {
+      kotlin: codeHighlighter(KOTLIN_KEYWORDS),
+      scala: codeHighlighter(SCALA_KEYWORDS),
+      swift: codeHighlighter(SWIFT_KEYWORDS, { constants: ['true', 'false', 'nil'] }),
+      dart: codeHighlighter(DART_KEYWORDS),
+      groovy: codeHighlighter(GROOVY_KEYWORDS),
+      r: codeHighlighter(R_KEYWORDS, {
+        hashComments: true,
+        slashComments: false,
+        constants: ['true', 'false', 'null', 'na', 'nan', 'inf'],
+      }),
+      objectivec: codeHighlighter(OBJC_KEYWORDS, {
+        atKeywords: true,
+        constants: ['yes', 'no', 'nil'],
+      }),
+      proto: codeHighlighter(PROTO_KEYWORDS),
+      graphql: codeHighlighter(GRAPHQL_KEYWORDS, { hashComments: true, slashComments: false }),
+      terraform: codeHighlighter(TERRAFORM_KEYWORDS, { hashComments: true, slashComments: true }),
+      cmake: codeHighlighter(CMAKE_KEYWORDS, { hashComments: true, slashComments: false }),
+      perl: {
+        re: /#[^\n]*|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`|\$[A-Za-z_]\w*|@[A-Za-z_]\w*|%[A-Za-z_]\w*|\b\d+(?:\.\d+)?\b|[A-Za-z_]\w*/gu,
+        classify(text, code, index) {
+          if (text.startsWith('#')) return 'comment'
+          if (text.startsWith('"') || text.startsWith("'") || text.startsWith('`')) return 'string'
+          if (/^[$@%]/u.test(text)) return 'property'
+          if (/^[0-9]/.test(text)) return 'number'
+          if (PERL_KEYWORDS.has(text)) return 'keyword'
+          const after = code.slice(index + text.length)
+          if (/^\s*\(/u.test(after)) return 'function'
+          if (/^[A-Z]/.test(text)) return 'type'
+          return 'plain'
+        },
+      },
+      powershell: {
+        re: /<#[\s\S]*?#>|#[^\n]*|@?"(?:`[\s\S]|[^"`])*"|@?'(?:''|[^'])*'|\$[A-Za-z_][\w:]*|\b\d+(?:\.\d+)?\b|[A-Za-z_][\w-]*/gu,
+        classify(text, code, index) {
+          if (text.startsWith('<#') || text.startsWith('#')) return 'comment'
+          if (text.startsWith('"') || text.startsWith("'")) return 'string'
+          if (text.startsWith('@')) return 'string'
+          if (text.startsWith('$')) return 'property'
+          if (/^[0-9]/.test(text)) return 'number'
+          if (POWERSHELL_KEYWORDS.has(text.toLowerCase())) return 'keyword'
+          if (text.includes('-')) return 'function'
+          const after = code.slice(index + text.length)
+          if (/^\s*\(/u.test(after)) return 'function'
+          if (/^[A-Z]/.test(text)) return 'type'
+          return 'plain'
+        },
+      },
+      fsharp: {
+        re: /\/\/[^\n]*|\(\*[\s\S]*?\*\)|"""(?:[\s\S]*?)"""|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\b\d+(?:\.\d+)?\b|[A-Za-z_]\w*'?/gu,
+        classify(text, code, index) {
+          if (text.startsWith('//') || text.startsWith('(*')) return 'comment'
+          if (text.startsWith('"') || text.startsWith("'")) return 'string'
+          if (/^[0-9]/.test(text)) return 'number'
+          if (FSHARP_KEYWORDS.has(text)) return 'keyword'
+          const after = code.slice(index + text.length)
+          if (/^\s*\(/u.test(after)) return 'function'
+          if (/^[A-Z]/.test(text)) return 'type'
+          return 'plain'
+        },
+      },
+      vb: {
+        re: /'[^\n]*|\bREM\b[^\n]*|"(?:""|[^"\n])*"|\b\d+(?:\.\d+)?\b|[A-Za-z_]\w*/giu,
+        classify(text, code, index) {
+          if (text.startsWith("'") || /^rem\b/iu.test(text)) return 'comment'
+          if (text.startsWith('"')) return 'string'
+          if (/^[0-9]/.test(text)) return 'number'
+          if (VB_KEYWORDS.has(text.toLowerCase())) return 'keyword'
+          const after = code.slice(index + text.length)
+          if (/^\s*\(/u.test(after)) return 'function'
+          if (/^[A-Z]/.test(text)) return 'type'
+          return 'plain'
+        },
+      },
+      dockerfile: {
+        re: /^[ \t]*#[^\n]*|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\$\{[A-Za-z_]\w*\}|\$[A-Za-z_]\w*|^[ \t]*[A-Za-z]+|\b\d+\b/gimu,
+        classify(text) {
+          if (/^[ \t]*#/u.test(text)) return 'comment'
+          if (text.startsWith('"') || text.startsWith("'")) return 'string'
+          if (text.startsWith('$')) return 'property'
+          if (/^[ \t]*[A-Za-z]+/u.test(text)) {
+            return DOCKER_KEYWORDS.has(text.trim().toLowerCase()) ? 'keyword' : 'plain'
+          }
+          if (/^[0-9]/.test(text)) return 'number'
+          return 'plain'
+        },
+      },
+      makefile: {
+        re: /#[^\n]*|\$\([^)]*\)|\$\{[^}]*\}|^[ \t]*[A-Za-z0-9_./%:-]+(?=[ \t]*:)|^[ \t]*(?:include|-include|ifdef|ifndef|ifeq|ifneq|else|endif|define|endef|export|unexport|override|vpath)\b/gmu,
+        classify(text) {
+          if (text.startsWith('#')) return 'comment'
+          if (text.startsWith('$')) return 'property'
+          if (/^[ \t]*(?:include|-include|ifdef|ifndef|ifeq|ifneq|else|endif|define|endef|export|unexport|override|vpath)\b/u.test(text)) {
+            return 'keyword'
+          }
+          return 'function'
+        },
+      },
+      razor: {
+        re: /@\*[\s\S]*?\*@|<!--[\s\S]*?-->|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|<\/?[A-Za-z][^>]*>|@[A-Za-z_]\w*|\b(?:0[xX][0-9a-fA-F_]+|\d[\d_]*(?:\.\d+)?)\b|[A-Za-z_]\w*/gu,
+        classify(text, code, index) {
+          if (text.startsWith('@*') || text.startsWith('<!--')) return 'comment'
+          if (text.startsWith('"') || text.startsWith("'")) return 'string'
+          if (text.startsWith('<')) return 'tag'
+          if (text.startsWith('@')) return 'attr'
+          if (/^[0-9]/.test(text)) return 'number'
+          if (CSHARP_KEYWORDS.has(text)) return 'keyword'
+          if (/^(?:true|false|null)$/.test(text)) return 'constant'
+          const after = code.slice(index + text.length)
+          if (/^\s*\(/u.test(after)) return 'function'
+          if (/^[A-Z]/.test(text)) return 'type'
+          return 'plain'
+        },
+      },
+    })
+
     const TOKEN_CACHE = new Map()
 
     function tokenize(code, language) {
@@ -853,7 +1321,7 @@ window.__ModuleLoader__.load({
           if (image) {
             const source = resolveRelative(context.file, target)
             const url = /^https?:/iu.test(source) ? source : rawUrl(context.root, source)
-            nodes.push(h('img', { key, src: url, alt: label, loading: 'lazy', className: 'ds-md-image' }))
+            nodes.push(h('img', { key, src: url, alt: label, loading: 'lazy', referrerPolicy: 'no-referrer', className: 'ds-md-image' }))
           } else if (target.startsWith('#')) {
             nodes.push(h('a', { key, href: target, className: 'ds-md-link' }, inlineMarkdown(label, key, context)))
           } else {
@@ -1085,7 +1553,19 @@ window.__ModuleLoader__.load({
      * Icons
      * ------------------------------------------------------------------ */
 
-    function icon(size, children, extra) {
+    function icon(size, ...args) {
+      let extra = {}
+      if (args.length > 0) {
+        const last = args[args.length - 1]
+        if (
+          last !== null &&
+          typeof last === 'object' &&
+          !React.isValidElement(last) &&
+          (Object.getPrototypeOf(last) === Object.prototype || Object.getPrototypeOf(last) === null)
+        ) {
+          extra = args.pop()
+        }
+      }
       return h(
         'svg',
         {
@@ -1101,7 +1581,7 @@ window.__ModuleLoader__.load({
           focusable: false,
           ...extra,
         },
-        children,
+        ...args,
       )
     }
 
@@ -1121,13 +1601,15 @@ window.__ModuleLoader__.load({
 
     function glyphGroup(name) {
       const ext = extensionOf(name)
+      const base = basename(name).toLowerCase()
+      if (base === 'dockerfile' || base.startsWith('dockerfile.') || base === 'containerfile' || base.startsWith('containerfile.') || base === 'makefile' || base.startsWith('makefile.') || base === 'gnumakefile' || base === 'cmakelists.txt') return 'code'
       if (ext === 'pdf') return 'pdf'
       if (MARKDOWN_EXTENSIONS.has(ext)) return 'markdown'
       if (IMAGE_EXTENSIONS.has(ext)) return 'image'
       if (['json', 'yml', 'yaml', 'toml', 'ini', 'lock'].includes(ext)) return 'data'
       if (['js', 'mjs', 'cjs', 'jsx', 'ts', 'tsx', 'mts', 'cts', 'vue', 'svelte'].includes(ext)) return 'code'
-      if (['css', 'scss', 'less', 'html', 'htm', 'xml', 'svg'].includes(ext)) return 'web'
-      if (['py', 'rb', 'go', 'rs', 'java', 'kt', 'cs', 'csx', 'c', 'h', 'cc', 'cpp', 'hpp', 'php', 'lua', 'sh', 'bash', 'zsh'].includes(ext)) return 'code'
+      if (['css', 'scss', 'less', 'html', 'htm', 'xml', 'svg', 'cshtml', 'razor'].includes(ext)) return 'web'
+      if (['py', 'rb', 'go', 'rs', 'java', 'kt', 'kts', 'cs', 'csx', 'c', 'h', 'cc', 'cpp', 'cxx', 'hpp', 'm', 'mm', 'php', 'lua', 'sh', 'bash', 'zsh', 'swift', 'dart', 'scala', 'sc', 'groovy', 'gradle', 'r', 'pl', 'pm', 'ps1', 'psm1', 'fs', 'fsx', 'fsi', 'vb', 'vbs', 'proto', 'graphql', 'gql', 'tf', 'tfvars', 'hcl', 'cmake', 'dockerfile', 'mk'].includes(ext)) return 'code'
       return 'plain'
     }
 
@@ -1158,15 +1640,15 @@ window.__ModuleLoader__.load({
     }
 
     function NewFileIcon() {
-      return icon(15, h('path', { d: 'M3.75 1.75h5.1l3.4 3.4v9.1H3.75Z' }), h('path', { d: 'M8.75 1.75v3.5h3.5' }), h('path', { d: 'M12 9.5v4M10 11.5h4' }))
+      return icon(16, h('path', { d: 'M3.75 1.75h5.1l3.4 3.4v9.1H3.75Z' }), h('path', { d: 'M8.75 1.75v3.5h3.5' }), h('path', { d: 'M12 9.5v4M10 11.5h4' }))
     }
 
     function NewFolderIcon() {
-      return icon(15, h('path', { d: 'M1.75 12.5V3.25a1 1 0 0 1 1-1h3.1l1.3 1.6h4.85a1 1 0 0 1 1 1v7.65a1 1 0 0 1-1 1H2.75a1 1 0 0 1-1-1Z' }), h('path', { d: 'M9.5 8.75v4M7.5 10.75h4' }))
+      return icon(16, h('path', { d: 'M1.75 12.5V3.25a1 1 0 0 1 1-1h3.1l1.3 1.6h4.85a1 1 0 0 1 1 1v7.65a1 1 0 0 1-1 1H2.75a1 1 0 0 1-1-1Z' }), h('path', { d: 'M9.5 8.75v4M7.5 10.75h4' }))
     }
 
     function RefreshIcon() {
-      return icon(15, h('path', { d: 'M13.25 7A5.4 5.4 0 1 0 13 10.5' }), h('path', { d: 'M13.5 2.75V6.5h-3.75' }))
+      return icon(16, h('path', { d: 'M13.25 7A5.4 5.4 0 1 0 13 10.5' }), h('path', { d: 'M13.5 2.75V6.5h-3.75' }))
     }
 
     function SaveIcon() {
@@ -1651,8 +2133,7 @@ window.__ModuleLoader__.load({
     }
 
     function WrapIcon() {
-      return icon(
-        15,
+      return icon(16,
         h('path', { d: 'M2.5 3.5h10.75v4.75a2.25 2.25 0 0 1-2.25 2.25H4.5' }),
         h('path', { d: 'M7.25 8.25 4.5 10.5l2.75 2.25' }),
         { strokeWidth: 1.7 },
@@ -1660,12 +2141,29 @@ window.__ModuleLoader__.load({
     }
 
     function MoreIcon() {
-      return icon(
-        15,
+      return icon(16,
         h('circle', { cx: 8, cy: 3.25, r: 1.3, fill: 'currentColor', stroke: 'none' }),
         h('circle', { cx: 8, cy: 8, r: 1.3, fill: 'currentColor', stroke: 'none' }),
         h('circle', { cx: 8, cy: 12.75, r: 1.3, fill: 'currentColor', stroke: 'none' }),
       )
+    }
+
+    function GitIcon() {
+      return icon(16,
+        h('circle', { cx: 4.25, cy: 3.75, r: 1.35 }),
+        h('circle', { cx: 4.25, cy: 12.25, r: 1.35 }),
+        h('circle', { cx: 11.75, cy: 6.25, r: 1.35 }),
+        h('path', { d: 'M4.25 5.1v5.8' }),
+        h('path', { d: 'M11.75 7.6c0 2.5-2.2 3.55-5.1 3.55H5.6' }),
+      )
+    }
+
+    function PlusIcon() {
+      return icon(13, h('path', { d: 'M8 3v10' }), h('path', { d: 'M3 8h10' }))
+    }
+
+    function MinusIcon() {
+      return icon(13, h('path', { d: 'M3 8h10' }))
     }
 
     function HomeIcon() {
@@ -1678,8 +2176,7 @@ window.__ModuleLoader__.load({
     }
 
     function UploadIcon() {
-      return icon(
-        15,
+      return icon(16,
         h('path', { d: 'M8 10.5V6.5' }),
         h('path', { d: 'M8 2.5 4.25 6.75h7.5Z', fill: 'currentColor', stroke: 'none' }),
         h('path', { d: 'M2.75 13.25h10.5' }),
@@ -1688,12 +2185,516 @@ window.__ModuleLoader__.load({
     }
 
     function DownloadIcon() {
-      return icon(
-        15,
+      return icon(16,
         h('path', { d: 'M8 2.75v4' }),
         h('path', { d: 'M8 10.75 4.25 6.5h7.5Z', fill: 'currentColor', stroke: 'none' }),
         h('path', { d: 'M2.75 13.25h10.5' }),
         { strokeWidth: 1.9 },
+      )
+    }
+
+    /* ------------------------------------------------------------------ *
+     * Git panel
+     * ------------------------------------------------------------------ */
+
+    function GitPanel({ root, t, onOpenFile, showToast }) {
+      const [status, setStatus] = useState(null)
+      const [loading, setLoading] = useState(root !== null)
+      const [error, setError] = useState(null)
+      const [busy, setBusy] = useState(false)
+      const [message, setMessage] = useState('')
+      const [diff, setDiff] = useState(null)
+      const [branchOpen, setBranchOpen] = useState(false)
+      const [branches, setBranches] = useState([])
+      const [branchBusy, setBranchBusy] = useState(false)
+
+      async function loadStatus(silent = false) {
+        if (root === null) {
+          setStatus(null)
+          return
+        }
+        if (!silent) setLoading(true)
+        setError(null)
+        try {
+          setStatus(await callGit('status', { root }))
+        } catch (failure) {
+          setError(failure)
+          setStatus(null)
+        } finally {
+          if (!silent) setLoading(false)
+        }
+      }
+
+      useEffect(() => {
+        setStatus(null)
+        setError(null)
+        setMessage('')
+        setDiff(null)
+        setBranchOpen(false)
+        if (root !== null) void loadStatus()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [root])
+
+      useEffect(() => {
+        if (diff === null && !branchOpen) return undefined
+        const onKey = (event) => {
+          if (event.key !== 'Escape') return
+          setDiff(null)
+          setBranchOpen(false)
+        }
+        window.addEventListener('keydown', onKey)
+        return () => window.removeEventListener('keydown', onKey)
+      }, [diff, branchOpen])
+
+      async function perform(action) {
+        if (busy) return
+        setBusy(true)
+        setError(null)
+        try {
+          await action()
+          await loadStatus(true)
+        } catch (failure) {
+          setError(failure)
+        } finally {
+          setBusy(false)
+        }
+      }
+
+      function stage(entry) {
+        void perform(() => callGit('stage', { root, paths: [entry.path] }))
+      }
+
+      function unstage(entry) {
+        void perform(() => callGit('unstage', { root, paths: [entry.path] }))
+      }
+
+      function stageAll() {
+        void perform(() => callGit('stage', { root }))
+      }
+
+      function unstageAll() {
+        void perform(() => callGit('unstage', { root }))
+      }
+
+      function init() {
+        void perform(async () => {
+          await callGit('init', { root })
+          showToast(t('git.initOk'))
+        })
+      }
+
+      function commit() {
+        const text = message.trim()
+        if (text.length === 0) {
+          setError(new SideRequestError('empty-message', t('git.commitEmpty')))
+          return
+        }
+        void perform(async () => {
+          await callGit('commit', { root, message: text })
+          setMessage('')
+          showToast(t('git.commitOk'))
+        })
+      }
+
+      async function openDiff(entry, staged) {
+        setDiff({ path: entry.path, staged, untracked: entry.untracked, loading: true, text: '', error: null })
+        try {
+          const value = await callGit('diff', {
+            root,
+            path: entry.path,
+            staged,
+            untracked: !staged && entry.untracked,
+          })
+          setDiff((current) =>
+            current !== null && current.path === entry.path && current.staged === staged
+              ? { ...current, loading: false, text: typeof value?.diff === 'string' ? value.diff : '' }
+              : current,
+          )
+        } catch (failure) {
+          setDiff((current) => (current === null ? null : { ...current, loading: false, error: failure }))
+        }
+      }
+
+      async function openBranches() {
+        setBranchOpen(true)
+        setBranchBusy(true)
+        setError(null)
+        try {
+          const value = await callGit('branches', { root })
+          setBranches(Array.isArray(value?.branches) ? value.branches : [])
+        } catch (failure) {
+          setError(failure)
+          setBranches([])
+        } finally {
+          setBranchBusy(false)
+        }
+      }
+
+      async function checkout(name) {
+        setBranchBusy(true)
+        setError(null)
+        try {
+          await callGit('checkout', { root, branch: name })
+          setBranchOpen(false)
+          showToast(t('git.checkoutOk'))
+          await loadStatus(true)
+        } catch (failure) {
+          setError(failure)
+        } finally {
+          setBranchBusy(false)
+        }
+      }
+
+      const failureCode = error === null ? '' : errorCode(error)
+      const failureMessage =
+        failureCode === 'git-bridge-missing' || failureCode === 'http-404'
+          ? t('git.installHint')
+          : error === null
+            ? ''
+            : errorText(error)
+
+      const errorCard =
+        error === null
+          ? null
+          : h(
+              'div',
+              { className: 'ds-git-error' },
+              h('span', { className: 'ds-git-error-text' }, failureMessage),
+              h(
+                'button',
+                { type: 'button', className: 'ds-linkbtn', onClick: () => void loadStatus() },
+                t('git.retry'),
+              ),
+            )
+
+      const spinner = h(
+        'div',
+        { className: 'ds-empty' },
+        h('span', { className: 'ds-spinner' }),
+        t('git.loading'),
+      )
+
+      function badgeLetter(entry, staged) {
+        if (entry.conflict) return '!'
+        if (!staged && entry.untracked) return 'U'
+        const letter = staged ? entry.indexStatus : entry.worktreeStatus
+        return (typeof letter === 'string' && letter.trim().length > 0 ? letter.trim() : entry.status) || 'M'
+      }
+
+      function renderRow(entry, staged) {
+        const letter = badgeLetter(entry, staged)
+        return h(
+          'div',
+          {
+            key: `${staged ? 'staged' : 'changes'}:${entry.path}`,
+            className: 'ds-git-row',
+            role: 'button',
+            tabIndex: 0,
+            title: entry.oldPath === null || entry.oldPath === undefined ? entry.path : `${entry.oldPath} → ${entry.path}`,
+            onClick: () => void openDiff(entry, staged),
+            onKeyDown: (event) => {
+              if (event.target !== event.currentTarget) return
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                void openDiff(entry, staged)
+              }
+            },
+          },
+          h(
+            'span',
+            {
+              className: 'ds-git-badge',
+              'data-status': letter,
+              title: letter === '!' ? t('git.conflict') : letter === 'U' ? t('git.untracked') : letter,
+            },
+            letter,
+          ),
+          h('span', { className: 'ds-git-path' }, entry.path),
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'ds-iconbtn ds-iconbtn-sm ds-git-row-action',
+              title: staged ? t('git.unstage') : t('git.stage'),
+              disabled: busy,
+              onClick: (event) => {
+                event.stopPropagation()
+                if (staged) unstage(entry)
+                else stage(entry)
+              },
+            },
+            staged ? h(MinusIcon) : h(PlusIcon),
+          ),
+        )
+      }
+
+      const diffModal =
+        diff === null
+          ? null
+          : h(
+              'div',
+              {
+                className: 'ds-modal-backdrop',
+                onPointerDown: (event) => {
+                  if (event.target === event.currentTarget) setDiff(null)
+                },
+              },
+              h(
+                'div',
+                { className: 'ds-modal ds-git-diff-modal', role: 'dialog', 'aria-modal': true },
+                h(
+                  'div',
+                  { className: 'ds-git-diff-head' },
+                  h('span', { className: 'ds-git-diff-title', title: diff.path }, diff.path),
+                  h(
+                    'span',
+                    { className: 'ds-git-diff-tag' },
+                    diff.staged ? t('git.diffStaged') : diff.untracked ? t('git.untracked') : t('git.diffWorking'),
+                  ),
+                  h('span', { className: 'ds-spacer' }),
+                  h(
+                    'button',
+                    { type: 'button', className: 'ds-iconbtn ds-iconbtn-sm', title: t('git.close'), onClick: () => setDiff(null) },
+                    h(CloseIcon),
+                  ),
+                ),
+                diff.loading
+                  ? spinner
+                  : diff.error
+                    ? h('div', { className: 'ds-git-error' }, errorText(diff.error))
+                    : diff.text.trim().length === 0
+                      ? h('div', { className: 'ds-git-hint' }, t('git.noDiff'))
+                      : h(
+                          'pre',
+                          { className: 'ds-git-diff-code' },
+                          h(Highlighted, { code: diff.text, language: 'diff' }),
+                        ),
+                h(
+                  'div',
+                  { className: 'ds-modal-actions' },
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-btn',
+                      onClick: () => {
+                        const target = diff.path
+                        setDiff(null)
+                        onOpenFile(target)
+                      },
+                    },
+                    t('git.openFile'),
+                  ),
+                  h('button', { type: 'button', className: 'ds-btn', onClick: () => setDiff(null) }, t('git.close')),
+                ),
+              ),
+            )
+
+      const branchModal = !branchOpen
+        ? null
+        : h(
+            'div',
+            {
+              className: 'ds-modal-backdrop',
+              onPointerDown: (event) => {
+                if (event.target === event.currentTarget) setBranchOpen(false)
+              },
+            },
+            h(
+              'div',
+              { className: 'ds-modal ds-git-branch-modal', role: 'dialog', 'aria-modal': true },
+              h('div', { className: 'ds-modal-title' }, t('git.switchBranch')),
+              branchBusy
+                ? spinner
+                : branches.length === 0
+                  ? h('div', { className: 'ds-git-hint' }, t('git.noBranches'))
+                  : h(
+                      'div',
+                      { className: 'ds-git-branch-list' },
+                      branches.map((name) =>
+                        h(
+                          'button',
+                          {
+                            key: name,
+                            type: 'button',
+                            className: 'ds-git-branch-item',
+                            'data-current': status !== null && name === status.branch ? 'true' : undefined,
+                            disabled: busy,
+                            onClick: () => void checkout(name),
+                          },
+                          h(GitIcon),
+                          h('span', { className: 'ds-git-branch-item-name' }, name),
+                          status !== null && name === status.branch
+                            ? h('span', { className: 'ds-git-branch-check' }, '✓')
+                            : null,
+                        ),
+                      ),
+                    ),
+              errorCard,
+              h(
+                'div',
+                { className: 'ds-modal-actions' },
+                h('button', { type: 'button', className: 'ds-btn', onClick: () => setBranchOpen(false) }, t('git.close')),
+              ),
+            ),
+          )
+
+      if (root === null) {
+        return h('div', { className: 'ds-git' }, h('div', { className: 'ds-git-empty' }, t('git.noRoot')))
+      }
+
+      if (status === null) {
+        return h(
+          'div',
+          { className: 'ds-git' },
+          loading ? spinner : h('div', { className: 'ds-git-empty' }, errorCard ?? h('div', { className: 'ds-git-hint' }, t('git.notRepo'))),
+          diffModal,
+          branchModal,
+        )
+      }
+
+      if (status.repo === false) {
+        const notRoot = status.reason === 'not-root'
+        return h(
+          'div',
+          { className: 'ds-git' },
+          h(
+            'div',
+            { className: 'ds-git-empty' },
+            h('div', { className: 'ds-git-empty-title' }, notRoot ? t('git.notRoot') : t('git.notRepo')),
+            notRoot ? null : h('div', { className: 'ds-git-hint' }, t('git.initHint')),
+            notRoot
+              ? null
+              : h(
+                  'button',
+                  { type: 'button', className: 'ds-btn', disabled: busy, onClick: init },
+                  t('git.init'),
+                ),
+            errorCard,
+          ),
+          diffModal,
+          branchModal,
+        )
+      }
+
+      const staged = Array.isArray(status.staged) ? status.staged : []
+      const changes = Array.isArray(status.changes) ? status.changes : []
+      const branchLabel = status.detached ? t('git.detached') : status.branch ?? t('git.branch')
+      const canCommit = staged.length > 0 && message.trim().length > 0 && !busy
+
+      return h(
+        'div',
+        { className: 'ds-git' },
+        h(
+          'div',
+          { className: 'ds-git-head' },
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'ds-git-branch',
+              title:
+                status.upstream === null || status.upstream === undefined
+                  ? t('git.switchBranch')
+                  : `${t('git.switchBranch')} · ${status.upstream}`,
+              onClick: () => void openBranches(),
+            },
+            h(GitIcon),
+            h('span', { className: 'ds-git-branch-name' }, branchLabel),
+            h(ChevronIcon),
+          ),
+          status.unborn ? h('span', { className: 'ds-git-tag' }, t('git.unborn')) : null,
+          status.upstream ? h('span', { className: 'ds-git-upstream', title: status.upstream }, status.upstream) : null,
+          status.ahead > 0 ? h('span', { className: 'ds-git-count' }, t('git.ahead', { n: String(status.ahead) })) : null,
+          status.behind > 0 ? h('span', { className: 'ds-git-count' }, t('git.behind', { n: String(status.behind) })) : null,
+          status.gone ? h('span', { className: 'ds-git-count' }, t('git.gone')) : null,
+          h('span', { className: 'ds-spacer' }),
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'ds-iconbtn ds-iconbtn-sm',
+              title: t('git.refresh'),
+              disabled: busy || loading,
+              onClick: () => void loadStatus(),
+            },
+            h(RefreshIcon),
+          ),
+        ),
+        h(
+          'div',
+          { className: 'ds-git-commit' },
+          h('textarea', {
+            className: 'ds-git-message',
+            rows: 3,
+            placeholder: t('git.commitPlaceholder'),
+            value: message,
+            disabled: busy,
+            onChange: (event) => setMessage(event.target.value),
+            onKeyDown: (event) => {
+              if (event.isComposing) return
+              if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+                event.preventDefault()
+                commit()
+              }
+            },
+          }),
+          h(
+            'div',
+            { className: 'ds-git-commit-row' },
+            h(
+              'span',
+              { className: 'ds-git-commit-hint' },
+              staged.length === 0 ? t('git.noStaged') : `${String(staged.length)} · ${t('git.staged')}`,
+            ),
+            h(
+              'button',
+              { type: 'button', className: 'ds-btn ds-git-commit-btn', disabled: !canCommit, onClick: commit },
+              busy ? t('git.committing') : t('git.commit'),
+            ),
+          ),
+        ),
+        errorCard,
+        h(
+          'div',
+          { className: 'ds-git-scroll' },
+          h(
+            'div',
+            { className: 'ds-git-section' },
+            h(
+              'div',
+              { className: 'ds-git-section-head' },
+              h('span', { className: 'ds-git-section-title' }, `${t('git.staged')} (${String(staged.length)})`),
+              staged.length > 0
+                ? h(
+                    'button',
+                    { type: 'button', className: 'ds-linkbtn', disabled: busy, onClick: unstageAll },
+                    t('git.unstageAll'),
+                  )
+                : null,
+            ),
+            staged.length === 0
+              ? h('div', { className: 'ds-git-hint' }, t('git.noStaged'))
+              : staged.map((entry) => renderRow(entry, true)),
+          ),
+          h(
+            'div',
+            { className: 'ds-git-section' },
+            h(
+              'div',
+              { className: 'ds-git-section-head' },
+              h('span', { className: 'ds-git-section-title' }, `${t('git.changes')} (${String(changes.length)})`),
+              changes.length > 0
+                ? h('button', { type: 'button', className: 'ds-linkbtn', disabled: busy, onClick: stageAll }, t('git.stageAll'))
+                : null,
+            ),
+            changes.length === 0
+              ? h('div', { className: 'ds-git-hint' }, t('git.clean'))
+              : changes.map((entry) => renderRow(entry, false)),
+          ),
+        ),
+        diffModal,
+        branchModal,
       )
     }
 
@@ -1722,6 +2723,7 @@ window.__ModuleLoader__.load({
         const [pickerOpen, setPickerOpen] = useState(false)
         const [moreOpen, setMoreOpen] = useState(false)
         const [moreAt, setMoreAt] = useState({ top: 0, left: 0 })
+        const [paneView, setPaneView] = useState('files')
         const [uploading, setUploading] = useState(false)
         const rootRef = useRef(null)
         const uploadInputRef = useRef(null)
@@ -3359,12 +4361,13 @@ window.__ModuleLoader__.load({
               'aside',
               {
                 className: 'ds-side',
+                'data-view': paneView,
                 style: { width: compact ? '100%' : `${String(state.treeWidth)}px`, display: showSide ? undefined : 'none' },
               },
               h(
                 'div',
                 { className: 'ds-pane-head' },
-                h('span', null, t('explorer')),
+                h('span', null, paneView === 'git' ? t('git.title') : t('explorer')),
                 h(
                   'span',
                   { className: 'ds-pane-actions' },
@@ -3488,6 +4491,21 @@ window.__ModuleLoader__.load({
                           ),
                         )
                       : null,
+                  ),
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-iconbtn ds-iconbtn-sm ds-git-toggle',
+                      title: paneView === 'git' ? t('git.backToFiles') : t('git.toggle'),
+                      'aria-pressed': paneView === 'git',
+                      'data-active': paneView === 'git' ? 'true' : undefined,
+                      onClick: () => {
+                        setPaneView((view) => (view === 'git' ? 'files' : 'git'))
+                        setMoreOpen(false)
+                      },
+                    },
+                    h(GitIcon),
                   ),
                 ),
               ),
@@ -3626,6 +4644,14 @@ window.__ModuleLoader__.load({
                             ),
                           ),
                     ),
+              paneView === 'git'
+                ? h(GitPanel, {
+                    root: state.root,
+                    t,
+                    onOpenFile: (target) => void openFile(target),
+                    showToast,
+                  })
+                : null,
               h(
                 'div',
                 { className: 'ds-side-foot' },
@@ -4376,6 +5402,262 @@ window.__ModuleLoader__.load({
   text-decoration: none;
 }
 .ds-linkbtn:hover { text-decoration: underline; }
+.ds-side[data-view="git"] .ds-favorites,
+.ds-side[data-view="git"] .ds-tree,
+.ds-side[data-view="git"] > .ds-hint,
+.ds-side[data-view="git"] > .ds-empty { display: none; }
+.ds-side[data-view="git"] .ds-pane-actions .ds-iconbtn:not(.ds-git-toggle),
+.ds-side[data-view="git"] .ds-pane-actions .ds-more-wrap { display: none; }
+.ds-git-toggle[data-active="true"] {
+  color: var(--dsw-alias-brand-primary);
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent);
+}
+.ds-git { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
+.ds-git-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+}
+.ds-git-branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  max-width: 65%;
+  height: 24px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.ds-git-branch:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent); }
+.ds-git-branch svg { flex: 0 0 auto; }
+.ds-git-branch-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-git-upstream {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10.5px;
+}
+.ds-git-count, .ds-git-tag {
+  flex: 0 0 auto;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 9.5px;
+  white-space: nowrap;
+}
+.ds-git-tag { color: var(--dsw-alias-state-warn-primary); }
+.ds-git-commit {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 5px;
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+}
+.ds-git-message {
+  width: 100%;
+  min-height: 52px;
+  max-height: 140px;
+  padding: 6px 7px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+}
+.ds-git-message:focus { border-color: var(--dsw-alias-brand-primary); }
+.ds-git-message::placeholder { color: var(--dsw-alias-label-secondary); }
+.ds-git-commit-row { display: flex; align-items: center; gap: 8px; }
+.ds-git-commit-hint {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10.5px;
+}
+.ds-git-commit-btn { height: 25px; padding: 0 10px; font-size: 11.5px; }
+.ds-git-commit-btn:disabled { opacity: 0.4; cursor: default; }
+.ds-git-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding-bottom: 8px; }
+.ds-git-section { border-bottom: 1px solid var(--dsw-alias-border-l1); padding-bottom: 3px; }
+.ds-git-section:last-child { border-bottom: 0; }
+.ds-git-section-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 25px;
+  padding: 2px 8px;
+}
+.ds-git-section-title {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ds-git-section-head .ds-linkbtn { font-size: 10.5px; }
+.ds-git-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 2px 6px 2px 8px;
+  cursor: pointer;
+  outline: none;
+}
+.ds-git-row:hover, .ds-git-row:focus-visible { background: color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent); }
+.ds-git-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1;
+}
+.ds-git-badge[data-status="M"] { color: var(--dsw-alias-state-warn-primary); background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 14%, transparent); }
+.ds-git-badge[data-status="A"], .ds-git-badge[data-status="U"] { color: var(--dsw-alias-state-success-primary); background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 14%, transparent); }
+.ds-git-badge[data-status="D"], .ds-git-badge[data-status="!"] { color: var(--dsw-alias-state-error-primary); background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 14%, transparent); }
+.ds-git-badge[data-status="R"] { color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 14%, transparent); }
+.ds-git-path {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.ds-git-row-action { width: 20px; height: 20px; opacity: 0.55; }
+.ds-git-row:hover .ds-git-row-action, .ds-git-row:focus-within .ds-git-row-action { opacity: 1; }
+.ds-git-row-action:disabled { opacity: 0.2; }
+.ds-git-hint { padding: 6px 9px; color: var(--dsw-alias-label-secondary); font-size: 11.5px; }
+.ds-git-empty {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 22px 16px;
+  text-align: center;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  overflow: auto;
+}
+.ds-git-empty-title { color: var(--dsw-alias-label-primary); font-size: 13px; font-weight: 600; }
+.ds-git-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 6px 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 10%, transparent);
+  color: var(--dsw-alias-state-error-primary);
+  font-size: 11.5px;
+  overflow-wrap: anywhere;
+}
+.ds-git-error-text { flex: 1 1 auto; }
+.ds-git-diff-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(920px, 100%);
+  max-height: 84vh;
+  padding: 0;
+  overflow: hidden;
+}
+.ds-git-diff-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+}
+.ds-git-diff-title {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+.ds-git-diff-tag {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+}
+.ds-git-diff-code {
+  flex: 1 1 auto;
+  min-height: 160px;
+  margin: 0;
+  overflow: auto;
+  padding: 12px 14px;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  font-family: var(--ds-mono);
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre;
+  tab-size: 2;
+}
+.ds-git-upstream { display: none; }
+.ds-git-diff-modal .ds-modal-actions {
+  margin-top: 0;
+  padding: 10px 14px;
+  border-top: 1px solid var(--dsw-alias-border-l1);
+}
+.ds-git-branch-modal { width: min(420px, 100%); }
+.ds-git-branch-list { max-height: 300px; overflow: auto; margin: 8px 0; }
+.ds-git-branch-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.ds-git-branch-item:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent); }
+.ds-git-branch-item[data-current="true"] { color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 10%, transparent); }
+.ds-git-branch-item-name { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-git-branch-check { color: var(--dsw-alias-brand-primary); font-size: 13px; }
 .ds-side-foot {
   flex: 0 0 auto;
   padding: 5px 10px;
@@ -4589,18 +5871,31 @@ window.__ModuleLoader__.load({
 .ds-ta::-webkit-scrollbar, .ds-tree::-webkit-scrollbar, .ds-md::-webkit-scrollbar, .ds-pre::-webkit-scrollbar { width: 10px; height: 10px; }
 .ds-ta::-webkit-scrollbar-thumb, .ds-tree::-webkit-scrollbar-thumb, .ds-md::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--dsw-alias-label-primary) 18%, transparent); border-radius: 6px; }
 .ds-ta::-webkit-scrollbar-track, .ds-tree::-webkit-scrollbar-track, .ds-md::-webkit-scrollbar-track { background: transparent; }
-.ds-tok-comment { color: var(--dsw-alias-label-secondary); font-style: italic; }
-.ds-tok-keyword { color: var(--dsw-alias-brand-primary); }
-.ds-tok-string { color: var(--dsw-alias-state-success-primary); }
-.ds-tok-number { color: var(--dsw-alias-state-warn-primary); }
-.ds-tok-constant { color: var(--dsw-alias-state-warn-primary); }
-.ds-tok-function { color: var(--dsw-alias-label-primary); font-weight: 600; }
-.ds-tok-type { color: color-mix(in srgb, var(--dsw-alias-brand-primary) 62%, var(--dsw-alias-label-primary)); }
-.ds-tok-property { color: var(--dsw-alias-state-warn-primary); }
-.ds-tok-attr { color: var(--dsw-alias-state-warn-primary); }
-.ds-tok-tag { color: var(--dsw-alias-brand-primary); }
-.ds-tok-heading { color: var(--dsw-alias-brand-primary); font-weight: 600; }
-.ds-tok-link { color: var(--dsw-alias-brand-primary); text-decoration: underline; }
+.ds-root {
+  --ds-syn-keyword: color-mix(in srgb, #2563eb 82%, var(--dsw-alias-label-primary));
+  --ds-syn-string: color-mix(in srgb, #16a34a 82%, var(--dsw-alias-label-primary));
+  --ds-syn-number: color-mix(in srgb, #d97706 82%, var(--dsw-alias-label-primary));
+  --ds-syn-comment: color-mix(in srgb, #64748b 78%, var(--dsw-alias-label-primary));
+  --ds-syn-type: color-mix(in srgb, #9333ea 82%, var(--dsw-alias-label-primary));
+  --ds-syn-function: color-mix(in srgb, #0d9488 82%, var(--dsw-alias-label-primary));
+  --ds-syn-property: color-mix(in srgb, #ea580c 82%, var(--dsw-alias-label-primary));
+  --ds-syn-constant: color-mix(in srgb, #b45309 82%, var(--dsw-alias-label-primary));
+}
+.ds-tok-comment { color: var(--ds-syn-comment); font-style: italic; }
+.ds-tok-keyword { color: var(--ds-syn-keyword); font-weight: 500; }
+.ds-tok-string { color: var(--ds-syn-string); }
+.ds-tok-number { color: var(--ds-syn-number); }
+.ds-tok-constant { color: var(--ds-syn-constant); }
+.ds-tok-function { color: var(--ds-syn-function); font-weight: 600; }
+.ds-tok-type { color: var(--ds-syn-type); }
+.ds-tok-property { color: var(--ds-syn-property); }
+.ds-tok-attr { color: var(--ds-syn-property); }
+.ds-tok-tag { color: var(--ds-syn-keyword); }
+.ds-tok-heading { color: var(--ds-syn-type); font-weight: 600; }
+.ds-tok-link { color: var(--ds-syn-keyword); text-decoration: underline; }
+.ds-git-diff-code .ds-tok-keyword { color: color-mix(in srgb, #dc2626 82%, var(--dsw-alias-label-primary)); }
+.ds-git-diff-code .ds-tok-string { color: color-mix(in srgb, #16a34a 82%, var(--dsw-alias-label-primary)); }
+.ds-git-diff-code .ds-tok-function { color: var(--dsw-alias-label-secondary); }
 .ds-statusbar {
   display: flex;
   align-items: center;

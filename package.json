@@ -6,7 +6,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "check": "node --check dsh-side-plugin/index.js && node --check dsh-side-plugin/client.js && node --check dsh-side-io/index.js",
+    "check": "node --check dsh-side-plugin/index.js && node --check dsh-side-plugin/client.js && node --check dsh-side-io/index.js && node --check dsh-side-git/index.js",
     "check:json": "node scripts/check-json.mjs"
   },
   "keywords": [
@@ -15,6 +15,8 @@
     "plugin",
     "workspace",
     "file-manager",
-    "code-editor"
+    "code-editor",
+    "git",
+    "source-control"
   ]
 }

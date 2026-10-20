@@ -35,6 +35,7 @@
     "plugin",
     "workspace",
     "file-manager",
-    "code-editor"
+    "code-editor",
+    "git"
   ]
 }

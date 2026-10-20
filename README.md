@@ -2,12 +2,12 @@
   <img src="dsh-side-plugin/icon.svg" width="88" height="88" alt="DSH Side icon" />
 </p>
 
-<h1 align="center">DeepSeek Harness Web Filebrowser</h1>
+<h1 align="center">Deepseek Harness Web Power FileBrowser</h1>
 
 <p align="center">
   A VS Code-style workspace for the <strong>DeepSeek Harness</strong> Web UI:
-  browse, edit, preview, favorite, upload and download workspace files without
-  leaving the chat.
+  browse, edit, preview, favorite, upload and download workspace files — and
+  commit local Git changes — without leaving the chat.
 </p>
 
 <p align="center">
@@ -31,8 +31,8 @@ DSH Side turns the Harness Web UI into a practical coding workspace. It adds a
 file explorer and a tabbed editor to the left sidebar and to the right sidebar's
 Start page, while keeping the chat and the sessions exactly where they are.
 
-It is a **local bundle**, not an npm package: install it from a cloned checkout
-through the Harness Plugin Manager, or ask the Harness agent to install the two
+It is a set of **local bundles**, not npm packages: install them from a cloned checkout
+through the Harness Plugin Manager, or ask the Harness agent to install the three
 local bundle directories for you.
 
 ## Contents
@@ -59,6 +59,8 @@ local bundle directories for you.
   render inline, with a browser handoff.
 - **Favorites and a workspace switcher** — single-click a favorite to open a file
   or jump to a folder; clean up workspace entries from the picker.
+- **Local Git workflow** — branch/ahead/behind, staged and unstaged changes,
+  per-file staging, commits, diffs and branch switching without leaving the panel.
 - **Fits the host** — theme-token styling, English/Chinese copy, compact
   single-column layout in narrow sidebars, and a right-sidebar Start card.
 
@@ -92,7 +94,9 @@ local bundle directories for you.
 - Save with `⌘/Ctrl+S` or the Save button; reload; stale-file detection with
   Reload/Overwrite choices.
 - Syntax highlighting for JavaScript/TypeScript, JSON, CSS, HTML/XML, Python,
-  Shell, YAML, SQL, Markdown, Rust, Go, Java, C#, C/C++, Ruby, PHP, Lua, config files,
+  Shell, YAML, SQL, Markdown, Rust, Go, Java, Kotlin, Scala, Swift, Dart, Groovy, C#,
+  C/C++, Objective-C, Ruby, PHP, Lua, R, Perl, PowerShell, F#, VB.NET, Razor,
+  Protocol Buffers, GraphQL, Terraform, CMake, Dockerfile, Makefile, config files,
   and diffs.
 - Line numbers, `Tab` indentation, basic auto-indent, and a draggable explorer
   width.
@@ -126,6 +130,29 @@ local bundle directories for you.
   imports no Harness Client package.
 - No model-facing tools, prompts, or session events are registered.
 
+### Git source control
+
+- A **Git** button in the explorer header switches between the file tree and a
+  source-control view for the selected workspace.
+- Shows the current branch, upstream, ahead/behind counts, unborn/detached state,
+  staged changes, working-tree changes and untracked files.
+- Stage/unstage individual files or everything, write a commit message and commit
+  (`Ctrl/⌘+Enter`); diff any changed or untracked text file in a read-only modal.
+- Initialize a repository when the workspace is not one, and switch between local
+  branches from a branch picker.
+- Git runs only on the local host. There is **no fetch/pull/push**, no remote
+  credential storage and no hunk-level staging.
+- The Git view requires the workspace to be the repository **root**; opening a
+  subdirectory of a larger repository shows a hint instead of staging outside it.
+
+
+### Snapshot Preview
+  <img alt="dshwfb" src="./docs/1.png" width="500px" />
+  <img alt="dshwfb" src="./docs/2.png" width="500px" />
+  <img alt="dshwfb" src="./docs/3.png" width="500px" />
+  <img alt="dshwfb" src="./docs/4.png" width="500px" />
+  <img alt="dshwfb" src="./docs/5.png" width="500px" />
+
 ## Installation
 
 ### Requirements
@@ -139,13 +166,16 @@ local bundle directories for you.
   inside the Harness host.
 - A current evergreen browser (the UI uses `color-mix`, `ResizeObserver`, and the
   Clipboard API).
+- For Git features: `git` on the Harness host's `PATH`, and a configured Git
+  identity for commits (`user.name` / `user.email`).
 
-The repository contains **two bundles**:
+The repository contains **three bundles**:
 
 | Directory | Purpose |
 | --- | --- |
 | `dsh-side-plugin/` | Main plugin: Host file API + browser explorer/editor UI. |
 | `dsh-side-io/` | Host-only companion: binary upload and forced-download routes. Required for upload/download; the rest works without it. |
+| `dsh-side-git/` | Host-only companion: local Git status, stage, commit, diff and branch operations. Required for the Git view. |
 
 ### Install from a local checkout
 
@@ -168,28 +198,37 @@ The repository contains **two bundles**:
    Confirm the trust prompt, install, then **Enable now** (or switch the bundle on
    from the Installed plugins list).
 
-4. Repeat for the companion bundle:
+4. Repeat for the binary companion:
 
    ```text
    /absolute/path/to/dsh-side/dsh-side-io
    ```
 
-5. Refresh the Web page if the new entries are not visible yet. The Plugin
+5. Repeat for the Git companion:
+
+   ```text
+   /absolute/path/to/dsh-side/dsh-side-git
+   ```
+
+6. Refresh the Web page if the new entries are not visible yet. The Plugin
    Manager reports when a Harness restart is required; a freshly installed
    bundle normally activates without one.
 
-> **Why two installs?** The main bundle owns the explorer/editor; the companion
-> keeps binary host I/O independent. Keep both bundles enabled. If you skip the
-> companion, everything except upload and forced download still works.
+> **Why three installs?** The main bundle owns the explorer/editor; the IO
+> companion keeps binary host I/O independent; the Git companion keeps local Git
+> operations independent. Keep all three enabled. Without the IO bundle, upload
+> and forced download are unavailable; without the Git bundle, the Git view shows
+> an install hint.
 
 ### Install through the Harness agent
 
-If you are working with the DSH agent, ask it to install the two local bundle
+If you are working with the DSH agent, ask it to install the three local bundle
 directories:
 
 ```text
-Install the local DSH bundles at /absolute/path/to/dsh-side/dsh-side-plugin
-and /absolute/path/to/dsh-side/dsh-side-io, then enable them.
+Install the local DSH bundles at /absolute/path/to/dsh-side/dsh-side-plugin,
+/absolute/path/to/dsh-side/dsh-side-io and
+/absolute/path/to/dsh-side/dsh-side-git, then enable them.
 ```
 
 The agent uses the same Plugin Manager installation path as the UI.
@@ -199,7 +238,7 @@ The agent uses the same Plugin Manager installation path as the UI.
 - **Update**: in **Plugins → Installed plugins**, uninstall and reinstall each
   bundle from the updated local path (or use the UI's update action when it is
   offered).
-- **Uninstall**: uninstall both bundles from **Installed plugins**. This removes
+- **Uninstall**: uninstall all three bundles from **Installed plugins**. This removes
   the profile dependency/link and the plugin rows; it does not delete your cloned
   source or workspace files.
 - **Browser state**: preferences and favorites live in the browser's
@@ -211,7 +250,10 @@ The agent uses the same Plugin Manager installation path as the UI.
 | Symptom | What to try |
 | --- | --- |
 | No new sidebar icon / Start card | Refresh the page. Confirm the main bundle is enabled in **Plugins**. |
-| Upload or download fails | Confirm `@local/dsh-side-io` (the companion bundle) is installed and enabled. |
+| Upload or download fails | Confirm `@local/dsh-side-io` (the IO companion) is installed and enabled. |
+| Git view says support is not installed | Install and enable `@local/dsh-side-git` (the Git companion). |
+| Git view says not the repository root | Open the repository root itself as the workspace; Git mutations are confined to that root. |
+| Commit fails with identity unknown | Configure `user.name` and `user.email` on the Harness host. |
 | "只能访问已注册的工作区目录" / "outside-root" | Open the directory once through the address bar so it is registered as a workspace, then retry. |
 | Install rejected | Use an **absolute** local path, and check that the directory contains `package.json` and `cordis.patch.yml`. |
 | A change is not live | Client-side changes use the browser HMR path; Host-side changes require a Harness restart, as reported by the Plugin Manager. |
@@ -234,6 +276,7 @@ The agent uses the same Plugin Manager installation path as the UI.
 | `Enter` | Open the selected file / toggle the selected folder |
 | `←` / `→` | Collapse/expand the focused folder |
 | `Alt + Home` | Jump to the current workspace root |
+| `Ctrl/⌘ + Enter` | Commit staged changes from the Git message box |
 | `Escape` | Close a menu/modal or clear the address input |
 
 ### Address bar examples
@@ -259,6 +302,23 @@ The agent uses the same Plugin Manager installation path as the UI.
 - **Go to root**: the Home button in the header, the More menu item, or
   `Alt+Home`.
 
+### Git workflow
+
+1. Click the **Git** (branch) button in the explorer header. The file tree is
+   replaced by the source-control view; click it again to return.
+2. If the workspace is not a repository, choose **Initialize repository**. If it
+   is a subdirectory of a larger repository, open the repository root instead.
+3. Use **+** on a changed file to stage it, or **Stage all**; use **−** / **Unstage
+   all** in the staged section to reverse it.
+4. Type a commit message and click **Commit** (or press `Ctrl/⌘+Enter`). The
+   list refreshes after a successful commit.
+5. Click a file row to open a read-only unified diff; use **Open file** from the
+   diff to load the file in the editor.
+6. Click the branch button to list local branches and switch to one.
+
+Git is local-only: there is no fetch/pull/push and no credential storage. Commit
+runs the repository's configured hooks, so only commit in repositories you trust.
+
 ## How it works
 
 ```mermaid
@@ -273,12 +333,15 @@ flowchart TB
     API["/api shared channel<br/>authenticated owner cookie"]
     MAIN["/api/dsh-side<br/>JSON file ops + raw preview"]
     IO["/api/dsh-side-io<br/>binary upload + attachment download"]
+    GIT["/api/dsh-side-git<br/>local Git operations"]
     FS["Workspace filesystem"]
     REG["Workspace registry"]
     API --> MAIN
     API --> IO
+    API --> GIT
     MAIN --> FS
     IO --> FS
+    GIT --> FS
     MAIN --> REG
     IO --> REG
   end
@@ -298,6 +361,9 @@ flowchart TB
   the shipped `workspaceFiles` Remote namespace is read-only.
 - Uploads are written with `wx` and auto-renamed on collision. Downloads are
   streamed with `Content-Disposition: attachment`.
+- The Git companion shells out with `execFile('git', args)` (never through a
+  shell), requires the workspace to be the repository root, and validates paths
+  before passing them after `--`. It does not run network commands.
 
 ## Security and privacy
 
@@ -312,10 +378,16 @@ issue for security-sensitive reports.
 - **Confinement**: all reads and writes are confined to a registered workspace
   root (or the deployment default directory). Paths are split into segments,
   `..` is rejected, and symlinks are resolved before containment is checked.
-- **No telemetry**: the plugin makes no analytics or external network requests.
+- **No telemetry**: no analytics, tracking, or hardcoded external endpoints.
+  External links/images inside a Markdown file are loaded only when you preview
+  that file; images use `referrerPolicy="no-referrer"` so the Harness page URL is
+  not sent to the third-party host.
 - **No model-visible data**: it registers no tools, prompts, system-prompt
   sections, or session events. Opening a file in the editor does not add it to the
   conversation.
+- **Git is local**: no fetch/pull/push and no remote credentials. Git runs inside
+  the selected repository, whose local config, hooks or fsmonitor can execute code;
+  only use Git in repositories you trust.
 - **Limits**: editor text reads 8 MiB; raw previews 128 MiB; uploads 128 MiB per
   file.
 - **Filesystem permissions**: the plugin runs with the Harness host's filesystem
@@ -330,7 +402,9 @@ issue for security-sensitive reports.
   folder by creating it in the UI and uploading its files, or zip it externally.
 - **No automatic file watching**: external changes appear after a manual refresh
   or reload; saves use stale-file protection.
-- **No Git UI, search, or drag-and-drop** yet.
+- **No pull/push, merge/rebase, hunk staging, search, or drag-and-drop** yet.
+- **Git requires the workspace root to be the repository root**; repositories
+  whose top level is a parent directory are not supported for mutations.
 - **One active root per view**: multiple workspaces are available through the
   picker, but the tree shows the selected root.
 - **No binary editing**: binary files are previewed (images/PDF) or handed to the
@@ -348,8 +422,13 @@ dsh-side/
 │   ├── cordis.patch.yml      # inserts the host plugin row
 │   ├── locale/{en,zh}.json   # plugin display metadata
 │   └── icon.svg
-├── dsh-side-io/              # host-only companion bundle
+├── dsh-side-io/              # host-only binary companion
 │   ├── index.js              # /api/dsh-side-io upload/download route
+│   ├── cordis.patch.yml
+│   ├── locale/{en,zh}.json
+│   └── icon.svg
+├── dsh-side-git/             # host-only Git companion
+│   ├── index.js              # /api/dsh-side-git status/stage/commit/diff/branch
 │   ├── cordis.patch.yml
 │   ├── locale/{en,zh}.json
 │   └── icon.svg
@@ -365,10 +444,10 @@ dsh-side/
 
 ## Development
 
-The plugin is intentionally **plain JavaScript with no build step**.
+The plugins are intentionally **plain JavaScript with no build step**.
 
 ```bash
-# Syntax checks for the three runtime modules
+# Syntax checks for the four runtime modules
 npm run check
 
 # Validate package/locale JSON
@@ -378,8 +457,8 @@ npm run check:json
 - **Client half**: `client.js` registers a lazy factory via
   `window.__ModuleLoader__.load`; React comes from the browser module table, and
   the UI styles itself with Harness theme tokens.
-- **Host half**: `index.js` exports `apply`/`inject` and registers an exact route
-  on `ctx.connection.fetch`.
+- **Host halves**: each host bundle's `index.js` exports `apply`/`inject` and
+  registers an exact route on `ctx.connection.fetch`.
 - **Install for development**: install each local package directory through the
   Plugin Manager (or ask the agent). The client bundle is picked up by the HMR
   watch; Host changes require a Harness restart. If the local install copies rather

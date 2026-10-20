@@ -15,3 +15,14 @@ Thumbs.db
 # Local environment
 .env
 .env.*
+
+# Credentials and private material (defense in depth; never commit these)
+.npmrc
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa*
+id_ed25519*

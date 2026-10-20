@@ -41,7 +41,18 @@ General UI bugs, missing features and questions belong in public issues.
   symlinks. Path segments are validated before the filesystem call.
 - Uploads are opened with `wx` in auto-rename mode so concurrent same-name uploads
   do not overwrite each other.
+- Git operations run locally through `git`; the plugin does not fetch, pull or push
+  and stores no remote credentials. Commits run the repository’s configured hooks.
 - The plugin registers no model-facing tools, prompts or session events.
+
+## Before you publish
+
+- Do not commit environment files, registry tokens, private keys or Harness profile
+  directories. The repository `.gitignore` covers common cases, but it cannot
+  protect a file that was already staged.
+- Review `git status --short` and the staged diff before the first push, especially
+  when the repository was cloned into a directory that also contains local
+  workspace or profile data.
 
 ## Supported versions
 

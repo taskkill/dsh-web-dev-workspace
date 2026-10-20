@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Workspace Git",
+    "description": "Inspect local Git changes, stage files, commit, initialize a repository and switch branches from the workspace panel. No fetch/pull/push and no credential storage."
+  }
+}

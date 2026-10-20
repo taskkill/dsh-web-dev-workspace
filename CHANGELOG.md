@@ -28,6 +28,12 @@ Initial open-source release.
 
 - Multi-tab editor with syntax highlighting (including C# `.cs`/`.csx`), line
   numbers, auto-indent, a remembered word-wrap toggle and copy-all.
+- Distinct, theme-adaptive syntax colors for keywords, types, functions, strings,
+  numbers, properties and comments, instead of near-body-text accents.
+- Expanded language coverage: Kotlin, Scala, Swift, Dart, Groovy, R, Perl,
+  PowerShell, F#, VB.NET, Objective-C, Protocol Buffers, GraphQL, Terraform,
+  CMake, Dockerfile, Makefile and Razor (plus filename detection for Dockerfile,
+  Makefile and CMakeLists.txt variants).
 - Save, reload and stale-file protection with reload/overwrite choices.
 - Markdown files share the full text-editing path: initial read, save, reload,
   copy-all and word wrap, alongside the rendered preview.
@@ -39,8 +45,20 @@ Initial open-source release.
 - Forced-download route for any file, including PDFs and images.
 - Host-only companion bundle `@local/dsh-side-io` for binary I/O.
 
+### Git
+
+- Git view in the explorer header with branch, upstream and ahead/behind status.
+- Staged, unstaged and untracked file lists; per-file and bulk stage/unstage.
+- Commit message box with `Ctrl/⌘+Enter`; read-only unified diff modal.
+- Repository initialization and local branch switching.
+- Host-only companion bundle `@local/dsh-side-git` for safe local Git
+  operations; no fetch/pull/push and no credential storage.
+
 ### Integration
 
 - Left-sidebar panel entry, right-sidebar Start card and tab body/title seats.
 - English and Chinese UI; theme-token styling; no Harness Client imports.
+- Fixed the SVG icon renderer so multi-path icons (new file/folder, upload and
+  download, wrap, More, Git, hidden files, copy, save and collapse) render every
+  stroke; key toolbar/editor icons use a crisp 16px size.
 - No model-facing tools, prompts or session events.

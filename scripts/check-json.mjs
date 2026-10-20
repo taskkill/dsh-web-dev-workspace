@@ -7,6 +7,9 @@ const files = [
   'dsh-side-io/package.json',
   'dsh-side-io/locale/en.json',
   'dsh-side-io/locale/zh.json',
+  'dsh-side-git/package.json',
+  'dsh-side-git/locale/en.json',
+  'dsh-side-git/locale/zh.json',
 ]
 
 for (const file of files) JSON.parse(readFileSync(file, 'utf8'))

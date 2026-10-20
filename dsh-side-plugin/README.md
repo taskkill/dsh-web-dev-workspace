@@ -3,7 +3,8 @@
 Part of **[DSH Side](../README.md)** — a VS Code-style workspace for the
 DeepSeek Harness Web UI. This package is the main bundle: it provides the Host
 file API and the browser explorer/editor. Upload and forced download are provided
-by the companion host-only bundle [`@local/dsh-side-io`](../dsh-side-io).
+by the companion host-only bundle [`@local/dsh-side-io`](../dsh-side-io); the Git
+view is provided by [`@local/dsh-side-git`](../dsh-side-git).
 
 Chinese overview: [`README.zh.md`](../README.zh.md).
 
@@ -25,15 +26,16 @@ checkout through the Harness Plugin Manager:
    /absolute/path/to/dsh-side/dsh-side-plugin
    ```
 
-3. Install and enable it, then install the companion bundle the same way:
+3. Install and enable it, then install the two companion bundles the same way:
 
    ```text
    /absolute/path/to/dsh-side/dsh-side-io
+   /absolute/path/to/dsh-side/dsh-side-git
    ```
 
 4. Refresh the page if the new entries are not visible.
 
-You can also ask the Harness agent to install both local bundle directories. The
+You can also ask the Harness agent to install all three local bundle directories. The
 full installation, update, uninstall and troubleshooting notes live in the
 [root README](../README.md#installation).
 
@@ -44,6 +46,7 @@ third-party runtime dependencies.
 
 - **Left Sidebar** panel icon (`sidebar.panellist`, id `files`) opens the full
   workspace in the centre column.
+- A **Git** button in the explorer header switches to the source-control view.
 - **Right Sidebar Start / guide page** lists a third card, "Code Workspace", next
   to "Workspace files" and "New terminal". Picking it opens the same workspace as
   a right-sidebar tab. In a narrow sidebar the page switches to a compact
@@ -99,7 +102,9 @@ third-party runtime dependencies.
   stale-file protection, drag-to-resize explorer width, a remembered and visibly
   labeled word-wrap toggle, and one-click **copy all** of the active buffer.
 - Syntax highlighting for JavaScript/TypeScript, JSON, CSS, HTML/XML, Python,
-  Shell, YAML, SQL, Markdown, Rust, Go, Java, C#, C/C++, Ruby, PHP, Lua, config files,
+  Shell, YAML, SQL, Markdown, Rust, Go, Java, Kotlin, Scala, Swift, Dart, Groovy, C#,
+  C/C++, Objective-C, Ruby, PHP, Lua, R, Perl, PowerShell, F#, VB.NET, Razor,
+  Protocol Buffers, GraphQL, Terraform, CMake, Dockerfile, Makefile, config files,
   and diffs.
 - Line numbers (kept aligned when word wrap is on), `Tab` indentation, basic
   auto-indent.
@@ -110,6 +115,16 @@ third-party runtime dependencies.
 - Open tabs, tree expansion, and unsaved buffers survive switching between the
   conversation, the right Sidebar, and this panel for the lifetime of the page.
 
+### Git
+
+- Branch, upstream and ahead/behind status; staged, unstaged and untracked files.
+- Stage/unstage a file or everything, commit with a message (`Ctrl/⌘+Enter`), view a
+  read-only unified diff, initialize a repository and switch local branches.
+- Requires the [`@local/dsh-side-git`](../dsh-side-git) host companion; if it is not
+  installed, the Git view shows an install hint.
+- Local-only: no fetch/pull/push, no remote credentials. The workspace must be the
+  repository root; commit runs the repository's configured Git hooks.
+
 ## Shortcuts
 
 | Shortcut | Action |
@@ -119,6 +134,7 @@ third-party runtime dependencies.
 | `Delete` | Delete the selected file/folder |
 | `Enter` | Open the selected file / toggle the selected folder |
 | `Alt + Home` | Go to the current workspace root |
+| `Ctrl/⌘ + Enter` | Commit staged changes from the Git message box |
 | `Escape` | Close a menu/modal or clear the address input |
 
 ## How it works
@@ -150,6 +166,10 @@ third-party runtime dependencies.
   overwrite each other, and confines every target to a registered workspace root
   (or the deployment default directory). Downloads are streamed with
   `Content-Disposition: attachment`.
+- Git status/stage/commit/diff/branch operations live in the separate host-only
+  bundle [`@local/dsh-side-git`](../dsh-side-git) at `/api/dsh-side-git`. It invokes
+  `git` locally with `execFile`, requires the workspace to be the repository root
+  and never runs network commands.
 - No model-facing tools, prompts, or session events are registered.
 
 ## Local data
@@ -170,8 +190,10 @@ Preferences and favorites are stored in the browser's `localStorage`:
 
 - Only registered workspaces (or the deployment default directory) are
   accessible; an absolute path typed in the address bar is registered first.
-- No folder upload/download, no automatic file watching, no Git UI, no search, no
+- No folder upload/download, no automatic file watching, no search, no
   drag-and-drop, and no binary editing.
+- Git is limited to the repository root; no pull/push, merge/rebase or hunk-level
+  staging.
 - External changes require a manual refresh/reload; saves use stale-file
   protection.
 - Built against Harness `0.2.1-rc.2`; newer releases may change slot/service
