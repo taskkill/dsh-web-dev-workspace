@@ -2,7 +2,7 @@
   <img src="dsh-web-filebrowser-plugin/icon.svg" width="88" height="88" alt="DSH Web Filebrowser icon" />
 </p>
 
-<h1 align="center">Deepseek Harness Web Power FileBrowser</h1>
+<h1 align="center">Deepseek Harness Web FileBrowser</h1>
 
 <p align="center">
   A VS Code-style workspace for the <strong>DeepSeek Harness</strong> Web UI:
@@ -183,6 +183,7 @@ it for you.
   <img alt="dshwfb" src="./docs/3.png" width="500px" />
   <img alt="dshwfb" src="./docs/4.png" width="500px" />
   <img alt="dshwfb" src="./docs/5.png" width="500px" />
+  <img alt="dshwfb" src="./docs/6.png" width="500px" />
 
 ## Installation
 

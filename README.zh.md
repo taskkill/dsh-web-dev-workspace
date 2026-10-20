@@ -2,7 +2,7 @@
   <img src="dsh-web-filebrowser-plugin/icon.svg" width="88" height="88" alt="DSH Web Filebrowser 图标" />
 </p>
 
-<h1 align="center">Deepseek Harness Web 增强文件管理器</h1>
+<h1 align="center">Deepseek Harness Web 文件管理器</h1>
 
 <p align="center">
   为 <strong>DeepSeek Harness</strong> Web UI 提供 VS Code 风格工作区：
@@ -118,6 +118,7 @@ DSH Web Filebrowser 把 Harness Web UI 变成一个真正可用的编码工作�
   <img alt="dshwfb" src="./docs/3.png" width="500px" />
   <img alt="dshwfb" src="./docs/4.png" width="500px" />
   <img alt="dshwfb" src="./docs/5.png" width="500px" />
+  <img alt="dshwfb" src="./docs/6.png" width="500px" />
 
 ## 安装
 
