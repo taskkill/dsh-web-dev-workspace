@@ -138,7 +138,9 @@ third-party runtime dependencies.
 
 - Add `ssh://user@host:port/absolute/path` from the workspace picker or the address
   bar. The Host connects over SFTP using the SSH agent or keys under `~/.ssh`
-  (`~/.ssh/config` HostName/User/Port/IdentityFile are honored).
+  (`~/.ssh/config` HostName/User/Port/IdentityFile are honored). A password can be
+  entered for one connection; it is not written to disk and must be re-entered
+  after the connection drops.
 - Browse, edit/save, create, rename, delete, copy/move and upload/download on the
   remote root; drag-and-drop upload and the context menu use the same paths as
   local workspaces. Git is local-only and its bottom tab is hidden for SSH roots.
@@ -255,7 +257,8 @@ Preferences and favorites are stored in the browser's `localStorage`:
 - Only registered workspaces (or the deployment default directory) are
   accessible; an absolute path typed in the address bar is registered first.
 - No folder upload/download, no automatic file watching, no search, and no
-  binary editing. SSH host keys are not pinned and password auth is not offered.
+  binary editing. SSH host keys are not pinned; password auth is one-time per
+  connection and is never stored.
 - Git is limited to the repository root; no automatic merge/rebase or hunk-level
   staging. A diverged pull must be resolved in a terminal, and pushes never force.
 - External changes require a manual refresh/reload; saves use stale-file

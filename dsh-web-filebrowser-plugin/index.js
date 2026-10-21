@@ -161,7 +161,8 @@ async function handleRequest(ctx, request) {
       return json({ ok: false, error: failure('bad-request', '缺少操作名 op') }, 400)
     }
     if (body.op === 'sshTest') {
-      return json({ ok: true, value: await ssh.test(typeof body.spec === 'string' ? body.spec : '') })
+      const password = typeof body.password === 'string' && body.password.length > 0 ? body.password : undefined
+      return json({ ok: true, value: await ssh.test(typeof body.spec === 'string' ? body.spec : '', password) })
     }
     const value = await dispatch(ctx, body.op, body)
     return json({ ok: true, value })

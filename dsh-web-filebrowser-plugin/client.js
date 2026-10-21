@@ -236,7 +236,10 @@ window.__ModuleLoader__.load({
       'workspace.label': '工作区',
       'ssh.add': '添加 SSH 远程…',
       'ssh.title': '添加 SSH 远程目录',
-      'ssh.hint': '填写 ssh://user@host:port/绝对路径。认证使用 SSH agent 或 ~/.ssh 下的私钥；插件不保存密码。',
+      'ssh.hint': '填写 ssh://user@host:port/绝对路径。默认使用 SSH agent 或 ~/.ssh 下的私钥；也可输入一次性密码。',
+      'ssh.password': '密码（可选，仅用于本次连接）',
+      'ssh.passwordHint': '密码只用于建立当前 SSH 连接，不会写入磁盘；连接断开后需要重新输入。',
+      'ssh.enterPassword': '输入密码',
       'ssh.badSpec': 'SSH 地址无效，应形如 ssh://user@host:22/var/www',
       'ssh.notDirectory': '该路径不是远程目录',
       'ssh.test': '测试连接',
@@ -610,7 +613,10 @@ window.__ModuleLoader__.load({
       'workspace.label': 'Workspace',
       'ssh.add': 'Add SSH remote…',
       'ssh.title': 'Add SSH remote folder',
-      'ssh.hint': 'Enter ssh://user@host:port/absolute/path. Authentication uses the SSH agent or keys under ~/.ssh; passwords are never stored.',
+      'ssh.hint': 'Enter ssh://user@host:port/absolute/path. Authentication uses the SSH agent or keys under ~/.ssh; you can also enter a one-time password.',
+      'ssh.password': 'Password (optional, this connection only)',
+      'ssh.passwordHint': 'The password is used only to establish this connection and is never written to disk; re-enter it after the connection drops.',
+      'ssh.enterPassword': 'Enter password',
       'ssh.badSpec': 'Invalid SSH address; use ssh://user@host:22/var/www',
       'ssh.notDirectory': 'That path is not a remote directory',
       'ssh.test': 'Test connection',
@@ -5455,6 +5461,7 @@ window.__ModuleLoader__.load({
         const [previewScheme, setPreviewScheme] = useState(() => normalizePreviewScheme(readStorage(PREVIEW_SCHEME_KEY)))
         const [sshOpen, setSshOpen] = useState(false)
         const [sshSpec, setSshSpec] = useState('')
+        const [sshPassword, setSshPassword] = useState('')
         const [sshBusy, setSshBusy] = useState(false)
         const [sshError, setSshError] = useState(null)
         const [sshCheck, setSshCheck] = useState(null)
@@ -5682,14 +5689,14 @@ window.__ModuleLoader__.load({
         async function loadDir(levelPath, options = {}) {
           const root = options.root ?? store.get().root
           if (root === null) return
-          patchLevel(levelPath, { status: 'loading', error: null })
+          patchLevel(levelPath, { status: 'loading', error: null, code: null })
           try {
             const value = await call('list', { root, path: levelPath })
             if (store.get().root !== root) return
-            patchLevel(levelPath, { status: 'ready', error: null, entries: Array.isArray(value?.entries) ? value.entries : [] })
+            patchLevel(levelPath, { status: 'ready', error: null, code: null, entries: Array.isArray(value?.entries) ? value.entries : [] })
           } catch (error) {
             if (store.get().root !== root) return
-            patchLevel(levelPath, { status: 'error', error: t('error.list', { message: errorText(error) }) })
+            patchLevel(levelPath, { status: 'error', error: t('error.list', { message: errorText(error) }), code: errorCode(error) })
           }
         }
 
@@ -5768,12 +5775,18 @@ window.__ModuleLoader__.load({
           applyRoot(nextRoot)
         }
 
-        function openSshDialog() {
+        function openSshDialog(initialSpec = '') {
           setPickerOpen(false)
-          setSshSpec('')
+          setSshSpec(typeof initialSpec === 'string' ? initialSpec : '')
+          setSshPassword('')
           setSshError(null)
           setSshCheck(null)
           setSshOpen(true)
+        }
+
+        function closeSshDialog() {
+          setSshOpen(false)
+          setSshPassword('')
         }
 
         function validSshSpec(spec) {
@@ -5786,8 +5799,10 @@ window.__ModuleLoader__.load({
           }
         }
 
-        async function probeSsh(spec) {
-          const value = await call('sshTest', { spec })
+        async function probeSsh(spec, password = '') {
+          const params = { spec }
+          if (password.length > 0) params.password = password
+          const value = await call('sshTest', params)
           if (value === null || typeof value !== 'object' || value.type !== 'directory') {
             throw new Error(t('ssh.notDirectory'))
           }
@@ -5805,7 +5820,7 @@ window.__ModuleLoader__.load({
           setSshError(null)
           setSshCheck(null)
           try {
-            const value = await probeSsh(spec)
+            const value = await probeSsh(spec, sshPassword)
             setSshCheck(value.name ?? sshRootTitle(spec))
           } catch (error) {
             setSshError(errorText(error))
@@ -5843,14 +5858,15 @@ window.__ModuleLoader__.load({
           setSshBusy(true)
           setSshError(null)
           try {
-            const value = await probeSsh(spec)
+            const value = await probeSsh(spec, sshPassword)
             const entry = { path: spec, title: sshRootTitle(spec) }
             const roots = [...store.get().roots.filter((item) => item.path !== spec), entry]
             writeSshRoots([...readSshRoots(), spec])
             unhideRoot(spec)
             setSshCheck(value.name ?? entry.title)
-            setSshOpen(false)
-            activateRootEntry(entry, roots)
+            closeSshDialog()
+            if (store.get().root === spec) void refreshTree()
+            else activateRootEntry(entry, roots)
           } catch (error) {
             setSshError(errorText(error))
           } finally {
@@ -6379,6 +6395,17 @@ window.__ModuleLoader__.load({
               setSshCheck(value.name ?? entry.title)
               activateRootEntry(entry, roots)
             } catch (error) {
+              if (errorCode(error) === 'ssh-auth') {
+                setAddress('')
+                setBanner(null)
+                setSshSpec(raw)
+                setSshPassword('')
+                setSshError(null)
+                setSshCheck(null)
+                setPickerOpen(false)
+                setSshOpen(true)
+                return
+              }
               setBanner({ kind: 'error', message: t('ssh.connectFailed', { message: errorText(error) }) })
             }
             return
@@ -7515,11 +7542,23 @@ window.__ModuleLoader__.load({
             return nodes
           }
           if (level.status === 'error') {
+            const sshAuthFailed = level.code === 'ssh-auth' && isSshRootPath(store.get().root)
             nodes.push(
               h(
                 'div',
                 { key: `error-${levelPath}`, className: 'ds-errorline' },
                 h('span', null, level.error ?? t('error.internal', { message: '' })),
+                sshAuthFailed
+                  ? h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'ds-linkbtn',
+                        onClick: () => openSshDialog(store.get().root ?? ''),
+                      },
+                      t('ssh.enterPassword'),
+                    )
+                  : null,
                 h(
                   'button',
                   { type: 'button', className: 'ds-linkbtn', onClick: () => void loadDir(levelPath) },
@@ -8124,7 +8163,7 @@ window.__ModuleLoader__.load({
               h('span', { className: 'ds-workspace-empty' }, t('root.none')),
               h(
                 'button',
-                { type: 'button', className: 'ds-ws-add', onClick: openSshDialog },
+                { type: 'button', className: 'ds-ws-add', onClick: () => openSshDialog() },
                 h(PlusIcon),
                 t('ssh.add'),
               ),
@@ -8194,7 +8233,7 @@ window.__ModuleLoader__.load({
                   h('div', { className: 'ds-menu-sep' }),
                   h(
                     'button',
-                    { type: 'button', className: 'ds-ws-add', onClick: openSshDialog },
+                    { type: 'button', className: 'ds-ws-add', onClick: () => openSshDialog() },
                     h(PlusIcon),
                     t('ssh.add'),
                   ),
@@ -9257,7 +9296,7 @@ window.__ModuleLoader__.load({
                 {
                   className: 'ds-modal-backdrop',
                   onPointerDown: (event) => {
-                    if (event.target === event.currentTarget && !sshBusy) setSshOpen(false)
+                    if (event.target === event.currentTarget && !sshBusy) closeSshDialog()
                   },
                 },
                 h(
@@ -9284,6 +9323,28 @@ window.__ModuleLoader__.load({
                       }
                     },
                   }),
+                  h('input', {
+                    className: 'ds-ssh-input ds-ssh-password',
+                    type: 'password',
+                    'aria-label': t('ssh.password'),
+                    value: sshPassword,
+                    placeholder: t('ssh.password'),
+                    autoComplete: 'off',
+                    spellCheck: false,
+                    disabled: sshBusy,
+                    onChange: (event) => {
+                      setSshPassword(event.target.value)
+                      setSshError(null)
+                      setSshCheck(null)
+                    },
+                    onKeyDown: (event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault()
+                        void addSsh()
+                      }
+                    },
+                  }),
+                  h('div', { className: 'ds-ssh-hint' }, t('ssh.passwordHint')),
                   sshError === null ? null : h('div', { className: 'ds-errorline' }, sshError),
                   sshCheck === null
                     ? null
@@ -9298,7 +9359,7 @@ window.__ModuleLoader__.load({
                     ),
                     h(
                       'button',
-                      { type: 'button', className: 'ds-btn', disabled: sshBusy, onClick: () => setSshOpen(false) },
+                      { type: 'button', className: 'ds-btn', disabled: sshBusy, onClick: closeSshDialog },
                       t('action.cancel'),
                     ),
                     h(
@@ -10997,6 +11058,7 @@ window.__ModuleLoader__.load({
   outline: none;
 }
 .ds-ssh-input:focus { border-color: var(--dsw-alias-brand-primary); }
+.ds-ssh-hint { margin-top: 6px; color: var(--dsw-alias-label-caption); font-size: 11px; line-height: 1.5; }
 .ds-ssh-ok { margin-top: 8px; color: var(--dsw-alias-state-success-primary); font-size: 11.5px; }
 .ds-modal {
   width: min(430px, 100%);

@@ -4,6 +4,16 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### SSH
+
+- Add optional one-time password authentication for SSH roots. A password is used
+  only to establish the current connection, is kept in memory for that attempt,
+  is never written to disk, and must be re-entered after the connection drops.
+  When an SSH root cannot authenticate, the tree offers an **Enter password**
+  action instead of only a retry.
+- Fix the blank panel when opening **Add SSH remote…**: the dialog referenced an
+  undefined `tab` variable while choosing its autofocus target.
+
 ### Terminal
 
 - Fix `spawn script ENOENT` on Windows: the local terminal now uses `cmd.exe`

@@ -89,7 +89,7 @@ function mapError(error) {
   if (code === 2 || /no such file|not found/iu.test(message)) return new SshError('not-found', '远程文件或目录不存在')
   if (code === 3 || /permission denied/iu.test(message)) return new SshError('permission', '没有权限访问远程文件')
   if (/all configured authentication methods failed|authentication/iu.test(message)) {
-    return new SshError('ssh-auth', 'SSH 认证失败；请配置 SSH agent 或 ~/.ssh 下的私钥')
+    return new SshError('ssh-auth', 'SSH 认证失败；请检查密码，或配置 SSH agent / ~/.ssh 下的私钥')
   }
   if (/timed out|timeout|ETIMEDOUT/iu.test(message)) return new SshError('ssh-timeout', '连接 SSH 主机超时')
   if (/ENOTFOUND|EAI_AGAIN|ECONNREFUSED|EHOSTUNREACH|ENETUNREACH/iu.test(message)) {
@@ -171,17 +171,40 @@ function expandHome(value) {
   return value
 }
 
-async function authentication(parsed) {
+/**
+ * Resolve the effective connection identity without reading any credential.
+ *
+ * Keeping identity resolution separate lets an existing pooled connection be
+ * reused even after the agent socket or key files disappear.
+ */
+async function identityFor(parsed) {
   const config = await sshConfig()
   const entry = config.get(parsed.host) ?? config.get('*') ?? {}
   const host = entry.hostName ?? parsed.host
   const port = parsed.port === DEFAULT_PORT && Number.isInteger(entry.port) ? entry.port : parsed.port
   const username = parsed.username ?? entry.user ?? os.userInfo().username
+  return { host, port, username, configEntry: entry, key: `${username}@${host}:${String(port)}` }
+}
+
+/**
+ * Build the auth attempts for one new connection.
+ *
+ * An explicitly supplied password is the only attempt: it is never persisted
+ * and only exists for this connection attempt. Without one, try the SSH agent
+ * and then the usual private-key locations.
+ */
+async function authenticationAttempts({ configEntry }, password) {
+  if (typeof password === 'string' && password.length > 0) return [{ password }]
   const attempts = []
   if (typeof process.env.SSH_AUTH_SOCK === 'string' && process.env.SSH_AUTH_SOCK.length > 0) {
     attempts.push({ agent: process.env.SSH_AUTH_SOCK })
   }
-  const candidates = [...(Array.isArray(entry.identityFile) ? entry.identityFile : []), '~/.ssh/id_ed25519', '~/.ssh/id_rsa', '~/.ssh/id_ecdsa']
+  const candidates = [
+    ...(Array.isArray(configEntry.identityFile) ? configEntry.identityFile : []),
+    '~/.ssh/id_ed25519',
+    '~/.ssh/id_rsa',
+    '~/.ssh/id_ecdsa',
+  ]
   const seen = new Set()
   for (const candidate of candidates) {
     const filename = expandHome(candidate)
@@ -195,9 +218,9 @@ async function authentication(parsed) {
     }
   }
   if (attempts.length === 0) {
-    throw new SshError('ssh-auth', '没有可用的 SSH 凭据；请启动 ssh-agent 或配置 ~/.ssh 私钥')
+    throw new SshError('ssh-auth', '没有可用的 SSH 凭据；请输入密码，或启动 ssh-agent / 配置 ~/.ssh 私钥')
   }
-  return { host, port, username, attempts, key: `${username}@${host}:${String(port)}` }
+  return attempts
 }
 
 /* -------------------------------------------------------------------------- */
@@ -237,19 +260,22 @@ async function connect({ host, port, username, attempts, key }) {
   throw lastError ?? new SshError('ssh-auth', 'SSH 认证失败')
 }
 
-async function clientFor(parsed) {
-  const auth = await authentication(parsed)
-  let pending = pool.get(auth.key)
+async function clientFor(parsed, password) {
+  const identity = await identityFor(parsed)
+  let pending = pool.get(identity.key)
   if (pending === undefined) {
-    pending = guard(() => connect(auth))
-    pool.set(auth.key, pending)
-    pending.catch(() => pool.delete(auth.key))
+    pending = guard(async () => {
+      const attempts = await authenticationAttempts(identity, password)
+      return connect({ ...identity, attempts })
+    })
+    pool.set(identity.key, pending)
+    pending.catch(() => pool.delete(identity.key))
   }
   return pending
 }
 
-async function openSftp(parsed) {
-  const client = await clientFor(parsed)
+async function openSftp(parsed, password) {
+  const client = await clientFor(parsed, password)
   return new Promise((resolve, reject) => {
     client.sftp((error, sftp) => (error ? reject(error) : resolve(sftp)))
   })
@@ -261,9 +287,9 @@ function call(sftp, method, ...args) {
   })
 }
 
-async function withSftp(parsed, operation) {
+async function withSftp(parsed, operation, password) {
   return guard(async () => {
-    const sftp = await openSftp(parsed)
+    const sftp = await openSftp(parsed, password)
     try {
       return await operation(sftp)
     } finally {
@@ -289,16 +315,23 @@ async function statOrNull(sftp, target) {
 /* Operations                                                                 */
 /* -------------------------------------------------------------------------- */
 
-export async function test(spec) {
+export async function test(spec, password) {
+  if (password !== undefined && typeof password !== 'string') throw new SshError('bad-credential', '密码无效')
+  const secret = password !== undefined && password.length > 0 ? password : undefined
+  if (secret !== undefined && secret.length > 4096) throw new SshError('bad-credential', '密码过长')
   const parsed = parseSshRoot(spec)
-  return withSftp(parsed, async (sftp) => {
-    const attrs = await call(sftp, 'lstat', parsed.path)
-    return {
-      root: spec,
-      name: path.posix.basename(parsed.path) || parsed.path,
-      type: attrs.isDirectory() ? 'directory' : 'file',
-    }
-  })
+  return withSftp(
+    parsed,
+    async (sftp) => {
+      const attrs = await call(sftp, 'lstat', parsed.path)
+      return {
+        root: spec,
+        name: path.posix.basename(parsed.path) || parsed.path,
+        type: attrs.isDirectory() ? 'directory' : 'file',
+      }
+    },
+    secret,
+  )
 }
 
 export async function list(spec, body) {

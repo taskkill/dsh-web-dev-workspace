@@ -246,8 +246,9 @@ it for you.
 - Browse, open/save text files, create, rename, delete, copy/move and
   upload/download over SFTP; drag-and-drop upload works for remote roots too.
 - Authentication uses the SSH agent or keys under `~/.ssh` (HostName, User, Port
-  and IdentityFile from `~/.ssh/config` are honored). Passwords are never
-  prompted for or stored.
+  and IdentityFile from `~/.ssh/config` are honored). A password can also be
+  entered for a single connection; it is never written to disk and must be
+  re-entered after the connection drops.
 - SSH support requires `ssh2`: run `npm install` once at the repository root.
   Without it every other feature still works; SSH operations report the missing
   dependency.
@@ -528,10 +529,11 @@ issue for security-sensitive reports.
 - **No model-visible data**: it registers no tools, prompts, system-prompt
   sections, or session events. Opening a file in the editor does not add it to the
   conversation.
-- **SSH remote folders**: authentication uses only the Host's SSH agent or keys
-  under `~/.ssh`; passwords are never collected or stored. `ssh2` accepts the host
-  key presented at connect time (no known_hosts pinning), so use trusted hosts and
-  networks only.
+- **SSH remote folders**: authentication uses the Host's SSH agent or keys under
+  `~/.ssh`, and optionally a password supplied for one connection. That password
+  lives only in the request/connection in memory, is never written to disk, and
+  expires when the connection drops. `ssh2` accepts the host key presented at
+  connect time (no known_hosts pinning), so use trusted hosts and networks only.
 - **Git network operations are explicit**: fetch/pull/push only touch remotes the
   repository already configures; pull is fast-forward only, push never forces, no
   automatic merge/rebase runs, and no credential is stored. **Restore** deletes

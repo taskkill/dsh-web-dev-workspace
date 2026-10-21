@@ -73,9 +73,10 @@ General UI bugs, missing features and questions belong in public issues.
   capped at 1 MB and at most 8 sessions may exist.
 - xterm.js and its fit addon are vendored under `dsh-web-filebrowser-plugin/vendor/`
   and served only through the authenticated terminal asset route.
-- SSH remote folders authenticate with the Host's SSH agent or `~/.ssh` keys and
-  never collect passwords. `ssh2` does not pin host keys, so connect only to hosts
-  you trust.
+- SSH remote folders authenticate with the Host's SSH agent or `~/.ssh` keys; a
+  password can be supplied for one connection, is kept only in memory for that
+  attempt, and is never written to disk. `ssh2` does not pin host keys, so connect
+  only to hosts you trust.
 - The plugin registers no model-facing tools, prompts or session events.
 
 ## Before you publish
