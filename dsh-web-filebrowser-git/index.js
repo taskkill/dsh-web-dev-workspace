@@ -2,7 +2,8 @@
  * Host half of the Workspace Git bundle.
  *
  * The file explorer already owns file mutations; this companion adds local Git
- * operations and explicit remote synchronization for the selected workspace.
+ * operations (including discarding changes and stashing work), commit history
+ * and explicit remote synchronization for the selected workspace.
  * Credentials are never collected or stored: network commands run with
  * `GIT_TERMINAL_PROMPT=0`, so the Host's own SSH key or credential helper stays
  * the only authentication path.
@@ -52,6 +53,12 @@ const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
 
 /** Maximum number of files returned by one compare. */
 const MAX_COMPARE_FILES = 2000
+
+/** Maximum number of stash entries returned. */
+const MAX_STASHES = 200
+
+/** A stash reflog selector; arbitrary revisions are never accepted. */
+const STASH_REF = /^stash@\{\d{1,4}\}$/u
 
 /** One local Git command may not run forever. */
 const TIMEOUT_MS = 15000
@@ -146,8 +153,23 @@ async function dispatch(root, body) {
       return stage(root, body)
     case 'unstage':
       return unstage(root, body)
+    case 'discard':
+    case 'restore':
+      return discard(root, body)
     case 'commit':
       return commit(root, body)
+    case 'stash-list':
+      return stashList(root)
+    case 'stash-save':
+    case 'stash-push':
+    case 'stash':
+      return stashSave(root, body)
+    case 'stash-apply':
+      return stashApply(root, body, false)
+    case 'stash-pop':
+      return stashApply(root, body, true)
+    case 'stash-drop':
+      return stashDrop(root, body)
     case 'branches':
       return branches(root)
     case 'checkout':
@@ -327,11 +349,21 @@ async function requireRepo(root) {
 async function status(root) {
   const info = await inspectRepo(root)
   if (!info.repo) return { repo: false, reason: info.reason }
-  const [raw, remotes] = await Promise.all([
+  const [raw, remotes, stashCount] = await Promise.all([
     runGit(root, ['status', '--porcelain=v1', '-z', '--branch', '--untracked-files=all']),
     listRemotes(root),
+    countStashes(root),
   ])
-  return { ...parseStatus(raw), remotes }
+  return { ...parseStatus(raw), remotes, stashCount }
+}
+
+/** Number of stash entries, used for the toolbar badge. */
+async function countStashes(root) {
+  try {
+    return uniqueLines(await runGit(root, ['stash', 'list', '--format=%gd'])).length
+  } catch {
+    return 0
+  }
 }
 
 function parseStatus(raw) {
@@ -632,6 +664,70 @@ async function unstage(root, body) {
   return { ok: true }
 }
 
+/**
+ * Restore changed paths.
+ *
+ * Unstaged entries are restored from the index (`git restore --worktree`);
+ * untracked entries are removed from disk. Staged entries are restored to HEAD
+ * in both the index and the worktree, which also resolves conflicts on that
+ * path. An unborn repository has no HEAD, so its staged files are removed from
+ * the index and disk instead.
+ */
+async function discard(root, body) {
+  await requireRepo(root)
+  const stagedOnly = body.staged === true
+  const requested = normalizePathList(root, body.paths)
+  const current = await status(root)
+  if (!current.repo) throw new GitError('not-repo', '当前工作区不是 Git 仓库')
+  const pool = stagedOnly ? current.staged : current.changes
+  let targets = pool
+  if (requested.length > 0) {
+    const wanted = new Set(requested)
+    targets = pool.filter((entry) => wanted.has(entry.path))
+    if (targets.length === 0) return { ok: true, discarded: 0 }
+  }
+  if (targets.length === 0) return { ok: true, discarded: 0 }
+  const head = await hasHead(root)
+  let discarded = 0
+  for (const entry of targets) {
+    if (entry.untracked) {
+      await removeWorktreePath(root, entry.path)
+    } else if (stagedOnly) {
+      if (head) {
+        const paths = [entry.path]
+        if (typeof entry.oldPath === 'string' && entry.oldPath.length > 0) paths.push(entry.oldPath)
+        await runGit(root, ['restore', '--source=HEAD', '--staged', '--worktree', '--', ...paths])
+      } else {
+        await runGit(root, ['rm', '--cached', '-r', '-q', '--', entry.path])
+        await removeWorktreePath(root, entry.path)
+      }
+    } else if (entry.conflict) {
+      await runGit(root, ['restore', '--source=HEAD', '--staged', '--worktree', '--', entry.path])
+    } else {
+      await runGit(root, ['restore', '--worktree', '--', entry.path])
+    }
+    discarded += 1
+  }
+  return { ok: true, discarded }
+}
+
+/** Remove one untracked path without following symlinks outside the root. */
+async function removeWorktreePath(root, relative) {
+  if (relative === '.git' || relative.startsWith('.git/')) {
+    throw new GitError('bad-path', '不能还原 Git 元数据目录')
+  }
+  const absolute = path.resolve(root, ...relative.split('/'))
+  if (!isInside(root, absolute)) throw new GitError('outside-root', '路径超出工作区范围')
+  let info
+  try {
+    info = await fsp.lstat(absolute)
+  } catch {
+    return false
+  }
+  await fsp.rm(absolute, { recursive: info.isDirectory(), force: true })
+  return true
+}
+
 async function commit(root, body) {
   await requireRepo(root)
   const message = typeof body.message === 'string' ? body.message.trim() : ''
@@ -656,6 +752,123 @@ async function initRepository(root) {
   }
   await runGit(root, ['init'])
   return status(root)
+}
+
+/* -------------------------------------------------------------------------- */
+/* Stash                                                                      */
+/* -------------------------------------------------------------------------- */
+
+/** Stash entries, newest first. */
+async function stashList(root) {
+  await requireRepo(root)
+  const raw = await runGit(root, ['stash', 'list', '--format=%gd%x1f%H%x1f%ci%x1f%gs'])
+  const stashes = []
+  for (const line of raw.split('\n')) {
+    if (line.length === 0) continue
+    const fields = line.split('\u001f')
+    if (fields.length < 4) continue
+    const ref = fields[0]
+    if (!STASH_REF.test(ref)) continue
+    stashes.push({
+      ref,
+      hash: fields[1],
+      short: fields[1].slice(0, 12),
+      date: fields[2],
+      message: fields.slice(3).join('\u001f'),
+    })
+    if (stashes.length >= MAX_STASHES) break
+  }
+  return { stashes, truncated: stashes.length >= MAX_STASHES }
+}
+
+/** Save the worktree and index, optionally including untracked files. */
+async function stashSave(root, body) {
+  await requireRepo(root)
+  const message = typeof body.message === 'string' ? body.message.trim() : ''
+  if (message.length > 2000) throw new GitError('message-too-long', '储藏说明过长')
+  if (message.includes('\u0000')) throw new GitError('bad-message', '储藏说明无效')
+  const includeUntracked = body.includeUntracked === true
+  const args = ['stash', 'push']
+  if (message.length > 0) args.push('-m', message)
+  if (includeUntracked) args.push('--include-untracked')
+  let result
+  try {
+    result = await execGit(root, args)
+  } catch (error) {
+    throw mapStashSaveFailure(error)
+  }
+  const summary = summarize([result.stdout, result.stderr].filter((line) => line.length > 0).join('\n'))
+  const saved = !/no local changes to save/iu.test(summary)
+  return { ok: true, saved, includeUntracked, summary }
+}
+
+/** Apply or pop one stash entry, keeping the staged state when possible. */
+async function stashApply(root, body, pop) {
+  await requireRepo(root)
+  const ref = normalizeStashRef(body.stash)
+  await requireStash(root, ref)
+  let result
+  try {
+    result = await execGit(root, ['stash', pop ? 'pop' : 'apply', '--index', ref])
+  } catch (error) {
+    throw mapStashApplyFailure(error)
+  }
+  return {
+    ok: true,
+    stash: ref,
+    popped: pop,
+    summary: summarize(result.stdout || result.stderr),
+  }
+}
+
+async function stashDrop(root, body) {
+  await requireRepo(root)
+  const ref = normalizeStashRef(body.stash)
+  await requireStash(root, ref)
+  try {
+    await runGit(root, ['stash', 'drop', ref])
+  } catch (error) {
+    throw mapStashDropFailure(error)
+  }
+  return { ok: true, stash: ref }
+}
+
+/** Only refs in the current stash list are accepted, never arbitrary revisions. */
+async function requireStash(root, ref) {
+  const listed = uniqueLines(await runGit(root, ['stash', 'list', '--format=%gd']))
+  if (!listed.includes(ref)) throw new GitError('no-stash', `储藏记录不存在：${ref}`)
+}
+
+function mapStashSaveFailure(error) {
+  if (!(error instanceof GitError)) return error
+  if (/unmerged|needs merge|conflict/iu.test(error.message)) {
+    return new GitError('unmerged', '存在未解决的冲突，无法储藏；请先在终端解决冲突')
+  }
+  return error
+}
+
+function mapStashApplyFailure(error) {
+  if (!(error instanceof GitError)) return error
+  const text = error.message
+  if (/no stash entries|not a valid reference|unknown revision|bad revision|no such ref/iu.test(text)) {
+    return new GitError('no-stash', '储藏记录不存在或已被删除')
+  }
+  if (
+    /unmerged|needs merge|conflict|would be overwritten|local changes|index was not unstashed|could not restore/iu.test(
+      text,
+    )
+  ) {
+    return new GitError('stash-conflict', '储藏应用冲突或索引无法完整恢复，部分更改可能已写入工作区；请在终端检查冲突，储藏记录仍会保留')
+  }
+  return error
+}
+
+function mapStashDropFailure(error) {
+  if (!(error instanceof GitError)) return error
+  if (/no stash entries|not a valid reference|unknown revision|bad revision|no such ref/iu.test(error.message)) {
+    return new GitError('no-stash', '储藏记录不存在或已被删除')
+  }
+  return error
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1045,6 +1258,12 @@ function normalizePathList(root, input) {
     paths.push(relative)
   }
   return paths
+}
+
+function normalizeStashRef(input) {
+  const ref = typeof input === 'string' ? input.trim() : ''
+  if (!STASH_REF.test(ref)) throw new GitError('bad-stash', '储藏记录无效')
+  return ref
 }
 
 function normalizeBranchName(input) {

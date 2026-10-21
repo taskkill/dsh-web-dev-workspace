@@ -48,7 +48,10 @@ General UI bugs, missing features and questions belong in public issues.
   fetch/pull/push: pulls are fast-forward only, pushes never force, interactive
   prompts are disabled, and the plugin stores no credentials (the Host's SSH key or
   credential helper is the only authentication path). Commits and pushes run the
-  repository's configured hooks.
+  repository's configured hooks. Restore and stash are local mutations: the UI
+  confirms destructive actions, restore only touches paths reported by `git status`
+  (and deletes untracked files), and stash operations accept only entries present in
+  the current `git stash list`.
 - The built-in browser embeds local/private `http(s)` pages directly in a
   sandboxed iframe without top-navigation permission; same-origin Harness and
   loopback same-port pages are refused to avoid clickjacking.

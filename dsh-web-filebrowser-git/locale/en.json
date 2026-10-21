@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Workspace Git",
-    "description": "Inspect changes, stage, commit, compare branches and explicitly fetch/pull/push from the workspace panel. Fast-forward-only pulls, no force push and no credential storage."
+    "description": "Inspect changes, stage, commit, restore files, stash work, compare branches and explicitly fetch/pull/push from the workspace panel. Fast-forward-only pulls, no force push and no credential storage."
   }
 }

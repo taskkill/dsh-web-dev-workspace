@@ -47,6 +47,7 @@
     "code-editor",
     "git",
     "source-control",
+    "stash",
     "ssh"
   ]
 }

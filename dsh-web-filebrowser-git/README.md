@@ -2,8 +2,8 @@
 
 Host-only companion bundle for **[Workspace Files](../dsh-web-filebrowser-plugin)** — part of
 [DSH Web Filebrowser](../README.md). It adds Git operations to the workspace panel: status,
-staging, commits, diffs, branches, comparison, a commit graph, and explicit
-fetch/pull/push.
+staging, commits, restoring (discarding) changes, stashes, diffs, branches,
+comparison, a commit graph, and explicit fetch/pull/push.
 
 > Git runs on the **Harness host** with the host's permissions. Network commands
 > use the host's existing SSH key or credential helper; the bundle never collects
@@ -33,8 +33,8 @@ is missing, that panel shows an install hint instead of failing silently.
 - The workspace root must be the **repository top level**. Opening a subdirectory
   of a larger repository is rejected for mutations so Git cannot stage or commit
   files outside the selected workspace.
-- A configured Git identity (`user.name` / `user.email`) is required to commit.
-  The plugin does not set or store identity.
+- A configured Git identity (`user.name` / `user.email`) is required to commit
+  and to create stash commits. The plugin does not set or store identity.
 - Network operations need a configured remote; pulls need an upstream branch. The
   Host must already authenticate (SSH key or credential helper) because the plugin
   disables interactive prompts and stores no credentials.
@@ -47,11 +47,17 @@ is missing, that panel shows an install hint instead of failing silently.
 
 | `op` | Body | Result |
 | --- | --- | --- |
-| `status` | `root` | Branch/upstream/ahead/behind, staged entries, changes, untracked files, configured remotes |
+| `status` | `root` | Branch/upstream/ahead/behind, staged entries, changes, untracked files, configured remotes and stash count |
 | `init` | `root` | Runs `git init`, then returns status |
 | `stage` | `root`, optional `paths` | `git add -A` for the paths, or the whole root |
 | `unstage` | `root`, optional `paths` | `git reset`/`git rm --cached` for staged paths |
+| `discard` | `root`, optional `paths`, optional `staged` | Restores working-tree paths from the index, deletes untracked paths, or (with `staged: true`) restores staged paths to `HEAD` in the index and worktree |
 | `commit` | `root`, `message` | `git commit -m <message>` |
+| `stash-list` | `root` | Stash entries (`stash@{n}`, hash, date, message), newest first |
+| `stash-save` | `root`, optional `message`, optional `includeUntracked` | `git stash push`, optionally `--include-untracked`; reports whether anything was saved |
+| `stash-apply` | `root`, `stash` | `git stash apply --index stash@{n}`; keeps the entry |
+| `stash-pop` | `root`, `stash` | `git stash pop --index stash@{n}` |
+| `stash-drop` | `root`, `stash` | `git stash drop stash@{n}` |
 | `history` | `root`, optional `limit` | Commit-graph rows for all refs (Git lane characters, hash, parents, refs, author, date, subject) |
 | `commit-detail` | `root`, `commit` | Commit metadata and first-parent changed files |
 | `commit-diff` | `root`, `commit`, `path` | Unified diff of one file in a commit against its first parent |
@@ -75,7 +81,13 @@ interactive editors and askpass prompts are disabled.
 - The root must be a registered workspace (or the deployment default) **and** the
   repository top level. Paths, refs and remotes are validated before use.
 - Output is capped: up to 2000 status entries, 2 MiB tracked diffs, 512 KiB
-  generated untracked diffs, 100 commits per compare side and 200 graph rows.
+  generated untracked diffs, 100 commits per compare side, 200 graph rows and
+  200 stash entries.
+- Restoring is destructive: only paths reported by status are touched, but
+  untracked files are removed from disk and staged changes are reset to `HEAD`
+  after the UI asks for confirmation.
+- Stash operations accept only `stash@{n}` entries that are present in the current
+  stash list, never arbitrary revisions.
 - Git runs inside the selected repository; its local config, hooks (commit/push) or
   fsmonitor can execute code. Only use Git in repositories you trust.
 - No credentials are read or stored; authentication is delegated to the Host's SSH
@@ -85,8 +97,9 @@ interactive editors and askpass prompts are disabled.
 ## Limitations
 
 - No staging of individual hunks; stage is per file or all.
-- No merge/rebase/cherry-pick/stash UI; a diverged pull must be resolved in a
-  terminal.
+- No merge/rebase/cherry-pick UI; a diverged pull must be resolved in a terminal.
+- Stashing does not include ignored files; only tracked changes and, when chosen,
+  untracked files are stashed.
 - No remote branch checkout, tag management, or per-hunk staging.
 - Repositories whose top level is above the workspace root are not supported for
   mutations.

@@ -376,6 +376,17 @@ window.__ModuleLoader__.load({
       'git.unstage': '取消暂存',
       'git.stageAll': '全部暂存',
       'git.unstageAll': '全部取消暂存',
+      'git.discard': '还原',
+      'git.discardTitle': '还原更改',
+      'git.discardConfirm': '还原“{path}”在工作区的更改？未暂存的内容会丢失。',
+      'git.discardStagedConfirm': '将“{path}”还原到 HEAD 并取消暂存？已暂存和工作区的修改都会丢失。',
+      'git.discardUntrackedConfirm': '删除未跟踪文件“{path}”？该文件将从磁盘移除。',
+      'git.discardConflictConfirm': '将冲突文件“{path}”还原为 HEAD？当前冲突解决内容会丢失。',
+      'git.discardUntrackedHint': '删除未跟踪文件',
+      'git.discardConflictHint': '将冲突文件还原为 HEAD',
+      'git.discardAll': '全部还原',
+      'git.discardAllConfirm': '还原全部 {n} 个更改？未跟踪文件会被删除，且无法恢复。',
+      'git.discardOk': '已还原更改',
       'git.commit': '提交',
       'git.committing': '提交中…',
       'git.commitPlaceholder': '提交信息（Ctrl/⌘+Enter 提交）',
@@ -433,6 +444,31 @@ window.__ModuleLoader__.load({
       'git.compareFiles': '更改的文件',
       'git.compareNoDiff': '没有差异',
       'git.compareFailed': '比较失败',
+      'git.stash': '储藏',
+      'git.stashHint': '储藏当前更改，或应用、弹出、删除已有储藏',
+      'git.stashTitle': '储藏',
+      'git.stashSave': '储藏当前更改',
+      'git.stashSaveHint': '将工作区和暂存区的更改保存为新的储藏。',
+      'git.stashSaving': '储藏中…',
+      'git.stashMessagePlaceholder': '储藏说明（可选）',
+      'git.stashIncludeUntracked': '包含未跟踪文件',
+      'git.stashNoChanges': '没有可储藏的更改',
+      'git.stashOk': '已储藏当前更改',
+      'git.stashEmpty': '还没有储藏记录',
+      'git.stashLoading': '正在读取储藏记录…',
+      'git.stashApply': '应用',
+      'git.stashApplyHint': '应用储藏到工作区，保留储藏记录',
+      'git.stashApplyOk': '已应用储藏',
+      'git.stashPop': '弹出',
+      'git.stashPopHint': '应用储藏并从列表移除',
+      'git.stashPopOk': '已弹出储藏',
+      'git.stashDrop': '删除储藏',
+      'git.stashDropTitle': '删除储藏',
+      'git.stashDropConfirm': '删除 {ref}？该储藏将无法恢复。',
+      'git.stashDropOk': '已删除储藏',
+      'git.stashConflict': '储藏应用冲突或索引无法完整恢复，部分更改可能已写入工作区；请在终端检查冲突，储藏记录仍会保留。',
+      'git.noStash': '储藏记录不存在或已被删除。',
+      'git.unmerged': '存在未解决的冲突，无法储藏；请先在终端解决冲突。',
       'git.authRequired': '远程仓库要求认证；请在 Host 上配置 SSH 密钥或 Git 凭据助手（本插件不保存凭据）。',
       'git.noRemote': '当前仓库没有配置远程仓库。',
       'git.noUpstream': '当前分支没有上游分支，无法拉取。',
@@ -697,6 +733,17 @@ window.__ModuleLoader__.load({
       'git.unstage': 'Unstage',
       'git.stageAll': 'Stage all',
       'git.unstageAll': 'Unstage all',
+      'git.discard': 'Restore',
+      'git.discardTitle': 'Restore changes',
+      'git.discardConfirm': 'Restore “{path}” to the index? Unsaved content will be lost.',
+      'git.discardStagedConfirm': 'Restore “{path}” to HEAD and unstage it? Staged and working-tree changes will be lost.',
+      'git.discardUntrackedConfirm': 'Delete untracked file “{path}”? The file will be removed from disk.',
+      'git.discardConflictConfirm': 'Restore conflicted file “{path}” to HEAD? The current conflict resolution will be lost.',
+      'git.discardUntrackedHint': 'Delete untracked file',
+      'git.discardConflictHint': 'Restore the conflicted file to HEAD',
+      'git.discardAll': 'Restore all',
+      'git.discardAllConfirm': 'Restore all {n} changes? Untracked files will be deleted and cannot be recovered.',
+      'git.discardOk': 'Changes restored',
       'git.commit': 'Commit',
       'git.committing': 'Committing…',
       'git.commitPlaceholder': 'Commit message (Ctrl/⌘+Enter to commit)',
@@ -754,6 +801,31 @@ window.__ModuleLoader__.load({
       'git.compareFiles': 'Changed files',
       'git.compareNoDiff': 'No differences',
       'git.compareFailed': 'Comparison failed',
+      'git.stash': 'Stash',
+      'git.stashHint': 'Stash current changes, or apply, pop and drop existing stashes',
+      'git.stashTitle': 'Stashes',
+      'git.stashSave': 'Stash current changes',
+      'git.stashSaveHint': 'Save working-tree and staged changes as a new stash.',
+      'git.stashSaving': 'Stashing…',
+      'git.stashMessagePlaceholder': 'Stash message (optional)',
+      'git.stashIncludeUntracked': 'Include untracked files',
+      'git.stashNoChanges': 'No changes to stash',
+      'git.stashOk': 'Changes stashed',
+      'git.stashEmpty': 'No stashes yet',
+      'git.stashLoading': 'Loading stashes…',
+      'git.stashApply': 'Apply',
+      'git.stashApplyHint': 'Apply the stash to the working tree and keep it',
+      'git.stashApplyOk': 'Stash applied',
+      'git.stashPop': 'Pop',
+      'git.stashPopHint': 'Apply the stash and remove it from the list',
+      'git.stashPopOk': 'Stash popped',
+      'git.stashDrop': 'Drop stash',
+      'git.stashDropTitle': 'Drop stash',
+      'git.stashDropConfirm': 'Drop {ref}? The stash cannot be recovered.',
+      'git.stashDropOk': 'Stash dropped',
+      'git.stashConflict': 'The stash conflicts with the working tree or its index could not be restored; some changes may already be applied. Check the conflict in a terminal. The stash entry is kept.',
+      'git.noStash': 'The stash entry does not exist or was already removed.',
+      'git.unmerged': 'Unresolved conflicts prevent stashing; resolve them in a terminal first.',
       'git.authRequired': 'The remote requires authentication. Configure an SSH key or a Git credential helper on the Host; this plugin never stores credentials.',
       'git.noRemote': 'This repository has no configured remote.',
       'git.noUpstream': 'The current branch has no upstream, so it cannot be pulled.',
@@ -2649,6 +2721,21 @@ window.__ModuleLoader__.load({
       )
     }
 
+    function RestoreIcon() {
+      return icon(13,
+        h('path', { d: 'M3 6.25A5.25 5.25 0 1 1 2.8 9.4' }),
+        h('path', { d: 'M3.1 2.5v3.75H6.85' }),
+      )
+    }
+
+    function StashIcon() {
+      return icon(16,
+        h('path', { d: 'M2.5 5.25h11v8.5h-11Z' }),
+        h('path', { d: 'M1.75 2.25h12.5v3H1.75Z' }),
+        h('path', { d: 'M6.5 8.25h3' }),
+      )
+    }
+
     function PlusIcon() {
       return icon(13, h('path', { d: 'M8 3v10' }), h('path', { d: 'M3 8h10' }))
     }
@@ -3026,6 +3113,14 @@ window.__ModuleLoader__.load({
       const [commitDetail, setCommitDetail] = useState(null)
       const [commitDetailLoading, setCommitDetailLoading] = useState(false)
       const [commitDetailError, setCommitDetailError] = useState(null)
+      const [stashOpen, setStashOpen] = useState(false)
+      const [stashes, setStashes] = useState([])
+      const [stashLoading, setStashLoading] = useState(false)
+      const [stashBusy, setStashBusy] = useState(false)
+      const [stashError, setStashError] = useState(null)
+      const [stashMessage, setStashMessage] = useState('')
+      const [stashIncludeUntracked, setStashIncludeUntracked] = useState(false)
+      const [confirmState, setConfirmState] = useState(null)
 
       async function loadHistory(silent = false) {
         if (root === null) {
@@ -3086,6 +3181,24 @@ window.__ModuleLoader__.load({
         }
       }
 
+      async function loadStashes(silent = false) {
+        if (root === null) {
+          setStashes([])
+          return
+        }
+        if (!silent) setStashLoading(true)
+        setStashError(null)
+        try {
+          const value = await callGit('stash-list', { root })
+          setStashes(Array.isArray(value?.stashes) ? value.stashes : [])
+        } catch (failure) {
+          setStashError(failure)
+          setStashes([])
+        } finally {
+          if (!silent) setStashLoading(false)
+        }
+      }
+
       useEffect(() => {
         setStatus(null)
         setError(null)
@@ -3100,20 +3213,36 @@ window.__ModuleLoader__.load({
         setExpandedCommit(null)
         setCommitDetail(null)
         setCommitDetailError(null)
+        setStashOpen(false)
+        setStashes([])
+        setStashLoading(false)
+        setStashError(null)
+        setStashBusy(false)
+        setStashMessage('')
+        setStashIncludeUntracked(false)
+        setConfirmState(null)
         if (root !== null) void loadStatus()
         // eslint-disable-next-line react-hooks/exhaustive-deps
       }, [root])
 
       useEffect(() => {
-        if (!branchOpen && !compareOpen) return undefined
+        if (!branchOpen && !compareOpen && !stashOpen && confirmState === null) return undefined
         const onKey = (event) => {
           if (event.key !== 'Escape') return
+          if (confirmState !== null) {
+            setConfirmState(null)
+            return
+          }
+          if (stashOpen) {
+            setStashOpen(false)
+            return
+          }
           setBranchOpen(false)
           setCompareOpen(false)
         }
         window.addEventListener('keydown', onKey)
         return () => window.removeEventListener('keydown', onKey)
-      }, [branchOpen, compareOpen])
+      }, [branchOpen, compareOpen, stashOpen, confirmState])
 
       async function perform(action) {
         if (busy) return
@@ -3144,6 +3273,134 @@ window.__ModuleLoader__.load({
 
       function unstageAll() {
         void perform(() => callGit('unstage', { root }))
+      }
+
+      function discardEntry(entry, staged) {
+        void perform(async () => {
+          await callGit('discard', { root, paths: [entry.path], staged })
+          if (typeof onFilesChanged === 'function') onFilesChanged()
+          showToast(t('git.discardOk'))
+        })
+      }
+
+      function discardAllChanges() {
+        void perform(async () => {
+          await callGit('discard', { root, staged: false })
+          if (typeof onFilesChanged === 'function') onFilesChanged()
+          showToast(t('git.discardOk'))
+        })
+      }
+
+      function requestDiscard(entry, staged) {
+        if (busy) return
+        const untracked = !staged && entry.untracked === true
+        setConfirmState({
+          title: t('git.discardTitle'),
+          message: untracked
+            ? t('git.discardUntrackedConfirm', { path: entry.path })
+            : entry.conflict
+              ? t('git.discardConflictConfirm', { path: entry.path })
+              : staged
+                ? t('git.discardStagedConfirm', { path: entry.path })
+                : t('git.discardConfirm', { path: entry.path }),
+          confirmLabel: t('git.discard'),
+          danger: true,
+          onConfirm: () => discardEntry(entry, staged),
+        })
+      }
+
+      function requestDiscardAll() {
+        if (busy) return
+        const count = Array.isArray(status?.changes) ? status.changes.length : 0
+        if (count === 0) return
+        setConfirmState({
+          title: t('git.discardTitle'),
+          message: t('git.discardAllConfirm', { n: String(count) }),
+          confirmLabel: t('git.discard'),
+          danger: true,
+          onConfirm: discardAllChanges,
+        })
+      }
+
+      function openStash() {
+        if (root === null) return
+        setStashOpen(true)
+        setStashError(null)
+        setStashMessage('')
+        setStashIncludeUntracked(false)
+        void loadStashes()
+      }
+
+      async function runStash(action) {
+        if (stashBusy) return
+        setStashBusy(true)
+        setStashError(null)
+        try {
+          await action()
+        } catch (failure) {
+          setStashError(failure)
+        } finally {
+          setStashBusy(false)
+        }
+      }
+
+      function saveStash() {
+        if (stashBusy) return
+        void runStash(async () => {
+          try {
+            const value = await callGit('stash-save', {
+              root,
+              message: stashMessage,
+              includeUntracked: stashIncludeUntracked,
+            })
+            if (value?.saved === false) {
+              showToast(t('git.stashNoChanges'))
+            } else {
+              setStashMessage('')
+              if (typeof onFilesChanged === 'function') onFilesChanged()
+              showToast(t('git.stashOk'))
+            }
+          } finally {
+            await loadStatus(true)
+          }
+          await loadStashes(true)
+        })
+      }
+
+      function useStash(entry, pop) {
+        if (stashBusy) return
+        void runStash(async () => {
+          try {
+            await callGit(pop ? 'stash-pop' : 'stash-apply', { root, stash: entry.ref })
+            showToast(t(pop ? 'git.stashPopOk' : 'git.stashApplyOk'))
+          } finally {
+            if (typeof onFilesChanged === 'function') onFilesChanged()
+            await loadStatus(true)
+            if (view === 'graph') await loadHistory(true)
+          }
+          await loadStashes(true)
+        })
+      }
+
+      function dropStash(entry) {
+        if (stashBusy) return
+        void runStash(async () => {
+          await callGit('stash-drop', { root, stash: entry.ref })
+          showToast(t('git.stashDropOk'))
+          await loadStashes(true)
+          await loadStatus(true)
+        })
+      }
+
+      function requestDropStash(entry) {
+        if (stashBusy) return
+        setConfirmState({
+          title: t('git.stashDropTitle'),
+          message: t('git.stashDropConfirm', { ref: entry.ref }),
+          confirmLabel: t('git.stashDrop'),
+          danger: true,
+          onConfirm: () => dropStash(entry),
+        })
       }
 
       function init() {
@@ -3298,6 +3555,9 @@ window.__ModuleLoader__.load({
           conflict: 'git.conflictError',
           dirty: 'git.dirtyError',
           rejected: 'git.rejected',
+          'stash-conflict': 'git.stashConflict',
+          'no-stash': 'git.noStash',
+          unmerged: 'git.unmerged',
         }
         const key = keys[errorCode(failure)]
         return key === undefined ? errorText(failure) : t(key)
@@ -3410,19 +3670,41 @@ window.__ModuleLoader__.load({
           ),
           h('span', { className: 'ds-git-path' }, entry.path),
           h(
-            'button',
-            {
-              type: 'button',
-              className: 'ds-iconbtn ds-iconbtn-sm ds-git-row-action',
-              title: staged ? t('git.unstage') : t('git.stage'),
-              disabled: busy,
-              onClick: (event) => {
-                event.stopPropagation()
-                if (staged) unstage(entry)
-                else stage(entry)
+            'span',
+            { className: 'ds-git-row-actions' },
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'ds-iconbtn ds-iconbtn-sm ds-git-row-action',
+                title: staged ? t('git.unstage') : t('git.stage'),
+                disabled: busy,
+                onClick: (event) => {
+                  event.stopPropagation()
+                  if (staged) unstage(entry)
+                  else stage(entry)
+                },
               },
-            },
-            staged ? h(MinusIcon) : h(PlusIcon),
+              staged ? h(MinusIcon) : h(PlusIcon),
+            ),
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'ds-iconbtn ds-iconbtn-sm ds-git-row-action ds-git-row-discard',
+                title: entry.conflict
+                  ? t('git.discardConflictHint')
+                  : !staged && entry.untracked
+                    ? t('git.discardUntrackedHint')
+                    : t('git.discard'),
+                disabled: busy,
+                onClick: (event) => {
+                  event.stopPropagation()
+                  requestDiscard(entry, staged)
+                },
+              },
+              !staged && entry.untracked ? h(TrashIcon) : h(RestoreIcon),
+            ),
           ),
         )
       }
@@ -3708,6 +3990,7 @@ window.__ModuleLoader__.load({
       const canPull = hasRemote && Boolean(status.upstream) && !busy && !remoteBusy
       const canPush = hasRemote && !status.detached && !status.unborn && !busy && !remoteBusy
       const canCompare = !status.unborn && !busy && !remoteBusy
+      const canStash = !status.unborn && !busy && !remoteBusy
 
       function toolButton(key, Component, label, title, disabled, action, count = 0) {
         return h(
@@ -3718,7 +4001,7 @@ window.__ModuleLoader__.load({
             className: 'ds-git-toolbtn',
             title,
             'data-action': key,
-            'data-active': remoteAction === key ? 'true' : undefined,
+            'data-active': remoteAction === key || (key === 'stash' && stashOpen) ? 'true' : undefined,
             disabled,
             onClick: action,
           },
@@ -3758,6 +4041,15 @@ window.__ModuleLoader__.load({
           status.ahead,
         ),
         toolButton('compare', CompareIcon, t('git.compare'), t('git.compareHint'), !canCompare, () => void openCompare()),
+        toolButton(
+          'stash',
+          StashIcon,
+          t('git.stash'),
+          t('git.stashHint'),
+          !canStash,
+          openStash,
+          Number(status.stashCount) || 0,
+        ),
       )
 
       function commitDate(value) {
@@ -3897,6 +4189,228 @@ window.__ModuleLoader__.load({
         )
       }
 
+      const stashableCount =
+        staged.length +
+        changes.filter((entry) => entry.untracked !== true).length +
+        (stashIncludeUntracked ? changes.filter((entry) => entry.untracked === true).length : 0)
+      const canStashSave = !stashBusy && stashableCount > 0
+
+      function renderStash(entry) {
+        return h(
+          'div',
+          { key: entry.ref, className: 'ds-git-stash-item' },
+          h(
+            'div',
+            { className: 'ds-git-stash-main' },
+            h(
+              'div',
+              { className: 'ds-git-stash-line' },
+              h('code', { className: 'ds-git-stash-ref' }, entry.ref),
+              h('span', { className: 'ds-git-stash-message', title: entry.message }, entry.message || entry.short),
+            ),
+            h('div', { className: 'ds-git-stash-meta' }, `${entry.short} · ${commitDate(entry.date)}`),
+          ),
+          h(
+            'div',
+            { className: 'ds-git-stash-actions' },
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'ds-linkbtn',
+                title: t('git.stashApplyHint'),
+                disabled: stashBusy,
+                onClick: () => useStash(entry, false),
+              },
+              t('git.stashApply'),
+            ),
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'ds-linkbtn',
+                title: t('git.stashPopHint'),
+                disabled: stashBusy,
+                onClick: () => useStash(entry, true),
+              },
+              t('git.stashPop'),
+            ),
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'ds-iconbtn ds-iconbtn-sm ds-git-stash-drop',
+                title: t('git.stashDrop'),
+                disabled: stashBusy,
+                onClick: () => requestDropStash(entry),
+              },
+              h(TrashIcon),
+            ),
+          ),
+        )
+      }
+
+      const stashModal = !stashOpen
+        ? null
+        : h(
+            'div',
+            {
+              className: 'ds-modal-backdrop',
+              onPointerDown: (event) => {
+                if (event.target === event.currentTarget) setStashOpen(false)
+              },
+            },
+            h(
+              'div',
+              { className: 'ds-modal ds-git-stash-modal', role: 'dialog', 'aria-modal': true },
+              h(
+                'div',
+                { className: 'ds-git-diff-head' },
+                h('span', { className: 'ds-git-diff-title' }, t('git.stashTitle')),
+                h('span', { className: 'ds-git-tag' }, String(stashes.length)),
+                h('span', { className: 'ds-spacer' }),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-iconbtn ds-iconbtn-sm',
+                    title: t('git.close'),
+                    onClick: () => setStashOpen(false),
+                  },
+                  h(CloseIcon),
+                ),
+              ),
+              h(
+                'div',
+                { className: 'ds-git-stash-body' },
+                h(
+                  'div',
+                  { className: 'ds-git-stash-save' },
+                  h('textarea', {
+                    className: 'ds-git-message ds-git-stash-input',
+                    rows: 2,
+                    placeholder: t('git.stashMessagePlaceholder'),
+                    value: stashMessage,
+                    disabled: stashBusy,
+                    onChange: (event) => setStashMessage(event.target.value),
+                  }),
+                  h(
+                    'div',
+                    { className: 'ds-git-stash-save-row' },
+                    h(
+                      'label',
+                      { className: 'ds-git-stash-option' },
+                      h('input', {
+                        type: 'checkbox',
+                        checked: stashIncludeUntracked,
+                        disabled: stashBusy,
+                        onChange: (event) => setStashIncludeUntracked(event.target.checked),
+                      }),
+                      h('span', null, t('git.stashIncludeUntracked')),
+                    ),
+                    h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'ds-btn ds-btn-primary ds-git-stash-save-btn',
+                        disabled: !canStashSave,
+                        onClick: saveStash,
+                      },
+                      stashBusy ? t('git.stashSaving') : t('git.stashSave'),
+                    ),
+                  ),
+                  h(
+                    'div',
+                    { className: 'ds-git-hint ds-git-stash-save-hint' },
+                    canStashSave ? t('git.stashSaveHint') : t('git.stashNoChanges'),
+                  ),
+                ),
+                stashError === null
+                  ? null
+                  : h(
+                      'div',
+                      { className: 'ds-git-error' },
+                      h('span', { className: 'ds-git-error-text' }, gitFailureText(stashError)),
+                    ),
+                h(
+                  'div',
+                  { className: 'ds-git-stash-listhead' },
+                  h('span', { className: 'ds-git-section-title' }, `${t('git.stashTitle')} (${String(stashes.length)})`),
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-linkbtn',
+                      disabled: stashLoading || stashBusy,
+                      onClick: () => void loadStashes(),
+                    },
+                    t('git.refresh'),
+                  ),
+                ),
+                stashLoading
+                  ? h(
+                      'div',
+                      { className: 'ds-git-stash-empty' },
+                      h('span', { className: 'ds-spinner' }),
+                      t('git.stashLoading'),
+                    )
+                  : stashes.length === 0
+                    ? h('div', { className: 'ds-git-hint' }, t('git.stashEmpty'))
+                    : h('div', { className: 'ds-git-stash-list' }, stashes.map((entry) => renderStash(entry))),
+              ),
+              h(
+                'div',
+                { className: 'ds-modal-actions' },
+                h(
+                  'button',
+                  { type: 'button', className: 'ds-btn', onClick: () => setStashOpen(false) },
+                  t('git.close'),
+                ),
+              ),
+            ),
+          )
+
+      const confirmModal =
+        confirmState === null
+          ? null
+          : h(
+              'div',
+              {
+                className: 'ds-modal-backdrop',
+                onPointerDown: (event) => {
+                  if (event.target === event.currentTarget) setConfirmState(null)
+                },
+              },
+              h(
+                'div',
+                { className: 'ds-modal', role: 'dialog', 'aria-modal': true },
+                h('div', { className: 'ds-modal-title' }, confirmState.title),
+                h('div', { className: 'ds-modal-text' }, confirmState.message),
+                h(
+                  'div',
+                  { className: 'ds-modal-actions' },
+                  h(
+                    'button',
+                    { type: 'button', className: 'ds-btn', onClick: () => setConfirmState(null) },
+                    t('action.cancel'),
+                  ),
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: clsx('ds-btn', confirmState.danger ? 'ds-btn-danger' : 'ds-btn-primary'),
+                      onClick: () => {
+                        const action = confirmState.onConfirm
+                        setConfirmState(null)
+                        void action()
+                      },
+                    },
+                    confirmState.confirmLabel,
+                  ),
+                ),
+              ),
+            )
+
       return h(
         'div',
         { className: 'ds-git' },
@@ -4032,7 +4546,16 @@ window.__ModuleLoader__.load({
               { className: 'ds-git-section-head' },
               h('span', { className: 'ds-git-section-title' }, `${t('git.changes')} (${String(changes.length)})`),
               changes.length > 0
-                ? h('button', { type: 'button', className: 'ds-linkbtn', disabled: busy, onClick: stageAll }, t('git.stageAll'))
+                ? h(
+                    'span',
+                    { className: 'ds-git-section-actions' },
+                    h(
+                      'button',
+                      { type: 'button', className: 'ds-linkbtn ds-git-discard-all', disabled: busy, onClick: requestDiscardAll },
+                      t('git.discardAll'),
+                    ),
+                    h('button', { type: 'button', className: 'ds-linkbtn', disabled: busy, onClick: stageAll }, t('git.stageAll')),
+                  )
                 : null,
             ),
             changes.length === 0
@@ -4062,6 +4585,8 @@ window.__ModuleLoader__.load({
         ),
         compareModal,
         branchModal,
+        stashModal,
+        confirmModal,
       )
     }
 
@@ -9091,9 +9616,87 @@ window.__ModuleLoader__.load({
   white-space: nowrap;
   font-size: 12px;
 }
+.ds-git-row-actions { display: inline-flex; align-items: center; gap: 2px; flex: 0 0 auto; }
 .ds-git-row-action { width: 20px; height: 20px; opacity: 0.55; }
 .ds-git-row:hover .ds-git-row-action, .ds-git-row:focus-within .ds-git-row-action { opacity: 1; }
 .ds-git-row-action:disabled { opacity: 0.2; }
+.ds-git-row-discard:hover:not(:disabled) { color: var(--dsw-alias-state-error-primary); }
+.ds-git-section-actions { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.ds-git-discard-all { color: var(--dsw-alias-state-error-primary); }
+.ds-modal.ds-git-stash-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 100%);
+  max-height: min(86vh, 720px);
+}
+.ds-git-stash-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
+}
+.ds-git-stash-save {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 3%, transparent);
+}
+.ds-git-stash-input { min-height: 44px; max-height: 90px; white-space: pre-wrap; }
+.ds-git-stash-save-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ds-git-stash-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11.5px;
+  cursor: pointer;
+  user-select: none;
+}
+.ds-git-stash-option input { margin: 0; accent-color: var(--dsw-alias-brand-primary); }
+.ds-git-stash-save-btn { height: 26px; margin-left: auto; padding: 0 10px; font-size: 11.5px; }
+.ds-git-stash-save-btn:disabled { opacity: 0.4; cursor: default; }
+.ds-git-stash-save-hint { padding: 0; font-size: 10.5px; }
+.ds-git-stash-listhead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  padding-top: 9px;
+  border-top: 1px solid var(--dsw-alias-border-l1);
+}
+.ds-git-stash-list { display: flex; flex-direction: column; gap: 3px; }
+.ds-git-stash-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 7px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 7px;
+}
+.ds-git-stash-item:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 5%, transparent); }
+.ds-git-stash-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1 1 auto; }
+.ds-git-stash-line { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.ds-git-stash-ref { flex: 0 0 auto; color: var(--dsw-alias-brand-primary); font-family: var(--ds-mono); font-size: 10.5px; }
+.ds-git-stash-message { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; }
+.ds-git-stash-meta { color: var(--dsw-alias-label-secondary); font-size: 10px; }
+.ds-git-stash-actions { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+.ds-git-stash-actions .ds-linkbtn { font-size: 10.5px; }
+.ds-git-stash-drop { width: 22px; height: 22px; opacity: 0.55; }
+.ds-git-stash-drop:hover:not(:disabled) { opacity: 1; color: var(--dsw-alias-state-error-primary); }
+.ds-git-stash-empty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 8px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11.5px;
+}
 .ds-git-hint { padding: 6px 9px; color: var(--dsw-alias-label-secondary); font-size: 11.5px; }
 .ds-git-empty {
   display: flex;

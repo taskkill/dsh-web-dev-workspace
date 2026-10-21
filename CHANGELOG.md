@@ -13,6 +13,13 @@ All notable changes to this project are documented here.
 
 - Put working-tree changes above the staged section in the Changes view, matching
   the usual stage-from-top workflow.
+- Add **Restore** actions for individual changed/staged files and for all
+  working-tree changes. Tracked files are restored from the index or `HEAD`,
+  untracked files are deleted from disk, and every destructive action asks for
+  confirmation first.
+- Add a **Stash** toolbar button and dialog: save changes with an optional message
+  and optional untracked files, then apply, pop or drop entries. Conflicts keep
+  the stash and surface a readable error. The toolbar badge shows the stash count.
 
 ### Sidebar tabs
 

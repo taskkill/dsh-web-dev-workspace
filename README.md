@@ -61,7 +61,8 @@ it for you.
 - **Favorites and a workspace switcher** — single-click a favorite to open a file
   or jump to a folder; clean up workspace entries from the picker.
 - **Local Git workflow** — branch/ahead/behind, staged and unstaged changes,
-  per-file staging, commits, diffs and branch switching without leaving the panel.
+  per-file staging, commits, restore, stashes, diffs and branch switching without
+  leaving the panel.
 - **Fits the host** — theme-token styling, English/Chinese copy, compact
   single-column layout in narrow sidebars, and a right-sidebar Start card.
 
@@ -153,6 +154,11 @@ it for you.
   the bottom pans both sides together, and the view can switch to unified.
 - Initialize a repository when the workspace is not one, and switch between local
   branches from a branch picker.
+- **Restore** a changed file (or **Restore all** changes) after a confirmation;
+  tracked files return to the index or `HEAD`, while untracked files are deleted.
+- A **Stash** toolbar button saves the current changes with an optional message
+  (and optionally untracked files), then lists stashes with **Apply**, **Pop** and
+  **Drop**. A conflicting apply keeps the stash entry and reports the conflict.
 - A toolbar adds **Fetch / Pull / Push / Compare**: fetch refreshes remote refs,
   pull is fast-forward only, push sets `origin/<branch>` as upstream on its first
   run, and **Commit & push** chains both.
@@ -258,7 +264,7 @@ The repository is now one **combined bundle** (`@local/dsh-web-filebrowser`) wit
 | --- | --- |
 | `dsh-web-filebrowser-plugin/` | Main component: Host file API, SSH/SFTP and the browser explorer/editor UI. |
 | `dsh-web-filebrowser-io/` | Host-only component: binary upload and forced-download routes. |
-| `dsh-web-filebrowser-git/` | Host-only component: Git status, stage, commit, diff, branches, compare and fetch/pull/push. |
+| `dsh-web-filebrowser-git/` | Host-only component: Git status, stage, commit, restore, stash, diff, branches, compare and fetch/pull/push. |
 
 ### Install from a local checkout
 
@@ -398,7 +404,9 @@ repository root, not a subdirectory).
 2. If the workspace is not a repository, choose **Initialize repository**. If it
    is a subdirectory of a larger repository, open the repository root instead.
 3. Use **+** on a changed file to stage it, or **Stage all**; use **−** / **Unstage
-   all** in the staged section to reverse it.
+   all** in the staged section to reverse it. The restore icon on a row (or
+   **Restore all** above the changes) discards changes after a confirmation;
+   untracked files are deleted.
 4. Type a commit message and click **Commit** (or press `Ctrl/⌘+Enter`). The
    list refreshes after a successful commit. **Commit & push** commits and pushes
    in one step.
@@ -414,6 +422,10 @@ repository root, not a subdirectory).
 8. **Compare** opens a base picker: it lists commits unique to each side,
    ahead/behind counts, and files changed since the merge base; click a file for
    its diff against the base.
+9. **Stash** opens the stash dialog: save current changes with an optional message
+   and **Include untracked files**, then **Apply** (keep the entry), **Pop** (apply
+   and remove it) or **Drop** an existing stash. Applying a conflicting stash keeps
+   the entry so no work is lost.
 
 Pulls are fast-forward only, pushes never force, and neither resolves conflicts.
 Network commands run with `GIT_TERMINAL_PROMPT=0`, never read or store
@@ -498,7 +510,9 @@ issue for security-sensitive reports.
   networks only.
 - **Git network operations are explicit**: fetch/pull/push only touch remotes the
   repository already configures; pull is fast-forward only, push never forces, no
-  automatic merge/rebase runs, and no credential is stored. Git runs inside the
+  automatic merge/rebase runs, and no credential is stored. **Restore** deletes
+  untracked files and resets staged/worktree changes after confirmation; stashes
+  can be dropped, so review the target before confirming. Git runs inside the
   selected repository, whose local config, hooks (commit/push) or fsmonitor can
   execute code; only use Git in repositories you trust.
 - **Limits**: editor text reads 8 MiB; raw previews 128 MiB; uploads 128 MiB per
@@ -547,7 +561,7 @@ dsh-web-filebrowser/
 │   ├── locale/{en,zh}.json
 │   └── icon.svg
 ├── dsh-web-filebrowser-git/     # host-only Git component
-│   ├── index.js              # /api/dsh-web-filebrowser-git status/stage/commit/diff/branch
+│   ├── index.js              # /api/dsh-web-filebrowser-git status/stage/commit/discard/stash/diff/branch
 │   ├── cordis.patch.yml
 │   ├── locale/{en,zh}.json
 │   └── icon.svg

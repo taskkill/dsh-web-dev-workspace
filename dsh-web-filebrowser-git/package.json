@@ -2,7 +2,7 @@
   "name": "@local/dsh-web-filebrowser-git",
   "version": "1.0.0",
   "private": true,
-  "description": "Git status, staging, commit, compare and explicit fetch/pull/push support for the Workspace Files plugin",
+  "description": "Git status, staging, commit, restore, stash, compare and explicit fetch/pull/push support for the Workspace Files plugin",
   "type": "module",
   "exports": {
     ".": "./index.js",
@@ -29,6 +29,8 @@
     "plugin",
     "git",
     "source-control",
-    "commit"
+    "commit",
+    "restore",
+    "stash"
   ]
 }

@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "工作区 Git",
-    "description": "在工作区面板中查看变更、暂存、提交、比较分支，并显式执行 fetch/pull/push；不保存任何凭证，拉取仅快进、推送不 force。"
+    "description": "在工作区面板中查看变更、暂存、提交、还原文件、储藏更改、比较分支，并显式执行 fetch/pull/push；不保存任何凭证，拉取仅快进、推送不 force。"
   }
 }
