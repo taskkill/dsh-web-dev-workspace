@@ -195,7 +195,6 @@ it for you.
   workspace can fill the panel while the conversation stays focused. A collapsed
   panel keeps its title bar in place and can be expanded again with one click.
 
-### Snapshot Preview
 ### Built-in terminal
 
 - Use the header **terminal button**, the welcome page's **Open terminal** action, or `Ctrl/⌘ + backtick` to show the bottom terminal panel; drag its top edge to resize.
@@ -255,6 +254,8 @@ it for you.
 - **Host keys are not pinned** (ssh2 accepts the key presented at connect time).
   Only use remote folders on trusted hosts and networks.
 - Git is local-only: the Git tab is hidden for SSH roots.
+
+### Snapshot Preview
 
   <img alt="dshwfb" src="./docs/1.png" width="500px" />
   <img alt="dshwfb" src="./docs/2.png" width="500px" />
