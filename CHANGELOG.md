@@ -8,6 +8,11 @@ All notable changes to this project are documented here.
 
 - Add a left/right switch for the explorer; the position is persisted and the
   resize splitter follows the chosen side.
+- Move **Collapse all**, **Show/hide hidden files** and **Go to workspace root**
+  out of the “…” menu and onto the always-visible explorer header, next to the
+  refresh action. The redundant menu is removed.
+- Add **Copy absolute path** to the file/folder context menu, alongside
+  **Copy relative path**.
 
 ### Git
 

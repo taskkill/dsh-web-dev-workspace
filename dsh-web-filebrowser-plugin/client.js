@@ -179,6 +179,7 @@ window.__ModuleLoader__.load({
       'action.rename': '重命名',
       'action.delete': '删除',
       'action.copyPath': '复制相对路径',
+      'action.copyAbsolutePath': '复制绝对路径',
       'action.copy': '复制',
       'action.cut': '剪切',
       'action.paste': '粘贴',
@@ -190,7 +191,6 @@ window.__ModuleLoader__.load({
       'action.download': '下载文件',
       'action.downloadShort': '下载',
       'action.copyShort': '复制',
-      'action.more': '更多操作',
       'action.jumpRoot': '定位到当前工作区根目录（Alt+Home）',
       'action.removeWorkspace': '移除工作区',
       'action.remove': '移除',
@@ -206,7 +206,6 @@ window.__ModuleLoader__.load({
       'action.newFileHere': '在此新建文件',
       'action.newFolderHere': '在此新建文件夹',
       'menu.refreshFolder': '刷新此目录',
-      'menu.jumpRoot': '回到工作区根目录',
       'workspace.label': '工作区',
       'ssh.add': '添加 SSH 远程…',
       'ssh.title': '添加 SSH 远程目录',
@@ -536,6 +535,7 @@ window.__ModuleLoader__.load({
       'action.rename': 'Rename',
       'action.delete': 'Delete',
       'action.copyPath': 'Copy relative path',
+      'action.copyAbsolutePath': 'Copy absolute path',
       'action.copy': 'Copy',
       'action.cut': 'Cut',
       'action.paste': 'Paste',
@@ -547,7 +547,6 @@ window.__ModuleLoader__.load({
       'action.download': 'Download file',
       'action.downloadShort': 'Download',
       'action.copyShort': 'Copy',
-      'action.more': 'More actions',
       'action.jumpRoot': 'Go to the workspace root (Alt+Home)',
       'action.removeWorkspace': 'Remove workspace',
       'action.remove': 'Remove',
@@ -563,7 +562,6 @@ window.__ModuleLoader__.load({
       'action.newFileHere': 'New file here',
       'action.newFolderHere': 'New folder here',
       'menu.refreshFolder': 'Refresh this folder',
-      'menu.jumpRoot': 'Go to the workspace root',
       'workspace.label': 'Workspace',
       'ssh.add': 'Add SSH remote…',
       'ssh.title': 'Add SSH remote folder',
@@ -859,6 +857,15 @@ window.__ModuleLoader__.load({
 
     function joinPath(parent, name) {
       return parent.length === 0 ? name : `${parent}/${name}`
+    }
+
+    /** Join a workspace root with a repo-relative path using the host's separator. */
+    function absolutePathOf(root, relative) {
+      if (relative.length === 0) return root
+      const separator = root.includes('/') || !root.includes('\\') ? '/' : '\\'
+      const base = root.replace(/[\\/]+$/u, '')
+      const tail = separator === '\\' ? relative.replaceAll('/', '\\') : relative
+      return base.length === 0 ? `${separator}${tail}` : `${base}${separator}${tail}`
     }
 
     function extensionOf(name) {
@@ -2700,14 +2707,6 @@ window.__ModuleLoader__.load({
         h('path', { d: 'M2.5 3.5h10.75v4.75a2.25 2.25 0 0 1-2.25 2.25H4.5' }),
         h('path', { d: 'M7.25 8.25 4.5 10.5l2.75 2.25' }),
         { strokeWidth: 1.7 },
-      )
-    }
-
-    function MoreIcon() {
-      return icon(16,
-        h('circle', { cx: 8, cy: 3.25, r: 1.3, fill: 'currentColor', stroke: 'none' }),
-        h('circle', { cx: 8, cy: 8, r: 1.3, fill: 'currentColor', stroke: 'none' }),
-        h('circle', { cx: 8, cy: 12.75, r: 1.3, fill: 'currentColor', stroke: 'none' }),
       )
     }
 
@@ -5070,8 +5069,6 @@ window.__ModuleLoader__.load({
         const [compactView, setCompactView] = useState('tree')
         const [address, setAddress] = useState('')
         const [pickerOpen, setPickerOpen] = useState(false)
-        const [moreOpen, setMoreOpen] = useState(false)
-        const [moreAt, setMoreAt] = useState({ top: 0, left: 0 })
         const [clipboard, setClipboard] = useState(null)
         const [dropTarget, setDropTarget] = useState(null)
         const [maximized, setMaximized] = useState(false)
@@ -5182,29 +5179,6 @@ window.__ModuleLoader__.load({
           window.addEventListener('keydown', onKey)
           return () => window.removeEventListener('keydown', onKey)
         }, [modal])
-
-        useEffect(() => {
-          if (!moreOpen) return
-          const dismiss = (event) => {
-            if (event.target instanceof Element && event.target.closest('.ds-more-wrap') !== null) return
-            setMoreOpen(false)
-          }
-          const onKey = (event) => {
-            if (event.key === 'Escape') setMoreOpen(false)
-          }
-          window.addEventListener('pointerdown', dismiss, true)
-          window.addEventListener('keydown', onKey)
-          window.addEventListener('blur', dismiss)
-          window.addEventListener('resize', dismiss)
-          window.addEventListener('scroll', dismiss, true)
-          return () => {
-            window.removeEventListener('pointerdown', dismiss, true)
-            window.removeEventListener('keydown', onKey)
-            window.removeEventListener('blur', dismiss)
-            window.removeEventListener('resize', dismiss)
-            window.removeEventListener('scroll', dismiss, true)
-          }
-        }, [moreOpen])
 
         useEffect(() => {
           if (!pickerOpen) return
@@ -6878,6 +6852,18 @@ window.__ModuleLoader__.load({
           setMenu(null)
         }
 
+        async function copyAbsolute(relative) {
+          const root = store.get().root
+          if (root === null) return
+          try {
+            await navigator.clipboard.writeText(absolutePathOf(root, relative))
+            showToast(t('toast.copied'))
+          } catch {
+            showToast(t('toast.copyFailed'))
+          }
+          setMenu(null)
+        }
+
         function openExternal(relative) {
           const root = store.get().root
           if (root === null) return
@@ -8012,88 +7998,45 @@ window.__ModuleLoader__.load({
                     {
                       type: 'button',
                       className: 'ds-iconbtn ds-iconbtn-sm',
+                      title: t('action.collapseAll'),
+                      onClick: collapseAll,
+                      disabled: !canCollapse,
+                    },
+                    h(CollapseAllIcon),
+                  ),
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-iconbtn ds-iconbtn-sm',
+                      title: state.showHidden ? t('action.hideHidden') : t('action.showHidden'),
+                      'aria-pressed': state.showHidden,
+                      'data-active': state.showHidden ? 'true' : undefined,
+                      onClick: () => toggleShowHidden(),
+                    },
+                    state.showHidden ? h(VisibleFilesIcon) : h(HiddenFilesIcon),
+                  ),
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-iconbtn ds-iconbtn-sm',
+                      title: t('action.jumpRoot'),
+                      onClick: jumpToWorkspaceRoot,
+                      disabled: state.root === null,
+                    },
+                    h(HomeIcon),
+                  ),
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-iconbtn ds-iconbtn-sm',
                       title: t('action.refresh'),
                       onClick: () => void refreshAll(),
                       disabled: state.root === null,
                     },
                     h(RefreshIcon),
-                  ),
-                  h(
-                    'div',
-                    { className: 'ds-more-wrap' },
-                    h(
-                      'button',
-                      {
-                        type: 'button',
-                        className: 'ds-iconbtn ds-iconbtn-sm',
-                        title: t('action.more'),
-                        'aria-haspopup': 'menu',
-                        'aria-expanded': moreOpen,
-                        onClick: (event) => {
-                          const rect = event.currentTarget.getBoundingClientRect()
-                          const width = Math.min(260, window.innerWidth - 16)
-                          const left = Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8))
-                          setMoreAt({ top: rect.bottom + 4, left })
-                          setMoreOpen((open) => !open)
-                        },
-                      },
-                      h(MoreIcon),
-                    ),
-                    moreOpen
-                      ? h(
-                          'div',
-                          { className: 'ds-more-menu', role: 'menu', style: { top: `${moreAt.top}px`, left: `${moreAt.left}px` } },
-                          h(
-                            MenuItem,
-                            {
-                              label: t('action.collapseAll'),
-                              disabled: !canCollapse,
-                              onClick: () => {
-                                setMoreOpen(false)
-                                collapseAll()
-                              },
-                            },
-                            h(CollapseAllIcon),
-                          ),
-                          h(
-                            MenuItem,
-                            {
-                              label: state.showHidden ? t('action.hideHidden') : t('action.showHidden'),
-                              onClick: () => {
-                                setMoreOpen(false)
-                                toggleShowHidden()
-                              },
-                            },
-                            state.showHidden ? h(VisibleFilesIcon) : h(HiddenFilesIcon),
-                          ),
-                          h(
-                            MenuItem,
-                            {
-                              label: t('menu.jumpRoot'),
-                              shortcut: 'Alt+Home',
-                              disabled: state.root === null,
-                              onClick: () => {
-                                setMoreOpen(false)
-                                jumpToWorkspaceRoot()
-                              },
-                            },
-                            h(HomeIcon),
-                          ),
-                          h('div', { className: 'ds-menu-sep' }),
-                          h(
-                            MenuItem,
-                            {
-                              label: t('action.refresh'),
-                              disabled: state.root === null,
-                              onClick: () => {
-                                setMoreOpen(false)
-                                void refreshAll()
-                              },
-                            },
-                            h(RefreshIcon),
-                          ),
-                        )
-                      : null,
                   ),
                 ),
               ),
@@ -8272,7 +8215,6 @@ window.__ModuleLoader__.load({
                         'aria-selected': !showGit,
                         onClick: () => {
                           setPaneView('files')
-                          setMoreOpen(false)
                         },
                       },
                       h(FolderIcon, { open: !showGit }),
@@ -8288,7 +8230,6 @@ window.__ModuleLoader__.load({
                         'aria-selected': showGit,
                         onClick: () => {
                           setPaneView('git')
-                          setMoreOpen(false)
                         },
                       },
                       h(GitIcon),
@@ -8749,6 +8690,14 @@ window.__ModuleLoader__.load({
                   },
                   h(CopyIcon),
                 ),
+                h(
+                  MenuItem,
+                  {
+                    label: t('action.copyAbsolutePath'),
+                    onClick: () => void copyAbsolute(menu.path),
+                  },
+                  h(CopyIcon),
+                ),
               ),
           sshOpen
             ? h(
@@ -9112,20 +9061,7 @@ window.__ModuleLoader__.load({
 .ds-pane-title-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ds-pane-title .ds-side-switch { width: 20px; height: 20px; margin-left: 1px; }
 .ds-pane-actions { display: flex; align-items: center; gap: 1px; flex: 0 0 auto; }
-.ds-more-wrap { position: relative; }
-.ds-more-menu {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 1500;
-  width: 260px;
-  max-width: calc(100vw - 16px);
-  padding: 4px;
-  border: 1px solid var(--dsw-alias-border-l2);
-  border-radius: 9px;
-  background: var(--dsw-alias-bg-overlay);
-  box-shadow: 0 10px 30px color-mix(in srgb, var(--dsw-alias-label-primary) 22%, transparent);
-}
+.ds-pane-actions .ds-iconbtn[data-active="true"] { color: var(--dsw-alias-brand-primary); }
 .ds-pane-head > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ds-tree { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 2px 0 10px; outline: none; }
 .ds-favorites { flex: 0 0 auto; border-bottom: 1px solid var(--dsw-alias-border-l1); }
@@ -9304,8 +9240,7 @@ window.__ModuleLoader__.load({
 .ds-side[data-view="git"] .ds-tree,
 .ds-side[data-view="git"] > .ds-hint,
 .ds-side[data-view="git"] > .ds-empty { display: none; }
-.ds-side[data-view="git"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
-.ds-side[data-view="git"] .ds-pane-actions .ds-more-wrap { display: none; }
+.ds-side[data-view="git"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch) { display: none; }
 .ds-git-toggle[data-active="true"] {
   color: var(--dsw-alias-brand-primary);
   background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent);

@@ -76,12 +76,13 @@ it for you.
   follows it.
 - Create files/folders, rename inline (F2), delete with confirmation, refresh.
 - **Copy / cut / paste** files and folders between directories from the context menu,
-  or drag a tree entry onto a folder to move it.
+  or drag a tree entry onto a folder to move it. The context menu can also copy a
+  file or folder's relative or absolute path.
 - Drag files from the OS onto the tree or a folder to upload them; duplicate names
   are resolved automatically (128 MiB per file).
 - Single-click a file to open it; single-click a folder to select it, double-click
   a folder (or its chevron) to expand/collapse.
-- One-click **collapse all** under the labeled **More** menu, together with
+- The explorer header has one-click buttons for **collapse all**,
   **show/hide hidden files**, **go to workspace root**, and refresh.
 - **Favorites** per workspace: right-click an entry or use the star in the
   Favorites header; single-click a favorite to open/jump. Favorites follow renames
@@ -383,16 +384,16 @@ repository root, not a subdirectory).
 
 ### Workspaces, hidden files and favorites
 
-- **Hidden files**: dotfiles are hidden by default. Use **More → Show hidden
-  files** to toggle; the choice is remembered. Creating or navigating to a dot
-  path enables it automatically.
+- **Hidden files**: dotfiles are hidden by default. Use the eye button in the
+  explorer header to toggle; the choice is remembered. Creating or navigating to
+  a dot path enables it automatically.
 - **Favorites**: right-click a file/folder or use the star in the Favorites
   header. Single-click a favorite to open the file or jump to the folder.
 - **Remove a workspace record**: open the workspace picker, hover a row, and click
   the trash button. Removing a registered workspace removes its registration from
   the Harness workspace list; it does **not** delete files, and sessions remain
   (they are simply no longer grouped under that workspace).
-- **Go to root**: the Home button in the header, the More menu item, or
+- **Go to root**: the Home button in the explorer header (or the main header), or
   `Alt+Home`.
 
 ### Git workflow
