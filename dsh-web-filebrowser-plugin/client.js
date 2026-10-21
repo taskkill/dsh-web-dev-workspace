@@ -41,6 +41,15 @@ window.__ModuleLoader__.load({
     /** Local terminal session/asset route. */
     const TERMINAL_PATH = 'api/dsh-web-filebrowser-terminal'
 
+    /** Session-scoped child seats that render the current DeepSeek conversation. */
+    const CHAT_INLINE_SLOT = 'dsh-web-filebrowser.chat.inline'
+    const CHAT_SIDEBAR_INLINE_SLOT = 'dsh-web-filebrowser.chat.inline.sidebar'
+
+    /** Legacy right-sidebar chat page; kept so saved layouts keep rendering. */
+    const CHAT_TAB_ID = '@local/dsh-web-filebrowser/chat'
+    const CHAT_TAB_KIND = 'dsh-web-filebrowser-chat'
+    const CHAT_CONTENT_SLOT = 'dsh-web-filebrowser.chat.conversation'
+
     /** Suggested local dev-server ports when /proc port scanning is unavailable. */
     const BROWSER_COMMON_PORTS = [3000, 5173, 8080, 8000, 4173, 4321, 8888]
 
@@ -145,6 +154,24 @@ window.__ModuleLoader__.load({
       'terminal.resize': '拖动调整终端高度',
       'terminal.empty': '没有终端',
       'terminal.local': '本地终端',
+      'chat.title': 'DeepSeek 对话',
+      'chat.openFloating': '在悬浮窗口中打开当前对话',
+      'chat.close': '关闭悬浮对话',
+      'chat.collapse': '收起对话',
+      'chat.expand': '展开对话',
+      'chat.new': '新建对话',
+      'chat.creating': '正在新建对话…',
+      'chat.created': '已创建新对话',
+      'chat.current': '当前对话',
+      'chat.switch': '切换对话',
+      'chat.switchFailed': '切换对话失败：{message}',
+      'chat.untitled': '未命名对话',
+      'chat.createFailed': '新建对话失败：{message}',
+      'chat.createUnavailable': '当前界面不支持新建对话',
+      'chat.createSshUnsupported': 'SSH 远程工作区暂不支持新建对话',
+      'chat.resize': '拖动调整对话窗口大小',
+      'chat.noSession': '当前没有可显示的对话',
+      'chat.unavailable': '当前界面不支持悬浮对话',
       'terminal.sessionMissing': '终端会话已关闭',
       'panel.description': '浏览工作区目录，编辑代码，预览 Markdown 与 PDF。',
       'guide.title': '代码工作区',
@@ -501,6 +528,24 @@ window.__ModuleLoader__.load({
       'terminal.resize': 'Drag to resize the terminal',
       'terminal.empty': 'No terminal',
       'terminal.local': 'Local terminal',
+      'chat.title': 'DeepSeek conversation',
+      'chat.openFloating': 'Open the current conversation in a floating panel',
+      'chat.close': 'Close the floating conversation',
+      'chat.collapse': 'Collapse conversation',
+      'chat.expand': 'Expand conversation',
+      'chat.new': 'New conversation',
+      'chat.creating': 'Creating conversation…',
+      'chat.created': 'New conversation created',
+      'chat.current': 'Current conversation',
+      'chat.switch': 'Switch conversation',
+      'chat.switchFailed': 'Could not switch conversation: {message}',
+      'chat.untitled': 'Untitled conversation',
+      'chat.createFailed': 'Could not create a conversation: {message}',
+      'chat.createUnavailable': 'Creating a conversation is unavailable in this layout',
+      'chat.createSshUnsupported': 'New conversations are not available for SSH workspaces',
+      'chat.resize': 'Drag to resize the conversation panel',
+      'chat.noSession': 'No conversation is selected',
+      'chat.unavailable': 'Floating conversations are unavailable in this layout',
       'terminal.sessionMissing': 'Terminal session is closed',
       'panel.description': 'Browse the workspace tree, edit code, and preview Markdown and PDF files.',
       'guide.title': 'Code Workspace',
@@ -2061,6 +2106,14 @@ window.__ModuleLoader__.load({
       return icon(14, h('path', { d: 'M6 3.5 10.5 8 6 12.5' }))
     }
 
+    function ChevronUpIcon() {
+      return icon(14, h('path', { d: 'M3.5 9.75 8 5.25l4.5 4.5' }))
+    }
+
+    function ChevronDownIcon() {
+      return icon(14, h('path', { d: 'M3.5 6.25 8 10.75l4.5-4.5' }))
+    }
+
     function FolderIcon({ open }) {
       return open
         ? icon(15, h('path', { d: 'M1.75 4.5h4l1.2 1.5h7.3v6.25a1 1 0 0 1-1 1H2.75a1 1 0 0 1-1-1Z' }), h('path', { d: 'M1.75 4.5V3.25a1 1 0 0 1 1-1h3l1.2 1.5' }))
@@ -2165,6 +2218,15 @@ window.__ModuleLoader__.load({
 
     function TerminalIcon() {
       return icon(15, h('rect', { x: 2, y: 3, width: 11, height: 9, rx: 1 }), h('path', { d: 'M4.5 6.25 6.5 8l-2 1.75M7.75 9.75h3' }))
+    }
+
+    function ChatIcon() {
+      return icon(16,
+        h('path', { d: 'M2.25 3.25h11.5v7.25H7l-3.25 2.5v-2.5H2.25Z' }),
+        h('circle', { cx: 5.75, cy: 6.9, r: 0.65, fill: 'currentColor', stroke: 'none' }),
+        h('circle', { cx: 8, cy: 6.9, r: 0.65, fill: 'currentColor', stroke: 'none' }),
+        h('circle', { cx: 10.25, cy: 6.9, r: 0.65, fill: 'currentColor', stroke: 'none' }),
+      )
     }
 
     function PanelTopIcon() {
@@ -5047,12 +5109,287 @@ window.__ModuleLoader__.load({
     }
 
     /* ------------------------------------------------------------------ *
+     * Floating DeepSeek conversation
+     * ------------------------------------------------------------------ */
+
+    /** Keep an embedded Conversation occurrence on the Chat view. */
+    function FixedChatConversationView(props) {
+      return h(React.Fragment, null, props.renderSlot('conversation.session', { view: 'chat' }))
+    }
+
+    /**
+     * Render the current Session's shared Conversation content in an embedded
+     * surface. The parent slot supplies the session-maybe binding, so the standard
+     * Session hooks below resolve to the conversation on screen.
+     */
+    function ChatConversationPanel({ sessionId, useSession, useConversation, useSessions, renderFactorySlot, t }) {
+      const session = useSession((value) => value)
+      const conversation = useConversation((value) => value)
+      const summaryBlank = useSessions((state) =>
+        sessionId === undefined ? undefined : state.byId[sessionId]?.blank,
+      )
+      if (session === undefined || conversation === undefined) {
+        return h(
+          'div',
+          { className: 'ds-chat-float-empty' },
+          typeof t === 'function' ? t('chat.noSession') : null,
+        )
+      }
+      const shellPhase =
+        conversation.activeTargets.size > 0 || (!session.blank && !session.awaitingFirstTurn) || session.running
+          ? 'active'
+          : session.promptAttempted
+            ? 'engaging'
+            : 'blank'
+      const parentAvailabilityPending =
+        session.subagent?.address.mode === 'continuable' && session.subagent.parentAvailable === undefined
+      const settling =
+        (shellPhase === 'blank' && session.openState === 'loading' && summaryBlank !== true) || parentAvailabilityPending
+      const hero = shellPhase === 'blank' && (session.openState === 'open' || summaryBlank === true)
+      return renderFactorySlot(
+        'conversation.content',
+        { variant: 'embedded', phase: settling ? 'settling' : hero ? 'hero' : 'active', hero },
+        { slots: { views: FixedChatConversationView } },
+      )
+    }
+
+    /** Legacy right-sidebar chat page body. */
+    function ChatTabBody({ renderSlot }) {
+      return h('div', { className: 'ds-floating-chat' }, renderSlot(CHAT_CONTENT_SLOT, {}))
+    }
+
+    /** A readable initial rectangle for the in-panel floating conversation. */
+    function defaultChatRect() {
+      const width = Math.min(620, Math.max(240, window.innerWidth - 32))
+      const height = Math.min(760, Math.max(260, window.innerHeight - 96))
+      return {
+        x: Math.max(8, window.innerWidth - width - 16),
+        y: 56,
+        width,
+        height,
+      }
+    }
+
+    /**
+     * Draggable, resizable frame owned by the file workspace. Its drag state stays
+     * local so moving the window does not re-render the explorer, editor or chat.
+     */
+    function ChatFloatFrame({
+      t,
+      onClose,
+      onNew,
+      onSwitch,
+      useSessions,
+      workspaceItems = [],
+      root,
+      activeSessionId = 'current',
+      creating,
+      newDisabled,
+      error,
+      children,
+    }) {
+      const [rect, setRect] = useState(defaultChatRect)
+      const [collapsed, setCollapsed] = useState(false)
+      const sessionSnapshot =
+        (typeof useSessions === 'function' ? useSessions((snapshot) => snapshot) : null) ?? null
+      const mainSessionId =
+        sessionSnapshot === null
+          ? undefined
+          : sessionSnapshot.ids.find((id) => (sessionSnapshot.byId[id]?.retainedBy?.mainView ?? 0) > 0)
+      const sessions = useMemo(() => {
+        if (sessionSnapshot === null) return []
+        const workspace =
+          root === null || root === undefined ? undefined : workspaceItems.find((item) => item.path === root)
+        const allowed =
+          workspace !== undefined && Array.isArray(workspace.sessionIds)
+            ? new Set(workspace.sessionIds)
+            : null
+        const items = sessionSnapshot.ids
+          .filter((id) => id !== mainSessionId && (allowed === null || allowed.has(id)))
+          .map((id) => {
+            const summary = sessionSnapshot.byId[id]
+            return {
+              id,
+              title: summary?.displayTitle || t('chat.untitled'),
+              updatedAt: summary?.updatedAt ?? 0,
+              origin: summary?.origin,
+            }
+          })
+          .filter((item) => item.origin !== 'subagent')
+          .sort((left, right) => right.updatedAt - left.updatedAt)
+          .slice(0, 50)
+        if (activeSessionId !== 'current' && !items.some((item) => item.id === activeSessionId)) {
+          const summary = sessionSnapshot.byId[activeSessionId]
+          items.unshift({
+            id: activeSessionId,
+            title: summary?.displayTitle || t('chat.untitled'),
+            updatedAt: summary?.updatedAt ?? 0,
+            origin: summary?.origin,
+          })
+        }
+        return items
+      }, [sessionSnapshot, workspaceItems, root, activeSessionId, t, mainSessionId])
+
+      function beginDrag(event) {
+        if (event.button !== 0) return
+        event.preventDefault()
+        const start = rect
+        const startX = event.clientX
+        const startY = event.clientY
+        const move = (moveEvent) => {
+          const x = Math.min(
+            Math.max(0, start.x + moveEvent.clientX - startX),
+            Math.max(0, window.innerWidth - 120),
+          )
+          const y = Math.min(
+            Math.max(0, start.y + moveEvent.clientY - startY),
+            Math.max(0, window.innerHeight - 40),
+          )
+          setRect((current) => ({ ...current, x, y }))
+        }
+        const finish = () => {
+          window.removeEventListener('pointermove', move)
+          window.removeEventListener('pointerup', finish)
+          window.removeEventListener('pointercancel', finish)
+        }
+        window.addEventListener('pointermove', move)
+        window.addEventListener('pointerup', finish)
+        window.addEventListener('pointercancel', finish)
+      }
+
+      function beginResize(event) {
+        if (event.button !== 0) return
+        event.preventDefault()
+        event.stopPropagation()
+        const start = rect
+        const startX = event.clientX
+        const startY = event.clientY
+        const move = (moveEvent) => {
+          const maxWidth = Math.max(240, window.innerWidth - start.x - 8)
+          const maxHeight = Math.max(220, window.innerHeight - start.y - 8)
+          const width = Math.min(maxWidth, Math.max(280, start.width + moveEvent.clientX - startX))
+          const height = Math.min(maxHeight, Math.max(240, start.height + moveEvent.clientY - startY))
+          setRect((current) => ({ ...current, width, height }))
+        }
+        const finish = () => {
+          window.removeEventListener('pointermove', move)
+          window.removeEventListener('pointerup', finish)
+          window.removeEventListener('pointercancel', finish)
+        }
+        window.addEventListener('pointermove', move)
+        window.addEventListener('pointerup', finish)
+        window.addEventListener('pointercancel', finish)
+      }
+
+      return h(
+        'div',
+        {
+          className: collapsed ? 'ds-chat-float ds-chat-float-collapsed' : 'ds-chat-float',
+          role: 'dialog',
+          'aria-label': t('chat.title'),
+          style: {
+            left: `${String(rect.x)}px`,
+            top: `${String(rect.y)}px`,
+            width: `${String(rect.width)}px`,
+            height: collapsed ? '36px' : `${String(rect.height)}px`,
+          },
+        },
+        h(
+          'div',
+          { className: 'ds-chat-float-head', onPointerDown: beginDrag },
+          h('span', { className: 'ds-chat-float-icon' }, h(ChatIcon)),
+          sessions.length === 0
+            ? h('span', { className: 'ds-chat-float-title' }, t('chat.title'))
+            : h(
+                'select',
+                {
+                  className: 'ds-chat-float-select',
+                  title: t('chat.switch'),
+                  'aria-label': t('chat.switch'),
+                  value: activeSessionId,
+                  disabled: creating,
+                  onPointerDown: (event) => event.stopPropagation(),
+                  onChange: (event) => {
+                    if (collapsed) setCollapsed(false)
+                    onSwitch(event.target.value)
+                  },
+                },
+                h('option', { value: 'current' }, t('chat.current')),
+                sessions.map((session) =>
+                  h('option', { key: session.id, value: session.id }, session.title),
+                ),
+              ),
+          h('span', { className: 'ds-spacer' }),
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'ds-iconbtn ds-iconbtn-sm ds-chat-float-new',
+              title: newDisabled
+                ? t('chat.createSshUnsupported')
+                : creating
+                  ? t('chat.creating')
+                  : t('chat.new'),
+              disabled: creating || newDisabled,
+              onPointerDown: (event) => event.stopPropagation(),
+              onClick: () => {
+                if (collapsed) setCollapsed(false)
+                onNew()
+              },
+            },
+            h(PlusIcon),
+          ),
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'ds-iconbtn ds-iconbtn-sm',
+              title: collapsed ? t('chat.expand') : t('chat.collapse'),
+              'aria-expanded': !collapsed,
+              onPointerDown: (event) => event.stopPropagation(),
+              onClick: () => setCollapsed((value) => !value),
+            },
+            collapsed ? h(ChevronDownIcon) : h(ChevronUpIcon),
+          ),
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'ds-iconbtn ds-iconbtn-sm ds-chat-float-close',
+              title: t('chat.close'),
+              onPointerDown: (event) => event.stopPropagation(),
+              onClick: onClose,
+            },
+            h(CloseIcon),
+          ),
+        ),
+        error === null || collapsed
+          ? null
+          : h('div', { className: 'ds-chat-float-error', role: 'alert' }, error),
+        h(
+          'div',
+          { className: 'ds-chat-float-body', hidden: collapsed },
+          children,
+        ),
+        collapsed
+          ? null
+          : h('div', {
+              className: 'ds-chat-float-resize',
+              title: t('chat.resize'),
+              onPointerDown: beginResize,
+            }),
+      )
+    }
+
+    /* ------------------------------------------------------------------ *
      * Page
      * ------------------------------------------------------------------ */
 
     function makeIdePage(ctx, t, store) {
       return function IdePage(props) {
         const state = useStore(store)
+        const inSidebarTab = typeof props?.useTabInfo === 'function'
+        const inlineChatSlot = inSidebarTab ? CHAT_SIDEBAR_INLINE_SLOT : CHAT_INLINE_SLOT
         const workspaceSnapshot =
           typeof props?.useWorkspaces === 'function'
             ? props.useWorkspaces((snapshot) => snapshot.items)
@@ -5063,6 +5400,14 @@ window.__ModuleLoader__.load({
         const [modal, setModal] = useState(null)
         const [toast, setToast] = useState(null)
         const [banner, setBanner] = useState(null)
+        const [chatOpen, setChatOpen] = useState(false)
+        const [chatSession, setChatSession] = useState(null)
+        const [chatCreating, setChatCreating] = useState(false)
+        const [chatError, setChatError] = useState(null)
+        const chatSessionRef = useRef(null)
+        const chatCreatingRef = useRef(false)
+        const chatRequestRef = useRef(0)
+        const mountedRef = useRef(true)
         const [cursor, setCursor] = useState({ line: 1, column: 1 })
         const [, setLocaleVersion] = useState(0)
         const [containerWidth, setContainerWidth] = useState(0)
@@ -5112,6 +5457,16 @@ window.__ModuleLoader__.load({
         useEffect(() => {
           const dispose = ctx.locale.subscribe(() => setLocaleVersion((value) => value + 1))
           return dispose
+        }, [])
+
+        useEffect(() => {
+          mountedRef.current = true
+          return () => {
+            mountedRef.current = false
+            const reference = chatSessionRef.current
+            chatSessionRef.current = null
+            if (reference !== null) reference.release()
+          }
         }, [])
 
         useEffect(() => {
@@ -6456,6 +6811,160 @@ window.__ModuleLoader__.load({
           }))
           setCompactView('editor')
           setCursor({ line: 1, column: 1 })
+        }
+
+        /**
+         * The floating conversation is an overlay owned by this component in both
+         * placements: the main panel replaces the Conversation, and the right
+         * Sidebar copy can float the same session without touching its layout.
+         */
+        function closeLegacyChatTabs() {
+          const sidebar = ctx.get('sidebarRight')
+          if (sidebar === undefined || sidebar === null) return
+          try {
+            const sessionId = sidebar.mounted?.getSnapshot?.()
+            if (sessionId === undefined) return
+            const open = sidebar.openTabs?.getSnapshot?.() ?? []
+            for (const entry of open) {
+              if (entry.sessionId !== sessionId || entry.kind !== CHAT_TAB_KIND) continue
+              if (typeof sidebar.closeIn === 'function') sidebar.closeIn(entry.sessionId, entry.tabId)
+            }
+          } catch {
+            /* the legacy page may already be gone */
+          }
+        }
+
+        function releaseChatSession() {
+          const reference = chatSessionRef.current
+          chatSessionRef.current = null
+          setChatSession(null)
+          if (reference !== null) window.setTimeout(() => reference.release(), 0)
+        }
+
+        function closeChat() {
+          chatRequestRef.current += 1
+          setChatOpen(false)
+          setChatError(null)
+          releaseChatSession()
+        }
+
+        function toggleChat() {
+          if (typeof props?.renderSlot !== 'function') {
+            setBanner({ kind: 'error', message: t('chat.unavailable') })
+            return
+          }
+          if (chatOpen) {
+            closeChat()
+            return
+          }
+          closeLegacyChatTabs()
+          setChatOpen(true)
+        }
+
+        /** Create a Session without navigating away from the file workspace. */
+        async function createNewChat() {
+          if (chatCreatingRef.current) return
+          if (typeof props?.SessionProvider !== 'function') {
+            setChatError(t('chat.createUnavailable'))
+            return
+          }
+          const sessions = ctx.get('sessions')
+          if (
+            sessions === undefined ||
+            sessions === null ||
+            typeof sessions.create !== 'function' ||
+            typeof sessions.retain !== 'function'
+          ) {
+            setChatError(t('chat.createUnavailable'))
+            return
+          }
+          if (state.root !== null && isSshRootPath(state.root)) {
+            setChatError(t('chat.createSshUnsupported'))
+            return
+          }
+          chatCreatingRef.current = true
+          const request = (chatRequestRef.current += 1)
+          setChatCreating(true)
+          setChatError(null)
+          try {
+            const workspace =
+              state.root === null ? undefined : workspaceItems.find((item) => item.path === state.root)
+            const options =
+              workspace?.workspaceId !== undefined
+                ? { workspaceId: workspace.workspaceId }
+                : state.root === null
+                  ? {}
+                  : { cwd: state.root }
+            const sessionId = await sessions.create(options)
+            if (request !== chatRequestRef.current || !mountedRef.current) return
+            const reference = sessions.retain(sessionId, { source: 'filebrowserChat' })
+            if (request !== chatRequestRef.current || !mountedRef.current) {
+              reference.release()
+              return
+            }
+            const previous = chatSessionRef.current
+            chatSessionRef.current = reference
+            setChatSession(reference)
+            setChatOpen(true)
+            if (previous !== null) window.setTimeout(() => previous.release(), 0)
+            setChatError(null)
+            showToast(t('chat.created'))
+          } catch (error) {
+            setChatError(t('chat.createFailed', { message: errorText(error) }))
+          } finally {
+            chatCreatingRef.current = false
+            setChatCreating(false)
+          }
+        }
+
+        function switchChat(target) {
+          if (target === 'current') {
+            setChatError(null)
+            releaseChatSession()
+            return
+          }
+          if (chatSession !== null && chatSession.sessionId === target) return
+          const sessions = ctx.get('sessions')
+          if (sessions === undefined || sessions === null || typeof sessions.retain !== 'function') {
+            setChatError(t('chat.unavailable'))
+            return
+          }
+          try {
+            const reference = sessions.retain(target, { source: 'filebrowserChat' })
+            const previous = chatSessionRef.current
+            chatSessionRef.current = reference
+            setChatSession(reference)
+            setChatError(null)
+            if (previous !== null) window.setTimeout(() => previous.release(), 0)
+          } catch (error) {
+            setChatError(t('chat.switchFailed', { message: errorText(error) }))
+          }
+        }
+
+        function renderFloatingChat() {
+          if (!chatOpen || typeof props?.renderSlot !== 'function') return null
+          const body = h('div', { className: 'ds-floating-chat' }, props.renderSlot(inlineChatSlot, {}))
+          const scoped =
+            chatSession !== null && typeof props?.SessionProvider === 'function'
+              ? h(props.SessionProvider, { session: chatSession }, body)
+              : body
+          return h(
+            ChatFloatFrame,
+            {
+              t,
+              onClose: closeChat,
+              onNew: createNewChat,
+              onSwitch: switchChat,
+              useSessions: props?.useSessions,
+              workspaceItems,
+              root: state.root,
+              activeSessionId: chatSession === null ? 'current' : chatSession.sessionId,
+              creating: chatCreating,
+              newDisabled: state.root !== null && isSshRootPath(state.root),
+              error: chatError,
+            },
+            scoped,
+          )
         }
 
         function navigateBrowser(tabPath, rawUrl) {
@@ -7876,6 +8385,18 @@ window.__ModuleLoader__.load({
               'button',
               {
                 type: 'button',
+                className: 'ds-iconbtn ds-chat-float-btn',
+                title: t('chat.openFloating'),
+                'aria-pressed': chatOpen,
+                'data-active': chatOpen ? 'true' : undefined,
+                onClick: toggleChat,
+              },
+              h(ChatIcon),
+            ),
+            h(
+              'button',
+              {
+                type: 'button',
                 className: 'ds-iconbtn ds-terminal-toggle',
                 title: t('terminal.toggle'),
                 'aria-pressed': terminalPanelOpen,
@@ -8522,6 +9043,7 @@ window.__ModuleLoader__.load({
                   ),
             ),
           ),
+          renderFloatingChat(),
           terminalPanel,
           menu === null
             ? null
@@ -10767,6 +11289,117 @@ window.__ModuleLoader__.load({
 .ds-md-table th, .ds-md-table td { padding: 6px 10px; border: 1px solid var(--dsw-alias-border-l1); text-align: left; }
 .ds-md-table th { background: var(--dsw-alias-bg-layer-2); font-weight: 600; }
 .ds-md-image { display: block; max-width: 100%; margin: 0.9em 0; border-radius: 6px; }
+.ds-floating-chat { display: flex; width: 100%; height: 100%; min-width: 0; min-height: 0; }
+.ds-chat-float-btn[data-active="true"] {
+  color: var(--dsw-alias-brand-primary);
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent);
+}
+.ds-chat-float {
+  position: fixed;
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-width: 240px;
+  min-height: 260px;
+  overflow: hidden;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-overlay);
+  box-shadow: 0 20px 60px color-mix(in srgb, var(--dsw-alias-label-primary) 26%, transparent);
+}
+.ds-chat-float-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  height: 34px;
+  padding: 0 6px 0 10px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  color: var(--dsw-alias-label-primary);
+  cursor: move;
+  user-select: none;
+  touch-action: none;
+}
+.ds-chat-float-icon { display: inline-flex; flex: 0 0 auto; color: var(--dsw-alias-label-secondary); }
+.ds-chat-float-title {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ds-chat-float-select {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 190px;
+  height: 22px;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  outline: none;
+  cursor: pointer;
+}
+.ds-chat-float-select:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent);
+}
+.ds-chat-float-select:disabled { opacity: 0.5; cursor: default; }
+.ds-chat-float-select option {
+  background: var(--dsw-alias-bg-overlay);
+  color: var(--dsw-alias-label-primary);
+  font-weight: 400;
+}
+.ds-chat-float-close { cursor: pointer; }
+.ds-chat-float-body { display: flex; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.ds-chat-float-body[hidden] { display: none; }
+.ds-chat-float-error {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 10%, transparent);
+  color: var(--dsw-alias-state-error-primary);
+  font-size: 11.5px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.ds-chat-float-collapsed { min-height: 36px; }
+.ds-chat-float-collapsed .ds-chat-float-head { border-bottom: 0; }
+.ds-chat-float-empty {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+}
+.ds-chat-float-resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 18px;
+  height: 18px;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+.ds-chat-float-resize::after {
+  content: "";
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 8px;
+  height: 8px;
+  border-right: 1.5px solid var(--dsw-alias-label-caption);
+  border-bottom: 1.5px solid var(--dsw-alias-label-caption);
+  opacity: 0.75;
+}
 `
 
     /* ------------------------------------------------------------------ *
@@ -10784,9 +11417,31 @@ window.__ModuleLoader__.load({
         ctx.effect(
           () =>
             ctx.slots.inject('main', () =>
-              ctx.slots.register({ name: 'main', key: 'files', locale: NS }, IdePage),
+              ctx.slots.register(
+                {
+                  name: 'main',
+                  key: 'files',
+                  locale: NS,
+                  children: { [CHAT_INLINE_SLOT]: { kind: 'single', scope: 'session-maybe' } },
+                },
+                IdePage,
+              ),
             ),
           'dsh-web-filebrowser: main panel',
+        )
+        ctx.effect(
+          () =>
+            ctx.slots.inject(CHAT_INLINE_SLOT, () =>
+              ctx.slots.register({ name: CHAT_INLINE_SLOT, locale: NS }, ChatConversationPanel),
+            ),
+          'dsh-web-filebrowser: inline floating chat',
+        )
+        ctx.effect(
+          () =>
+            ctx.slots.inject(CHAT_SIDEBAR_INLINE_SLOT, () =>
+              ctx.slots.register({ name: CHAT_SIDEBAR_INLINE_SLOT, locale: NS }, ChatConversationPanel),
+            ),
+          'dsh-web-filebrowser: sidebar floating chat',
         )
         ctx.effect(
           () =>
@@ -10831,7 +11486,12 @@ window.__ModuleLoader__.load({
             () =>
               sidebarCtx.slots.inject('sidebar.right.pane.tab', () =>
                 sidebarCtx.slots.register(
-                  { name: 'sidebar.right.pane.tab', key: IDE_ID, locale: NS },
+                  {
+                    name: 'sidebar.right.pane.tab',
+                    key: IDE_ID,
+                    locale: NS,
+                    children: { [CHAT_SIDEBAR_INLINE_SLOT]: { kind: 'single', scope: 'session-maybe' } },
+                  },
                   IdePage,
                 ),
               ),
@@ -10846,6 +11506,40 @@ window.__ModuleLoader__.load({
                 ),
               ),
             'dsh-web-filebrowser: right-sidebar title',
+          )
+          // Legacy chat page kept registered so layouts saved by earlier builds
+          // still render their tab. New opens use the collapsible overlay above.
+          sidebarCtx.effect(
+            () =>
+              sidebarCtx.sidebarRightTabs.register({
+                id: CHAT_TAB_ID,
+                kind: CHAT_TAB_KIND,
+                priority: 'extension',
+                title: () => t('chat.title'),
+              }),
+            'dsh-web-filebrowser: legacy chat tab type',
+          )
+          sidebarCtx.effect(
+            () =>
+              sidebarCtx.slots.inject('sidebar.right.pane.tab', () =>
+                sidebarCtx.slots.register(
+                  {
+                    name: 'sidebar.right.pane.tab',
+                    key: CHAT_TAB_ID,
+                    locale: NS,
+                    children: { [CHAT_CONTENT_SLOT]: { kind: 'single', scope: 'session' } },
+                  },
+                  ChatTabBody,
+                ),
+              ),
+            'dsh-web-filebrowser: legacy chat tab body',
+          )
+          sidebarCtx.effect(
+            () =>
+              sidebarCtx.slots.inject(CHAT_CONTENT_SLOT, () =>
+                sidebarCtx.slots.register({ name: CHAT_CONTENT_SLOT, locale: NS }, ChatConversationPanel),
+              ),
+            'dsh-web-filebrowser: legacy chat conversation',
           )
         })
       },

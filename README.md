@@ -63,6 +63,9 @@ it for you.
 - **Local Git workflow** — branch/ahead/behind, staged and unstaged changes,
   per-file staging, commits, restore, stashes, diffs and branch switching without
   leaving the panel.
+- **Floating DeepSeek chat** — one click turns the current conversation into a
+  movable, resizable, collapsible panel that stays visible while the file
+  workspace is maximized.
 - **Fits the host** — theme-token styling, English/Chinese copy, compact
   single-column layout in narrow sidebars, and a right-sidebar Start card.
 
@@ -172,6 +175,25 @@ it for you.
 - The Git view requires the workspace to be the repository **root**; opening a
   subdirectory of a larger repository shows a hint instead of staging outside it.
 
+
+### Floating conversation
+
+- The **chat button** in the panel header opens the current Session's DeepSeek
+  conversation as a movable, resizable floating panel. It works both when the
+  file workspace fills the main column and when it runs in the right Sidebar.
+- The panel uses the real Conversation surface for the on-screen Session, so
+  messages, streaming output, drafts and attachments stay in sync with the main
+  chat. Drag its header to move it, resize from the corner, collapse it to its
+  title bar with the chevron, or close it from its header.
+- The **+** button creates a new Session in the current workspace and shows it in
+  the same floating panel without leaving the file workspace. The new Session is
+  added to the normal Session list; SSH workspaces keep the button disabled.
+- The title-bar selector lists other Sessions in the same workspace. Choosing one
+  switches the floating panel to that conversation; **Current conversation**
+  returns to the Session selected in the main UI.
+- Floating panels remain visible when the explorer is maximized, so the file
+  workspace can fill the panel while the conversation stays focused. A collapsed
+  panel keeps its title bar in place and can be expanded again with one click.
 
 ### Snapshot Preview
 ### Built-in terminal

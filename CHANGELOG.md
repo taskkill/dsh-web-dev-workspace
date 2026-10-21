@@ -4,6 +4,22 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Floating chat
+
+- Add a header **chat** button that opens the current DeepSeek conversation as a
+  movable, resizable floating panel in both main-panel and right-Sidebar
+  placements. The panel shares the Session's real Conversation surface, including
+  messages, streaming, drafts and attachments, and stays usable while the file
+  workspace is maximized.
+- Allow collapsing the floating conversation to its title bar and expanding it
+  again, so the panel can stay out of the way without losing the conversation.
+- Add a **+** action to create a new Session in the current workspace and show it
+  in the floating panel without leaving the file workspace. SSH workspaces report
+  that new conversations are unavailable there.
+- Add a conversation selector to the floating panel header: pick another Session
+  from the same workspace to bind the panel to it, or return to the Session
+  selected in the main UI.
+
 ### Explorer layout
 
 - Add a left/right switch for the explorer; the position is persisted and the
