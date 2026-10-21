@@ -32,7 +32,7 @@
     }
   },
   "scripts": {
-    "check": "node --check index.js && node --check dsh-web-filebrowser-plugin/index.js && node --check dsh-web-filebrowser-plugin/ssh.js && node --check dsh-web-filebrowser-plugin/client.js && node --check dsh-web-filebrowser-io/index.js && node --check dsh-web-filebrowser-git/index.js",
+    "check": "node --check index.js && node --check dsh-web-filebrowser-plugin/index.js && node --check dsh-web-filebrowser-plugin/ssh.js && node --check dsh-web-filebrowser-plugin/terminal.js && node --check dsh-web-filebrowser-plugin/client.js && node --check dsh-web-filebrowser-io/index.js && node --check dsh-web-filebrowser-git/index.js",
     "check:json": "node scripts/check-json.mjs"
   },
   "dependencies": {

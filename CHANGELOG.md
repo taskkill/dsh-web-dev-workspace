@@ -4,6 +4,12 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Terminal
+
+- Fix `spawn script ENOENT` on Windows: the local terminal now uses `cmd.exe`
+  with UTF-8 output, local line echo, process-tree cleanup and a no-PTY resize
+  fallback instead of the POSIX-only `script(1)` command.
+
 ### Floating chat
 
 - Add a header **chat** button that opens the current DeepSeek conversation as a

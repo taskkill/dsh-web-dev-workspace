@@ -105,8 +105,11 @@ third-party runtime dependencies.
 
 ### Built-in terminal
 
-- xterm.js (vendored) terminal views with a Host-side `script(1)` PTY. Open from the
-  header terminal button or `Ctrl/⌘ + backtick`; the panel has tabs for multiple sessions.
+- xterm.js (vendored) terminal views. Linux uses a Host-side `script(1)` PTY
+  (util-linux `script` is required); Windows uses `cmd.exe` over pipes with local
+  line echo because `script(1)`/`/dev/pts` are unavailable, so full-screen programs,
+  resizing and signal keys such as `Ctrl+C` are limited. Open from the header terminal button or
+  `Ctrl/⌘ + backtick`; the panel has tabs for multiple sessions.
 - Terminals can be moved between the bottom panel and editor tabs; the Host keeps
   the shell alive and buffers output (1 MB) while the view is detached.
 - `POST /api/dsh-web-filebrowser-terminal` supports `open`, `write`, `poll`,

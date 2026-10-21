@@ -5037,8 +5037,37 @@ window.__ModuleLoader__.load({
           } catch {
             /* container not measured yet */
           }
-          terminal.onData((data) => {
+          let inputLine = ''
+          const sendInput = (data) => {
             void callTerminal('write', { id: session.hostId, data }).catch(() => {})
+          }
+          terminal.onData((data) => {
+            if (session.pty !== false) {
+              sendInput(data)
+              return
+            }
+            // Windows pipes provide no terminal driver, so keep a local line
+            // buffer for echo/backspace and send complete lines to cmd.exe.
+            if (data.includes('\u001b')) return
+            for (const char of data) {
+              if (char === '\r' || char === '\n') {
+                terminal.write('\r\n')
+                sendInput(`${inputLine}\r\n`)
+                inputLine = ''
+              } else if (char === '\u007f' || char === '\b') {
+                if (inputLine.length > 0) {
+                  inputLine = inputLine.slice(0, -1)
+                  terminal.write('\b \b')
+                }
+              } else if (char === '\u0003') {
+                terminal.write('^C\r\n')
+                inputLine = ''
+                sendInput('\u0003\r\n')
+              } else if (char >= ' ') {
+                inputLine += char
+                terminal.write(char)
+              }
+            }
           })
           const resize = () => {
             if (disposed || terminal === null) return
@@ -6623,6 +6652,7 @@ window.__ModuleLoader__.load({
               placement,
               status: 'running',
               exitCode: null,
+              pty: value.pty !== false,
             }
             setTerminals((current) => [...current, session])
             if (placement === 'panel') {

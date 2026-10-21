@@ -1,9 +1,12 @@
 /**
  * Minimal local terminal backend for the file browser.
  *
- * A `script(1)` pseudo-terminal keeps Bash interactive (prompt, colours, line
- * editing, full-screen programs) without a native node-pty dependency. The
- * browser half uses a vendored xterm.js and polls a bounded output buffer.
+ * On POSIX, a `script(1)` pseudo-terminal keeps the shell interactive
+ * (prompt, colours, line editing, full-screen programs) without a native
+ * node-pty dependency. Windows has no `script`, so it uses the system command
+ * processor over pipes; that fallback is line-buffered and does not provide a
+ * real PTY. The browser half uses a vendored xterm.js and polls a bounded
+ * output buffer.
  *
  * Terminals run as the Harness host user inside a registered local workspace.
  * They are owner-authenticated like every other route; no shell command is
@@ -20,6 +23,7 @@ import { promisify } from 'node:util'
 
 const execFileAsync = promisify(execFile)
 
+const IS_WINDOWS = process.platform === 'win32'
 const MAX_SESSIONS = 8
 const MAX_BUFFER = 1_000_000
 const MAX_WRITE = 64 * 1024
@@ -94,23 +98,41 @@ export function createTerminalManager({ resolveRoot, vendorDir }) {
     const rows = clampDimension(body.rows, 10, 100, 28)
     counter += 1
     const id = randomUUID()
-    const ptsFile = path.join(os.tmpdir(), `dsh-web-filebrowser-term-${id}.tty`)
-    const command = [
-      `stty cols ${String(cols)} rows ${String(rows)} 2>/dev/null`,
-      `tty > ${shellQuote(ptsFile)} 2>/dev/null`,
-      `export PS1='\\u@\\h:\\w\\$ '`,
-      `exec /bin/bash --noprofile --norc`,
-    ].join('; ')
-    const child = spawn('script', ['-qfc', command, '/dev/null'], {
-      cwd: root,
-      env: {
-        ...process.env,
-        TERM: 'xterm-256color',
-        COLORTERM: 'truecolor',
-        LANG: process.env.LANG || 'C.UTF-8',
-      },
-      stdio: ['pipe', 'pipe', 'pipe'],
-    })
+    let ptsFile = null
+    let child
+    if (IS_WINDOWS) {
+      // Windows has no script(1) or /dev/pts. Keep the command processor alive
+      // over pipes and switch its code page to UTF-8 so output matches xterm.
+      const shell = process.env.ComSpec || process.env.COMSPEC || 'cmd.exe'
+      child = spawn(shell, ['/D', '/Q', '/K', 'chcp 65001>nul'], {
+        cwd: root,
+        env: {
+          ...process.env,
+          TERM: 'xterm-256color',
+          COLORTERM: 'truecolor',
+        },
+        windowsHide: true,
+        stdio: ['pipe', 'pipe', 'pipe'],
+      })
+    } else {
+      ptsFile = path.join(os.tmpdir(), `dsh-web-filebrowser-term-${id}.tty`)
+      const command = [
+        `stty cols ${String(cols)} rows ${String(rows)} 2>/dev/null`,
+        `tty > ${shellQuote(ptsFile)} 2>/dev/null`,
+        `export PS1='\\u@\\h:\\w\\$ '`,
+        `exec /bin/bash --noprofile --norc`,
+      ].join('; ')
+      child = spawn('script', ['-qfc', command, '/dev/null'], {
+        cwd: root,
+        env: {
+          ...process.env,
+          TERM: 'xterm-256color',
+          COLORTERM: 'truecolor',
+          LANG: process.env.LANG || 'C.UTF-8',
+        },
+        stdio: ['pipe', 'pipe', 'pipe'],
+      })
+    }
     const session = {
       id,
       title: `${TITLE_PREFIX} ${String(counter)}`,
@@ -119,6 +141,7 @@ export function createTerminalManager({ resolveRoot, vendorDir }) {
       ptsFile,
       cols,
       rows,
+      pty: !IS_WINDOWS,
       buffer: '',
       base: 0,
       closed: false,
@@ -148,7 +171,7 @@ export function createTerminalManager({ resolveRoot, vendorDir }) {
       session.closed = true
       session.exitCode = code
     })
-    return { id, title: session.title, cwd: root, cols, rows }
+    return { id, title: session.title, cwd: root, cols, rows, pty: session.pty }
   }
 
   async function write(body) {
@@ -192,6 +215,7 @@ export function createTerminalManager({ resolveRoot, vendorDir }) {
     const rows = clampDimension(body.rows, 10, 100, session.rows)
     session.cols = cols
     session.rows = rows
+    if (!session.pty || session.ptsFile === null) return { ok: false, pty: false }
     let pts = ''
     for (let attempt = 0; attempt < 8; attempt += 1) {
       try {
@@ -221,24 +245,44 @@ export function createTerminalManager({ resolveRoot, vendorDir }) {
 
   function terminate(session) {
     session.closed = true
-    try {
-      session.child.stdin.end()
-    } catch {
-      /* already closed */
-    }
-    try {
-      session.child.kill('SIGTERM')
-    } catch {
-      /* already exited */
-    }
-    setTimeout(() => {
+    let treeKill = false
+    if (IS_WINDOWS && Number.isInteger(session.child.pid) && session.child.exitCode === null) {
+      // cmd.exe alone can leave child processes alive; terminate the tree while
+      // the parent is still alive so /T can find its descendants.
+      treeKill = true
       try {
-        session.child.kill('SIGKILL')
+        execFile('taskkill.exe', ['/PID', String(session.child.pid), '/T', '/F'], { windowsHide: true }, (error) => {
+          if (error === null) return
+          try {
+            session.child.kill('SIGKILL')
+          } catch {
+            /* already exited */
+          }
+        })
+      } catch {
+        treeKill = false
+      }
+    }
+    if (!treeKill) {
+      try {
+        session.child.stdin.end()
+      } catch {
+        /* already closed */
+      }
+      try {
+        session.child.kill('SIGTERM')
       } catch {
         /* already exited */
       }
-    }, 1000).unref?.()
-    void fsp.unlink(session.ptsFile).catch(() => {})
+      setTimeout(() => {
+        try {
+          session.child.kill('SIGKILL')
+        } catch {
+          /* already exited */
+        }
+      }, 1000).unref?.()
+    }
+    if (session.ptsFile !== null) void fsp.unlink(session.ptsFile).catch(() => {})
   }
 
   function requireSession(id) {

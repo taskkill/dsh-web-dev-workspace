@@ -200,7 +200,7 @@ it for you.
 
 - Use the header **terminal button**, the welcome page's **Open terminal** action, or `Ctrl/⌘ + backtick` to show the bottom terminal panel; drag its top edge to resize.
 - A terminal can live either in the bottom panel or the editor. The panel header has **Open in editor**; an editor terminal's toolbar has **Move to panel**.
-- Rendering uses vendored xterm.js with a Host-side `script(1)` PTY (Linux util-linux `script` is required), so interactive Bash, colours, `Ctrl+C` and full-screen programs work.
+- Rendering uses vendored xterm.js. On Linux the Host opens a `script(1)` PTY (util-linux `script` is required), so interactive Bash, colours, `Ctrl+C` and full-screen programs work. On Windows the system command processor (`cmd.exe`) runs over pipes because `script(1)`/`/dev/pts` do not exist there; simple line-buffered commands work (with local echo/backspace), while full-screen programs, terminal resizing and signal keys such as `Ctrl+C` are limited.
 - Terminals start in the local workspace root and run arbitrary commands as the Harness host user; only the owner can reach them. SSH workspaces are not supported.
   Output buffers are capped at 1 MB and up to 8 terminals can be open.
 

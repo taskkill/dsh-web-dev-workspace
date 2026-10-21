@@ -135,7 +135,7 @@ DSH Web Filebrowser 把 Harness Web UI 变成一个真正可用的编码工作�
 
 - 点击顶栏的**终端按钮**、欢迎页的 **打开终端**，或按 `Ctrl/⌘ + 反引号` 打开底部终端面板；面板上沿可拖动调整高度。
 - 终端既可在底部面板，也可移到编辑区：面板标签右键区域提供 **在编辑区打开**，编辑区终端工具栏提供 **移到下方**。
-- 使用 vendored xterm.js + Host 侧 `script(1)` PTY（需要 Linux util-linux 的 `script`），支持交互式 Bash、颜色、`Ctrl+C` 和全屏程序。
+- 使用 vendored xterm.js。Linux 上由 Host 侧 `script(1)` PTY 提供交互式 Bash、颜色、`Ctrl+C` 和全屏程序（需要 util-linux 的 `script`）；Windows 没有 `script(1)`/`/dev/pts`，改用 `cmd.exe` + 管道的行缓冲终端，普通命令可用（本地回显/退格），但全屏程序、终端缩放和 `Ctrl+C` 等信号键能力有限。
 - 终端运行在本地工作区根目录，以 Harness Host 用户身份执行任意命令，仅 owner 可访问；SSH 远程工作区暂不支持。
   输出缓冲上限 1 MB，最多同时 8 个终端。
 
