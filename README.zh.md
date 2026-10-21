@@ -267,7 +267,7 @@ Agent 会走与插件管理器相同的安装流程（安装的是仓库根目�
 - **版本提示**：文件工作区标题旁显示当前版本（例如 `v1.1.1`）。点击版本徽标会检查
   GitHub 上 `taskkill/dsh-web-filebrowser` 的 `package.json`，发现更高版本时徽标高亮并
   给出更新方式。检查结果在 Host 内存中缓存 6 小时；只请求公开的版本清单，不发送工作区数据。
-  更新提示基于 `package.json` 的 `version` 字段，发布新版本时需要同步提升版本号。
+  更新提示基于 `package.json` 的 `version` 字段，发布新版本时需要同步提升版本号。仓库地址：https://github.com/taskkill/dsh-web-filebrowser 。
 - **更新**：在 **插件 → 已安装插件** 中卸载后，从新的本地路径重新安装；如果页面
   提供 Update 操作也可直接使用。本地 patch 加载的开发副本则直接 `git pull` 后重启 DSH。
 - **卸载**：卸载 `@local/dsh-web-filebrowser` 这一个组合包即可。会移除 profile 的依赖/链接与插件行，不会删除你克隆的源码或工作区文件。

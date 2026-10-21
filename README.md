@@ -380,7 +380,8 @@ repository root, not a subdirectory).
   `package.json` on GitHub and highlights a newer version with update guidance.
   The result is cached in Host memory for six hours; the check requests only the
   public version manifest and sends no workspace data. The hint compares the
-  `version` field, so publish a version bump with each release.
+  `version` field, so publish a version bump with each release. Repository:
+  https://github.com/taskkill/dsh-web-filebrowser
 - **Update**: in **Plugins → Installed plugins**, uninstall and reinstall the
   combined bundle from the updated local path (or use the UI's update action when
   it is offered). A local-patch development copy can be updated with `git pull`

@@ -12,6 +12,9 @@ window.__ModuleLoader__.load({
     const IDE_ID = '@local/dsh-web-filebrowser'
     const IDE_KIND = 'dsh-web-filebrowser'
 
+    /** Public repository shown by the update prompt. */
+    const GITHUB_URL = 'https://github.com/taskkill/dsh-web-filebrowser'
+
     /** Absolute route below `/api` served by the Host half. */
     const API_PATH = 'api/dsh-web-filebrowser'
 
@@ -313,7 +316,8 @@ window.__ModuleLoader__.load({
       'version.checking': '检查中…',
       'version.latest': '已是最新版本 v{version}',
       'version.updateTitle': '发现新版本 v{latest}',
-      'version.updateMessage': '当前版本 v{current}，最新版本 v{latest}。本地加载请在插件仓库执行 git pull 后重启 DSH；插件管理器安装请在“设置 → 插件”中卸载后重新安装。',
+      'version.updateMessage': '当前版本 v{current}，最新版本 v{latest}。本地加载请在插件仓库执行 git pull 后重启 DSH；插件管理器安装请在“设置 → 插件”中卸载后重新安装。GitHub 仓库：https://github.com/taskkill/dsh-web-filebrowser',
+      'version.openGithub': '打开 GitHub',
       'version.checkFailed': '检查更新失败：{message}',
       welcomeTitle: '文件工作区',
       welcomeHint: '在左侧资源管理器中浏览目录。单击文件即可打开，单击目录选中，双击目录展开或收起。',
@@ -758,7 +762,8 @@ window.__ModuleLoader__.load({
       'version.checking': 'Checking…',
       'version.latest': 'Up to date: v{version}',
       'version.updateTitle': 'Version v{latest} is available',
-      'version.updateMessage': 'Current version v{current}; latest version v{latest}. For a local checkout, run git pull in the plugin repository and restart DSH. For a plugin-manager install, uninstall and reinstall it under Settings → Plugins.',
+      'version.updateMessage': 'Current version v{current}; latest version v{latest}. For a local checkout, run git pull in the plugin repository and restart DSH. For a plugin-manager install, uninstall and reinstall it under Settings → Plugins. GitHub: https://github.com/taskkill/dsh-web-filebrowser',
+      'version.openGithub': 'Open GitHub',
       'version.checkFailed': 'Update check failed: {message}',
       welcomeTitle: 'Workspace Files',
       welcomeHint: 'Browse directories in the Explorer. Click a file to open it, click a folder to select it, and double-click a folder to expand or collapse it.',
@@ -6150,6 +6155,8 @@ window.__ModuleLoader__.load({
                 setModal({
                   title: t('version.updateTitle', { latest: value.latest }),
                   message: t('version.updateMessage', { current: value.current, latest: value.latest }),
+                  link: GITHUB_URL,
+                  linkLabel: t('version.openGithub'),
                   confirmLabel: t('action.ok'),
                   onConfirm: () => setModal(null),
                 })
@@ -10738,6 +10745,18 @@ window.__ModuleLoader__.load({
                   h(
                     'div',
                     { className: 'ds-modal-actions' },
+                    modal.link === undefined
+                      ? null
+                      : h(
+                          'a',
+                          {
+                            className: 'ds-modal-link',
+                            href: modal.link,
+                            target: '_blank',
+                            rel: 'noreferrer',
+                          },
+                          modal.linkLabel ?? modal.link,
+                        ),
                     h(
                       'button',
                       { type: 'button', className: 'ds-btn', onClick: () => setModal(null) },
@@ -12666,6 +12685,8 @@ window.__ModuleLoader__.load({
 .ds-modal-title { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
 .ds-modal-text { color: var(--dsw-alias-label-secondary); line-height: 1.65; overflow-wrap: anywhere; }
 .ds-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.ds-modal-link { margin-right: auto; align-self: center; color: var(--dsw-alias-brand-primary); font-size: 12px; text-decoration: none; }
+.ds-modal-link:hover { text-decoration: underline; }
 .ds-agent-modal { width: min(720px, 100%); }
 .ds-agent-context { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin-top: 10px; }
 .ds-agent-path { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-primary); font-family: var(--ds-mono); font-size: 11px; }
