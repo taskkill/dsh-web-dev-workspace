@@ -14,9 +14,11 @@
  * its root.
  */
 
+import { execFile } from 'node:child_process'
 import { createReadStream, promises as fsp } from 'node:fs'
 import { lookup as dnsLookup } from 'node:dns/promises'
 import { isIP } from 'node:net'
+import os from 'node:os'
 import path from 'node:path'
 import { Readable } from 'node:stream'
 import { fileURLToPath } from 'node:url'
@@ -73,6 +75,22 @@ const VERSION_CACHE_MS = 6 * 60 * 60 * 1000
 
 /** Latest successful version check, keyed by the local version it compared. */
 let versionCheckCache = null
+
+/** Directories skipped by workspace-wide search and quick-open indexing. */
+const SEARCH_SKIP_DIRS = new Set(['.git', 'node_modules', 'dist', 'build', 'coverage', '.next', '.cache', 'out', 'target'])
+
+/** Bounds for one workspace-wide search. */
+const MAX_SEARCH_FILES = 5000
+const MAX_SEARCH_RESULTS = 500
+const MAX_SEARCH_FILE_BYTES = 2 * 1024 * 1024
+const MAX_SEARCH_DEPTH = 24
+const MAX_QUICK_OPEN_FILES = 5000
+
+/** Profile files the Harness panel may read. */
+const HARNESS_FILES = ['cordis.yml', 'cordis.patch.yml', 'package.json', 'pnpm-workspace.yaml']
+
+/** Harness check command timeout. */
+const HARNESS_CHECK_TIMEOUT_MS = 120000
 
 /** Stable, descriptive failure carrying a machine-readable code. */
 class SideError extends Error {
@@ -226,6 +244,16 @@ async function dispatch(ctx, op, body) {
       return deletePath(ctx, body)
     case 'stat':
       return statPath(ctx, body)
+    case 'search':
+      return searchWorkspace(ctx, body)
+    case 'files':
+      return listWorkspaceFiles(ctx, body)
+    case 'harness':
+      return harnessInfo()
+    case 'harnessConfig':
+      return readHarnessConfig(typeof body.name === 'string' ? body.name : '')
+    case 'harnessCheck':
+      return runHarnessCheck()
     case 'version':
       return { version: await readPackageVersion() }
     case 'versionCheck':
@@ -303,6 +331,214 @@ async function checkLatestVersion(force) {
       error: error instanceof Error ? error.message : String(error),
     }
   }
+}
+
+/** Convert a filesystem-relative path to the editor's `/`-separated form. */
+function toPosixPath(value) {
+  return value.split(path.sep).join('/')
+}
+
+/** Escape a literal string for use inside a RegExp. */
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+}
+
+/**
+ * Walk a local workspace without following symlinks or descending into
+ * dependency/build directories.
+ *
+ * @param root - Canonical workspace root.
+ * @param visit - Receives `(absolutePath, relativePath)`; return false to stop.
+ * @returns Number of files visited.
+ */
+async function walkWorkspace(root, visit) {
+  let visited = 0
+  const walk = async (directory, depth) => {
+    if (depth > MAX_SEARCH_DEPTH || visited >= MAX_SEARCH_FILES) return false
+    let entries
+    try {
+      entries = await fsp.readdir(directory, { withFileTypes: true })
+    } catch {
+      return true
+    }
+    entries.sort((left, right) => left.name.localeCompare(right.name))
+    for (const entry of entries) {
+      if (visited >= MAX_SEARCH_FILES) return false
+      if (entry.isSymbolicLink()) continue
+      const filename = path.join(directory, entry.name)
+      if (entry.isDirectory()) {
+        if (SEARCH_SKIP_DIRS.has(entry.name)) continue
+        if (!(await walk(filename, depth + 1))) return false
+        continue
+      }
+      if (!entry.isFile()) continue
+      visited += 1
+      if ((await visit(filename, toPosixPath(path.relative(root, filename)))) === false) return false
+    }
+    return true
+  }
+  await walk(root, 0)
+  return visited
+}
+
+/** List local workspace files for quick open. */
+async function listWorkspaceFiles(ctx, body) {
+  const root = await resolveRoot(ctx, body.root)
+  if (ssh.isSshRoot(root)) throw new SideError('ssh-unsupported', 'SSH 工作区暂不支持快速打开索引')
+  const files = []
+  await walkWorkspace(root, (filename, relative) => {
+    files.push({ path: relative, name: path.posix.basename(relative) })
+    return files.length < MAX_QUICK_OPEN_FILES
+  })
+  return { root, files, truncated: files.length >= MAX_QUICK_OPEN_FILES }
+}
+
+/** Search file contents under one local workspace root. */
+async function searchWorkspace(ctx, body) {
+  const root = await resolveRoot(ctx, body.root)
+  if (ssh.isSshRoot(root)) throw new SideError('ssh-unsupported', 'SSH 工作区暂不支持全局搜索')
+  const query = typeof body.query === 'string' ? body.query : ''
+  if (query.length === 0) throw new SideError('bad-query', '请输入搜索内容')
+  if (query.length > 200) throw new SideError('bad-query', '搜索内容过长')
+  const maxResults = Math.min(Math.max(Number(body.maxResults) || 200, 1), MAX_SEARCH_RESULTS)
+  let pattern
+  try {
+    pattern = new RegExp(body.regex === true ? query : escapeRegExp(query), body.caseSensitive === true ? 'gu' : 'giu')
+  } catch {
+    throw new SideError('bad-query', '正则表达式无效')
+  }
+  const matches = []
+  let truncated = false
+  let scanned = 0
+  await walkWorkspace(root, async (filename, relative) => {
+    if (matches.length >= maxResults) {
+      truncated = true
+      return false
+    }
+    let stat
+    try {
+      stat = await fsp.stat(filename)
+    } catch {
+      return true
+    }
+    if (stat.size > MAX_SEARCH_FILE_BYTES) return true
+    let buffer
+    try {
+      buffer = await fsp.readFile(filename)
+    } catch {
+      return true
+    }
+    if (buffer.includes(0)) return true
+    scanned += 1
+    const lines = buffer.toString('utf8').split(/\r?\n/u)
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index]
+      pattern.lastIndex = 0
+      let match
+      while ((match = pattern.exec(line)) !== null) {
+        if (match[0].length === 0) {
+          pattern.lastIndex += 1
+          continue
+        }
+        matches.push({
+          path: relative,
+          line: index + 1,
+          column: match.index + 1,
+          text: line.length > 300 ? `${line.slice(0, 300)}…` : line,
+        })
+        if (matches.length >= maxResults) {
+          truncated = true
+          break
+        }
+      }
+      if (matches.length >= maxResults) break
+    }
+    return matches.length < maxResults
+  })
+  return { root, query, matches, truncated, filesScanned: scanned }
+}
+
+/** Active profile directory, preferring the launcher-provided environment. */
+function profileDirectory() {
+  if (typeof process.env.DSH_PROFILE_DIR === 'string' && process.env.DSH_PROFILE_DIR.length > 0) {
+    return process.env.DSH_PROFILE_DIR
+  }
+  const profile = process.env.DSH_PROFILE ?? 'web'
+  return path.join(process.env.DSH_HOME ?? path.join(os.homedir(), '.dsh'), 'profiles', profile)
+}
+
+/** Profile, bundle, version and config-file summary for the Harness panel. */
+async function harnessInfo() {
+  const dir = profileDirectory()
+  let manifest = {}
+  try {
+    manifest = JSON.parse(await fsp.readFile(path.join(dir, 'package.json'), 'utf8'))
+  } catch {
+    /* a profile without a readable manifest still shows its directory */
+  }
+  const bundles = Array.isArray(manifest?.dsh?.profile?.bundles) ? manifest.dsh.profile.bundles : []
+  const dependencies =
+    manifest?.dependencies !== null && typeof manifest?.dependencies === 'object'
+      ? Object.entries(manifest.dependencies).map(([name, version]) => ({ name, version: String(version) }))
+      : []
+  const files = []
+  for (const name of HARNESS_FILES) {
+    try {
+      const stat = await fsp.stat(path.join(dir, name))
+      files.push({ name, bytes: stat.size })
+    } catch {
+      /* optional profile file */
+    }
+  }
+  return {
+    profile: { name: process.env.DSH_PROFILE ?? path.basename(dir), dir },
+    version: await readPackageVersion(),
+    bundles,
+    dependencies,
+    files,
+  }
+}
+
+/** Read one whitelisted profile file for the Harness panel. */
+async function readHarnessConfig(name) {
+  if (!HARNESS_FILES.includes(name)) throw new SideError('bad-file', '不允许读取该配置')
+  const filename = path.join(profileDirectory(), name)
+  let stat
+  try {
+    stat = await fsp.stat(filename)
+  } catch {
+    throw new SideError('not-found', `配置文件不存在：${name}`)
+  }
+  if (!stat.isFile()) throw new SideError('not-file', `不是配置文件：${name}`)
+  if (stat.size > 1024 * 1024) throw new SideError('too-large', '配置文件超过 1 MB')
+  return { name, content: await fsp.readFile(filename, 'utf8') }
+}
+
+/** Run the plugin's own fixed `npm run check` and return its output. */
+function runHarnessCheck() {
+  return new Promise((resolve) => {
+    const started = Date.now()
+    const command = process.platform === 'win32' ? 'npm.cmd' : 'npm'
+    execFile(
+      command,
+      ['run', 'check'],
+      {
+        cwd: fileURLToPath(new URL('../', import.meta.url)),
+        timeout: HARNESS_CHECK_TIMEOUT_MS,
+        maxBuffer: 2 * 1024 * 1024,
+        env: { ...process.env, NO_COLOR: '1', CI: '1' },
+      },
+      (error, stdout, stderr) => {
+        const code = error === null ? 0 : typeof error.code === 'number' ? error.code : 1
+        resolve({
+          code,
+          output: `${stdout ?? ''}${stderr ?? ''}`.trim().slice(-100000),
+          durationMs: Date.now() - started,
+          timedOut: error !== null && error.killed === true,
+        })
+      },
+    )
+  })
 }
 
 /**

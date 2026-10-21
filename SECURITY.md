@@ -73,11 +73,17 @@ General UI bugs, missing features and questions belong in public issues.
   capped at 1 MB and at most 8 sessions may exist.
 - xterm.js and its fit addon are vendored under `dsh-web-filebrowser-plugin/vendor/`
   and served only through the authenticated terminal asset route.
+- Workspace search, Quick Open and auto refresh read local workspace roots only;
+  SSH roots are rejected for search/Quick Open and are not polled. The Harness
+  panel reads only whitelisted profile files and runs the bundle's fixed
+  `npm run check`; both endpoints stay behind the owner-authenticated route.
 - SSH remote folders authenticate with the Host's SSH agent or `~/.ssh` keys; a
   password can be supplied for one connection, is kept only in memory for that
   attempt, and is never written to disk. `ssh2` does not pin host keys, so connect
   only to hosts you trust.
-- The plugin registers no model-facing tools, prompts or session events.
+- The plugin registers no model-facing tools, prompts or session events by itself.
+  Only a user-clicked **Agent** action sends the selected code and path to the
+  active conversation; browsing and search never do.
 
 ## Before you publish
 

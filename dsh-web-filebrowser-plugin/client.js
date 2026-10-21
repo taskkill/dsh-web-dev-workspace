@@ -171,6 +171,21 @@ window.__ModuleLoader__.load({
       'chat.createSshUnsupported': 'SSH 远程工作区暂不支持新建对话',
       'chat.resize': '拖动调整对话窗口大小',
       'chat.noSession': '当前没有可显示的对话',
+      'agent.open': '交给 DeepSeek',
+      'agent.short': 'Agent',
+      'agent.title': '交给 DeepSeek',
+      'agent.hint': '选择代码后可让 DeepSeek 解释、修复或编写测试；未选中时默认使用整个文件。',
+      'agent.selection': '选中第 {start}-{end} 行',
+      'agent.fileOnly': '整个文件',
+      'agent.explain': '解释选中代码',
+      'agent.fix': '修复选中代码',
+      'agent.tests': '为选中代码写测试',
+      'agent.file': '解释当前文件',
+      'agent.send': '发送到对话',
+      'agent.emptySelection': '请先在编辑器里选中一段代码',
+      'agent.sent': '已发送到对话',
+      'agent.failed': '发送失败：{message}',
+      'agent.preview': '将发送的内容',
       'chat.unavailable': '当前界面不支持悬浮对话',
       'terminal.sessionMissing': '终端会话已关闭',
       'panel.description': '浏览工作区目录，编辑代码，预览 Markdown 与 PDF。',
@@ -178,9 +193,55 @@ window.__ModuleLoader__.load({
       'guide.description': '浏览并编辑文件，支持代码高亮、Markdown 与 PDF 预览。',
       'compact.back': '返回目录',
       explorer: '资源管理器',
+      'side.search': '搜索',
+      'side.harness': 'Harness',
       'side.tabs': '侧栏视图',
       'side.moveLeft': '资源管理器移到左侧',
       'side.moveRight': '资源管理器移到右侧',
+      'search.placeholder': '在工作区中搜索',
+      'search.run': '搜索',
+      'search.regex': '正则',
+      'search.case': '区分大小写',
+      'search.empty': '输入关键字开始搜索',
+      'search.noResults': '没有匹配结果',
+      'search.results': '{count} 个结果',
+      'search.truncated': '结果过多，仅显示前 {count} 条',
+      'search.busy': '搜索中…',
+      'search.failed': '搜索失败：{message}',
+      'search.sshUnsupported': 'SSH 工作区暂不支持全局搜索',
+      'search.clear': '清除搜索',
+      'palette.files': '快速打开文件',
+      'palette.commands': '命令面板',
+      'palette.filesPlaceholder': '输入文件名…',
+      'palette.commandsPlaceholder': '输入命令…',
+      'palette.noFiles': '没有匹配的文件',
+      'palette.noCommands': '没有匹配的命令',
+      'palette.loading': '加载文件列表…',
+      'palette.hint': '↑↓ 选择 · Enter 打开 · Esc 关闭',
+      'find.placeholder': '在文件中查找',
+      'find.replacePlaceholder': '替换为',
+      'find.next': '下一个',
+      'find.prev': '上一个',
+      'find.case': '区分大小写',
+      'find.replace': '替换',
+      'find.replaceAll': '全部替换',
+      'find.close': '关闭',
+      'find.none': '无匹配',
+      'harness.loading': '正在读取 Harness 信息…',
+      'harness.profile': 'Profile',
+      'harness.version': '插件版本',
+      'harness.bundles': 'Bundles',
+      'harness.dependencies': '依赖',
+      'harness.config': '配置',
+      'harness.check': '运行检查',
+      'harness.checking': '检查中…',
+      'harness.checkOk': '检查通过',
+      'harness.checkFailed': '检查失败（退出码 {code}）',
+      'harness.output': '输出',
+      'harness.copy': '复制',
+      'harness.closeConfig': '返回',
+      'harness.noConfig': '没有可读取的配置文件',
+      'harness.failed': '读取失败：{message}',
       favorites: '收藏夹',
       'favorite.add': '收藏',
       'favorite.remove': '取消收藏',
@@ -555,6 +616,21 @@ window.__ModuleLoader__.load({
       'chat.createSshUnsupported': 'New conversations are not available for SSH workspaces',
       'chat.resize': 'Drag to resize the conversation panel',
       'chat.noSession': 'No conversation is selected',
+      'agent.open': 'Ask DeepSeek',
+      'agent.short': 'Agent',
+      'agent.title': 'Work with DeepSeek',
+      'agent.hint': 'Select code to explain, fix or test it. Without a selection the whole file is used.',
+      'agent.selection': 'Lines {start}-{end} selected',
+      'agent.fileOnly': 'Whole file',
+      'agent.explain': 'Explain selection',
+      'agent.fix': 'Fix selection',
+      'agent.tests': 'Write tests for selection',
+      'agent.file': 'Explain this file',
+      'agent.send': 'Send to conversation',
+      'agent.emptySelection': 'Select some code in the editor first',
+      'agent.sent': 'Sent to the conversation',
+      'agent.failed': 'Could not send: {message}',
+      'agent.preview': 'Content to send',
       'chat.unavailable': 'Floating conversations are unavailable in this layout',
       'terminal.sessionMissing': 'Terminal session is closed',
       'panel.description': 'Browse the workspace tree, edit code, and preview Markdown and PDF files.',
@@ -562,9 +638,55 @@ window.__ModuleLoader__.load({
       'guide.description': 'Browse and edit files with highlighting, Markdown, and PDF previews.',
       'compact.back': 'Back to explorer',
       explorer: 'Explorer',
+      'side.search': 'Search',
+      'side.harness': 'Harness',
       'side.tabs': 'Sidebar views',
       'side.moveLeft': 'Move explorer to the left',
       'side.moveRight': 'Move explorer to the right',
+      'search.placeholder': 'Search the workspace',
+      'search.run': 'Search',
+      'search.regex': 'Regex',
+      'search.case': 'Case sensitive',
+      'search.empty': 'Type a query to search',
+      'search.noResults': 'No matches',
+      'search.results': '{count} results',
+      'search.truncated': 'Too many results; showing the first {count}',
+      'search.busy': 'Searching…',
+      'search.failed': 'Search failed: {message}',
+      'search.sshUnsupported': 'Global search is not available for SSH workspaces',
+      'search.clear': 'Clear search',
+      'palette.files': 'Quick Open',
+      'palette.commands': 'Command Palette',
+      'palette.filesPlaceholder': 'Type a file name…',
+      'palette.commandsPlaceholder': 'Type a command…',
+      'palette.noFiles': 'No matching files',
+      'palette.noCommands': 'No matching commands',
+      'palette.loading': 'Loading files…',
+      'palette.hint': '↑↓ select · Enter open · Esc close',
+      'find.placeholder': 'Find in file',
+      'find.replacePlaceholder': 'Replace with',
+      'find.next': 'Next',
+      'find.prev': 'Previous',
+      'find.case': 'Case sensitive',
+      'find.replace': 'Replace',
+      'find.replaceAll': 'Replace all',
+      'find.close': 'Close',
+      'find.none': 'No matches',
+      'harness.loading': 'Reading Harness information…',
+      'harness.profile': 'Profile',
+      'harness.version': 'Plugin version',
+      'harness.bundles': 'Bundles',
+      'harness.dependencies': 'Dependencies',
+      'harness.config': 'Configuration',
+      'harness.check': 'Run check',
+      'harness.checking': 'Checking…',
+      'harness.checkOk': 'Check passed',
+      'harness.checkFailed': 'Check failed (exit {code})',
+      'harness.output': 'Output',
+      'harness.copy': 'Copy',
+      'harness.closeConfig': 'Back',
+      'harness.noConfig': 'No readable configuration files',
+      'harness.failed': 'Read failed: {message}',
       favorites: 'Favorites',
       'favorite.add': 'Add to favorites',
       'favorite.remove': 'Remove from favorites',
@@ -2453,18 +2575,38 @@ window.__ModuleLoader__.load({
      * Code editor
      * ------------------------------------------------------------------ */
 
-    function CodeEditor({ tab, language, onChange, onSave, onCursor, t, wrap }) {
+    function CodeEditor({ tab, language, onChange, onSave, onCursor, onSelection, t, wrap }) {
       const textareaRef = useRef(null)
       const preRef = useRef(null)
       const gutterRef = useRef(null)
       const areaRef = useRef(null)
       const measureRef = useRef(null)
       const pendingSelection = useRef(null)
+      const findInputRef = useRef(null)
+      const lastRevealRef = useRef(null)
+      const selectionKeyRef = useRef('')
       const [contentWidth, setContentWidth] = useState(0)
       const [fontSpec, setFontSpec] = useState('')
+      const [findOpen, setFindOpen] = useState(false)
+      const [findQuery, setFindQuery] = useState('')
+      const [replaceQuery, setReplaceQuery] = useState('')
+      const [findCase, setFindCase] = useState(false)
+      const [findIndex, setFindIndex] = useState(-1)
       const value = tab.content
       const lines = useMemo(() => value.split('\n'), [value])
       const tokens = useMemo(() => tokenize(value, language.id), [value, language.id])
+      const findMatches = useMemo(() => {
+        if (!findOpen || findQuery.length === 0) return []
+        const haystack = findCase ? value : value.toLowerCase()
+        const needle = findCase ? findQuery : findQuery.toLowerCase()
+        const matches = []
+        let index = haystack.indexOf(needle)
+        while (index !== -1) {
+          matches.push({ start: index, end: index + needle.length })
+          index = haystack.indexOf(needle, index + Math.max(1, needle.length))
+        }
+        return matches
+      }, [findOpen, findQuery, findCase, value])
 
       useEffect(() => {
         const textarea = textareaRef.current
@@ -2522,6 +2664,36 @@ window.__ModuleLoader__.load({
         syncScroll()
       }, [value])
 
+      useEffect(() => {
+        setFindOpen(false)
+        setFindQuery('')
+        setFindIndex(-1)
+        lastRevealRef.current = null
+        selectionKeyRef.current = ''
+      }, [tab.path])
+
+      useEffect(() => {
+        if (findIndex >= findMatches.length) setFindIndex(findMatches.length === 0 ? -1 : 0)
+      }, [findMatches.length, findIndex])
+
+      useEffect(() => {
+        const reveal = tab.reveal
+        const textarea = textareaRef.current
+        if (reveal === null || reveal === undefined || textarea === null || tab.loading) return
+        const key = `${tab.path}:${String(reveal.line)}:${String(reveal.column)}:${String(reveal.nonce ?? '')}`
+        if (lastRevealRef.current === key) return
+        lastRevealRef.current = key
+        const targetLine = Math.max(1, Number(reveal.line) || 1)
+        let index = 0
+        for (let line = 0; line < targetLine - 1 && line < lines.length; line += 1) index += lines[line].length + 1
+        const lineText = lines[targetLine - 1] ?? ''
+        index += Math.min(Math.max(0, (Number(reveal.column) || 1) - 1), lineText.length)
+        textarea.setSelectionRange(index, index)
+        textarea.focus()
+        textarea.scrollTop = Math.max(0, (targetLine - 3) * 20)
+        syncScroll()
+      }, [tab.reveal, tab.loading, tab.path, value])
+
       function syncScroll() {
         const textarea = textareaRef.current
         const pre = preRef.current
@@ -2551,11 +2723,92 @@ window.__ModuleLoader__.load({
         const line = before.split('\n').length
         const column = before.length - before.lastIndexOf('\n')
         onCursor?.({ line, column })
+        const key = `${String(textarea.selectionStart)}:${String(textarea.selectionEnd)}:${String(value.length)}`
+        if (selectionKeyRef.current !== key) {
+          selectionKeyRef.current = key
+          onSelection?.(
+            textarea.selectionEnd > textarea.selectionStart
+              ? {
+                  start: textarea.selectionStart,
+                  end: textarea.selectionEnd,
+                  text: value.slice(textarea.selectionStart, textarea.selectionEnd),
+                }
+              : null,
+          )
+        }
+      }
+
+      function openFind() {
+        const textarea = textareaRef.current
+        if (textarea !== null && textarea.selectionEnd > textarea.selectionStart) {
+          const selected = value.slice(textarea.selectionStart, textarea.selectionEnd)
+          if (selected.length > 0 && !selected.includes('\n') && selected.length <= 200) setFindQuery(selected)
+        }
+        setFindIndex(-1)
+        setFindOpen(true)
+        window.setTimeout(() => findInputRef.current?.focus(), 0)
+      }
+
+      function selectFindMatch(index) {
+        const match = findMatches[index]
+        const textarea = textareaRef.current
+        if (match === undefined || textarea === null) return
+        textarea.focus()
+        textarea.setSelectionRange(match.start, match.end)
+        const line = value.slice(0, match.start).split('\n').length
+        textarea.scrollTop = Math.max(0, (line - 3) * 20)
+        syncScroll()
+      }
+
+      function findNext(delta) {
+        if (findMatches.length === 0) return
+        const current = findIndex < 0 ? (delta > 0 ? -1 : 0) : findIndex
+        const next = (current + delta + findMatches.length) % findMatches.length
+        setFindIndex(next)
+        selectFindMatch(next)
+      }
+
+      function replaceCurrent() {
+        if (findMatches.length === 0) return
+        const index = findIndex < 0 ? 0 : Math.min(findIndex, findMatches.length - 1)
+        const match = findMatches[index]
+        if (match === undefined) return
+        const next = `${value.slice(0, match.start)}${replaceQuery}${value.slice(match.end)}`
+        applyChange(next, match.start + replaceQuery.length, match.start + replaceQuery.length)
+        setFindIndex(-1)
+      }
+
+      function replaceAllMatches() {
+        if (findMatches.length === 0) return
+        let next = value
+        for (let index = findMatches.length - 1; index >= 0; index -= 1) {
+          const match = findMatches[index]
+          next = `${next.slice(0, match.start)}${replaceQuery}${next.slice(match.end)}`
+        }
+        applyChange(next, next.length, next.length)
+        setFindIndex(-1)
+      }
+
+      function closeFind() {
+        setFindOpen(false)
+        setFindIndex(-1)
+        textareaRef.current?.focus()
       }
 
       function onKeyDown(event) {
         const textarea = textareaRef.current
         if (textarea === null) return
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f') {
+          event.preventDefault()
+          event.stopPropagation()
+          openFind()
+          return
+        }
+        if (event.key === 'Escape' && findOpen) {
+          event.preventDefault()
+          closeFind()
+          return
+        }
         if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
           event.preventDefault()
           event.stopPropagation()
@@ -2586,7 +2839,122 @@ window.__ModuleLoader__.load({
 
       return h(
         'div',
-        { className: 'ds-editor-wrap' },
+        { className: 'ds-editor-shell' },
+        findOpen
+          ? h(
+              'div',
+              { className: 'ds-findbar' },
+              h('input', {
+                ref: findInputRef,
+                className: 'ds-find-input',
+                value: findQuery,
+                placeholder: t('find.placeholder'),
+                spellCheck: false,
+                onChange: (event) => {
+                  setFindQuery(event.target.value)
+                  setFindIndex(-1)
+                },
+                onKeyDown: (event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    findNext(event.shiftKey ? -1 : 1)
+                  } else if (event.key === 'Escape') {
+                    event.preventDefault()
+                    closeFind()
+                  }
+                },
+              }),
+              h(
+                'span',
+                { className: 'ds-find-count' },
+                findQuery.length === 0
+                  ? ''
+                  : findMatches.length === 0
+                    ? t('find.none')
+                    : `${String(findIndex < 0 ? 1 : findIndex + 1)}/${String(findMatches.length)}`,
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-find-btn',
+                  title: t('find.prev'),
+                  disabled: findMatches.length === 0,
+                  onClick: () => findNext(-1),
+                },
+                '↑',
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-find-btn',
+                  title: t('find.next'),
+                  disabled: findMatches.length === 0,
+                  onClick: () => findNext(1),
+                },
+                '↓',
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-toggle',
+                  'data-active': findCase ? 'true' : undefined,
+                  title: t('find.case'),
+                  onClick: () => {
+                    setFindCase((current) => !current)
+                    setFindIndex(-1)
+                  },
+                },
+                'Aa',
+              ),
+              h('input', {
+                className: 'ds-find-input ds-find-replace',
+                value: replaceQuery,
+                placeholder: t('find.replacePlaceholder'),
+                spellCheck: false,
+                onChange: (event) => setReplaceQuery(event.target.value),
+                onKeyDown: (event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    replaceCurrent()
+                  } else if (event.key === 'Escape') {
+                    event.preventDefault()
+                    closeFind()
+                  }
+                },
+              }),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-find-btn ds-find-action',
+                  disabled: findMatches.length === 0,
+                  onClick: replaceCurrent,
+                },
+                t('find.replace'),
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-find-btn ds-find-action',
+                  disabled: findMatches.length === 0,
+                  onClick: replaceAllMatches,
+                },
+                t('find.replaceAll'),
+              ),
+              h(
+                'button',
+                { type: 'button', className: 'ds-find-btn', title: t('find.close'), onClick: closeFind },
+                h(CloseIcon),
+              ),
+            )
+          : null,
+        h(
+          'div',
+          { className: 'ds-editor-wrap' },
         h(
           'div',
           { className: 'ds-gutter', 'aria-hidden': true },
@@ -2635,6 +3003,7 @@ window.__ModuleLoader__.load({
             onScroll: syncScroll,
             onSelect: reportCursor,
           }),
+        ),
         ),
       )
     }
@@ -2858,6 +3227,21 @@ window.__ModuleLoader__.load({
         h('circle', { cx: 11.4, cy: 11.2, r: 2.15 }),
         h('path', { d: 'M6.8 4.8h1.7a1.6 1.6 0 0 1 1.6 1.6v2.1' }),
         h('path', { d: 'M9.2 11.2H7.5a1.6 1.6 0 0 1-1.6-1.6V7.5' }),
+      )
+    }
+
+    function SearchIcon() {
+      return icon(15,
+        h('circle', { cx: 6.5, cy: 6.5, r: 4.1 }),
+        h('path', { d: 'm9.6 9.6 3.4 3.4' }),
+      )
+    }
+
+    function HarnessIcon() {
+      return icon(15,
+        h('path', { d: 'M4.1 3.75h7.8v8.5H4.1Z' }),
+        h('path', { d: 'M6 2v1.75M10 2v1.75M6 12.25V14M10 12.25V14' }),
+        h('path', { d: 'M6.2 7h3.6' }),
       )
     }
 
@@ -5444,6 +5828,8 @@ window.__ModuleLoader__.load({
             ? props.useWorkspaces((snapshot) => snapshot.items)
             : EMPTY_WORKSPACES
         const workspaceItems = Array.isArray(workspaceSnapshot) ? workspaceSnapshot : EMPTY_WORKSPACES
+        const sessionsSnapshot =
+          typeof props?.useSessions === 'function' ? props.useSessions((snapshot) => snapshot) : null
         const [draft, setDraft] = useState(null)
         const [menu, setMenu] = useState(null)
         const [modal, setModal] = useState(null)
@@ -5458,6 +5844,9 @@ window.__ModuleLoader__.load({
         const chatRequestRef = useRef(0)
         const mountedRef = useRef(true)
         const [cursor, setCursor] = useState({ line: 1, column: 1 })
+        const [agentOpen, setAgentOpen] = useState(false)
+        const [agentSending, setAgentSending] = useState(false)
+        const [editorSelection, setEditorSelection] = useState(null)
         const [, setLocaleVersion] = useState(0)
         const [containerWidth, setContainerWidth] = useState(0)
         const [compactView, setCompactView] = useState('tree')
@@ -5482,6 +5871,26 @@ window.__ModuleLoader__.load({
         const [pluginVersion, setPluginVersion] = useState(null)
         const [versionInfo, setVersionInfo] = useState(null)
         const [versionBusy, setVersionBusy] = useState(false)
+        const [searchQuery, setSearchQuery] = useState('')
+        const [searchRegex, setSearchRegex] = useState(false)
+        const [searchCase, setSearchCase] = useState(false)
+        const [searchResults, setSearchResults] = useState(null)
+        const [searchBusy, setSearchBusy] = useState(false)
+        const [searchError, setSearchError] = useState(null)
+        const [paletteOpen, setPaletteOpen] = useState(false)
+        const [paletteMode, setPaletteMode] = useState('files')
+        const [paletteQuery, setPaletteQuery] = useState('')
+        const [paletteFiles, setPaletteFiles] = useState([])
+        const [paletteIndex, setPaletteIndex] = useState(0)
+        const [paletteBusy, setPaletteBusy] = useState(false)
+        const [paletteError, setPaletteError] = useState(null)
+        const [harnessInfo, setHarnessInfo] = useState(null)
+        const [harnessBusy, setHarnessBusy] = useState(false)
+        const [harnessError, setHarnessError] = useState(null)
+        const [harnessConfig, setHarnessConfig] = useState(null)
+        const [harnessConfigBusy, setHarnessConfigBusy] = useState(false)
+        const [harnessCheck, setHarnessCheck] = useState(null)
+        const [harnessChecking, setHarnessChecking] = useState(false)
         const [paneView, setPaneView] = useState('files')
         const [uploading, setUploading] = useState(false)
         const rootRef = useRef(null)
@@ -5491,6 +5900,10 @@ window.__ModuleLoader__.load({
         const downloadAnchorRef = useRef(null)
         const browserCounterRef = useRef(0)
         const terminalCounterRef = useRef(0)
+        const paletteInputRef = useRef(null)
+        const searchInputRef = useRef(null)
+        const autoRefreshRef = useRef(false)
+        const paletteFilesRef = useRef({ root: null, files: [], at: 0 })
         const terminalsRef = useRef([])
         terminalsRef.current = terminals
 
@@ -5515,6 +5928,75 @@ window.__ModuleLoader__.load({
             alive = false
           }
         }, [])
+
+        useEffect(() => {
+          const poll = async () => {
+            if (document.hidden || autoRefreshRef.current) return
+            const root = store.get().root
+            if (root === null || isSshRootPath(root)) return
+            const paths = ['', ...Object.keys(store.get().expanded)].slice(0, 32)
+            autoRefreshRef.current = true
+            try {
+              for (const levelPath of paths) {
+                if (store.get().root !== root) return
+                const level = store.get().levels[levelPath]
+                if (level?.status === 'loading') continue
+                let value
+                try {
+                  value = await call('list', { root, path: levelPath })
+                } catch {
+                  continue
+                }
+                if (store.get().root !== root) return
+                const entries = Array.isArray(value?.entries) ? value.entries : []
+                if (JSON.stringify(level?.entries ?? []) !== JSON.stringify(entries)) {
+                  patchLevel(levelPath, { status: 'ready', error: null, code: null, entries })
+                  paletteFilesRef.current = { root: null, files: [], at: 0 }
+                }
+              }
+            } finally {
+              autoRefreshRef.current = false
+            }
+          }
+          const timer = window.setInterval(() => void poll(), 5000)
+          return () => window.clearInterval(timer)
+        }, [])
+
+        useEffect(() => {
+          const onKey = (event) => {
+            if (!(event.metaKey || event.ctrlKey)) return
+            const key = event.key.toLowerCase()
+            if (key === 'p') {
+              event.preventDefault()
+              if (event.shiftKey) openCommandPalette()
+              else void openQuickOpen()
+              return
+            }
+            if (key === 'f' && event.shiftKey) {
+              event.preventDefault()
+              setPaneView('search')
+              setCompactView('tree')
+              window.setTimeout(() => searchInputRef.current?.focus(), 0)
+            }
+          }
+          window.addEventListener('keydown', onKey)
+          return () => window.removeEventListener('keydown', onKey)
+        }, [])
+
+        useEffect(() => {
+          if (!paletteOpen) return
+          const timer = window.setTimeout(() => paletteInputRef.current?.focus(), 0)
+          return () => window.clearTimeout(timer)
+        }, [paletteOpen])
+
+        useEffect(() => {
+          if (paneView === 'search') {
+            const timer = window.setTimeout(() => searchInputRef.current?.focus(), 0)
+            return () => window.clearTimeout(timer)
+          }
+          if (paneView === 'harness') void loadHarness()
+          return undefined
+        }, [paneView])
 
         useEffect(() => {
           if (!maximized) return
@@ -5630,10 +6112,14 @@ window.__ModuleLoader__.load({
         }, [pickerOpen])
 
         const activeTab = state.tabs.find((tab) => tab.path === state.active) ?? null
+        const activePath = activeTab?.path ?? null
         const rootIsOpen = state.expanded[''] !== undefined
         const compact = containerWidth > 0 && containerWidth < 640
         const gitAvailable = !isSshRootPath(state.root)
         const showGit = paneView === 'git' && gitAvailable
+        const showSearch = paneView === 'search'
+        const showHarness = paneView === 'harness'
+        const showFiles = !showGit && !showSearch && !showHarness
         const showSide = !maximized && (!compact || compactView === 'tree' || activeTab === null)
         const showMain = maximized || !compact || (activeTab !== null && compactView === 'editor')
         const canCollapse = Object.keys(state.expanded).some((entry) => entry !== '')
@@ -5644,7 +6130,9 @@ window.__ModuleLoader__.load({
 
         useEffect(() => {
           if (activeTab === null) setCompactView('tree')
-        }, [activeTab])
+          setEditorSelection(null)
+          setAgentOpen(false)
+        }, [activePath])
 
         function showToast(message) {
           setToast(message)
@@ -5677,6 +6165,249 @@ window.__ModuleLoader__.load({
             showToast(t('version.checkFailed', { message: errorText(error) }))
           } finally {
             setVersionBusy(false)
+          }
+        }
+
+        function agentContext() {
+          const tab = activeTab
+          if (tab === null || !isTextMode(tab.mode)) return null
+          const selection = editorSelection !== null && editorSelection.path === tab.path ? editorSelection : null
+          const raw = selection === null ? tab.content : selection.text
+          if (raw.trim().length === 0) return null
+          const text = raw.length > 12000 ? `${raw.slice(0, 12000)}\n…（内容已截断）` : raw
+          const startLine = selection === null ? 1 : tab.content.slice(0, selection.start).split('\n').length
+          const endLine =
+            selection === null ? tab.content.split('\n').length : tab.content.slice(0, selection.end).split('\n').length
+          return { tab, selection, text, startLine, endLine }
+        }
+
+        function buildAgentPrompt(action) {
+          const context = agentContext()
+          if (context === null) return null
+          const instructions = {
+            explain: '请解释下面这段代码的作用、关键流程和潜在问题。',
+            fix: '请检查下面代码中的问题，并给出具体修改；如果能给出 unified diff 更好。',
+            tests: '请为下面代码编写测试。',
+            file: '请解释这个文件的整体结构和关键逻辑。',
+          }
+          const instruction = instructions[action] ?? instructions.explain
+          const range =
+            context.selection === null
+              ? `整个文件（第 1-${String(context.endLine)} 行）`
+              : `第 ${String(context.startLine)}-${String(context.endLine)} 行`
+          const language = context.tab.language?.id ?? ''
+          return `${instruction}\n\n文件：\`${context.tab.path}\`\n范围：${range}\n\n\`\`\`${language}\n${context.text}\n\`\`\``
+        }
+
+        function agentSessionId() {
+          if (chatSession !== null) return chatSession.sessionId
+          let snapshot = sessionsSnapshot
+          if (snapshot === null) {
+            const sessions = ctx.get('sessions')
+            snapshot = typeof sessions?.list?.getSnapshot === 'function' ? sessions.list.getSnapshot() : null
+          }
+          if (snapshot === null || !Array.isArray(snapshot.ids)) return null
+          const main = snapshot.ids.find((id) => (snapshot.byId[id]?.retainedBy?.mainView ?? 0) > 0)
+          return main ?? snapshot.ids[0] ?? null
+        }
+
+        async function sendAgentPrompt(action) {
+          if (agentSending) return
+          const prompt = buildAgentPrompt(action)
+          if (prompt === null) {
+            showToast(t('agent.emptySelection'))
+            return
+          }
+          const sessions = ctx.get('sessions')
+          const sessionId = agentSessionId()
+          if (sessions === undefined || sessions === null || typeof sessions.retain !== 'function' || sessionId === null) {
+            showToast(t('chat.noSession'))
+            return
+          }
+          setAgentOpen(false)
+          setAgentSending(true)
+          let reference = chatSession
+          let owned = false
+          try {
+            if (reference === null) {
+              reference = sessions.retain(sessionId, { source: 'filebrowserAgent' })
+              owned = true
+            }
+            if (reference.ready !== undefined) await reference.ready
+            const session = typeof sessions.get === 'function' ? sessions.get(reference.sessionId) : undefined
+            if (session === undefined || typeof session.prompt !== 'function') {
+              throw new Error('当前会话不支持发送消息')
+            }
+            const result = await session.prompt([{ type: 'text', text: prompt }], 'queue')
+            if (result?.ok === false) throw new Error(result.error?.message ?? '发送被拒绝')
+            setChatOpen(true)
+            showToast(t('agent.sent'))
+          } catch (error) {
+            showToast(t('agent.failed', { message: error instanceof Error ? error.message : String(error) }))
+          } finally {
+            if (owned && reference !== null) reference.release()
+            setAgentSending(false)
+          }
+        }
+
+        async function runSearch() {
+          if (searchBusy) return
+          const root = store.get().root
+          const query = searchQuery.trim()
+          if (root === null || query.length === 0) {
+            setSearchResults(null)
+            setSearchError(null)
+            return
+          }
+          if (isSshRootPath(root)) {
+            setSearchResults(null)
+            setSearchError(t('search.sshUnsupported'))
+            return
+          }
+          setSearchBusy(true)
+          setSearchError(null)
+          try {
+            const value = await call('search', {
+              root,
+              query,
+              regex: searchRegex,
+              caseSensitive: searchCase,
+              maxResults: 300,
+            })
+            setSearchResults(value ?? null)
+          } catch (error) {
+            setSearchResults(null)
+            setSearchError(errorCode(error) === 'ssh-unsupported' ? t('search.sshUnsupported') : errorText(error))
+          } finally {
+            setSearchBusy(false)
+          }
+        }
+
+        function clearSearch() {
+          setSearchQuery('')
+          setSearchResults(null)
+          setSearchError(null)
+        }
+
+        function focusSearch() {
+          setPaneView('search')
+          setCompactView('tree')
+          window.setTimeout(() => searchInputRef.current?.focus(), 0)
+        }
+
+        async function openQuickOpen() {
+          setPaletteMode('files')
+          setPaletteQuery('')
+          setPaletteIndex(0)
+          setPaletteError(null)
+          setPaletteOpen(true)
+          const root = store.get().root
+          if (root === null) return
+          if (
+            paletteFilesRef.current.root === root &&
+            paletteFilesRef.current.files.length > 0 &&
+            Date.now() - paletteFilesRef.current.at < 30000
+          ) {
+            setPaletteFiles(paletteFilesRef.current.files)
+            return
+          }
+          if (isSshRootPath(root)) {
+            setPaletteFiles([])
+            setPaletteError(t('search.sshUnsupported'))
+            return
+          }
+          setPaletteBusy(true)
+          try {
+            const value = await call('files', { root })
+            const files = Array.isArray(value?.files) ? value.files : []
+            paletteFilesRef.current = { root, files, at: Date.now() }
+            setPaletteFiles(files)
+          } catch (error) {
+            setPaletteError(errorText(error))
+          } finally {
+            setPaletteBusy(false)
+          }
+        }
+
+        function openCommandPalette() {
+          setPaletteMode('commands')
+          setPaletteQuery('')
+          setPaletteIndex(0)
+          setPaletteError(null)
+          setPaletteOpen(true)
+        }
+
+        function closePalette() {
+          setPaletteOpen(false)
+          setPaletteQuery('')
+          setPaletteIndex(0)
+        }
+
+        function paletteCommands() {
+          const commands = [
+            { id: 'new-file', label: t('action.newFile'), run: () => startCreate('file') },
+            { id: 'new-folder', label: t('action.newFolder'), run: () => startCreate('directory') },
+            { id: 'search', label: t('side.search'), run: focusSearch },
+            { id: 'refresh', label: t('action.refresh'), run: () => void refreshAll() },
+            { id: 'terminal', label: t('terminal.open'), run: () => void openTerminal('panel') },
+            { id: 'browser', label: t('browser.open'), run: () => openBrowser() },
+            { id: 'harness', label: t('side.harness'), run: () => void openHarness() },
+          ]
+          if (gitAvailable) commands.push({ id: 'git', label: t('git.title'), run: () => setPaneView('git') })
+          return commands
+        }
+
+        function runPaletteItem(item) {
+          if (item === undefined) return
+          closePalette()
+          item.run()
+        }
+
+        async function loadHarness(force = false) {
+          if (harnessBusy) return
+          if (harnessInfo !== null && !force) return
+          setHarnessBusy(true)
+          setHarnessError(null)
+          try {
+            const value = await call('harness')
+            setHarnessInfo(value ?? null)
+          } catch (error) {
+            setHarnessError(errorText(error))
+          } finally {
+            setHarnessBusy(false)
+          }
+        }
+
+        async function openHarness() {
+          setPaneView('harness')
+          setCompactView('tree')
+          await loadHarness()
+        }
+
+        async function openHarnessConfig(name) {
+          if (harnessConfigBusy) return
+          setHarnessConfigBusy(true)
+          try {
+            const value = await call('harnessConfig', { name })
+            setHarnessConfig(value ?? null)
+          } catch (error) {
+            showToast(t('harness.failed', { message: errorText(error) }))
+          } finally {
+            setHarnessConfigBusy(false)
+          }
+        }
+
+        async function runHarnessCheckNow() {
+          if (harnessChecking) return
+          setHarnessChecking(true)
+          setHarnessCheck(null)
+          try {
+            const value = await call('harnessCheck')
+            setHarnessCheck(value ?? { code: 1, output: '', durationMs: 0 })
+          } catch (error) {
+            setHarnessCheck({ code: 1, output: errorText(error), durationMs: 0 })
+          } finally {
+            setHarnessChecking(false)
           }
         }
 
@@ -5737,6 +6468,7 @@ window.__ModuleLoader__.load({
                     selected: null,
                     tabs: [],
                     active: null,
+                    paneView: 'files',
                   }
                 : {}),
             }))
@@ -5822,6 +6554,9 @@ window.__ModuleLoader__.load({
           }))
           rememberRoot(nextRoot)
           setCompactView('tree')
+          setSearchResults(null)
+          setSearchError(null)
+          paletteFilesRef.current = { root: null, files: [], at: 0 }
           void loadDir('', { root: nextRoot })
           showToast(t('toast.rootSwitched'))
         }
@@ -6590,6 +7325,21 @@ window.__ModuleLoader__.load({
           } catch (error) {
             patchTab(relative, { loading: false, error: errorText(error), code: errorCode(error) })
           }
+        }
+
+        /** Open a file and place the editor caret at a 1-based line/column. */
+        async function openFileAt(relative, line = 1, column = 1) {
+          await openFile(relative)
+          const tab = store.get().tabs.find((entry) => entry.path === relative)
+          if (tab === undefined || !isTextMode(tab.mode)) return
+          patchTab(relative, {
+            ...(tab.mode === 'markdown' ? { view: 'edit' } : {}),
+            reveal: {
+              line: Math.max(1, Number(line) || 1),
+              column: Math.max(1, Number(column) || 1),
+              nonce: Date.now(),
+            },
+          })
         }
 
         function diffTabKey(request) {
@@ -8032,6 +8782,19 @@ window.__ModuleLoader__.load({
                 )
               : h('span', { className: 'ds-lang' }, tab.language.label),
             h('span', { className: 'ds-spacer' }),
+            isTextMode(tab.mode)
+              ? h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-toolbtn ds-agent-btn',
+                    title: t('agent.open'),
+                    onClick: () => setAgentOpen(true),
+                  },
+                  h(ChatIcon),
+                  h('span', { className: 'ds-tool-label' }, t('agent.short')),
+                )
+              : null,
             h(
               'button',
               {
@@ -8221,6 +8984,8 @@ window.__ModuleLoader__.load({
               })),
             onSave: () => void saveTab(tab.path),
             onCursor: setCursor,
+            onSelection: (selection) =>
+              setEditorSelection(selection === null ? null : { ...selection, path: tab.path }),
           })
         }
 
@@ -8308,6 +9073,467 @@ window.__ModuleLoader__.load({
                   ),
                 )
               : null,
+          )
+        }
+
+        function renderSearchPanel() {
+          const matches = Array.isArray(searchResults?.matches) ? searchResults.matches : []
+          const grouped = new Map()
+          for (const match of matches) {
+            const list = grouped.get(match.path)
+            if (list === undefined) grouped.set(match.path, [match])
+            else list.push(match)
+          }
+          return h(
+            'div',
+            { className: 'ds-side-view ds-search-view', style: { display: showSearch ? 'flex' : 'none' } },
+            h(
+              'div',
+              { className: 'ds-search-form' },
+              h('input', {
+                ref: searchInputRef,
+                className: 'ds-search-input',
+                value: searchQuery,
+                placeholder: t('search.placeholder'),
+                spellCheck: false,
+                onChange: (event) => setSearchQuery(event.target.value),
+                onKeyDown: (event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    void runSearch()
+                  } else if (event.key === 'Escape') {
+                    event.preventDefault()
+                    clearSearch()
+                  }
+                },
+              }),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-search-run',
+                  title: t('search.run'),
+                  disabled: searchBusy || searchQuery.trim().length === 0,
+                  onClick: () => void runSearch(),
+                },
+                h(SearchIcon),
+              ),
+              h(
+                'div',
+                { className: 'ds-search-options' },
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-toggle',
+                    'data-active': searchCase ? 'true' : undefined,
+                    title: t('search.case'),
+                    onClick: () => setSearchCase((value) => !value),
+                  },
+                  'Aa',
+                ),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-toggle',
+                    'data-active': searchRegex ? 'true' : undefined,
+                    title: t('search.regex'),
+                    onClick: () => setSearchRegex((value) => !value),
+                  },
+                  '.*',
+                ),
+                h('span', { className: 'ds-spacer' }),
+                searchBusy
+                  ? h('span', { className: 'ds-search-meta' }, t('search.busy'))
+                  : searchResults === null
+                    ? null
+                    : h('span', { className: 'ds-search-meta' }, t('search.results', { count: String(matches.length) })),
+              ),
+            ),
+            searchError !== null
+              ? h('div', { className: 'ds-errorline' }, searchError)
+              : searchResults === null
+                ? h('div', { className: 'ds-hint' }, t('search.empty'))
+                : matches.length === 0
+                  ? h('div', { className: 'ds-hint' }, t('search.noResults'))
+                  : h(
+                      'div',
+                      { className: 'ds-search-results' },
+                      searchResults.truncated === true
+                        ? h('div', { className: 'ds-hint' }, t('search.truncated', { count: String(matches.length) }))
+                        : null,
+                      [...grouped.entries()].map(([file, list]) =>
+                        h(
+                          'div',
+                          { key: file, className: 'ds-search-file' },
+                          h(
+                            'button',
+                            {
+                              type: 'button',
+                              className: 'ds-search-file-head',
+                              title: file,
+                              onClick: () => void openFileAt(file, list[0].line, list[0].column),
+                            },
+                            h(FileGlyph, { name: basename(file), size: 14 }),
+                            h('span', { className: 'ds-search-file-name' }, basename(file)),
+                            h('span', { className: 'ds-search-file-count' }, String(list.length)),
+                          ),
+                          h(
+                            'div',
+                            { className: 'ds-search-file-path' },
+                            dirname(file) || '.',
+                          ),
+                          list.map((match, index) =>
+                            h(
+                              'button',
+                              {
+                                key: `${file}:${match.line}:${match.column}:${index}`,
+                                type: 'button',
+                                className: 'ds-search-hit',
+                                onClick: () => void openFileAt(file, match.line, match.column),
+                              },
+                              h('span', { className: 'ds-search-line' }, String(match.line)),
+                              h('span', { className: 'ds-search-text', title: match.text }, match.text),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+          )
+        }
+
+        function renderHarnessPanel() {
+          if (harnessConfig !== null) {
+            return h(
+              'div',
+              { className: 'ds-side-view ds-harness-view', style: { display: showHarness ? 'flex' : 'none' } },
+              h(
+                'div',
+                { className: 'ds-harness-config-head' },
+                h(
+                  'button',
+                  { type: 'button', className: 'ds-linkbtn', onClick: () => setHarnessConfig(null) },
+                  t('harness.closeConfig'),
+                ),
+                h('span', { className: 'ds-harness-config-name' }, harnessConfig.name),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-linkbtn',
+                    onClick: () => {
+                      if (typeof navigator.clipboard?.writeText === 'function') {
+                        void navigator.clipboard.writeText(harnessConfig.content).catch(() => {})
+                      }
+                    },
+                  },
+                  t('harness.copy'),
+                ),
+              ),
+              h('pre', { className: 'ds-harness-config' }, harnessConfig.content),
+            )
+          }
+          if (harnessBusy && harnessInfo === null) return h('div', { className: 'ds-hint' }, t('harness.loading'))
+          if (harnessError !== null) {
+            return h(
+              'div',
+              { className: 'ds-side-view ds-harness-view', style: { display: showHarness ? 'flex' : 'none' } },
+              h('div', { className: 'ds-errorline' }, harnessError),
+              h(
+                'button',
+                { type: 'button', className: 'ds-linkbtn', onClick: () => void loadHarness(true) },
+                t('action.retry'),
+              ),
+            )
+          }
+          if (harnessInfo === null) return h('div', { className: 'ds-hint' }, t('harness.loading'))
+          const bundles = Array.isArray(harnessInfo.bundles) ? harnessInfo.bundles : []
+          const dependencies = Array.isArray(harnessInfo.dependencies) ? harnessInfo.dependencies : []
+          const files = Array.isArray(harnessInfo.files) ? harnessInfo.files : []
+          return h(
+            'div',
+            { className: 'ds-side-view ds-harness-view', style: { display: showHarness ? 'flex' : 'none' } },
+            h(
+              'div',
+              { className: 'ds-harness-section' },
+              h('div', { className: 'ds-harness-label' }, t('harness.profile')),
+              h('div', { className: 'ds-harness-value' }, harnessInfo.profile?.name ?? ''),
+              h('div', { className: 'ds-harness-path', title: harnessInfo.profile?.dir ?? '' }, harnessInfo.profile?.dir ?? ''),
+              h('div', { className: 'ds-harness-label' }, t('harness.version')),
+              h('div', { className: 'ds-harness-value' }, `v${harnessInfo.version ?? pluginVersion ?? '?'}`),
+            ),
+            h(
+              'div',
+              { className: 'ds-harness-section' },
+              h('div', { className: 'ds-harness-label' }, t('harness.bundles')),
+              bundles.length === 0
+                ? h('div', { className: 'ds-hint' }, '—')
+                : bundles.map((name) => h('div', { key: name, className: 'ds-harness-item' }, name)),
+            ),
+            dependencies.length === 0
+              ? null
+              : h(
+                  'div',
+                  { className: 'ds-harness-section' },
+                  h('div', { className: 'ds-harness-label' }, t('harness.dependencies')),
+                  dependencies.map((entry) =>
+                    h('div', { key: entry.name, className: 'ds-harness-item' }, `${entry.name} ${entry.version}`),
+                  ),
+                ),
+            h(
+              'div',
+              { className: 'ds-harness-section' },
+              h('div', { className: 'ds-harness-label' }, t('harness.config')),
+              files.length === 0
+                ? h('div', { className: 'ds-hint' }, t('harness.noConfig'))
+                : files.map((file) =>
+                    h(
+                      'button',
+                      {
+                        key: file.name,
+                        type: 'button',
+                        className: 'ds-harness-file',
+                        disabled: harnessConfigBusy,
+                        onClick: () => void openHarnessConfig(file.name),
+                      },
+                      h(PageIcon),
+                      h('span', null, file.name),
+                    ),
+                  ),
+            ),
+            h(
+              'div',
+              { className: 'ds-harness-section' },
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-btn ds-harness-check',
+                  disabled: harnessChecking,
+                  onClick: () => void runHarnessCheckNow(),
+                },
+                harnessChecking ? t('harness.checking') : t('harness.check'),
+              ),
+              harnessCheck === null
+                ? null
+                : h(
+                    'div',
+                    { className: 'ds-harness-check-result' },
+                    h(
+                      'div',
+                      { className: harnessCheck.code === 0 ? 'ds-harness-ok' : 'ds-harness-fail' },
+                      harnessCheck.code === 0
+                        ? t('harness.checkOk')
+                        : t('harness.checkFailed', { code: String(harnessCheck.code) }),
+                    ),
+                    h('pre', { className: 'ds-harness-output' }, harnessCheck.output || '—'),
+                  ),
+            ),
+          )
+        }
+
+        function renderPalette() {
+          if (!paletteOpen) return null
+          const query = paletteQuery.trim().toLowerCase()
+          const commands = paletteMode === 'commands' ? paletteCommands() : []
+          const items =
+            paletteMode === 'files'
+              ? paletteFiles
+                  .filter((file) => query.length === 0 || file.path.toLowerCase().includes(query))
+                  .sort((left, right) => left.path.length - right.path.length || left.path.localeCompare(right.path))
+                  .slice(0, 120)
+              : commands.filter((command) => query.length === 0 || command.label.toLowerCase().includes(query))
+          const index = items.length === 0 ? 0 : Math.min(paletteIndex, items.length - 1)
+          const inputPlaceholder = paletteMode === 'files' ? t('palette.filesPlaceholder') : t('palette.commandsPlaceholder')
+          return h(
+            'div',
+            {
+              className: 'ds-palette-backdrop',
+              onPointerDown: (event) => {
+                if (event.target === event.currentTarget) closePalette()
+              },
+            },
+            h(
+              'div',
+              { className: 'ds-palette', role: 'dialog', 'aria-modal': true },
+              h('div', { className: 'ds-palette-title' }, paletteMode === 'files' ? t('palette.files') : t('palette.commands')),
+              h('input', {
+                ref: paletteInputRef,
+                className: 'ds-palette-input',
+                value: paletteQuery,
+                placeholder: inputPlaceholder,
+                spellCheck: false,
+                onChange: (event) => {
+                  setPaletteQuery(event.target.value)
+                  setPaletteIndex(0)
+                },
+                onKeyDown: (event) => {
+                  if (event.key === 'ArrowDown') {
+                    event.preventDefault()
+                    setPaletteIndex((value) => (items.length === 0 ? 0 : (value + 1) % items.length))
+                  } else if (event.key === 'ArrowUp') {
+                    event.preventDefault()
+                    setPaletteIndex((value) => (items.length === 0 ? 0 : (value - 1 + items.length) % items.length))
+                  } else if (event.key === 'Enter') {
+                    event.preventDefault()
+                    const item =
+                      paletteMode === 'files'
+                        ? items[index] === undefined
+                          ? undefined
+                          : { run: () => void openFileAt(items[index].path, 1, 1) }
+                        : items[index]
+                    runPaletteItem(item)
+                  } else if (event.key === 'Escape') {
+                    event.preventDefault()
+                    closePalette()
+                  }
+                },
+              }),
+              paletteError !== null
+                ? h('div', { className: 'ds-errorline' }, paletteError)
+                : paletteBusy
+                  ? h('div', { className: 'ds-hint' }, t('palette.loading'))
+                  : items.length === 0
+                    ? h(
+                        'div',
+                        { className: 'ds-hint' },
+                        paletteMode === 'files' ? t('palette.noFiles') : t('palette.noCommands'),
+                      )
+                    : h(
+                        'div',
+                        { className: 'ds-palette-list' },
+                        items.map((item, itemIndex) =>
+                          h(
+                            'button',
+                            {
+                              key: paletteMode === 'files' ? item.path : item.id,
+                              type: 'button',
+                              className: 'ds-palette-item',
+                              'data-active': itemIndex === index ? 'true' : undefined,
+                              onMouseEnter: () => setPaletteIndex(itemIndex),
+                              onClick: () =>
+                                runPaletteItem(
+                                  paletteMode === 'files'
+                                    ? { run: () => void openFileAt(item.path, 1, 1) }
+                                    : item,
+                                ),
+                            },
+                            paletteMode === 'files'
+                              ? h(FileGlyph, { name: item.name, size: 14 })
+                              : h(SearchIcon),
+                            h(
+                              'span',
+                              { className: 'ds-palette-item-name' },
+                              paletteMode === 'files' ? item.name : item.label,
+                            ),
+                            paletteMode === 'files'
+                              ? h('span', { className: 'ds-palette-item-path' }, dirname(item.path) || '.')
+                              : null,
+                          ),
+                        ),
+                      ),
+              h('div', { className: 'ds-palette-hint' }, t('palette.hint')),
+            ),
+          )
+        }
+
+        function renderAgentModal() {
+          if (!agentOpen) return null
+          const tab = activeTab
+          if (tab === null || !isTextMode(tab.mode)) return null
+          const context = agentContext()
+          const selection = context?.selection ?? null
+          const preview = context?.text ?? ''
+          const range = selection === null
+            ? t('agent.fileOnly')
+            : t('agent.selection', { start: String(context.startLine), end: String(context.endLine) })
+          return h(
+            'div',
+            {
+              className: 'ds-modal-backdrop',
+              onPointerDown: (event) => {
+                if (event.target === event.currentTarget && !agentSending) setAgentOpen(false)
+              },
+            },
+            h(
+              'div',
+              { className: 'ds-modal ds-agent-modal', role: 'dialog', 'aria-modal': true },
+              h('div', { className: 'ds-modal-title' }, t('agent.title')),
+              h('div', { className: 'ds-modal-text' }, t('agent.hint')),
+              h(
+                'div',
+                { className: 'ds-agent-context' },
+                h('span', { className: 'ds-agent-path' }, tab.path),
+                h('span', { className: 'ds-agent-range' }, range),
+              ),
+              preview.length === 0
+                ? null
+                : h(
+                    'div',
+                    { className: 'ds-agent-preview-wrap' },
+                    h('div', { className: 'ds-agent-preview-label' }, t('agent.preview')),
+                    h('pre', { className: 'ds-agent-preview' }, preview.slice(0, 5000)),
+                  ),
+              h(
+                'div',
+                { className: 'ds-agent-actions' },
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-btn',
+                    disabled: agentSending || selection === null,
+                    onClick: () => void sendAgentPrompt('explain'),
+                  },
+                  t('agent.explain'),
+                ),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-btn',
+                    disabled: agentSending || selection === null,
+                    onClick: () => void sendAgentPrompt('fix'),
+                  },
+                  t('agent.fix'),
+                ),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-btn',
+                    disabled: agentSending || selection === null,
+                    onClick: () => void sendAgentPrompt('tests'),
+                  },
+                  t('agent.tests'),
+                ),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-btn ds-btn-primary',
+                    disabled: agentSending || preview.length === 0,
+                    onClick: () => void sendAgentPrompt('file'),
+                  },
+                  t('agent.file'),
+                ),
+              ),
+              h(
+                'div',
+                { className: 'ds-modal-actions' },
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-btn',
+                    disabled: agentSending,
+                    onClick: () => setAgentOpen(false),
+                  },
+                  t('action.cancel'),
+                ),
+              ),
+            ),
           )
         }
 
@@ -8612,7 +9838,7 @@ window.__ModuleLoader__.load({
               'aside',
               {
                 className: 'ds-side',
-                'data-view': showGit ? 'git' : 'files',
+                'data-view': showGit ? 'git' : showSearch ? 'search' : showHarness ? 'harness' : 'files',
                 style: { width: compact ? '100%' : `${String(state.treeWidth)}px`, display: showSide ? undefined : 'none' },
               },
               h(
@@ -8621,7 +9847,11 @@ window.__ModuleLoader__.load({
                 h(
                   'span',
                   { className: 'ds-pane-title' },
-                  h('span', { className: 'ds-pane-title-text' }, showGit ? t('git.title') : t('explorer')),
+                  h(
+                    'span',
+                    { className: 'ds-pane-title-text' },
+                    showGit ? t('git.title') : showSearch ? t('side.search') : showHarness ? t('side.harness') : t('explorer'),
+                  ),
                   h(
                     'button',
                     {
@@ -8722,7 +9952,7 @@ window.__ModuleLoader__.load({
               ),
               h(
                 'div',
-                { className: 'ds-side-view', style: { display: showGit ? 'none' : 'flex' } },
+                { className: 'ds-side-view', style: { display: showFiles ? 'flex' : 'none' } },
                 h(
                 'div',
                 { className: 'ds-favorites' },
@@ -8863,6 +10093,8 @@ window.__ModuleLoader__.load({
                           ),
                     ),
               ),
+              renderSearchPanel(),
+              renderHarnessPanel(),
               gitAvailable
                 ? h(
                     'div',
@@ -8881,26 +10113,50 @@ window.__ModuleLoader__.load({
                 { className: 'ds-side-foot' },
                 h('span', { className: 'ds-side-path', title: state.root ?? '' }, state.root ?? ''),
               ),
-              gitAvailable
-                ? h(
-                    'div',
-                    { className: 'ds-side-tabs', role: 'tablist', 'aria-label': t('side.tabs') },
-                    h(
-                      'button',
-                      {
-                        type: 'button',
-                        role: 'tab',
-                        className: 'ds-side-tab',
-                        'data-active': showGit ? undefined : 'true',
-                        'aria-selected': !showGit,
-                        onClick: () => {
-                          setPaneView('files')
-                        },
-                      },
-                      h(FolderIcon, { open: !showGit }),
-                      h('span', null, t('explorer')),
-                    ),
-                    h(
+              h(
+                'div',
+                { className: 'ds-side-tabs', role: 'tablist', 'aria-label': t('side.tabs') },
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    role: 'tab',
+                    className: 'ds-side-tab',
+                    'data-active': showFiles ? 'true' : undefined,
+                    'aria-selected': showFiles,
+                    onClick: () => setPaneView('files'),
+                  },
+                  h(FolderIcon, { open: showFiles }),
+                  h('span', null, t('explorer')),
+                ),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    role: 'tab',
+                    className: 'ds-side-tab',
+                    'data-active': showSearch ? 'true' : undefined,
+                    'aria-selected': showSearch,
+                    onClick: focusSearch,
+                  },
+                  h(SearchIcon),
+                  h('span', null, t('side.search')),
+                ),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    role: 'tab',
+                    className: 'ds-side-tab',
+                    'data-active': showHarness ? 'true' : undefined,
+                    'aria-selected': showHarness,
+                    onClick: () => void openHarness(),
+                  },
+                  h(HarnessIcon),
+                  h('span', null, t('side.harness')),
+                ),
+                gitAvailable
+                  ? h(
                       'button',
                       {
                         type: 'button',
@@ -8908,15 +10164,13 @@ window.__ModuleLoader__.load({
                         className: 'ds-side-tab',
                         'data-active': showGit ? 'true' : undefined,
                         'aria-selected': showGit,
-                        onClick: () => {
-                          setPaneView('git')
-                        },
+                        onClick: () => setPaneView('git'),
                       },
                       h(GitIcon),
                       h('span', null, t('git.title')),
-                    ),
-                  )
-                : null,
+                    )
+                  : null,
+              ),
             ),
             h('div', {
               className: 'ds-splitter',
@@ -9501,6 +10755,8 @@ window.__ModuleLoader__.load({
                   ),
                 ),
               ),
+          renderAgentModal(),
+          renderPalette(),
           toast === null ? null : h('div', { className: 'ds-toast', role: 'status' }, toast),
         )
       }
@@ -9959,6 +11215,8 @@ window.__ModuleLoader__.load({
 .ds-side[data-view="git"] > .ds-hint,
 .ds-side[data-view="git"] > .ds-empty { display: none; }
 .ds-side[data-view="git"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch) { display: none; }
+.ds-side[data-view="search"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
+.ds-side[data-view="harness"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch) { display: none; }
 .ds-git-toggle[data-active="true"] {
   color: var(--dsw-alias-brand-primary);
   background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent);
@@ -10695,6 +11953,238 @@ window.__ModuleLoader__.load({
 }
 .ds-side-tab svg { flex: 0 0 auto; width: 12px; height: 12px; }
 .ds-side-tab span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-toggle {
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dsw-alias-label-caption);
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+.ds-toggle[data-active="true"] {
+  color: var(--dsw-alias-brand-primary);
+  border-color: var(--dsw-alias-brand-primary);
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 10%, transparent);
+}
+.ds-search-form { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
+.ds-search-input {
+  flex: 1 1 120px;
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 5px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 11.5px;
+  outline: none;
+}
+.ds-search-input:focus { border-color: var(--dsw-alias-brand-primary); }
+.ds-search-run {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+.ds-search-run:hover { color: var(--dsw-alias-label-primary); border-color: var(--dsw-alias-border-l2); }
+.ds-search-options { display: flex; align-items: center; gap: 6px; width: 100%; }
+.ds-search-meta { font-size: 10px; color: var(--dsw-alias-label-caption); white-space: nowrap; }
+.ds-search-results { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.ds-search-file { border-bottom: 1px solid var(--dsw-alias-border-l1); padding-bottom: 4px; }
+.ds-search-file-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 8px 2px;
+  border: 0;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 11.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.ds-search-file-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-search-file-count { margin-left: auto; color: var(--dsw-alias-label-caption); font-size: 10px; }
+.ds-search-file-path { padding: 0 8px 2px 28px; font-size: 10px; color: var(--dsw-alias-label-caption); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-search-hit {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  padding: 2px 8px 2px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ds-search-hit:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent); }
+.ds-search-line { flex: 0 0 30px; text-align: right; color: var(--dsw-alias-label-caption); font-family: var(--ds-mono); font-size: 10px; }
+.ds-search-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre; font-family: var(--ds-mono); font-size: 10.5px; }
+.ds-harness-view { overflow: auto; }
+.ds-harness-section { padding: 8px 10px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
+.ds-harness-label { margin: 2px 0 3px; color: var(--dsw-alias-label-caption); font-size: 9.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.ds-harness-value { color: var(--dsw-alias-label-primary); font-size: 12px; font-weight: 600; }
+.ds-harness-path { margin-top: 2px; color: var(--dsw-alias-label-caption); font-family: var(--ds-mono); font-size: 10px; word-break: break-all; }
+.ds-harness-item { padding: 1px 0; color: var(--dsw-alias-label-secondary); font-family: var(--ds-mono); font-size: 10.5px; word-break: break-all; }
+.ds-harness-file {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 5px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+.ds-harness-file:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent); color: var(--dsw-alias-label-primary); }
+.ds-harness-check { width: 100%; }
+.ds-harness-check-result { margin-top: 8px; }
+.ds-harness-ok { color: var(--dsw-alias-state-success-primary); font-size: 11px; font-weight: 600; }
+.ds-harness-fail { color: var(--dsw-alias-state-danger-primary); font-size: 11px; font-weight: 600; }
+.ds-harness-output {
+  max-height: 240px;
+  margin: 6px 0 0;
+  padding: 7px;
+  overflow: auto;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 5px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-secondary);
+  font-family: var(--ds-mono);
+  font-size: 10px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.ds-harness-config-head { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
+.ds-harness-config-name { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--ds-mono); font-size: 10.5px; color: var(--dsw-alias-label-secondary); }
+.ds-harness-config {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 8px;
+  overflow: auto;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-secondary);
+  font-family: var(--ds-mono);
+  font-size: 10px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.ds-editor-shell { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
+.ds-findbar {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-alias-bg-layer-1);
+}
+.ds-find-input {
+  flex: 1 1 150px;
+  min-width: 80px;
+  height: 26px;
+  padding: 0 7px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 5px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 11.5px;
+  outline: none;
+}
+.ds-find-input:focus { border-color: var(--dsw-alias-brand-primary); }
+.ds-find-input.ds-find-replace { flex: 1 1 120px; }
+.ds-find-count { flex: 0 0 auto; min-width: 42px; color: var(--dsw-alias-label-caption); font-size: 10px; text-align: center; }
+.ds-find-btn {
+  flex: 0 0 auto;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+.ds-find-btn:hover { color: var(--dsw-alias-label-primary); border-color: var(--dsw-alias-border-l2); }
+.ds-find-btn:disabled { opacity: 0.45; cursor: default; }
+.ds-find-action { font-size: 10px; }
+.ds-palette-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 10vh 12px 12px;
+  background: color-mix(in srgb, var(--dsw-alias-bg-base) 55%, transparent);
+}
+.ds-palette {
+  display: flex;
+  flex-direction: column;
+  width: min(620px, 100%);
+  max-height: 72%;
+  overflow: hidden;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-1);
+  box-shadow: 0 18px 60px color-mix(in srgb, #000 28%, transparent);
+}
+.ds-palette-title { padding: 7px 12px; border-bottom: 1px solid var(--dsw-alias-border-l1); color: var(--dsw-alias-label-caption); font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.ds-palette-input {
+  height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+.ds-palette-list { flex: 1 1 auto; min-height: 0; padding: 4px; overflow: auto; }
+.ds-palette-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.ds-palette-item[data-active="true"] { background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent); color: var(--dsw-alias-label-primary); }
+.ds-palette-item-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-palette-item-path { margin-left: auto; min-width: 0; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-caption); font-family: var(--ds-mono); font-size: 10px; }
+.ds-palette-hint { flex: 0 0 auto; padding: 6px 12px; border-top: 1px solid var(--dsw-alias-border-l1); color: var(--dsw-alias-label-caption); font-size: 10px; }
 .ds-terminal-toggle[data-active="true"] { color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent); }
 .ds-glyph-terminal { color: var(--dsw-alias-brand-primary); }
 .ds-glyph-terminal svg { width: 14px; height: 14px; }
@@ -11176,6 +12666,30 @@ window.__ModuleLoader__.load({
 .ds-modal-title { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
 .ds-modal-text { color: var(--dsw-alias-label-secondary); line-height: 1.65; overflow-wrap: anywhere; }
 .ds-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.ds-agent-modal { width: min(720px, 100%); }
+.ds-agent-context { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin-top: 10px; }
+.ds-agent-path { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-primary); font-family: var(--ds-mono); font-size: 11px; }
+.ds-agent-range { color: var(--dsw-alias-label-caption); font-size: 10.5px; }
+.ds-agent-preview-wrap { margin-top: 10px; }
+.ds-agent-preview-label { margin-bottom: 4px; color: var(--dsw-alias-label-caption); font-size: 10px; }
+.ds-agent-preview {
+  max-height: 240px;
+  margin: 0;
+  padding: 8px;
+  overflow: auto;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-secondary);
+  font-family: var(--ds-mono);
+  font-size: 10.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.ds-agent-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.ds-agent-actions .ds-btn { flex: 1 1 140px; }
+.ds-agent-btn { color: var(--dsw-alias-brand-primary); }
 .ds-toast {
   position: absolute;
   left: 50%;

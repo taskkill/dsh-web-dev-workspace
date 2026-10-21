@@ -4,6 +4,28 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Agent collaboration
+
+- Add an **Agent** action to the editor toolbar: send the selected code (or the
+  whole file) to the current floating conversation with prompts to explain, fix or
+  write tests. The action opens the chat when needed and never applies changes
+  automatically.
+- Agent requests are explicit; browsing, search and auto refresh do not send file
+  content to the model.
+
+### Search, navigation and Harness panel
+
+- Add a Search sidebar tab with workspace-wide content search, case sensitivity,
+  regular expressions, grouped results and jump-to-line. Local workspaces only;
+  dependency/build directories are skipped and files are capped at 2 MiB.
+- Add `Ctrl/⌘+P` Quick Open and `Ctrl/⌘+Shift+P` command palette.
+- Add `Ctrl/⌘+F` find/replace inside the editor, including replace all and case
+  sensitivity.
+- Poll expanded local directories every five seconds so external changes appear
+  without a manual refresh.
+- Add a Harness sidebar tab showing the active profile, plugin version, bundles,
+  dependencies and whitelisted profile config files, with `npm run check` output.
+
 ### Version and update hints
 
 - Show the bundle version in the workspace header. Clicking the badge checks the

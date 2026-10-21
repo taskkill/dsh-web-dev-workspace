@@ -100,6 +100,24 @@ it for you.
   root are located in the tree. `Enter` goes, `Escape` clears.
 - **Go to workspace root** from the Home button or `Alt+Home` inside the panel.
 
+### Search, Quick Open and Harness
+
+- **Workspace search**: the Search sidebar tab searches file contents with optional
+  case sensitivity and regular expressions. Results are grouped by file and jump to
+  the matching line. It skips `node_modules`, `.git`, `dist` and similar directories,
+  caps each file at 2 MiB and limits the result count. SSH workspaces do not support
+  global search yet.
+- **Quick Open**: `Ctrl/⌘ + P` filters workspace files by name. `Ctrl/⌘ + Shift + P`
+  opens the command palette for new file/folder, search, refresh, terminal, browser
+  and Harness actions.
+- **Auto refresh**: local workspaces re-check expanded directories every five seconds,
+  so external creates, deletes and renames update the tree.
+- **In-file find/replace**: `Ctrl/⌘ + F` opens the editor find bar with next/previous,
+  case sensitivity, replace and replace all.
+- **Harness panel**: the Harness sidebar tab shows the active profile, plugin version,
+  bundles, dependencies and profile config files. It can preview `cordis.yml`,
+  `cordis.patch.yml` and `package.json`, and run the plugin's `npm run check`.
+
 ### Editor
 
 - Multi-tab editing with dirty indicators, close confirmation, unsaved buffers
@@ -194,6 +212,19 @@ it for you.
 - Floating panels remain visible when the explorer is maximized, so the file
   workspace can fill the panel while the conversation stays focused. A collapsed
   panel keeps its title bar in place and can be expanded again with one click.
+
+### Agent collaboration
+
+- The editor toolbar has an **Agent** button. With code selected it can **Explain
+  selection**, **Fix selection** or **Write tests for selection**; without a
+  selection, **Explain this file** uses the whole buffer.
+- The action builds a prompt from the path, line range and code, then sends it to
+  the current floating conversation (opening the panel if needed). Nothing is
+  written back automatically; you decide whether to apply a suggestion.
+- Explain/Fix/Tests are disabled without a selection. Failed or timed-out sends
+  show a toast.
+- This is explicit: code reaches the model only after you click an action; opening
+  or browsing files does not send anything.
 
 ### Built-in terminal
 
@@ -402,6 +433,10 @@ repository root, not a subdirectory).
 | `Alt + B` | Open a built-in browser tab |
 | `Ctrl/⌘ + backtick` | Show/hide the bottom terminal panel |
 | `Ctrl/⌘ + Enter` | Commit staged changes from the Git message box |
+| `Ctrl/⌘ + P` | Quick Open a file |
+| `Ctrl/⌘ + Shift + P` | Open the command palette |
+| `Ctrl/⌘ + Shift + F` | Open workspace search |
+| `Ctrl/⌘ + F` | Find/replace inside the editor |
 | `Escape` | Close a menu/modal or clear the address input |
 
 ### Address bar examples
@@ -533,9 +568,10 @@ issue for security-sensitive reports.
   External links/images inside a Markdown file are loaded only when you preview
   that file; images use `referrerPolicy="no-referrer"` so the Harness page URL is
   not sent to the third-party host.
-- **No model-visible data**: it registers no tools, prompts, system-prompt
-  sections, or session events. Opening a file in the editor does not add it to the
-  conversation.
+- **No automatic model-visible data**: it registers no tools, prompts,
+  system-prompt sections, or session events. Opening, searching or browsing files
+  does not add content to the conversation. Only an explicit **Agent** action sends
+  the selected code and path as a user message.
 - **SSH remote folders**: authentication uses the Host's SSH agent or keys under
   `~/.ssh`, and optionally a password supplied for one connection. That password
   lives only in the request/connection in memory, is never written to disk, and
@@ -560,10 +596,12 @@ issue for security-sensitive reports.
   publish your own fork to a registry.
 - **No folder upload/download**: only individual files are transferred. Upload a
   folder by creating it in the UI and uploading its files, or zip it externally.
-- **No automatic file watching**: external changes appear after a manual refresh
-  or reload; saves use stale-file protection.
-- **No automatic merge/rebase, hunk staging, search, or drag-and-drop**: a pull that
-  diverged only reports the condition; resolve it in a terminal first.
+- **Auto refresh is local-only**: expanded local directories are polled every five
+  seconds; SSH roots are not polled and open files still need a manual reload.
+  Saves use stale-file protection.
+- **No automatic merge/rebase or hunk staging**: search and Quick Open currently
+  support local workspaces only; use the tree for SSH roots. A diverged pull only
+  reports the condition; resolve it in a terminal first.
 - **Git network operations require preconfigured authentication** on the Host (SSH
   key or credential helper); the plugin cannot prompt for a username or password.
 - **Git requires the workspace root to be the repository root**; repositories
