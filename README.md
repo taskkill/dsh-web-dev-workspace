@@ -344,9 +344,16 @@ repository root, not a subdirectory).
   two companions, then install the repository root again. Root, favorites,
   preferences and SSH remotes are copied from the old `dsh-side:` browser keys on
   first load. Hard-refresh any tab opened with the old client.
+- **Version hint**: the file workspace header shows the current version (for
+  example `v1.1.1`). Clicking the badge checks `taskkill/dsh-web-filebrowser`'s
+  `package.json` on GitHub and highlights a newer version with update guidance.
+  The result is cached in Host memory for six hours; the check requests only the
+  public version manifest and sends no workspace data. The hint compares the
+  `version` field, so publish a version bump with each release.
 - **Update**: in **Plugins → Installed plugins**, uninstall and reinstall the
   combined bundle from the updated local path (or use the UI's update action when
-  it is offered).
+  it is offered). A local-patch development copy can be updated with `git pull`
+  followed by a DSH restart.
 - **Uninstall**: uninstall `@local/dsh-web-filebrowser` from **Installed plugins**. This removes
   the profile dependency/link and the plugin row; it does not delete your cloned
   source or workspace files.

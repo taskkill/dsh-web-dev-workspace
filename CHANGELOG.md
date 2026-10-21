@@ -4,6 +4,14 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Version and update hints
+
+- Show the bundle version in the workspace header. Clicking the badge checks the
+  public `package.json` in `taskkill/dsh-web-filebrowser` on GitHub (cached for six
+  hours), highlights a newer version, and explains how to update a local checkout
+  or a plugin-manager install. The hint compares the manifest `version`, so each
+  release must bump it.
+
 ### SSH
 
 - Add optional one-time password authentication for SSH roots. A password is used

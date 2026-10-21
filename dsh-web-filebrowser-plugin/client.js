@@ -226,6 +226,7 @@ window.__ModuleLoader__.load({
       'action.wrapShort': '换行',
       'action.nowrap': '取消换行',
       'action.cancel': '取消',
+      'action.ok': '知道了',
       'action.discard': '放弃更改',
       'action.preview': '预览',
       'action.edit': '编辑',
@@ -247,6 +248,12 @@ window.__ModuleLoader__.load({
       'ssh.connect': '连接并添加',
       'ssh.checked': '连接成功：{name}',
       'ssh.connectFailed': '连接 SSH 失败：{message}',
+      'version.checkTitle': '检查插件更新',
+      'version.checking': '检查中…',
+      'version.latest': '已是最新版本 v{version}',
+      'version.updateTitle': '发现新版本 v{latest}',
+      'version.updateMessage': '当前版本 v{current}，最新版本 v{latest}。本地加载请在插件仓库执行 git pull 后重启 DSH；插件管理器安装请在“设置 → 插件”中卸载后重新安装。',
+      'version.checkFailed': '检查更新失败：{message}',
       welcomeTitle: '文件工作区',
       welcomeHint: '在左侧资源管理器中浏览目录。单击文件即可打开，单击目录选中，双击目录展开或收起。',
       welcomeShortcuts: '⌘/Ctrl + S 保存 · F2 重命名 · Delete 删除',
@@ -603,6 +610,7 @@ window.__ModuleLoader__.load({
       'action.wrapShort': 'Wrap',
       'action.nowrap': 'No wrap',
       'action.cancel': 'Cancel',
+      'action.ok': 'OK',
       'action.discard': 'Discard changes',
       'action.preview': 'Preview',
       'action.edit': 'Edit',
@@ -624,6 +632,12 @@ window.__ModuleLoader__.load({
       'ssh.connect': 'Connect and add',
       'ssh.checked': 'Connected: {name}',
       'ssh.connectFailed': 'SSH connection failed: {message}',
+      'version.checkTitle': 'Check for plugin updates',
+      'version.checking': 'Checking…',
+      'version.latest': 'Up to date: v{version}',
+      'version.updateTitle': 'Version v{latest} is available',
+      'version.updateMessage': 'Current version v{current}; latest version v{latest}. For a local checkout, run git pull in the plugin repository and restart DSH. For a plugin-manager install, uninstall and reinstall it under Settings → Plugins.',
+      'version.checkFailed': 'Update check failed: {message}',
       welcomeTitle: 'Workspace Files',
       welcomeHint: 'Browse directories in the Explorer. Click a file to open it, click a folder to select it, and double-click a folder to expand or collapse it.',
       welcomeShortcuts: '⌘/Ctrl + S save · F2 rename · Delete remove',
@@ -5465,6 +5479,9 @@ window.__ModuleLoader__.load({
         const [sshBusy, setSshBusy] = useState(false)
         const [sshError, setSshError] = useState(null)
         const [sshCheck, setSshCheck] = useState(null)
+        const [pluginVersion, setPluginVersion] = useState(null)
+        const [versionInfo, setVersionInfo] = useState(null)
+        const [versionBusy, setVersionBusy] = useState(false)
         const [paneView, setPaneView] = useState('files')
         const [uploading, setUploading] = useState(false)
         const rootRef = useRef(null)
@@ -5476,6 +5493,28 @@ window.__ModuleLoader__.load({
         const terminalCounterRef = useRef(0)
         const terminalsRef = useRef([])
         terminalsRef.current = terminals
+
+        useEffect(() => {
+          let alive = true
+          void (async () => {
+            try {
+              const value = await call('version')
+              if (!alive) return
+              if (typeof value?.version === 'string') setPluginVersion(value.version)
+              try {
+                const checked = await call('versionCheck')
+                if (alive && checked !== null && typeof checked === 'object') setVersionInfo(checked)
+              } catch {
+                /* an update check is optional */
+              }
+            } catch {
+              /* version display is optional */
+            }
+          })()
+          return () => {
+            alive = false
+          }
+        }, [])
 
         useEffect(() => {
           if (!maximized) return
@@ -5609,6 +5648,36 @@ window.__ModuleLoader__.load({
 
         function showToast(message) {
           setToast(message)
+        }
+
+        async function checkVersionNow() {
+          if (versionBusy) return
+          setVersionBusy(true)
+          try {
+            const value = await call('versionCheck', { force: true })
+            if (value !== null && typeof value === 'object') {
+              setVersionInfo(value)
+              if (typeof value.current === 'string') setPluginVersion(value.current)
+              if (value.updateAvailable === true && typeof value.latest === 'string') {
+                setModal({
+                  title: t('version.updateTitle', { latest: value.latest }),
+                  message: t('version.updateMessage', { current: value.current, latest: value.latest }),
+                  confirmLabel: t('action.ok'),
+                  onConfirm: () => setModal(null),
+                })
+                return
+              }
+              if (typeof value.error === 'string') {
+                showToast(t('version.checkFailed', { message: value.error }))
+                return
+              }
+              showToast(t('version.latest', { version: value.current }))
+            }
+          } catch (error) {
+            showToast(t('version.checkFailed', { message: errorText(error) }))
+          } finally {
+            setVersionBusy(false)
+          }
         }
 
         function patchLevel(levelPath, patch) {
@@ -8367,6 +8436,27 @@ window.__ModuleLoader__.load({
               h('span', { className: 'ds-header-logo' }, h(PanelGlyph, { size: 20, active: true })),
               h('span', null, t('panel.title')),
             ),
+            pluginVersion === null
+              ? null
+              : h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-version',
+                    'data-update': versionInfo?.updateAvailable === true ? 'true' : undefined,
+                    'data-busy': versionBusy ? 'true' : undefined,
+                    title: versionBusy
+                      ? t('version.checking')
+                      : versionInfo?.updateAvailable === true
+                        ? t('version.updateTitle', { latest: versionInfo.latest })
+                        : t('version.checkTitle'),
+                    disabled: versionBusy,
+                    onClick: () => void checkVersionNow(),
+                  },
+                  versionInfo?.updateAvailable === true
+                    ? `v${pluginVersion} → v${versionInfo.latest}`
+                    : `v${pluginVersion}`,
+                ),
             h('span', { className: 'ds-vr' }),
             renderWorkspaceSelect(),
             h(
@@ -9452,6 +9542,21 @@ window.__ModuleLoader__.load({
 }
 .ds-header-title { display: flex; align-items: center; gap: 7px; font-weight: 600; white-space: nowrap; }
 .ds-header-logo { display: inline-flex; }
+.ds-version {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dsw-alias-label-caption);
+  font: inherit;
+  font-size: 10px;
+  line-height: 16px;
+  cursor: pointer;
+}
+.ds-version:hover { color: var(--dsw-alias-label-primary); border-color: var(--dsw-alias-border-l2); }
+.ds-version[data-busy="true"] { opacity: 0.6; }
+.ds-version[data-update="true"] { color: var(--dsw-alias-state-success-primary); border-color: currentColor; }
 .ds-root[data-compact="true"] .ds-header-title > span:last-child { display: none; }
 .ds-root[data-compact="true"] .ds-workspace-wrap { flex-basis: 132px; max-width: 132px; }
 .ds-root[data-compact="true"] .ds-breadcrumb { padding-left: 4px; }

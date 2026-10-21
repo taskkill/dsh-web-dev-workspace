@@ -59,6 +59,21 @@ const MAX_RAW_BYTES = 128 * 1024 * 1024
 /** Largest binary upload accepted for an SSH workspace. */
 const MAX_SSH_UPLOAD_BYTES = 128 * 1024 * 1024
 
+/** Local manifests that can carry the combined bundle version. */
+const VERSION_FILES = [
+  fileURLToPath(new URL('../package.json', import.meta.url)),
+  fileURLToPath(new URL('./package.json', import.meta.url)),
+]
+
+/** Public manifest used to discover the latest published version. */
+const VERSION_SOURCE = 'https://api.github.com/repos/taskkill/dsh-web-filebrowser/contents/package.json?ref=main'
+
+/** Reuse a successful update check for six hours. */
+const VERSION_CACHE_MS = 6 * 60 * 60 * 1000
+
+/** Latest successful version check, keyed by the local version it compared. */
+let versionCheckCache = null
+
 /** Stable, descriptive failure carrying a machine-readable code. */
 class SideError extends Error {
   constructor(code, message, details) {
@@ -211,8 +226,82 @@ async function dispatch(ctx, op, body) {
       return deletePath(ctx, body)
     case 'stat':
       return statPath(ctx, body)
+    case 'version':
+      return { version: await readPackageVersion() }
+    case 'versionCheck':
+      return checkLatestVersion(body.force === true)
     default:
       throw new SideError('bad-op', `未知操作：${op}`)
+  }
+}
+
+/** Read the version from the combined bundle manifest, falling back to the component manifest. */
+async function readPackageVersion() {
+  for (const filename of VERSION_FILES) {
+    try {
+      const parsed = JSON.parse(await fsp.readFile(filename, 'utf8'))
+      if (typeof parsed?.version === 'string' && parsed.version.length > 0) return parsed.version
+    } catch {
+      /* try the next manifest */
+    }
+  }
+  return '0.0.0'
+}
+
+/** Compare dotted numeric versions, ignoring an optional `v` prefix and pre-release suffixes. */
+function isNewerVersion(latest, current) {
+  const parts = (value) => String(value).replace(/^v/iu, '').split(/[.+-]/u).slice(0, 3).map((part) => Number.parseInt(part, 10) || 0)
+  const next = parts(latest)
+  const now = parts(current)
+  for (let index = 0; index < 3; index += 1) {
+    if (next[index] !== now[index]) return next[index] > now[index]
+  }
+  return false
+}
+
+/**
+ * Compare the local version with the public manifest on GitHub.
+ *
+ * The check is best-effort and cached after success so opening the panel does
+ * not hammer the GitHub API. `force` bypasses the cache for the explicit
+ * "check for updates" action.
+ *
+ * @param force - Ignore a cached successful result.
+ * @returns `{ current, latest, updateAvailable, checkedAt, error? }`.
+ */
+async function checkLatestVersion(force) {
+  const current = await readPackageVersion()
+  const cached = versionCheckCache
+  if (!force && cached !== null && cached.current === current && Date.now() - cached.checkedAt < VERSION_CACHE_MS) {
+    return { ...cached, cached: true }
+  }
+  try {
+    const response = await fetch(VERSION_SOURCE, {
+      headers: { accept: 'application/vnd.github+json', 'user-agent': 'dsh-web-filebrowser' },
+      signal: AbortSignal.timeout(8000),
+    })
+    if (!response.ok) throw new Error(`GitHub HTTP ${String(response.status)}`)
+    const payload = await response.json()
+    const manifest = JSON.parse(Buffer.from(payload?.content ?? '', 'base64').toString('utf8'))
+    const latest = typeof manifest?.version === 'string' ? manifest.version : null
+    if (latest === null) throw new Error('远程 package.json 缺少 version')
+    const result = {
+      current,
+      latest,
+      updateAvailable: isNewerVersion(latest, current),
+      checkedAt: Date.now(),
+      source: 'github',
+    }
+    versionCheckCache = result
+    return result
+  } catch (error) {
+    return {
+      current,
+      latest: null,
+      updateAvailable: false,
+      checkedAt: Date.now(),
+      error: error instanceof Error ? error.message : String(error),
+    }
   }
 }
 
