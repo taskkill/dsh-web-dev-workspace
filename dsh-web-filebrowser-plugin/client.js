@@ -9270,7 +9270,7 @@ window.__ModuleLoader__.load({
                     value: sshSpec,
                     placeholder: 'ssh://user@host:22/var/www',
                     spellCheck: false,
-                    autoFocus: tab.url.length === 0,
+                    autoFocus: true,
                     disabled: sshBusy,
                     onChange: (event) => {
                       setSshSpec(event.target.value)
