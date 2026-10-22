@@ -161,6 +161,9 @@ DSH Web Filebrowser 把 Harness Web UI 变成一个真正可用的编码工作�
 - 使用 vendored xterm.js。Linux 上由 Host 侧 `script(1)` PTY 提供交互式 Bash、颜色、`Ctrl+C` 和全屏程序（需要 util-linux 的 `script`）；Windows 没有 `script(1)`/`/dev/pts`，改用 `cmd.exe` + 管道的行缓冲终端，普通命令可用（本地回显/退格），但全屏程序、终端缩放和 `Ctrl+C` 等信号键能力有限。
 - 终端运行在本地工作区根目录，以 Harness Host 用户身份执行任意命令，仅 owner 可访问；SSH 远程工作区暂不支持。
   输出缓冲上限 1 MB，最多同时 8 个终端。
+- 终端顶部有**快捷命令**栏：自动读取工作区项目并生成可运行命令，包括
+  `package.json` 脚本（如 `npm run dev`）、Maven/Gradle、`java -jar`、`dotnet`、
+  Django、Go、Cargo、Docker Compose 等。选择命令后可先编辑再点 **运行**，也可直接在输入框输入命令。
 
 ### 内置浏览器
 

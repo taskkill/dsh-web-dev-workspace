@@ -157,6 +157,10 @@ window.__ModuleLoader__.load({
       'terminal.resize': '拖动调整终端高度',
       'terminal.empty': '没有终端',
       'terminal.local': '本地终端',
+      'terminal.quick': '快捷命令',
+      'terminal.commandPlaceholder': '输入或选择命令…',
+      'terminal.run': '运行',
+      'terminal.commandsEmpty': '未检测到常用命令，可直接输入',
       'chat.title': 'DeepSeek 对话',
       'chat.openFloating': '在悬浮窗口中打开当前对话',
       'chat.close': '关闭悬浮对话',
@@ -605,6 +609,10 @@ window.__ModuleLoader__.load({
       'terminal.resize': 'Drag to resize the terminal',
       'terminal.empty': 'No terminal',
       'terminal.local': 'Local terminal',
+      'terminal.quick': 'Quick commands',
+      'terminal.commandPlaceholder': 'Type or choose a command…',
+      'terminal.run': 'Run',
+      'terminal.commandsEmpty': 'No common commands detected; type one directly',
       'chat.title': 'DeepSeek conversation',
       'chat.openFloating': 'Open the current conversation in a floating panel',
       'chat.close': 'Close the floating conversation',
@@ -5409,11 +5417,27 @@ window.__ModuleLoader__.load({
     /** xterm.js view attached to one Host terminal session. */
     function TerminalView({ session, t, onStatus }) {
       const hostRef = useRef(null)
+      const runCommandRef = useRef(null)
       const statusRef = useRef(onStatus)
       const [error, setError] = useState(null)
       const [loading, setLoading] = useState(true)
       const [exited, setExited] = useState(false)
+      const [commands, setCommands] = useState([])
+      const [command, setCommand] = useState('')
       statusRef.current = onStatus
+
+      useEffect(() => {
+        let alive = true
+        if (typeof session.root !== 'string' || session.root.length === 0) return undefined
+        callTerminal('commands', { root: session.root })
+          .then((value) => {
+            if (alive && Array.isArray(value?.commands)) setCommands(value.commands)
+          })
+          .catch(() => {})
+        return () => {
+          alive = false
+        }
+      }, [session.root])
 
       useEffect(() => {
         let disposed = false
@@ -5454,6 +5478,19 @@ window.__ModuleLoader__.load({
           const sendInput = (data) => {
             void callTerminal('write', { id: session.hostId, data }).catch(() => {})
           }
+          const runLine = (line) => {
+            const text = String(line ?? '').trim()
+            if (text.length === 0 || disposed) return
+            if (session.pty !== false) {
+              sendInput(`${text}\r`)
+            } else {
+              inputLine = ''
+              terminal.write(`${text}\r\n`)
+              sendInput(`${text}\r\n`)
+            }
+            terminal.focus()
+          }
+          runCommandRef.current = runLine
           terminal.onData((data) => {
             if (session.pty !== false) {
               sendInput(data)
@@ -5533,6 +5570,7 @@ window.__ModuleLoader__.load({
         })
         return () => {
           disposed = true
+          runCommandRef.current = null
           if (pollTimer !== null) clearTimeout(pollTimer)
           if (observer !== null) observer.disconnect()
           if (fallbackResize !== null) window.removeEventListener('resize', fallbackResize)
@@ -5543,6 +5581,48 @@ window.__ModuleLoader__.load({
       return h(
         'div',
         { className: 'ds-terminal-view' },
+        h(
+          'div',
+          { className: 'ds-terminal-quick' },
+          commands.length > 0
+            ? h(
+                'select',
+                {
+                  className: 'ds-terminal-command-select',
+                  title: t('terminal.quick'),
+                  value: '',
+                  onChange: (event) => {
+                    if (event.target.value.length > 0) setCommand(event.target.value)
+                  },
+                },
+                h('option', { value: '' }, t('terminal.quick')),
+                commands.map((item) => h('option', { key: item.id, value: item.command }, item.label)),
+              )
+            : h('span', { className: 'ds-terminal-quick-empty' }, t('terminal.commandsEmpty')),
+          h('input', {
+            className: 'ds-terminal-command-input',
+            value: command,
+            placeholder: t('terminal.commandPlaceholder'),
+            spellCheck: false,
+            onChange: (event) => setCommand(event.target.value),
+            onKeyDown: (event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                runCommandRef.current?.(command)
+              }
+            },
+          }),
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'ds-terminal-command-run',
+              disabled: loading || exited || command.trim().length === 0,
+              onClick: () => runCommandRef.current?.(command),
+            },
+            t('terminal.run'),
+          ),
+        ),
         h('div', { ref: hostRef, className: 'ds-terminal-host' }),
         loading ? h('div', { className: 'ds-terminal-overlay' }, h('span', { className: 'ds-spinner' }), t('terminal.loading')) : null,
         error !== null ? h('div', { className: 'ds-terminal-overlay ds-terminal-error' }, error) : null,
@@ -7513,6 +7593,7 @@ window.__ModuleLoader__.load({
               id: value.id,
               hostId: value.id,
               title: t('terminal.title', { n: String(terminalCounterRef.current) }),
+              root,
               placement,
               status: 'running',
               exitCode: null,
@@ -12388,7 +12469,57 @@ window.__ModuleLoader__.load({
 .ds-terminal-tab-close:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 10%, transparent); }
 .ds-terminal-tab-dot { flex: 0 0 auto; width: 5px; height: 5px; border-radius: 50%; background: var(--dsw-alias-state-warn-primary); }
 .ds-terminal-empty { display: flex; flex: 1; align-items: center; justify-content: center; color: var(--dsw-alias-label-secondary); font-size: 12px; }
-.ds-terminal-view { position: relative; display: flex; flex: 1 1 auto; min-height: 0; background: var(--dsw-alias-bg-base); }
+.ds-terminal-view { position: relative; display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; background: var(--dsw-alias-bg-base); }
+.ds-terminal-quick {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 5px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-alias-bg-layer-1);
+}
+.ds-terminal-command-select {
+  flex: 0 1 190px;
+  min-width: 0;
+  height: 24px;
+  padding: 0 5px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 4px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 10.5px;
+}
+.ds-terminal-quick-empty { flex: 0 0 auto; max-width: 190px; color: var(--dsw-alias-label-caption); font-size: 10px; }
+.ds-terminal-command-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 24px;
+  padding: 0 7px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 4px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font-family: var(--ds-mono);
+  font-size: 10.5px;
+  outline: none;
+}
+.ds-terminal-command-input:focus { border-color: var(--dsw-alias-brand-primary); }
+.ds-terminal-command-run {
+  flex: 0 0 auto;
+  height: 24px;
+  padding: 0 9px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+.ds-terminal-command-run:hover:not(:disabled) { color: var(--dsw-alias-label-primary); border-color: var(--dsw-alias-border-l2); }
+.ds-terminal-command-run:disabled { opacity: 0.4; cursor: default; }
 .ds-terminal-host { flex: 1 1 auto; min-height: 0; padding: 3px 4px; overflow: hidden; }
 .ds-terminal-host .xterm { height: 100%; }
 .ds-terminal-overlay {

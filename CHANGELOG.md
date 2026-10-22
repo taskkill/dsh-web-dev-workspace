@@ -4,6 +4,13 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Terminal quick commands
+
+- Add a quick-command bar to every terminal. The Host detects package scripts,
+  Maven/Gradle, Java jars, .NET projects/DLLs, Django, Go, Cargo and Docker Compose
+  commands for the workspace; pick one, edit if needed, and run it. Arbitrary
+  commands can still be typed directly.
+
 ### Explorer
 
 - Empty directories now show a breadcrumb-style path chip (chevron, slash-separated

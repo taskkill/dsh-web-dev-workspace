@@ -233,6 +233,10 @@ it for you.
 - Rendering uses vendored xterm.js. On Linux the Host opens a `script(1)` PTY (util-linux `script` is required), so interactive Bash, colours, `Ctrl+C` and full-screen programs work. On Windows the system command processor (`cmd.exe`) runs over pipes because `script(1)`/`/dev/pts` do not exist there; simple line-buffered commands work (with local echo/backspace), while full-screen programs, terminal resizing and signal keys such as `Ctrl+C` are limited.
 - Terminals start in the local workspace root and run arbitrary commands as the Harness host user; only the owner can reach them. SSH workspaces are not supported.
   Output buffers are capped at 1 MB and up to 8 terminals can be open.
+- A **Quick commands** bar above each terminal detects runnable project commands:
+  `package.json` scripts such as `npm run dev`, Maven/Gradle, `java -jar`,
+  `dotnet`, Django, Go, Cargo and Docker Compose. Pick a command, edit it if needed,
+  and press **Run**; the input also accepts arbitrary commands.
 
 ### Built-in browser
 

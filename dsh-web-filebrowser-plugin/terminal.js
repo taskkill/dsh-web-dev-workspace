@@ -29,6 +29,9 @@ const MAX_BUFFER = 1_000_000
 const MAX_WRITE = 64 * 1024
 const MAX_ASSET = 2 * 1024 * 1024
 const TITLE_PREFIX = 'Terminal'
+const MAX_COMMANDS = 40
+const COMMAND_SCAN_DEPTH = 4
+const COMMAND_SCAN_FILES = 2000
 
 const ASSETS = new Map([
   ['xterm.js', 'text/javascript; charset=utf-8'],
@@ -78,6 +81,8 @@ export function createTerminalManager({ resolveRoot, vendorDir }) {
           return success(await resize(body))
         case 'close':
           return success(close(body))
+        case 'commands':
+          return success(await listCommands(body))
         default:
           return failure(400, 'bad-op', `未知的终端操作：${body.op}`)
       }
@@ -172,6 +177,123 @@ export function createTerminalManager({ resolveRoot, vendorDir }) {
       session.exitCode = code
     })
     return { id, title: session.title, cwd: root, cols, rows, pty: session.pty }
+  }
+
+  /** Quote one relative file path for the shell that owns this terminal. */
+  function quotePath(value) {
+    const text = String(value)
+    if (/^[A-Za-z0-9_./:@+-]+$/u.test(text)) return text
+    if (IS_WINDOWS) return `"${text.replaceAll('"', '""')}"`
+    return shellQuote(text)
+  }
+
+  /** Recursively collect a bounded number of files with the given extensions. */
+  async function scanFiles(root, extensions, state, depth = 0) {
+    if (depth > COMMAND_SCAN_DEPTH || state.files >= COMMAND_SCAN_FILES || state.results.length >= 20) return
+    let entries
+    try {
+      entries = await fsp.readdir(depth === 0 ? root : path.join(root, ...state.path), { withFileTypes: true })
+    } catch {
+      return
+    }
+    for (const entry of entries) {
+      if (state.files >= COMMAND_SCAN_FILES || state.results.length >= 20) return
+      if (entry.isSymbolicLink()) continue
+      if (entry.isDirectory()) {
+        if (['node_modules', '.git', '.venv', 'venv', '__pycache__', 'obj'].includes(entry.name)) continue
+        state.path.push(entry.name)
+        await scanFiles(root, extensions, state, depth + 1)
+        state.path.pop()
+        continue
+      }
+      if (!entry.isFile()) continue
+      state.files += 1
+      const lower = entry.name.toLowerCase()
+      if (!extensions.some((extension) => lower.endsWith(extension))) continue
+      state.results.push([...state.path, entry.name].join('/'))
+    }
+  }
+
+  /** Detect runnable commands for the workspace at the terminal's root. */
+  async function listCommands(body) {
+    const root = await resolveRoot(typeof body.root === 'string' ? body.root : '')
+    if (typeof root === 'string' && root.startsWith('ssh://')) {
+      throw new TerminalError('ssh-unsupported', 'SSH 远程工作区暂不支持本地终端')
+    }
+    const commands = []
+    const seen = new Set()
+    const add = (label, command) => {
+      if (command.length === 0 || seen.has(command) || commands.length >= MAX_COMMANDS) return
+      seen.add(command)
+      commands.push({ id: command, label, command })
+    }
+    const isFile = async (name) => {
+      try {
+        return (await fsp.stat(path.join(root, name))).isFile()
+      } catch {
+        return false
+      }
+    }
+    const isDirectory = async (name) => {
+      try {
+        return (await fsp.stat(path.join(root, name))).isDirectory()
+      } catch {
+        return false
+      }
+    }
+
+    if (await isFile('package.json')) {
+      let scripts = {}
+      try {
+        const parsed = JSON.parse(await fsp.readFile(path.join(root, 'package.json'), 'utf8'))
+        if (parsed?.scripts !== null && typeof parsed?.scripts === 'object') scripts = parsed.scripts
+      } catch {
+        /* malformed package.json: keep project-level commands */
+      }
+      const manager = (await isFile('pnpm-lock.yaml')) ? 'pnpm' : (await isFile('yarn.lock')) ? 'yarn' : 'npm'
+      const preferred = ['dev', 'start', 'serve', 'build', 'test', 'check', 'lint', 'typecheck']
+      const names = [...new Set([...preferred.filter((name) => name in scripts), ...Object.keys(scripts)])].slice(0, 12)
+      for (const name of names) {
+        if (typeof scripts[name] !== 'string') continue
+        add(`${manager} run ${name}`, `${manager} run ${name}`)
+      }
+      add(`${manager} install`, `${manager} install`)
+    }
+    if (await isFile('pom.xml')) {
+      add('Maven Spring Boot', `${(await isFile('mvnw')) ? './mvnw' : 'mvn'} spring-boot:run`)
+    }
+    if ((await isFile('build.gradle')) || (await isFile('build.gradle.kts'))) {
+      add('Gradle Boot Run', `${(await isFile('gradlew')) ? './gradlew' : 'gradle'} bootRun`)
+    }
+    if (await isFile('manage.py')) add('Django runserver', 'python manage.py runserver')
+    if (await isFile('requirements.txt')) add('pip install', 'pip install -r requirements.txt')
+    if (await isFile('go.mod')) add('Go run', 'go run .')
+    if (await isFile('Cargo.toml')) add('Cargo run', 'cargo run')
+    if ((await isFile('docker-compose.yml')) || (await isFile('docker-compose.yaml')) || (await isFile('compose.yaml'))) {
+      add('Docker Compose', 'docker compose up')
+    }
+    if ((await isFile('build.sbt'))) add('sbt run', 'sbt run')
+    if ((await isFile('mix.exs'))) add('mix phx.server', 'mix phx.server')
+
+    const csproj = []
+    try {
+      for (const entry of await fsp.readdir(root, { withFileTypes: true })) {
+        if (entry.isFile() && entry.name.toLowerCase().endsWith('.csproj')) csproj.push(entry.name)
+        if (entry.isFile() && entry.name.toLowerCase().endsWith('.sln')) add('dotnet build', `dotnet build ${quotePath(entry.name)}`)
+      }
+    } catch {
+      /* unreadable root: other detectors already ran */
+    }
+    if (csproj.length > 0) add('dotnet run', csproj.length === 1 ? `dotnet run --project ${quotePath(csproj[0])}` : 'dotnet run')
+
+    const jars = { path: [], files: 0, results: [] }
+    await scanFiles(root, ['.jar'], jars)
+    for (const jar of jars.results) add(`java -jar ${jar}`, `java -jar ${quotePath(jar)}`)
+    const dlls = { path: [], files: 0, results: [] }
+    await scanFiles(root, ['.dll'], dlls)
+    for (const dll of dlls.results) add(`dotnet ${dll}`, `dotnet ${quotePath(dll)}`)
+
+    return { root, commands }
   }
 
   async function write(body) {
