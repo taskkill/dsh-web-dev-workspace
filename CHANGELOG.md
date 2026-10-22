@@ -6,6 +6,8 @@ All notable changes to this project are documented here.
 
 ### Responsive layout
 
+- The floating conversation becomes a full-screen sheet only in mobile/tablet
+  browsers (UA-detected); a narrow desktop window keeps the floating panel.
 - Adapt the workspace for phones and tablets: compact single-column explorer/editor
   below 900px, a wrapping header with a full-width address row, larger touch targets,
   a clamped sidebar width on tablets, stacked Markdown split view, and narrow-screen

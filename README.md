@@ -219,6 +219,10 @@ it for you.
 - Floating panels remain visible when the explorer is maximized, so the file
   workspace can fill the panel while the conversation stays focused. A collapsed
   panel keeps its title bar in place and can be expanded again with one click.
+- In a **mobile/tablet browser** (UA-detected) the floating conversation becomes a
+  full-screen sheet: drag/resize controls are hidden, while session selection,
+  new-chat and close actions remain, with safe-area padding. A narrow desktop
+  window keeps the normal floating panel.
 
 ### Agent collaboration
 

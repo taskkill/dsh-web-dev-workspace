@@ -299,6 +299,7 @@ window.__ModuleLoader__.load({
       'action.preview': '预览',
       'action.edit': '编辑',
       'action.split': '分屏',
+      'action.splitExit': '退出分屏',
       'action.retry': '重试',
       'action.newFileHere': '在此新建文件',
       'action.newFolderHere': '在此新建文件夹',
@@ -752,6 +753,7 @@ window.__ModuleLoader__.load({
       'action.preview': 'Preview',
       'action.edit': 'Edit',
       'action.split': 'Split',
+      'action.splitExit': 'Exit split',
       'action.retry': 'Retry',
       'action.newFileHere': 'New file here',
       'action.newFolderHere': 'New folder here',
@@ -1046,6 +1048,17 @@ window.__ModuleLoader__.load({
     /* ------------------------------------------------------------------ *
      * Utilities
      * ------------------------------------------------------------------ */
+
+    /** Whether this page is running in a mobile/tablet browser, not merely a narrow desktop window. */
+    function detectMobileBrowser() {
+      if (typeof navigator === 'undefined') return false
+      if (navigator.userAgentData?.mobile === true) return true
+      const ua = typeof navigator.userAgent === 'string' ? navigator.userAgent : ''
+      if (/Android|iPhone|iPad|iPod|Mobile|Windows Phone|HarmonyOS|MicroMessenger/iu.test(ua)) return true
+      // iPadOS reports a desktop Macintosh UA unless it is in a very old mode.
+      if (/Macintosh/iu.test(ua) && Number(navigator.maxTouchPoints) > 1) return true
+      return false
+    }
 
     function clsx(...values) {
       return values.filter(Boolean).join(' ')
@@ -5710,10 +5723,14 @@ window.__ModuleLoader__.load({
       creating,
       newDisabled,
       error,
+      mobile = false,
       children,
     }) {
       const [rect, setRect] = useState(defaultChatRect)
       const [collapsed, setCollapsed] = useState(false)
+      useEffect(() => {
+        if (mobile) setCollapsed(false)
+      }, [mobile])
       const sessionSnapshot =
         (typeof useSessions === 'function' ? useSessions((snapshot) => snapshot) : null) ?? null
       const mainSessionId =
@@ -5755,7 +5772,7 @@ window.__ModuleLoader__.load({
       }, [sessionSnapshot, workspaceItems, root, activeSessionId, t, mainSessionId])
 
       function beginDrag(event) {
-        if (event.button !== 0) return
+        if (mobile || event.button !== 0) return
         event.preventDefault()
         const start = rect
         const startX = event.clientX
@@ -5782,7 +5799,7 @@ window.__ModuleLoader__.load({
       }
 
       function beginResize(event) {
-        if (event.button !== 0) return
+        if (mobile || event.button !== 0) return
         event.preventDefault()
         event.stopPropagation()
         const start = rect
@@ -5808,19 +5825,26 @@ window.__ModuleLoader__.load({
       return h(
         'div',
         {
-          className: collapsed ? 'ds-chat-float ds-chat-float-collapsed' : 'ds-chat-float',
+          className: clsx(
+            'ds-chat-float',
+            mobile ? 'ds-chat-float-mobile' : undefined,
+            collapsed ? 'ds-chat-float-collapsed' : undefined,
+          ),
           role: 'dialog',
           'aria-label': t('chat.title'),
-          style: {
-            left: `${String(rect.x)}px`,
-            top: `${String(rect.y)}px`,
-            width: `${String(rect.width)}px`,
-            height: collapsed ? '36px' : `${String(rect.height)}px`,
-          },
+          'data-mobile': mobile ? 'true' : undefined,
+          style: mobile
+            ? { left: 0, top: 0, width: '100%', height: '100dvh', maxHeight: '100dvh', minWidth: 0, minHeight: 0 }
+            : {
+                left: `${String(rect.x)}px`,
+                top: `${String(rect.y)}px`,
+                width: `${String(rect.width)}px`,
+                height: collapsed ? '36px' : `${String(rect.height)}px`,
+              },
         },
         h(
           'div',
-          { className: 'ds-chat-float-head', onPointerDown: beginDrag },
+          { className: 'ds-chat-float-head', onPointerDown: mobile ? undefined : beginDrag },
           h('span', { className: 'ds-chat-float-icon' }, h(ChatIcon)),
           sessions.length === 0
             ? h('span', { className: 'ds-chat-float-title' }, t('chat.title'))
@@ -5863,18 +5887,20 @@ window.__ModuleLoader__.load({
             },
             h(PlusIcon),
           ),
-          h(
-            'button',
-            {
-              type: 'button',
-              className: 'ds-iconbtn ds-iconbtn-sm',
-              title: collapsed ? t('chat.expand') : t('chat.collapse'),
-              'aria-expanded': !collapsed,
-              onPointerDown: (event) => event.stopPropagation(),
-              onClick: () => setCollapsed((value) => !value),
-            },
-            collapsed ? h(ChevronDownIcon) : h(ChevronUpIcon),
-          ),
+          mobile
+            ? null
+            : h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-iconbtn ds-iconbtn-sm',
+                  title: collapsed ? t('chat.expand') : t('chat.collapse'),
+                  'aria-expanded': !collapsed,
+                  onPointerDown: (event) => event.stopPropagation(),
+                  onClick: () => setCollapsed((value) => !value),
+                },
+                collapsed ? h(ChevronDownIcon) : h(ChevronUpIcon),
+              ),
           h(
             'button',
             {
@@ -5895,7 +5921,7 @@ window.__ModuleLoader__.load({
           { className: 'ds-chat-float-body', hidden: collapsed },
           children,
         ),
-        collapsed
+        collapsed || mobile
           ? null
           : h('div', {
               className: 'ds-chat-float-resize',
@@ -5912,6 +5938,7 @@ window.__ModuleLoader__.load({
     function makeIdePage(ctx, t, store) {
       return function IdePage(props) {
         const state = useStore(store)
+        const [isMobileBrowser] = useState(() => detectMobileBrowser())
         const inSidebarTab = typeof props?.useTabInfo === 'function'
         const inlineChatSlot = inSidebarTab ? CHAT_SIDEBAR_INLINE_SLOT : CHAT_INLINE_SLOT
         const workspaceSnapshot =
@@ -7960,6 +7987,7 @@ window.__ModuleLoader__.load({
               creating: chatCreating,
               newDisabled: state.root !== null && isSshRootPath(state.root),
               error: chatError,
+              mobile: isMobileBrowser,
             },
             scoped,
           )
@@ -8945,7 +8973,7 @@ window.__ModuleLoader__.load({
                       type: 'button',
                       className: 'ds-switch-btn',
                       'data-active': tab.view === 'split' ? 'true' : undefined,
-                      onClick: () => patchTab(tab.path, { view: 'split' }),
+                      onClick: () => patchTab(tab.path, { view: tab.view === 'split' ? 'edit' : 'split' }),
                     },
                     h(PanelRightIcon),
                     t('action.split'),
@@ -9164,40 +9192,59 @@ window.__ModuleLoader__.load({
           if (tab.mode === 'markdown' && tab.view === 'split') {
             return h(
               'div',
-              {
-                className: 'ds-md-split',
-                ref: mdSplitRef,
-                'data-stacked': splitStacked ? 'true' : undefined,
-                style: splitStacked
-                  ? undefined
-                  : { gridTemplateColumns: `${String(mdSplitRatio)}% 5px minmax(0, 1fr)` },
-              },
-              h('div', { className: 'ds-md-split-pane ds-md-split-editor' }, textEditorNode(tab)),
-              h('div', {
-                className: 'ds-md-split-divider',
-                role: 'separator',
-                'aria-orientation': 'vertical',
-                title: t('action.split'),
-                onPointerDown: beginMdSplitDrag,
-                onDoubleClick: () => setMdSplitRatio(50),
-              }),
+              { className: 'ds-md-split-wrap' },
               h(
                 'div',
-                { className: 'ds-md-split-pane ds-md-split-preview' },
-                h(MarkdownView, {
-                  key: `${tab.path}:split-preview`,
-                  text: tab.content,
-                  root: state.root,
-                  file: tab.path,
-                  onOpenPath: (relative) => {
-                    if (relative.endsWith('/')) {
-                      void ensureExpanded(relative.replace(/\/$/u, ''))
-                    } else {
-                      void openFile(relative)
-                    }
+                { className: 'ds-md-split-bar' },
+                h('span', { className: 'ds-md-split-label' }, t('action.split')),
+                h('span', { className: 'ds-spacer' }),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-linkbtn',
+                    onClick: () => patchTab(tab.path, { view: 'edit' }),
                   },
-                  t,
+                  t('action.splitExit'),
+                ),
+              ),
+              h(
+                'div',
+                {
+                  className: 'ds-md-split',
+                  ref: mdSplitRef,
+                  'data-stacked': splitStacked ? 'true' : undefined,
+                  style: splitStacked
+                    ? undefined
+                    : { gridTemplateColumns: `${String(mdSplitRatio)}% 5px minmax(0, 1fr)` },
+                },
+                h('div', { className: 'ds-md-split-pane ds-md-split-editor' }, textEditorNode(tab)),
+                h('div', {
+                  className: 'ds-md-split-divider',
+                  role: 'separator',
+                  'aria-orientation': 'vertical',
+                  title: t('action.split'),
+                  onPointerDown: beginMdSplitDrag,
+                  onDoubleClick: () => setMdSplitRatio(50),
                 }),
+                h(
+                  'div',
+                  { className: 'ds-md-split-pane ds-md-split-preview' },
+                  h(MarkdownView, {
+                    key: `${tab.path}:split-preview`,
+                    text: tab.content,
+                    root: state.root,
+                    file: tab.path,
+                    onOpenPath: (relative) => {
+                      if (relative.endsWith('/')) {
+                        void ensureExpanded(relative.replace(/\/$/u, ''))
+                      } else {
+                        void openFile(relative)
+                      }
+                    },
+                    t,
+                  }),
+                ),
               ),
             )
           }
@@ -12806,6 +12853,9 @@ window.__ModuleLoader__.load({
 .ds-savebtn:hover:not(:disabled) { border-color: var(--dsw-alias-brand-primary); }
 .ds-savebtn:disabled { opacity: 0.4; cursor: default; }
 .ds-dirty-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--dsw-alias-brand-primary); }
+.ds-md-split-wrap { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; min-height: 0; }
+.ds-md-split-bar { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border-bottom: 1px solid var(--dsw-alias-border-l1); background: var(--dsw-alias-bg-layer-1); }
+.ds-md-split-label { color: var(--dsw-alias-label-caption); font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
 .ds-md-split { display: grid; flex: 1 1 auto; min-width: 0; min-height: 0; overflow: hidden; }
 .ds-md-split[data-stacked="true"] { display: flex; flex-direction: column; }
 .ds-md-split-pane { display: flex; min-width: 0; min-height: 0; overflow: hidden; }
@@ -13483,6 +13533,25 @@ window.__ModuleLoader__.load({
   overflow-wrap: anywhere;
 }
 .ds-chat-float-collapsed { min-height: 36px; }
+.ds-chat-float-mobile {
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+  box-shadow: none;
+  overscroll-behavior: contain;
+}
+.ds-chat-float-mobile .ds-chat-float-head {
+  height: calc(48px + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
+  padding-left: 12px;
+  padding-right: 8px;
+  cursor: default;
+  touch-action: auto;
+}
+.ds-chat-float-mobile .ds-chat-float-select { max-width: none; height: 30px; font-size: 13px; }
+.ds-chat-float-mobile .ds-chat-float-body { padding-bottom: env(safe-area-inset-bottom); }
+.ds-chat-float-mobile .ds-chat-float-close,
+.ds-chat-float-mobile .ds-chat-float-new { width: 32px; height: 32px; }
 .ds-chat-float-collapsed .ds-chat-float-head { border-bottom: 0; }
 .ds-chat-float-empty {
   display: flex;
