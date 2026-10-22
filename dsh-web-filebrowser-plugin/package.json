@@ -12,6 +12,7 @@
   },
   "files": [
     "index.js",
+    "memory.js",
     "ssh.js",
     "terminal.js",
     "client.js",

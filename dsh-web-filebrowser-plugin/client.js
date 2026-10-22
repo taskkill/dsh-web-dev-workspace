@@ -203,7 +203,39 @@ window.__ModuleLoader__.load({
       explorer: '资源管理器',
       'side.search': '搜索',
       'side.harness': 'Harness',
+      'side.memory': '记忆',
       'side.tabs': '侧栏视图',
+      'memory.title': '工作区记忆',
+      'memory.hint': '跨会话共享，仅当前工作区生效',
+      'memory.loading': '正在读取记忆…',
+      'memory.empty': '还没有记忆。可以在对话中让 DeepSeek 记住项目事实，或在这里手动添加。',
+      'memory.placeholder': '例如：项目使用 pnpm；测试命令是 pnpm test；不要修改 dist/。',
+      'memory.tagsPlaceholder': '标签，逗号分隔（可选）',
+      'memory.add': '添加记忆',
+      'memory.save': '保存记忆',
+      'memory.saving': '正在保存…',
+      'memory.saved': '已保存记忆',
+      'memory.already': '已存在相同记忆',
+      'memory.saveFailed': '保存记忆失败：{message}',
+      'memory.updated': '已更新记忆',
+      'memory.edit': '编辑',
+      'memory.delete': '删除',
+      'memory.deleteTitle': '删除记忆',
+      'memory.deleteMessage': '删除这条记忆？删除后当前工作区的所有会话都不再看到它。\n\n{text}',
+      'memory.deleted': '已删除记忆',
+      'memory.deleteFailed': '删除记忆失败：{message}',
+      'memory.loadFailed': '读取记忆失败：{message}',
+      'memory.sshUnsupported': 'SSH 远程工作区没有本地记忆',
+      'memory.noRoot': '请先选择工作区',
+      'memory.count': '{count} 条',
+      'memory.file': '.dsh/memory.json',
+      'memory.fileHint': '保存在当前工作区，可手动编辑；.dsh/.gitignore 会默认忽略它。',
+      'memory.cancelEdit': '取消编辑',
+      'memory.editing': '正在编辑记忆',
+      'memory.refresh': '刷新记忆',
+      'memory.help': 'DeepSeek 可通过 memory_save / memory_search / memory_update / memory_delete 读写这些记忆。',
+      'memory.justNow': '刚刚',
+      'memory.updatedAt': '更新于 {time}',
       'side.moveLeft': '资源管理器移到左侧',
       'side.moveRight': '资源管理器移到右侧',
       'search.placeholder': '在工作区中搜索',
@@ -666,7 +698,39 @@ window.__ModuleLoader__.load({
       explorer: 'Explorer',
       'side.search': 'Search',
       'side.harness': 'Harness',
+      'side.memory': 'Memory',
       'side.tabs': 'Sidebar views',
+      'memory.title': 'Workspace memory',
+      'memory.hint': 'Shared across sessions, scoped to this workspace',
+      'memory.loading': 'Reading memory…',
+      'memory.empty': 'No memories yet. Ask DeepSeek to remember project facts in chat, or add one here.',
+      'memory.placeholder': 'e.g. This project uses pnpm; the test command is pnpm test; do not edit dist/.',
+      'memory.tagsPlaceholder': 'Tags, comma separated (optional)',
+      'memory.add': 'Add memory',
+      'memory.save': 'Save memory',
+      'memory.saving': 'Saving…',
+      'memory.saved': 'Memory saved',
+      'memory.already': 'An identical memory already exists',
+      'memory.saveFailed': 'Could not save the memory: {message}',
+      'memory.updated': 'Memory updated',
+      'memory.edit': 'Edit',
+      'memory.delete': 'Delete',
+      'memory.deleteTitle': 'Delete memory',
+      'memory.deleteMessage': 'Delete this memory? Every session in this workspace will stop seeing it.\n\n{text}',
+      'memory.deleted': 'Memory deleted',
+      'memory.deleteFailed': 'Could not delete the memory: {message}',
+      'memory.loadFailed': 'Could not read memory: {message}',
+      'memory.sshUnsupported': 'SSH remote workspaces have no local memory',
+      'memory.noRoot': 'Choose a workspace first',
+      'memory.count': '{count} entries',
+      'memory.file': '.dsh/memory.json',
+      'memory.fileHint': 'Stored in this workspace and editable by hand; .dsh/.gitignore keeps it out of Git by default.',
+      'memory.cancelEdit': 'Cancel edit',
+      'memory.editing': 'Editing a memory',
+      'memory.refresh': 'Refresh memory',
+      'memory.help': 'DeepSeek reads and writes these notes through memory_save / memory_search / memory_update / memory_delete.',
+      'memory.justNow': 'just now',
+      'memory.updatedAt': 'Updated {time}',
       'side.moveLeft': 'Move explorer to the left',
       'side.moveRight': 'Move explorer to the right',
       'search.placeholder': 'Search the workspace',
@@ -3292,6 +3356,14 @@ window.__ModuleLoader__.load({
         h('path', { d: 'M4.1 3.75h7.8v8.5H4.1Z' }),
         h('path', { d: 'M6 2v1.75M10 2v1.75M6 12.25V14M10 12.25V14' }),
         h('path', { d: 'M6.2 7h3.6' }),
+      )
+    }
+
+    function MemoryIcon() {
+      return icon(15,
+        h('path', { d: 'M5.1 2.75h4.8a2.3 2.3 0 0 1 2.3 2.3v5.9a2.3 2.3 0 0 1-2.3 2.3H5.1a2.3 2.3 0 0 1-2.3-2.3v-5.9a2.3 2.3 0 0 1 2.3-2.3Z' }),
+        h('path', { d: 'M5.7 5.5h3.6M5.7 8h3.6M5.7 10.5h2.2' }),
+        h('path', { d: 'M2.8 6H1.4M14.6 6h-1.4M2.8 10H1.4M14.6 10h-1.4', strokeWidth: 1.1 }),
       )
     }
 
@@ -6056,6 +6128,15 @@ window.__ModuleLoader__.load({
         const [harnessConfigBusy, setHarnessConfigBusy] = useState(false)
         const [harnessCheck, setHarnessCheck] = useState(null)
         const [harnessChecking, setHarnessChecking] = useState(false)
+        const [memoryEntries, setMemoryEntries] = useState([])
+        const [memoryPath, setMemoryPath] = useState(null)
+        const [memoryUpdatedAt, setMemoryUpdatedAt] = useState(0)
+        const [memoryBusy, setMemoryBusy] = useState(false)
+        const [memoryError, setMemoryError] = useState(null)
+        const [memoryDraft, setMemoryDraft] = useState('')
+        const [memoryTagsDraft, setMemoryTagsDraft] = useState('')
+        const [memoryEditing, setMemoryEditing] = useState(null)
+        const [memorySaving, setMemorySaving] = useState(false)
         const [paneView, setPaneView] = useState('files')
         const [uploading, setUploading] = useState(false)
         const rootRef = useRef(null)
@@ -6179,6 +6260,7 @@ window.__ModuleLoader__.load({
             return () => window.clearTimeout(timer)
           }
           if (paneView === 'harness') void loadHarness()
+          if (paneView === 'memory') void loadMemory()
           return undefined
         }, [paneView])
 
@@ -6303,8 +6385,9 @@ window.__ModuleLoader__.load({
         const gitAvailable = !isSshRootPath(state.root)
         const showGit = paneView === 'git' && gitAvailable
         const showSearch = paneView === 'search'
+        const showMemory = paneView === 'memory' && gitAvailable
         const showHarness = paneView === 'harness'
-        const showFiles = !showGit && !showSearch && !showHarness
+        const showFiles = !showGit && !showSearch && !showMemory && !showHarness
         const treeDisplayWidth = compact
           ? '100%'
           : `${String(containerWidth > 0 ? Math.min(state.treeWidth, Math.max(220, Math.floor(containerWidth * 0.42))) : state.treeWidth)}px`
@@ -6580,6 +6663,7 @@ window.__ModuleLoader__.load({
             { id: 'refresh', label: t('action.refresh'), run: () => void refreshAll() },
             { id: 'terminal', label: t('terminal.open'), run: () => void openTerminal('panel') },
             { id: 'browser', label: t('browser.open'), run: () => openBrowser() },
+            { id: 'memory', label: t('side.memory'), run: openMemory },
             { id: 'harness', label: t('side.harness'), run: () => void openHarness() },
           ]
           if (gitAvailable) commands.push({ id: 'git', label: t('git.title'), run: () => setPaneView('git') })
@@ -6638,6 +6722,146 @@ window.__ModuleLoader__.load({
           } finally {
             setHarnessChecking(false)
           }
+        }
+
+        /** Open the Memory panel for the current local workspace. */
+        function openMemory() {
+          if (isSshRootPath(store.get().root)) {
+            showToast(t('memory.sshUnsupported'))
+            return
+          }
+          setPaneView('memory')
+          setCompactView('tree')
+        }
+
+        /** Read the current workspace's memory document. */
+        async function loadMemory() {
+          const targetRoot = store.get().root
+          if (targetRoot === null) {
+            setMemoryEntries([])
+            setMemoryPath(null)
+            setMemoryUpdatedAt(0)
+            setMemoryError(null)
+            return
+          }
+          if (isSshRootPath(targetRoot)) {
+            setMemoryEntries([])
+            setMemoryPath(null)
+            setMemoryUpdatedAt(0)
+            setMemoryError(t('memory.sshUnsupported'))
+            return
+          }
+          if (memoryBusy) return
+          setMemoryBusy(true)
+          setMemoryError(null)
+          try {
+            const value = await call('memoryList', { root: targetRoot })
+            if (store.get().root !== targetRoot) return
+            setMemoryEntries(Array.isArray(value?.entries) ? value.entries : [])
+            setMemoryPath(typeof value?.path === 'string' ? value.path : null)
+            setMemoryUpdatedAt(Number.isFinite(value?.updatedAt) ? value.updatedAt : 0)
+          } catch (error) {
+            if (store.get().root === targetRoot) setMemoryError(t('memory.loadFailed', { message: errorText(error) }))
+          } finally {
+            setMemoryBusy(false)
+          }
+        }
+
+        /** Parse the comma-separated tag draft used by the panel. */
+        function parseMemoryTags(value) {
+          return String(value)
+            .split(/[,，;；\n]+/u)
+            .map((tag) => tag.trim())
+            .filter((tag) => tag.length > 0)
+            .slice(0, 8)
+        }
+
+        /** Short, stable label for one memory timestamp. */
+        function formatMemoryTime(value) {
+          if (!Number.isFinite(value) || value <= 0) return ''
+          if (Date.now() - value < 60_000) return t('memory.justNow')
+          try {
+            return new Date(value).toLocaleString()
+          } catch {
+            return ''
+          }
+        }
+
+        /** Save the draft as a new memory or as the entry being edited. */
+        async function saveMemoryDraft() {
+          if (memorySaving) return
+          const root = store.get().root
+          if (root === null) {
+            setMemoryError(t('memory.noRoot'))
+            return
+          }
+          const text = memoryDraft.trim()
+          if (text.length === 0) return
+          const tags = parseMemoryTags(memoryTagsDraft)
+          setMemorySaving(true)
+          setMemoryError(null)
+          try {
+            if (memoryEditing === null) {
+              const result = await call('memorySave', { root, text, tags })
+              showToast(result?.duplicate === true ? t('memory.already') : t('memory.saved'))
+            } else {
+              await call('memoryUpdate', { root, id: memoryEditing.id, text, tags })
+              showToast(t('memory.updated'))
+            }
+            setMemoryDraft('')
+            setMemoryTagsDraft('')
+            setMemoryEditing(null)
+            await loadMemory()
+          } catch (error) {
+            setMemoryError(t('memory.saveFailed', { message: errorText(error) }))
+          } finally {
+            setMemorySaving(false)
+          }
+        }
+
+        /** Load one entry into the editor. */
+        function beginEditMemory(entry) {
+          setMemoryEditing({ id: entry.id })
+          setMemoryDraft(entry.text)
+          setMemoryTagsDraft(Array.isArray(entry.tags) ? entry.tags.join(', ') : '')
+          setMemoryError(null)
+        }
+
+        /** Leave edit mode without saving. */
+        function cancelMemoryEdit() {
+          setMemoryEditing(null)
+          setMemoryDraft('')
+          setMemoryTagsDraft('')
+          setMemoryError(null)
+        }
+
+        /** Delete one entry after confirmation. */
+        async function deleteMemoryEntry(id) {
+          const root = store.get().root
+          if (root === null) return
+          try {
+            await call('memoryDelete', { root, id })
+            if (memoryEditing !== null && memoryEditing.id === id) cancelMemoryEdit()
+            await loadMemory()
+            showToast(t('memory.deleted'))
+          } catch (error) {
+            setMemoryError(t('memory.deleteFailed', { message: errorText(error) }))
+          }
+        }
+
+        /** Ask before deleting one memory. */
+        function requestDeleteMemory(entry) {
+          const preview = entry.text.length > 300 ? `${entry.text.slice(0, 300)}…` : entry.text
+          setModal({
+            title: t('memory.deleteTitle'),
+            message: t('memory.deleteMessage', { text: preview }),
+            confirmLabel: t('action.delete'),
+            danger: true,
+            onConfirm: () => {
+              setModal(null)
+              void deleteMemoryEntry(entry.id)
+            },
+          })
         }
 
         function patchLevel(levelPath, patch) {
@@ -6822,6 +7046,13 @@ window.__ModuleLoader__.load({
           setCompactView('tree')
           setSearchResults(null)
           setSearchError(null)
+          setMemoryEntries([])
+          setMemoryPath(null)
+          setMemoryUpdatedAt(0)
+          setMemoryError(null)
+          setMemoryDraft('')
+          setMemoryTagsDraft('')
+          setMemoryEditing(null)
           paletteFilesRef.current = { root: null, files: [], at: 0 }
           void loadDir('', { root: nextRoot })
           if (options.silent !== true) showToast(t('toast.rootSwitched'))
@@ -9730,6 +9961,156 @@ window.__ModuleLoader__.load({
           )
         }
 
+        function renderMemoryPanel() {
+          const local = !isSshRootPath(state.root)
+          const editing = memoryEditing !== null
+          return h(
+            'div',
+            { className: 'ds-side-view ds-memory-view', style: { display: showMemory ? 'flex' : 'none' } },
+            h(
+              'div',
+              { className: 'ds-memory-intro' },
+              h(
+                'div',
+                { className: 'ds-memory-head' },
+                h('span', { className: 'ds-memory-title' }, t('memory.title')),
+                h('span', { className: 'ds-memory-count' }, t('memory.count', { count: String(memoryEntries.length) })),
+                h('span', { className: 'ds-spacer' }),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-iconbtn ds-iconbtn-sm',
+                    title: t('memory.refresh'),
+                    disabled: memoryBusy,
+                    onClick: () => void loadMemory(),
+                  },
+                  h(RefreshIcon),
+                ),
+              ),
+              h('div', { className: 'ds-memory-hint' }, t('memory.hint')),
+              h('div', { className: 'ds-memory-path', title: memoryPath ?? '' }, memoryPath ?? t('memory.file')),
+              h('div', { className: 'ds-memory-file-hint' }, t('memory.fileHint')),
+              memoryUpdatedAt > 0
+                ? h(
+                    'div',
+                    { className: 'ds-memory-updated' },
+                    t('memory.updatedAt', { time: formatMemoryTime(memoryUpdatedAt) }),
+                  )
+                : null,
+            ),
+            state.root === null
+              ? h('div', { className: 'ds-hint' }, t('memory.noRoot'))
+              : local
+                ? h(
+                    'div',
+                    { className: 'ds-memory-body' },
+                    h(
+                      'div',
+                      { className: 'ds-memory-form' },
+                      editing ? h('div', { className: 'ds-memory-editing' }, t('memory.editing')) : null,
+                      h('textarea', {
+                        className: 'ds-memory-input',
+                        rows: 3,
+                        value: memoryDraft,
+                        placeholder: t('memory.placeholder'),
+                        disabled: memorySaving,
+                        onChange: (event) => setMemoryDraft(event.target.value),
+                      }),
+                      h('input', {
+                        className: 'ds-memory-tags',
+                        value: memoryTagsDraft,
+                        placeholder: t('memory.tagsPlaceholder'),
+                        disabled: memorySaving,
+                        spellCheck: false,
+                        onChange: (event) => setMemoryTagsDraft(event.target.value),
+                        onKeyDown: (event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault()
+                            void saveMemoryDraft()
+                          }
+                        },
+                      }),
+                      h(
+                        'div',
+                        { className: 'ds-memory-actions' },
+                        editing
+                          ? h(
+                              'button',
+                              {
+                                type: 'button',
+                                className: 'ds-btn',
+                                disabled: memorySaving,
+                                onClick: cancelMemoryEdit,
+                              },
+                              t('memory.cancelEdit'),
+                            )
+                          : null,
+                        h(
+                          'button',
+                          {
+                            type: 'button',
+                            className: 'ds-btn ds-btn-primary',
+                            disabled: memorySaving || memoryDraft.trim().length === 0,
+                            onClick: () => void saveMemoryDraft(),
+                          },
+                          memorySaving ? t('memory.saving') : editing ? t('memory.save') : t('memory.add'),
+                        ),
+                      ),
+                    ),
+                    memoryError === null ? null : h('div', { className: 'ds-errorline' }, memoryError),
+                    memoryBusy && memoryEntries.length === 0
+                      ? h('div', { className: 'ds-hint' }, t('memory.loading'))
+                      : memoryEntries.length === 0
+                        ? h('div', { className: 'ds-memory-empty' }, t('memory.empty'))
+                        : h(
+                            'div',
+                            { className: 'ds-memory-list' },
+                            memoryEntries.map((entry) =>
+                              h(
+                                'div',
+                                {
+                                  key: entry.id,
+                                  className: 'ds-memory-item',
+                                  'data-editing': memoryEditing !== null && memoryEditing.id === entry.id ? 'true' : undefined,
+                                },
+                                h('div', { className: 'ds-memory-text' }, entry.text),
+                                h(
+                                  'div',
+                                  { className: 'ds-memory-meta' },
+                                  (Array.isArray(entry.tags) ? entry.tags : []).map((tag) =>
+                                    h('span', { key: tag, className: 'ds-memory-tag' }, tag),
+                                  ),
+                                  h('span', { className: 'ds-memory-time' }, formatMemoryTime(entry.updatedAt)),
+                                  h('span', { className: 'ds-spacer' }),
+                                  h(
+                                    'button',
+                                    {
+                                      type: 'button',
+                                      className: 'ds-memory-action',
+                                      onClick: () => beginEditMemory(entry),
+                                    },
+                                    t('memory.edit'),
+                                  ),
+                                  h(
+                                    'button',
+                                    {
+                                      type: 'button',
+                                      className: 'ds-memory-action ds-memory-action-danger',
+                                      onClick: () => requestDeleteMemory(entry),
+                                    },
+                                    t('memory.delete'),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                    h('div', { className: 'ds-memory-help' }, t('memory.help')),
+                  )
+                : h('div', { className: 'ds-hint' }, t('memory.sshUnsupported')),
+          )
+        }
+
         function renderPalette() {
           if (!paletteOpen) return null
           const query = paletteQuery.trim().toLowerCase()
@@ -10235,7 +10616,7 @@ window.__ModuleLoader__.load({
               'aside',
               {
                 className: 'ds-side',
-                'data-view': showGit ? 'git' : showSearch ? 'search' : showHarness ? 'harness' : 'files',
+                'data-view': showGit ? 'git' : showSearch ? 'search' : showMemory ? 'memory' : showHarness ? 'harness' : 'files',
                 style: { width: treeDisplayWidth, display: showSide ? undefined : 'none' },
               },
               h(
@@ -10247,7 +10628,7 @@ window.__ModuleLoader__.load({
                   h(
                     'span',
                     { className: 'ds-pane-title-text' },
-                    showGit ? t('git.title') : showSearch ? t('side.search') : showHarness ? t('side.harness') : t('explorer'),
+                    showGit ? t('git.title') : showSearch ? t('side.search') : showMemory ? t('side.memory') : showHarness ? t('side.harness') : t('explorer'),
                   ),
                   h(
                     'button',
@@ -10492,6 +10873,7 @@ window.__ModuleLoader__.load({
               ),
               renderSearchPanel(),
               renderHarnessPanel(),
+              renderMemoryPanel(),
               gitAvailable
                 ? h(
                     'div',
@@ -10552,6 +10934,21 @@ window.__ModuleLoader__.load({
                       },
                       h(GitIcon),
                       h('span', null, t('git.title')),
+                    )
+                  : null,
+                gitAvailable
+                  ? h(
+                      'button',
+                      {
+                        type: 'button',
+                        role: 'tab',
+                        className: 'ds-side-tab',
+                        'data-active': showMemory ? 'true' : undefined,
+                        'aria-selected': showMemory,
+                        onClick: openMemory,
+                      },
+                      h(MemoryIcon),
+                      h('span', null, t('side.memory')),
                     )
                   : null,
                 h(
@@ -11718,7 +12115,8 @@ window.__ModuleLoader__.load({
 .ds-side[data-view="git"] > .ds-empty { display: none; }
 .ds-side[data-view="git"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch) { display: none; }
 .ds-side[data-view="search"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
-.ds-side[data-view="harness"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch) { display: none; }
+.ds-side[data-view="harness"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
+.ds-side[data-view="memory"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch) { display: none; }
 .ds-git-toggle[data-active="true"] {
   color: var(--dsw-alias-brand-primary);
   background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent);
@@ -12535,6 +12933,90 @@ window.__ModuleLoader__.load({
 .ds-search-hit:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent); }
 .ds-search-line { flex: 0 0 30px; text-align: right; color: var(--dsw-alias-label-caption); font-family: var(--ds-mono); font-size: 10px; }
 .ds-search-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre; font-family: var(--ds-mono); font-size: 10.5px; }
+.ds-memory-view { overflow: hidden; }
+.ds-memory-intro {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-alias-bg-layer-1);
+}
+.ds-memory-head { display: flex; align-items: center; gap: 6px; }
+.ds-memory-title { font-size: 12px; font-weight: 600; }
+.ds-memory-count {
+  padding: 0 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+  line-height: 16px;
+}
+.ds-memory-hint { margin-top: 3px; color: var(--dsw-alias-label-secondary); font-size: 10.5px; }
+.ds-memory-path {
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--dsw-alias-label-caption);
+  font-family: var(--ds-mono);
+  font-size: 9.5px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+}
+.ds-memory-file-hint { margin-top: 2px; color: var(--dsw-alias-label-caption); font-size: 9.5px; line-height: 1.45; }
+.ds-memory-updated { margin-top: 2px; color: var(--dsw-alias-label-caption); font-size: 9.5px; }
+.ds-memory-body { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow: auto; }
+.ds-memory-form {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+}
+.ds-memory-editing { color: var(--dsw-alias-brand-primary); font-size: 10.5px; font-weight: 600; }
+.ds-memory-input,
+.ds-memory-tags {
+  width: 100%;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  outline: none;
+}
+.ds-memory-input { min-height: 60px; max-height: 160px; padding: 6px 8px; font-size: 11.5px; line-height: 1.5; resize: vertical; }
+.ds-memory-tags { height: 26px; padding: 0 8px; font-size: 11px; }
+.ds-memory-input:focus,
+.ds-memory-tags:focus { border-color: var(--dsw-alias-brand-primary); }
+.ds-memory-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.ds-memory-actions .ds-btn { height: 26px; font-size: 11px; }
+.ds-memory-empty { padding: 18px 12px; color: var(--dsw-alias-label-secondary); font-size: 11.5px; line-height: 1.6; }
+.ds-memory-list { display: flex; flex-direction: column; }
+.ds-memory-item { padding: 8px 10px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
+.ds-memory-item[data-editing="true"] { background: color-mix(in srgb, var(--dsw-alias-brand-primary) 7%, transparent); }
+.ds-memory-text { overflow-wrap: anywhere; font-size: 11.5px; line-height: 1.55; white-space: pre-wrap; }
+.ds-memory-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 5px; }
+.ds-memory-tag {
+  padding: 0 5px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 999px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 9.5px;
+  line-height: 15px;
+}
+.ds-memory-time { color: var(--dsw-alias-label-caption); font-size: 9.5px; }
+.ds-memory-action {
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+.ds-memory-action:hover { color: var(--dsw-alias-label-primary); text-decoration: underline; }
+.ds-memory-action-danger:hover { color: var(--dsw-alias-state-error-primary); }
+.ds-memory-help { padding: 8px 10px 12px; color: var(--dsw-alias-label-caption); font-size: 9.5px; line-height: 1.5; }
 .ds-harness-view { overflow: auto; }
 .ds-harness-section { padding: 8px 10px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
 .ds-harness-label { margin: 2px 0 3px; color: var(--dsw-alias-label-caption); font-size: 9.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }

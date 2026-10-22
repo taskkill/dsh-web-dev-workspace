@@ -51,6 +51,8 @@ third-party runtime dependencies.
 - **Left Sidebar** panel icon (`sidebar.panellist`, id `files`) opens the full
   workspace in the centre column.
 - A **Git** tab at the bottom of the sidebar switches to the source-control view; the Explorer tab returns to the tree.
+- A **Memory** tab (local workspaces only) edits the same per-workspace memory
+  the model uses across sessions; the refresh button re-reads the file.
 - **Right Sidebar Start / guide page** lists a third card, "Code Workspace", next
   to "Workspace files" and "New terminal". Picking it opens the same workspace as
   a right-sidebar tab. In a narrow sidebar the page switches to a compact
@@ -148,6 +150,22 @@ third-party runtime dependencies.
   Without it the plugin still loads; SSH operations report the missing dependency.
 - Host keys are not pinned; connect only to trusted hosts.
 
+### Cross-session workspace memory
+
+- A local workspace owns `.dsh/memory.json`, shared by every chat session whose
+  workspace is that directory. Memory is isolated per workspace; no document is
+  read across roots. An ungrouped session uses its recorded cwd.
+- Host tools `memory_save`, `memory_search`, `memory_update` and `memory_delete`
+  let the model curate notes with stable ids and optional tags. A bounded
+  `workspace-memory` runtime context is injected into requests automatically, and
+  changes are picked up on the next step.
+- The **Memory** sidebar tab reads and writes the same document: list, add, edit,
+  delete, refresh, with tag chips and timestamps. It is hidden for SSH roots.
+- `.dsh/.gitignore` (`*`) is created on first write when absent so the state stays local;
+  limits are 200 entries / 4,000 characters / 8 tags per entry.
+- Requires the `tools` and `systemPrompt` services; without them the file browser
+  loads normally and memory support stays off.
+
 ### Editor
 
 - Multi-tab editing: dirty indicators, save (button or `⌘/Ctrl+S`), reload,
@@ -236,7 +254,8 @@ third-party runtime dependencies.
   [`@local/dsh-web-filebrowser-git`](../dsh-web-filebrowser-git) at `/api/dsh-web-filebrowser-git`. It invokes `git`
   with `execFile`, requires the workspace to be the repository root, disables
   interactive prompts and never stores credentials.
-- No model-facing tools, prompts, or session events are registered.
+- Registers only the workspace-memory tools and prompt guide; no general-purpose
+  tools or session events.
 
 ## Local data
 
@@ -251,6 +270,10 @@ Preferences and favorites are stored in the browser's `localStorage`:
 | `dsh-web-filebrowser:favorites-open` | Favorites section open state |
 | `dsh-web-filebrowser:word-wrap` | Word-wrap toggle |
 | `dsh-web-filebrowser:hidden-roots` | Locally hidden directory paths |
+
+Workspace memory is **not** stored in localStorage: each local root owns
+`.dsh/memory.json` and a generated `.dsh/.gitignore` (`*`). Deleting that JSON
+file clears the workspace's memory; nothing is shared with another root.
 
 ## Limitations
 

@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-web-filebrowser",
-  "version": "1.1.6",
+  "version": "1.2.0",
   "private": true,
   "description": "VS Code-style workspace files, SSH remotes, Git, a terminal and a preview browser for the DeepSeek Harness Web UI",
   "license": "MIT",
@@ -32,7 +32,7 @@
     }
   },
   "scripts": {
-    "check": "node --check index.js && node --check dsh-web-filebrowser-plugin/index.js && node --check dsh-web-filebrowser-plugin/ssh.js && node --check dsh-web-filebrowser-plugin/terminal.js && node --check dsh-web-filebrowser-plugin/client.js && node --check dsh-web-filebrowser-io/index.js && node --check dsh-web-filebrowser-git/index.js",
+    "check": "node --check index.js && node --check dsh-web-filebrowser-plugin/index.js && node --check dsh-web-filebrowser-plugin/memory.js && node --check dsh-web-filebrowser-plugin/ssh.js && node --check dsh-web-filebrowser-plugin/terminal.js && node --check dsh-web-filebrowser-plugin/client.js && node --check dsh-web-filebrowser-io/index.js && node --check dsh-web-filebrowser-git/index.js",
     "check:json": "node scripts/check-json.mjs"
   },
   "dependencies": {
@@ -46,6 +46,7 @@
     "file-manager",
     "code-editor",
     "git",
+    "memory",
     "source-control",
     "stash",
     "ssh"

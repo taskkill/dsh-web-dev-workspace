@@ -66,6 +66,8 @@ it for you.
 - **Floating DeepSeek chat** — one click turns the current conversation into a
   movable, resizable, collapsible panel that stays visible while the file
   workspace is maximized.
+- **Cross-session workspace memory** — each workspace keeps its own durable notes,
+  shared by every chat session in that workspace and injected automatically.
 - **Fits the host** — theme-token styling, English/Chinese copy, compact
   single-column layout in narrow sidebars, and a right-sidebar Start card.
 
@@ -108,8 +110,8 @@ it for you.
   caps each file at 2 MiB and limits the result count. SSH workspaces do not support
   global search yet.
 - **Quick Open**: `Ctrl/⌘ + P` filters workspace files by name. `Ctrl/⌘ + Shift + P`
-  opens the command palette for new file/folder, search, refresh, terminal, browser
-  and Harness actions.
+  opens the command palette for new file/folder, search, refresh, terminal, browser,
+  memory and Harness actions.
 - **Auto refresh**: local workspaces re-check expanded directories every five seconds,
   so external creates, deletes and renames update the tree.
 - **In-file find/replace**: `Ctrl/⌘ + F` opens the editor find bar with next/previous,
@@ -117,6 +119,28 @@ it for you.
 - **Harness panel**: the Harness sidebar tab shows the active profile, plugin version,
   bundles, dependencies and profile config files. It can preview `cordis.yml`,
   `cordis.patch.yml` and `package.json`, and run the plugin's `npm run check`.
+
+### Cross-session workspace memory
+
+- Every **local workspace** keeps an independent memory document at
+  `.dsh/memory.json`. All chat sessions running in that workspace read and write
+  the same notes; another workspace never sees them. An ungrouped session uses its
+  recorded working directory as the scope.
+- The model gets `memory_save`, `memory_search`, `memory_update` and
+  `memory_delete` tools plus a short system-prompt guide. Existing notes are
+  injected automatically as `workspace-memory` context (bounded to 4,000
+  characters), so a new session starts with decisions, conventions and
+  environment facts that earlier sessions saved.
+- The **Memory** sidebar tab lists entries with tags and timestamps and lets you
+  add, edit and delete them without leaving the workspace. The panel and the
+  model tools share the same store, so an edit is visible to the next request.
+- The first write creates `.dsh/.gitignore` containing `*` when it is absent,
+  keeping plugin state out of Git by default. The JSON document can also be
+  reviewed or edited by hand; a corrupt document is reported instead of silently
+  discarded.
+- Limits: 200 entries per workspace, 4,000 characters per entry, 8 tags per
+  entry. SSH remote roots and profiles without the `tools` / `systemPrompt`
+  services have no memory support.
 
 ### Editor
 
@@ -166,7 +190,8 @@ it for you.
   full-width address row; tree rows, sidebar tabs and action buttons get larger touch
   targets; Markdown split stacks vertically; terminal quick commands, search, Harness,
   modals and the command palette all fit narrow screens.
-- No model-facing tools, prompts, or session events are registered.
+- Registers only the workspace-memory tools and prompt guide; no general-purpose
+  tools or session events.
 
 ### Git source control
 
@@ -601,10 +626,15 @@ issue for security-sensitive reports.
   External links/images inside a Markdown file are loaded only when you preview
   that file; images use `referrerPolicy="no-referrer"` so the Harness page URL is
   not sent to the third-party host.
-- **No automatic model-visible data**: it registers no tools, prompts,
-  system-prompt sections, or session events. Opening, searching or browsing files
-  does not add content to the conversation. Only an explicit **Agent** action sends
-  the selected code and path as a user message.
+- **Model-visible memory is explicit and scoped**: the plugin registers four
+  workspace-memory tools and one short prompt guide, and injects only the current
+  workspace's notes (bounded) to sessions in that workspace. It registers no
+  general-purpose tools or session events. Opening, searching or browsing files
+  still adds nothing to the conversation; only an explicit **Agent** action sends
+  the selected code and path as a user message. Memory never crosses workspace
+  boundaries, and deleting `.dsh/memory.json` removes it. Memory content is sent
+  to the model on every request in that workspace, so do not store secrets there;
+  the prompt tells the model the same.
 - **SSH remote folders**: authentication uses the Host's SSH agent or keys under
   `~/.ssh`, and optionally a password supplied for one connection. That password
   lives only in the request/connection in memory, is never written to disk, and
@@ -654,6 +684,7 @@ dsh-web-filebrowser/
 ├── cordis.patch.yml          # combined bundle row
 ├── dsh-web-filebrowser-plugin/  # main component: Host API, SSH, browser UI
 │   ├── index.js              # /api/dsh-web-filebrowser host routes
+│   ├── memory.js             # per-workspace cross-session memory store and tools
 │   ├── ssh.js                # optional SFTP backend
 │   ├── client.js             # main panel, sidebar entries, explorer/editor UI
 │   ├── cordis.patch.yml      # standalone component row

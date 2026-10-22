@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Workspace Files",
-    "description": "A VS Code-style workspace: browse, create, rename, and delete files on the left, edit code with syntax highlighting and line numbers on the right, and preview Markdown and PDF files."
+    "description": "A VS Code-style workspace: browse, create, rename, and delete files on the left, edit code with syntax highlighting and line numbers on the right, preview Markdown and PDF files, and keep workspace-scoped cross-session memory."
   }
 }

@@ -81,9 +81,14 @@ General UI bugs, missing features and questions belong in public issues.
   password can be supplied for one connection, is kept only in memory for that
   attempt, and is never written to disk. `ssh2` does not pin host keys, so connect
   only to hosts you trust.
-- The plugin registers no model-facing tools, prompts or session events by itself.
-  Only a user-clicked **Agent** action sends the selected code and path to the
-  active conversation; browsing and search never do.
+- The plugin registers four workspace-memory tools (`memory_save`,
+  `memory_search`, `memory_update`, `memory_delete`) and one short prompt guide.
+  It injects only the calling session's workspace memory (bounded) as model
+  context, and the tools write only `.dsh/memory.json` inside that workspace;
+  symlinked state that escapes the root is refused. Opening, searching or browsing
+  files still sends nothing, and only a user-clicked **Agent** action sends the
+  selected code and path to the active conversation. Memory content is
+  model-visible, so do not store secrets or credentials there.
 
 ## Before you publish
 
@@ -96,5 +101,5 @@ General UI bugs, missing features and questions belong in public issues.
 
 ## Supported versions
 
-The project is at 1.0.x and does not maintain multiple release branches. Security
-fixes target the latest `main` and the most recent release.
+The project tracks the latest 1.x release and does not maintain multiple release
+branches. Security fixes target the latest `main` and the most recent release.

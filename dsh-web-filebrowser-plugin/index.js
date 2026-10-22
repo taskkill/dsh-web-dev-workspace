@@ -22,6 +22,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { Readable } from 'node:stream'
 import { fileURLToPath } from 'node:url'
+import * as memory from './memory.js'
 import * as ssh from './ssh.js'
 import { createTerminalManager } from './terminal.js'
 
@@ -136,6 +137,12 @@ const CONTENT_TYPES = new Map([
  * @param ctx - Host context carrying the connection service.
  */
 export function apply(ctx) {
+  // Cross-session memory is optional: a deployment without the tools and
+  // system-prompt services keeps the file browser fully usable.
+  ctx.inject(['tools', 'systemPrompt'], (memoryCtx) => {
+    memoryCtx.effect(() => memory.registerMemoryTools(memoryCtx), 'dsh-web-filebrowser: workspace memory tools')
+    memoryCtx.effect(() => memory.registerMemoryPrompt(memoryCtx), 'dsh-web-filebrowser: workspace memory prompt')
+  })
   ctx.effect(() => {
     let disposed = false
     const disposers = []
@@ -258,6 +265,14 @@ async function dispatch(ctx, op, body) {
       return readHarnessConfig(typeof body.name === 'string' ? body.name : '')
     case 'harnessCheck':
       return runHarnessCheck()
+    case 'memoryList':
+      return listMemory(ctx, body)
+    case 'memorySave':
+      return saveMemory(ctx, body)
+    case 'memoryUpdate':
+      return updateMemory(ctx, body)
+    case 'memoryDelete':
+      return deleteMemory(ctx, body)
     case 'version':
       return { version: await readPackageVersion() }
     case 'versionCheck':
@@ -693,6 +708,72 @@ async function resolveRoot(ctx, requested) {
   const match = roots.find((root) => root.path === real || root.path === wanted)
   if (match === undefined) throw new SideError('outside-root', '只能访问已注册的工作区目录')
   return match.path
+}
+
+/**
+ * Resolve a local workspace root for a memory operation. Memory is stored in
+ * the workspace itself, so SSH remote roots have no local document.
+ * @param ctx - Host context.
+ * @param requested - root path sent by the browser.
+ * @returns canonical local root.
+ */
+async function memoryRoot(ctx, requested) {
+  const root = await resolveRoot(ctx, requested)
+  if (ssh.isSshRoot(root)) throw new SideError('ssh-unsupported', 'SSH 远程工作区暂不支持本地记忆')
+  return root
+}
+
+/**
+ * Read one workspace's memory document for the Memory panel.
+ * @param ctx - Host context.
+ * @param body - `{ root }`.
+ * @returns entries plus document metadata.
+ */
+async function listMemory(ctx, body) {
+  const root = await memoryRoot(ctx, body.root)
+  const state = await memory.readMemory(root)
+  const entries = [...state.entries].sort(
+    (left, right) => right.updatedAt - left.updatedAt || left.id.localeCompare(right.id),
+  )
+  return {
+    entries,
+    updatedAt: state.updatedAt,
+    total: entries.length,
+    path: memory.memoryFile(root),
+  }
+}
+
+/**
+ * Save one memory from the Memory panel.
+ * @param ctx - Host context.
+ * @param body - `{ root, text, tags? }`.
+ * @returns `{ entry, duplicate, total }`.
+ */
+async function saveMemory(ctx, body) {
+  const root = await memoryRoot(ctx, body.root)
+  return memory.saveMemory(root, { text: body.text, tags: body.tags, source: 'memory-panel' })
+}
+
+/**
+ * Update one memory from the Memory panel.
+ * @param ctx - Host context.
+ * @param body - `{ root, id, text?, tags? }`.
+ * @returns `{ entry, total }`.
+ */
+async function updateMemory(ctx, body) {
+  const root = await memoryRoot(ctx, body.root)
+  return memory.updateMemory(root, { id: body.id, text: body.text, tags: body.tags })
+}
+
+/**
+ * Delete one memory from the Memory panel.
+ * @param ctx - Host context.
+ * @param body - `{ root, id }`.
+ * @returns `{ deleted, total }`.
+ */
+async function deleteMemory(ctx, body) {
+  const root = await memoryRoot(ctx, body.root)
+  return memory.deleteMemory(root, body.id)
 }
 
 /**

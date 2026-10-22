@@ -4,6 +4,26 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Cross-session workspace memory
+
+- Add **workspace memory**: durable notes stored per local workspace in
+  `.dsh/memory.json` and shared by every chat session that runs in that
+  workspace. Memory never crosses workspace boundaries; an ungrouped session
+  falls back to its recorded working directory.
+- The model gets four tools — `memory_save`, `memory_search`, `memory_update`
+  and `memory_delete` — and a short system-prompt guide. Existing notes are
+  injected automatically as bounded `workspace-memory` context on every request,
+  so a new session starts with the facts earlier sessions saved.
+- Add a **Memory** sidebar tab: review, add, edit and delete entries (with tag
+  chips) without leaving the file workspace. A generated `.dsh/.gitignore`
+  keeps plugin state out of Git; the JSON document can also be edited by hand.
+- The feature is optional: profiles without the `tools` or `systemPrompt`
+  services keep the file browser fully usable, and SSH remote roots have no
+  local memory.
+- Memory state is confined to the workspace: a `.dsh` directory or
+  `memory.json` that is a symlink (or resolves outside the root) is refused,
+  and writes use a temp-file rename under a per-root lock.
+
 ### Unreadable file downloads
 
 - Binary, too-large and read-error tabs now offer a **Download** action directly in
