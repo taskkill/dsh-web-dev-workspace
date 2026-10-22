@@ -6600,9 +6600,24 @@ window.__ModuleLoader__.load({
         }
 
         async function ensureExpanded(levelPath) {
-          store.set((current) => ({ ...current, expanded: { ...current.expanded, [levelPath]: true } }))
-          const level = store.get().levels[levelPath]
-          if (level === undefined || level.status === 'error') await loadDir(levelPath)
+          let current = levelPath
+          for (let guard = 0; guard < 12; guard += 1) {
+            store.set((snapshot) => ({
+              ...snapshot,
+              expanded: { ...snapshot.expanded, [current]: true },
+            }))
+            let level = store.get().levels[current]
+            if (level === undefined || level.status === 'error') {
+              await loadDir(current)
+              level = store.get().levels[current]
+            }
+            if (level?.status !== 'ready') break
+            const visible = (level.entries ?? []).filter(
+              (entry) => store.get().showHidden || !entry.name.startsWith('.'),
+            )
+            if (visible.length !== 1 || visible[0].type !== 'directory') break
+            current = joinPath(current, visible[0].name)
+          }
         }
 
         async function toggleDir(levelPath) {
@@ -8450,6 +8465,26 @@ window.__ModuleLoader__.load({
           })
         }
 
+        /** VS Code compact folders: join a chain of single-child, expanded directories. */
+        function compactChain(relative) {
+          const chain = [relative]
+          let current = relative
+          for (let guard = 0; guard < 12; guard += 1) {
+            if (store.get().expanded[current] === undefined) break
+            const level = store.get().levels[current]
+            if (level?.status !== 'ready') break
+            const visible = (level.entries ?? []).filter(
+              (entry) => store.get().showHidden || !entry.name.startsWith('.'),
+            )
+            if (visible.length !== 1 || visible[0].type !== 'directory') break
+            const child = joinPath(current, visible[0].name)
+            if (store.get().expanded[child] === undefined) break
+            chain.push(child)
+            current = child
+          }
+          return chain
+        }
+
         function renderLevel(levelPath, depth) {
           const level = state.levels[levelPath]
           const nodes = []
@@ -8489,53 +8524,17 @@ window.__ModuleLoader__.load({
           const allEntries = level.entries ?? []
           const entries = allEntries.filter((entry) => state.showHidden || !entry.name.startsWith('.'))
           if (entries.length === 0) {
-            const hiddenOnly = !state.showHidden && allEntries.some((entry) => entry.name.startsWith('.'))
-            if (draftRow === null) {
-              const rootLabel = state.rootTitle || (state.root === null ? '' : basename(state.root))
-              const parts = [...rootLabel.split('/').filter(Boolean), ...levelPath.split('/').filter(Boolean)]
-              const fullPath = state.root === null ? levelPath : levelPath.length === 0 ? state.root : `${state.root}/${levelPath}`
-              nodes.push(
-                h(
-                  'div',
-                  { key: `empty-${levelPath}`, className: 'ds-empty-dir' },
-                  h(
-                    'div',
-                    { className: 'ds-empty-path', title: fullPath },
-                    h('span', { className: 'ds-empty-chevron' }, '›'),
-                    parts.length === 0
-                      ? h('span', { className: 'ds-empty-seg ds-empty-seg-current' }, t('workspace.label'))
-                      : parts.map((part, index) =>
-                          h(
-                            React.Fragment,
-                            { key: `${String(index)}-${part}` },
-                            index === 0 ? null : h('span', { className: 'ds-empty-sep' }, '/'),
-                            h(
-                              'span',
-                              {
-                                className:
-                                  index === parts.length - 1
-                                    ? 'ds-empty-seg ds-empty-seg-current'
-                                    : 'ds-empty-seg',
-                              },
-                              part,
-                            ),
-                          ),
-                        ),
-                  ),
-                  h(
-                    'div',
-                    { className: 'ds-empty-note' },
-                    hiddenOnly ? t('hint.hiddenOnly') : t('hint.empty'),
-                  ),
-                ),
-              )
-            }
+            // VS Code-style explorer: an expanded empty folder renders no
+            // placeholder row; the folder row itself is still visible above.
             return nodes
           }
           for (const entry of entries) {
             const relative = joinPath(levelPath, entry.name)
             const isDir = entry.type === 'directory'
+            const chain = isDir ? compactChain(relative) : [relative]
+            const leaf = chain[chain.length - 1]
             const directoryOpen = state.expanded[relative] !== undefined
+            const displayName = isDir ? chain.map((value) => basename(value)).join('/') : entry.name
             if (draft !== null && draft.kind === 'rename' && draft.target === relative) {
               nodes.push(
                 h(NameInput, {
@@ -8569,7 +8568,7 @@ window.__ModuleLoader__.load({
                   'data-drop': isDir && dropTarget === relative ? 'true' : undefined,
                   draggable: true,
                   style: { paddingLeft: `${String(8 + depth * 14)}px` },
-                  title: relative,
+                  title: isDir ? chain.join('/') : relative,
                   onDragStart: (event) => {
                     event.stopPropagation()
                     dragPathRef.current = relative
@@ -8625,7 +8624,7 @@ window.__ModuleLoader__.load({
                 isDir
                   ? h('span', { className: 'ds-glyph ds-glyph-folder' }, h(FolderIcon, { open: directoryOpen }))
                   : h(FileGlyph, { name: entry.name }),
-                h('span', { className: 'ds-name' }, entry.name),
+                h('span', { className: 'ds-name' }, displayName),
                 favoritePaths.has(relative)
                   ? h(
                       'span',
@@ -8637,7 +8636,7 @@ window.__ModuleLoader__.load({
               ),
             )
             if (isDir && directoryOpen) {
-              for (const child of renderLevel(relative, depth + 1)) nodes.push(child)
+              for (const child of renderLevel(leaf, depth + 1)) nodes.push(child)
             }
           }
           return nodes
@@ -11365,34 +11364,6 @@ window.__ModuleLoader__.load({
 }
 .ds-row-draft { padding-right: 6px; }
 .ds-hint { padding: 5px 13px; color: var(--dsw-alias-label-secondary); font-size: 12px; }
-.ds-empty-dir { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; padding: 10px 13px 12px; }
-.ds-empty-path {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  max-width: 100%;
-  min-height: 26px;
-  padding: 2px 8px 2px 5px;
-  overflow: hidden;
-  border: 1px solid var(--dsw-alias-border-l1);
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent);
-  color: var(--dsw-alias-label-secondary);
-  font-family: var(--ds-mono);
-  font-size: 10.5px;
-  line-height: 18px;
-  white-space: nowrap;
-}
-.ds-empty-chevron { flex: 0 0 auto; color: var(--dsw-alias-label-caption); font-size: 14px; line-height: 1; }
-.ds-empty-sep { flex: 0 0 auto; color: var(--dsw-alias-label-caption); }
-.ds-empty-seg { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.ds-empty-seg-current {
-  color: var(--dsw-alias-label-primary);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  text-decoration-color: var(--dsw-alias-label-caption);
-}
-.ds-empty-note { color: var(--dsw-alias-label-caption); font-size: 11px; line-height: 1.5; }
 .ds-errorline {
   display: flex;
   align-items: center;

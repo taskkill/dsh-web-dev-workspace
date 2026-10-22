@@ -13,8 +13,8 @@ All notable changes to this project are documented here.
 
 ### Explorer
 
-- Empty directories now show a breadcrumb-style path chip (chevron, slash-separated
-  segments, underlined current segment) instead of a plain text hint.
+- Match VS Code Explorer behavior: chains of single-child folders collapse into one
+  `parent/child/grandchild` row, and expanded empty folders render no placeholder.
 
 ### Agent collaboration
 
