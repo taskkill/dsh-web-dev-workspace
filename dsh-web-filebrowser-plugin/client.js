@@ -6069,9 +6069,15 @@ window.__ModuleLoader__.load({
         const paletteInputRef = useRef(null)
         const searchInputRef = useRef(null)
         const autoRefreshRef = useRef(false)
+        const autoRootRef = useRef(null)
+        const workspaceItemsRef = useRef(workspaceItems)
+        workspaceItemsRef.current = workspaceItems
+        const sessionsSnapshotRef = useRef(sessionsSnapshot)
+        sessionsSnapshotRef.current = sessionsSnapshot
         const paletteFilesRef = useRef({ root: null, files: [], at: 0 })
         const terminalsRef = useRef([])
         terminalsRef.current = terminals
+        const activeWorkspace = activeWorkspacePath()
 
         useEffect(() => {
           let alive = true
@@ -6094,6 +6100,18 @@ window.__ModuleLoader__.load({
             alive = false
           }
         }, [])
+
+        useEffect(() => {
+          if (!state.ready || activeWorkspace === null) return
+          if (state.root === activeWorkspace) {
+            autoRootRef.current = activeWorkspace
+            return
+          }
+          if (!state.roots.some((entry) => entry.path === activeWorkspace)) return
+          if (autoRootRef.current !== null && autoRootRef.current !== state.root) return
+          applyRoot(activeWorkspace, undefined, { silent: true })
+          autoRootRef.current = activeWorkspace
+        }, [activeWorkspace, state.ready, state.root, state.roots])
 
         useEffect(() => {
           const poll = async () => {
@@ -6643,6 +6661,22 @@ window.__ModuleLoader__.load({
           return level?.entries?.some((entry) => joinPath(parent, entry.name) === relative && entry.type === 'directory') ?? false
         }
 
+        function activeWorkspacePath() {
+          let snapshot = sessionsSnapshotRef.current
+          if (snapshot === null) {
+            const sessions = ctx.get('sessions')
+            snapshot = typeof sessions?.list?.getSnapshot === 'function' ? sessions.list.getSnapshot() : null
+          }
+          if (snapshot === null || !Array.isArray(snapshot.ids)) return null
+          const main = snapshot.ids.find((id) => (snapshot.byId[id]?.retainedBy?.mainView ?? 0) > 0)
+          if (main === undefined) return null
+          const workspace = workspaceItemsRef.current.find(
+            (item) => Array.isArray(item.sessionIds) && item.sessionIds.includes(main),
+          )
+          if (typeof workspace?.path !== 'string' || workspace.path.length === 0) return null
+          return workspace.path.replace(/[\\/]+$/u, '') || workspace.path
+        }
+
         async function loadRoots() {
           const previous = store.get()
           store.set((current) => ({ ...current, loadingRoots: true, startError: null }))
@@ -6654,13 +6688,19 @@ window.__ModuleLoader__.load({
               .filter((spec) => !hidden.has(spec))
               .map((spec) => ({ path: spec, title: sshRootTitle(spec) }))
             const roots = [...localRoots, ...sshRoots.filter((entry) => !localRoots.some((local) => local.path === entry.path))]
+            const preferred = activeWorkspacePath()
             let root = previous.root
-            if (root === null || !roots.some((entry) => entry.path === root)) {
-              const saved = readStorage(ROOT_KEY)
-              root = roots.some((entry) => entry.path === saved) ? saved : null
-            }
-            if (root === null) {
-              root = value?.defaultRoot && roots.some((entry) => entry.path === value.defaultRoot) ? value.defaultRoot : roots[0]?.path ?? null
+            if (!previous.ready && preferred !== null && roots.some((entry) => entry.path === preferred)) {
+              root = preferred
+              autoRootRef.current = preferred
+            } else {
+              if (root === null || !roots.some((entry) => entry.path === root)) {
+                const saved = readStorage(ROOT_KEY)
+                root = roots.some((entry) => entry.path === saved) ? saved : null
+              }
+              if (root === null) {
+                root = value?.defaultRoot && roots.some((entry) => entry.path === value.defaultRoot) ? value.defaultRoot : roots[0]?.path ?? null
+              }
             }
             const rootInfo = roots.find((entry) => entry.path === root)
             const rootChanged = root !== previous.root
@@ -6762,7 +6802,7 @@ window.__ModuleLoader__.load({
           writeStorage(ROOT_KEY, root)
         }
 
-        function applyRoot(nextRoot, nextRoots) {
+        function applyRoot(nextRoot, nextRoots, options = {}) {
           closeAllTerminalSessions()
           const roots = nextRoots ?? store.get().roots
           store.set((current) => ({
@@ -6784,7 +6824,7 @@ window.__ModuleLoader__.load({
           setSearchError(null)
           paletteFilesRef.current = { root: null, files: [], at: 0 }
           void loadDir('', { root: nextRoot })
-          showToast(t('toast.rootSwitched'))
+          if (options.silent !== true) showToast(t('toast.rootSwitched'))
         }
 
         function switchRoot(nextRoot) {
@@ -9201,6 +9241,12 @@ window.__ModuleLoader__.load({
               h(
                 'div',
                 { className: 'ds-empty-actions' },
+                h(
+                  'button',
+                  { type: 'button', className: 'ds-btn', onClick: () => downloadFile(tab.path) },
+                  h(DownloadIcon),
+                  t('action.download'),
+                ),
                 isTextMode(tab.mode)
                   ? h(
                       'button',
@@ -9244,10 +9290,20 @@ window.__ModuleLoader__.load({
               { className: 'ds-empty' },
               h('div', { className: 'ds-empty-title' }, t('hint.binary')),
               h(
-                'button',
-                { type: 'button', className: 'ds-btn', onClick: () => openExternal(tab.path) },
-                h(ExternalIcon),
-                t('file.openExternal'),
+                'div',
+                { className: 'ds-empty-actions' },
+                h(
+                  'button',
+                  { type: 'button', className: 'ds-btn ds-btn-primary', onClick: () => downloadFile(tab.path) },
+                  h(DownloadIcon),
+                  t('action.download'),
+                ),
+                h(
+                  'button',
+                  { type: 'button', className: 'ds-btn', onClick: () => openExternal(tab.path) },
+                  h(ExternalIcon),
+                  t('file.openExternal'),
+                ),
               ),
             )
           }

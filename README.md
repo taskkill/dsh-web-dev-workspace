@@ -141,7 +141,7 @@ it for you.
 
 - PDF preview in an embedded viewer with an "open in browser" action.
 - Inline image preview for PNG/JPEG/GIF/WebP/AVIF/BMP/ICO/SVG.
-- Binary files offer a browser handoff.
+- Binary and unreadable files offer a download button plus a browser handoff.
 - Upload multiple files from the machine into the selected directory (Explorer
   toolbar or right-click "Upload files here"). Same-name uploads are auto-renamed
   to `name (1).ext`, `name (2).ext`, ...; a single uploaded file opens
@@ -446,6 +446,9 @@ repository root, not a subdirectory).
 1. Click the new workspace icon in the left sidebar, **or** open the right
    sidebar's Start page and pick **Code Workspace**.
 2. Pick a workspace in the header, or type a path in the address bar.
+   Opening the code workspace from a workspace session first selects that
+   session's workspace; after a manual workspace switch, the explorer respects
+   your choice instead of following later session changes.
 
 ### Keyboard shortcuts
 

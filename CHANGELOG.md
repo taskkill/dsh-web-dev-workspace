@@ -4,6 +4,18 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Unreadable file downloads
+
+- Binary, too-large and read-error tabs now offer a **Download** action directly in
+  the empty state, alongside reload/browser actions.
+
+### Workspace-aware opening
+
+- When the code workspace is opened from a workspace session, it now selects that
+  session's workspace as the root (or follows a later session workspace change while
+  the current root is still the auto-selected one). A manual workspace switch stops
+  the automatic following.
+
 ### One-click update and terminal cwd refresh
 
 - The update dialog now has **Update now** for clean local git checkouts: it runs
