@@ -169,6 +169,8 @@ DSH Web Filebrowser 把 Harness Web UI 变成一个真正可用的编码工作�
 - 终端顶部有**快捷命令**栏：自动读取工作区项目并生成可运行命令，包括
   `package.json` 脚本（如 `npm run dev`）、Maven/Gradle、`java -jar`、`dotnet`、
   Django、Go、Cargo、Docker Compose 等。选择命令后可先编辑再点 **运行**，也可直接在输入框输入命令。
+  Linux 上会跟随终端当前目录（通过 `/proc` 读取 shell cwd），切换项目后命令自动刷新；
+  也可点快捷命令栏的刷新按钮手动刷新。
 
 ### 内置浏览器
 
@@ -276,6 +278,8 @@ Agent 会走与插件管理器相同的安装流程（安装的是仓库根目�
   GitHub 上 `taskkill/dsh-web-filebrowser` 的 `package.json`，发现更高版本时徽标高亮并
   给出更新方式。检查结果在 Host 内存中缓存 6 小时；只请求公开的版本清单，不发送工作区数据。
   更新提示基于 `package.json` 的 `version` 字段，发布新版本时需要同步提升版本号。仓库地址：https://github.com/taskkill/dsh-web-filebrowser 。
+  更新弹窗提供 **立即更新**：仅对干净的 git 检出执行 `git pull --ff-only`，拒绝脏工作区，显示命令输出，
+  完成后提示重启 DSH；不会静默自动重启进程。
 - **更新**：在 **插件 → 已安装插件** 中卸载后，从新的本地路径重新安装；如果页面
   提供 Update 操作也可直接使用。本地 patch 加载的开发副本则直接 `git pull` 后重启 DSH。
 - **更新提示里的命令**：更新弹窗会直接显示并可复制以下命令。

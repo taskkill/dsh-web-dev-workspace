@@ -247,7 +247,9 @@ it for you.
 - A **Quick commands** bar above each terminal detects runnable project commands:
   `package.json` scripts such as `npm run dev`, Maven/Gradle, `java -jar`,
   `dotnet`, Django, Go, Cargo and Docker Compose. Pick a command, edit it if needed,
-  and press **Run**; the input also accepts arbitrary commands.
+  and press **Run**; the input also accepts arbitrary commands. On Linux the list
+  follows the terminal's live cwd (read from `/proc`), so changing projects refreshes
+  it; a refresh button is also available.
 
 ### Built-in browser
 
@@ -396,7 +398,10 @@ repository root, not a subdirectory).
   The result is cached in Host memory for six hours; the check requests only the
   public version manifest and sends no workspace data. The hint compares the
   `version` field, so publish a version bump with each release. Repository:
-  https://github.com/taskkill/dsh-web-filebrowser
+  https://github.com/taskkill/dsh-web-filebrowser. The update dialog also offers
+  **Update now**: it only runs `git pull --ff-only` in a clean checkout, refuses
+  local changes, shows the output, and asks for a DSH restart; it never restarts
+  the Host process silently.
 - **Update**: in **Plugins → Installed plugins**, uninstall and reinstall the
   combined bundle from the updated local path (or use the UI's update action when
   it is offered). A local-patch development copy can be updated with `git pull`

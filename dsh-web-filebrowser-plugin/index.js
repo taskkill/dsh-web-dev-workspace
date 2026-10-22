@@ -92,6 +92,10 @@ const HARNESS_FILES = ['cordis.yml', 'cordis.patch.yml', 'package.json', 'pnpm-w
 /** Harness check command timeout. */
 const HARNESS_CHECK_TIMEOUT_MS = 120000
 
+/** Repository checkout used by the one-click updater. */
+const PLUGIN_ROOT = fileURLToPath(new URL('../', import.meta.url))
+const UPDATE_TIMEOUT_MS = 60000
+
 /** Stable, descriptive failure carrying a machine-readable code. */
 class SideError extends Error {
   constructor(code, message, details) {
@@ -258,6 +262,8 @@ async function dispatch(ctx, op, body) {
       return { version: await readPackageVersion() }
     case 'versionCheck':
       return checkLatestVersion(body.force === true)
+    case 'update':
+      return updatePlugin()
     default:
       throw new SideError('bad-op', `未知操作：${op}`)
   }
@@ -330,6 +336,58 @@ async function checkLatestVersion(force) {
       checkedAt: Date.now(),
       error: error instanceof Error ? error.message : String(error),
     }
+  }
+}
+
+/** Run one fixed git command in the plugin checkout. */
+function runGit(args) {
+  return new Promise((resolve) => {
+    execFile(
+      'git',
+      args,
+      {
+        cwd: PLUGIN_ROOT,
+        timeout: UPDATE_TIMEOUT_MS,
+        maxBuffer: 1024 * 1024,
+        env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+      },
+      (error, stdout, stderr) => {
+        resolve({
+          code: error === null ? 0 : typeof error.code === 'number' ? error.code : 1,
+          output: `${stdout ?? ''}${stderr ?? ''}`.trim(),
+        })
+      },
+    )
+  })
+}
+
+/**
+ * One-click update for a local checkout: only a clean, fast-forward git pull.
+ *
+ * The Host half cannot reload itself, so success still asks the user to restart
+ * DSH; this endpoint never spawns a replacement process.
+ */
+async function updatePlugin() {
+  try {
+    await fsp.stat(path.join(PLUGIN_ROOT, '.git'))
+  } catch {
+    throw new SideError('not-git', '当前插件不是 git 检出，无法一键更新；请使用弹窗中的插件管理器命令。')
+  }
+  const status = await runGit(['status', '--porcelain'])
+  if (status.code !== 0) throw new SideError('update-failed', status.output || '无法读取 git 状态')
+  if (status.output.length > 0) {
+    throw new SideError('dirty', '工作区有未提交更改，无法自动更新。请先提交或储藏后再试。')
+  }
+  const before = await runGit(['rev-parse', 'HEAD'])
+  if (before.code !== 0) throw new SideError('update-failed', before.output || '无法读取当前提交')
+  const pull = await runGit(['pull', '--ff-only'])
+  if (pull.code !== 0) throw new SideError('update-failed', pull.output || 'git pull 失败')
+  const after = await runGit(['rev-parse', 'HEAD'])
+  const changed = after.code === 0 && after.output.trim() !== before.output.trim()
+  return {
+    changed,
+    output: pull.output.slice(-100000) || (changed ? 'Updated.' : 'Already up to date.'),
+    restartRequired: changed,
   }
 }
 

@@ -55,6 +55,7 @@ class TerminalError extends Error {
  */
 export function createTerminalManager({ resolveRoot, vendorDir }) {
   const sessions = new Map()
+  const commandCache = new Map()
   let counter = 0
 
   async function handle(request) {
@@ -214,12 +215,56 @@ export function createTerminalManager({ resolveRoot, vendorDir }) {
     }
   }
 
-  /** Detect runnable commands for the workspace at the terminal's root. */
+  /** Resolve the deepest child process cwd for a POSIX terminal, when /proc exists. */
+  async function deepestCwd(pid, depth = 0) {
+    if (!Number.isInteger(pid) || pid <= 0 || depth > 6) return null
+    let children = []
+    try {
+      const text = await fsp.readFile(`/proc/${String(pid)}/task/${String(pid)}/children`, 'utf8')
+      children = text.trim().split(/\s+/u).filter(Boolean).map(Number).filter(Number.isInteger)
+    } catch {
+      /* not Linux or process exited */
+    }
+    for (const child of children) {
+      const nested = await deepestCwd(child, depth + 1)
+      if (nested !== null) return nested
+    }
+    try {
+      return await fsp.readlink(`/proc/${String(pid)}/cwd`)
+    } catch {
+      return null
+    }
+  }
+
+  /** Read the shell's live cwd, falling back to the directory the terminal opened in. */
+  async function sessionCwd(session) {
+    if (process.platform === 'linux' && Number.isInteger(session.child?.pid)) {
+      const cwd = await deepestCwd(session.child.pid)
+      if (typeof cwd === 'string' && cwd.length > 0) {
+        try {
+          if ((await fsp.stat(cwd)).isDirectory()) return cwd
+        } catch {
+          /* shell cwd disappeared */
+        }
+      }
+    }
+    return session.cwd
+  }
+
+  /** Detect runnable commands for the terminal's current directory. */
   async function listCommands(body) {
-    const root = await resolveRoot(typeof body.root === 'string' ? body.root : '')
+    let root
+    if (typeof body.id === 'string' && body.id.length > 0) {
+      const session = requireSession(body.id)
+      root = await sessionCwd(session)
+    } else {
+      root = await resolveRoot(typeof body.root === 'string' ? body.root : '')
+    }
     if (typeof root === 'string' && root.startsWith('ssh://')) {
       throw new TerminalError('ssh-unsupported', 'SSH 远程工作区暂不支持本地终端')
     }
+    const cached = commandCache.get(root)
+    if (cached !== undefined && Date.now() - cached.at < 5000) return cached.value
     const commands = []
     const seen = new Set()
     const add = (label, command) => {
@@ -293,7 +338,10 @@ export function createTerminalManager({ resolveRoot, vendorDir }) {
     await scanFiles(root, ['.dll'], dlls)
     for (const dll of dlls.results) add(`dotnet ${dll}`, `dotnet ${quotePath(dll)}`)
 
-    return { root, commands }
+    const value = { root, commands }
+    commandCache.set(root, { at: Date.now(), value })
+    if (commandCache.size > 20) commandCache.delete(commandCache.keys().next().value)
+    return value
   }
 
   async function write(body) {

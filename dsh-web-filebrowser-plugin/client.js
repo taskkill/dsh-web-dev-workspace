@@ -161,6 +161,7 @@ window.__ModuleLoader__.load({
       'terminal.commandPlaceholder': '输入或选择命令…',
       'terminal.run': '运行',
       'terminal.commandsEmpty': '未检测到常用命令，可直接输入',
+      'terminal.refreshCommands': '刷新项目命令',
       'chat.title': 'DeepSeek 对话',
       'chat.openFloating': '在悬浮窗口中打开当前对话',
       'chat.close': '关闭悬浮对话',
@@ -326,6 +327,14 @@ window.__ModuleLoader__.load({
       'version.openGithub': '打开 GitHub',
       'version.localUpdate': '本地加载：更新仓库',
       'version.pluginInstall': '插件管理器：安装（已安装则先卸载）',
+      'version.updateNow': '立即更新',
+      'version.updating': '正在更新…',
+      'version.updateDone': '更新完成',
+      'version.updateNoChange': '已是最新版本',
+      'version.updateRestart': '更新已应用。请重启 DSH 使 Host 代码生效，然后刷新页面；如果依赖有变化，重启前先运行 npm install。',
+      'version.updateNoChangeMessage': '当前仓库没有新的提交。',
+      'version.updateFailed': '更新失败',
+      'version.updateOutput': '更新输出',
       'version.checkFailed': '检查更新失败：{message}',
       welcomeTitle: '文件工作区',
       welcomeHint: '在左侧资源管理器中浏览目录。单击文件即可打开，单击目录选中，双击目录展开或收起。',
@@ -615,6 +624,7 @@ window.__ModuleLoader__.load({
       'terminal.commandPlaceholder': 'Type or choose a command…',
       'terminal.run': 'Run',
       'terminal.commandsEmpty': 'No common commands detected; type one directly',
+      'terminal.refreshCommands': 'Refresh project commands',
       'chat.title': 'DeepSeek conversation',
       'chat.openFloating': 'Open the current conversation in a floating panel',
       'chat.close': 'Close the floating conversation',
@@ -780,6 +790,14 @@ window.__ModuleLoader__.load({
       'version.openGithub': 'Open GitHub',
       'version.localUpdate': 'Local checkout: update repository',
       'version.pluginInstall': 'Plugin manager: install (uninstall first if present)',
+      'version.updateNow': 'Update now',
+      'version.updating': 'Updating…',
+      'version.updateDone': 'Update complete',
+      'version.updateNoChange': 'Already up to date',
+      'version.updateRestart': 'The update was applied. Restart DSH to load the Host code, then refresh the page. If dependencies changed, run npm install before restarting.',
+      'version.updateNoChangeMessage': 'The repository has no new commits.',
+      'version.updateFailed': 'Update failed',
+      'version.updateOutput': 'Update output',
       'version.checkFailed': 'Update check failed: {message}',
       welcomeTitle: 'Workspace Files',
       welcomeHint: 'Browse directories in the Explorer. Click a file to open it, click a folder to select it, and double-click a folder to expand or collapse it.',
@@ -5433,26 +5451,42 @@ window.__ModuleLoader__.load({
     function TerminalView({ session, t, onStatus }) {
       const hostRef = useRef(null)
       const runCommandRef = useRef(null)
+      const refreshCommandsRef = useRef(null)
       const statusRef = useRef(onStatus)
       const [error, setError] = useState(null)
       const [loading, setLoading] = useState(true)
       const [exited, setExited] = useState(false)
       const [commands, setCommands] = useState([])
+      const [commandsRoot, setCommandsRoot] = useState(null)
       const [command, setCommand] = useState('')
       statusRef.current = onStatus
 
       useEffect(() => {
         let alive = true
-        if (typeof session.root !== 'string' || session.root.length === 0) return undefined
-        callTerminal('commands', { root: session.root })
-          .then((value) => {
-            if (alive && Array.isArray(value?.commands)) setCommands(value.commands)
-          })
-          .catch(() => {})
+        let busy = false
+        const refresh = async () => {
+          if (!alive || busy) return
+          busy = true
+          try {
+            const value = await callTerminal('commands', { id: session.hostId })
+            if (!alive) return
+            if (Array.isArray(value?.commands)) setCommands(value.commands)
+            if (typeof value?.root === 'string') setCommandsRoot(value.root)
+          } catch {
+            /* terminal backend may not support command detection yet */
+          } finally {
+            busy = false
+          }
+        }
+        refreshCommandsRef.current = () => void refresh()
+        void refresh()
+        const timer = window.setInterval(() => void refresh(), 4000)
         return () => {
           alive = false
+          refreshCommandsRef.current = null
+          window.clearInterval(timer)
         }
-      }, [session.root])
+      }, [session.hostId])
 
       useEffect(() => {
         let disposed = false
@@ -5504,6 +5538,7 @@ window.__ModuleLoader__.load({
               sendInput(`${text}\r\n`)
             }
             terminal.focus()
+            window.setTimeout(() => refreshCommandsRef.current?.(), 400)
           }
           runCommandRef.current = runLine
           terminal.onData((data) => {
@@ -5598,7 +5633,7 @@ window.__ModuleLoader__.load({
         { className: 'ds-terminal-view' },
         h(
           'div',
-          { className: 'ds-terminal-quick' },
+          { className: 'ds-terminal-quick', title: commandsRoot ?? session.root ?? '' },
           commands.length > 0
             ? h(
                 'select',
@@ -5627,6 +5662,16 @@ window.__ModuleLoader__.load({
               }
             },
           }),
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'ds-terminal-command-refresh',
+              title: t('terminal.refreshCommands'),
+              onClick: () => refreshCommandsRef.current?.(),
+            },
+            h(RefreshIcon),
+          ),
           h(
             'button',
             {
@@ -5990,6 +6035,7 @@ window.__ModuleLoader__.load({
         const [pluginVersion, setPluginVersion] = useState(null)
         const [versionInfo, setVersionInfo] = useState(null)
         const [versionBusy, setVersionBusy] = useState(false)
+        const [updateBusy, setUpdateBusy] = useState(false)
         const [searchQuery, setSearchQuery] = useState('')
         const [searchRegex, setSearchRegex] = useState(false)
         const [searchCase, setSearchCase] = useState(false)
@@ -6285,6 +6331,8 @@ window.__ModuleLoader__.load({
                   ],
                   confirmLabel: t('action.ok'),
                   onConfirm: () => setModal(null),
+                  onUpdate: () => void runSelfUpdate(),
+                  updateLabel: updateBusy ? t('version.updating') : t('version.updateNow'),
                 })
                 return
               }
@@ -6298,6 +6346,36 @@ window.__ModuleLoader__.load({
             showToast(t('version.checkFailed', { message: errorText(error) }))
           } finally {
             setVersionBusy(false)
+          }
+        }
+
+        async function runSelfUpdate() {
+          if (updateBusy) return
+          setModal(null)
+          setUpdateBusy(true)
+          showToast(t('version.updating'))
+          try {
+            const value = await call('update')
+            const changed = value?.changed === true
+            setModal({
+              title: changed ? t('version.updateDone') : t('version.updateNoChange'),
+              message: changed ? t('version.updateRestart') : t('version.updateNoChangeMessage'),
+              code:
+                typeof value?.output === 'string' && value.output.trim().length > 0
+                  ? value.output.slice(-4000)
+                  : '',
+              confirmLabel: t('action.ok'),
+              onConfirm: () => setModal(null),
+            })
+          } catch (error) {
+            setModal({
+              title: t('version.updateFailed'),
+              message: errorText(error),
+              confirmLabel: t('action.ok'),
+              onConfirm: () => setModal(null),
+            })
+          } finally {
+            setUpdateBusy(false)
           }
         }
 
@@ -11005,6 +11083,9 @@ window.__ModuleLoader__.load({
                   },
                   h('div', { className: 'ds-modal-title' }, modal.title),
                   h('div', { className: 'ds-modal-text' }, modal.message),
+                  typeof modal.code === 'string' && modal.code.length > 0
+                    ? h('pre', { className: 'ds-modal-code' }, modal.code)
+                    : null,
                   Array.isArray(modal.commands) && modal.commands.length > 0
                     ? h(
                         'div',
@@ -11038,6 +11119,18 @@ window.__ModuleLoader__.load({
                   h(
                     'div',
                     { className: 'ds-modal-actions' },
+                    modal.onUpdate === undefined
+                      ? null
+                      : h(
+                          'button',
+                          {
+                            type: 'button',
+                            className: 'ds-btn ds-btn-primary',
+                            disabled: updateBusy,
+                            onClick: modal.onUpdate,
+                          },
+                          modal.updateLabel ?? t('version.updateNow'),
+                        ),
                     modal.link === undefined
                       ? null
                       : h(
@@ -11059,7 +11152,10 @@ window.__ModuleLoader__.load({
                       'button',
                       {
                         type: 'button',
-                        className: clsx('ds-btn', modal.danger ? 'ds-btn-danger' : 'ds-btn-primary'),
+                        className: clsx(
+                          'ds-btn',
+                          modal.danger ? 'ds-btn-danger' : modal.onUpdate === undefined ? 'ds-btn-primary' : undefined,
+                        ),
                         onClick: modal.onConfirm,
                       },
                       modal.confirmLabel,
@@ -12649,6 +12745,21 @@ window.__ModuleLoader__.load({
   outline: none;
 }
 .ds-terminal-command-input:focus { border-color: var(--dsw-alias-brand-primary); }
+.ds-terminal-command-refresh {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+.ds-terminal-command-refresh:hover { color: var(--dsw-alias-label-primary); border-color: var(--dsw-alias-border-l2); }
 .ds-terminal-command-run {
   flex: 0 0 auto;
   height: 24px;
@@ -13096,10 +13207,25 @@ window.__ModuleLoader__.load({
 }
 .ds-modal-title { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
 .ds-modal-text { color: var(--dsw-alias-label-secondary); line-height: 1.65; overflow-wrap: anywhere; }
-.ds-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.ds-modal-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 18px; }
 .ds-modal-link { margin-right: auto; align-self: center; color: var(--dsw-alias-brand-primary); font-size: 12px; text-decoration: none; }
 .ds-modal-link:hover { text-decoration: underline; }
 .ds-modal-wide { width: min(680px, 100%); }
+.ds-modal-code {
+  max-height: 240px;
+  margin: 10px 0 0;
+  padding: 8px;
+  overflow: auto;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-secondary);
+  font-family: var(--ds-mono);
+  font-size: 10.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 .ds-modal-commands { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 .ds-modal-command-label { margin-bottom: 3px; color: var(--dsw-alias-label-caption); font-size: 10px; }
 .ds-modal-command-row { display: flex; align-items: stretch; gap: 6px; }

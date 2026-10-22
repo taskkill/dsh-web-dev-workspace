@@ -4,6 +4,15 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### One-click update and terminal cwd refresh
+
+- The update dialog now has **Update now** for clean local git checkouts: it runs
+  only `git pull --ff-only`, refuses a dirty tree, shows the command output, and
+  asks for a DSH restart instead of restarting the Host silently.
+- Terminal quick commands follow the shell's live cwd on Linux (via `/proc`),
+  refresh every few seconds and expose a manual refresh button, so switching to
+  another project updates the detected commands.
+
 ### Responsive layout
 
 - The floating conversation becomes a full-screen sheet only in mobile/tablet
