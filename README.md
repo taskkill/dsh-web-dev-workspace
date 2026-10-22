@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="dsh-web-filebrowser-plugin/icon.svg" width="88" height="88" alt="DSH Web Filebrowser icon" />
+  <img src="dsh-web-filebrowser-plugin/icon.svg" width="88" height="88" alt="DSH Web Dev Workspace icon" />
 </p>
 
-<h1 align="center">Deepseek Harness Web FileBrowser</h1>
+<h1 align="center">Deepseek Harness Web Dev Workspace</h1>
 
 <p align="center">
   A VS Code-style workspace for the <strong>DeepSeek Harness</strong> Web UI:
@@ -28,7 +28,7 @@
 
 ---
 
-DSH Web Filebrowser turns the Harness Web UI into a practical coding workspace. It adds a
+Dev Workspace turns the Harness Web UI into a practical coding workspace. It adds a
 file explorer and a tabbed editor to the left sidebar and to the right sidebar's
 Start page, while keeping the chat and the sessions exactly where they are.
 
@@ -178,7 +178,7 @@ it for you.
 ### Integration
 
 - **Left sidebar** panel icon opens the full workspace in the centre column.
-- **Right sidebar Start page** gets a third "Code Workspace" card next to
+- **Right sidebar Start page** gets a third "Dev Workspace" card next to
   "Workspace files" and "New terminal"; picking it opens the same workspace as a
   right-sidebar tab.
 - Narrow sidebars switch to a compact single-column layout: the explorer first,
@@ -356,7 +356,7 @@ it for you.
 - For Git features: `git` on the Harness host's `PATH`, and a configured Git
   identity for commits (`user.name` / `user.email`).
 
-The repository is now one **combined bundle** (`@local/dsh-web-filebrowser`) with three internal components; install the repository root once:
+The repository is now one **combined bundle** (`@local/dsh-web-dev-workspace`) with three internal components; install the repository root once:
 
 | Directory | Purpose |
 | --- | --- |
@@ -440,7 +440,7 @@ repository root, not a subdirectory).
   # Plugin manager: install the latest GitHub build
   dsh plugin --profile web add github:taskkill/dsh-web-filebrowser
   ```
-- **Uninstall**: uninstall `@local/dsh-web-filebrowser` from **Installed plugins**. This removes
+- **Uninstall**: uninstall `@local/dsh-web-dev-workspace` from **Installed plugins**. This removes
   the profile dependency/link and the plugin row; it does not delete your cloned
   source or workspace files.
 - **Browser state**: preferences and favorites live in the browser's
@@ -452,7 +452,7 @@ repository root, not a subdirectory).
 | Symptom | What to try |
 | --- | --- |
 | No new sidebar icon / Start card | Refresh the page. Confirm the combined bundle is enabled in **Plugins**. |
-| Upload or download fails | Confirm the combined bundle `@local/dsh-web-filebrowser` is installed and enabled. |
+| Upload or download fails | Confirm the combined bundle `@local/dsh-web-dev-workspace` is installed and enabled. |
 | Git view says support is not installed | Confirm the combined bundle is enabled; SSH remote workspaces have no Git view. |
 | Git view says not the repository root | Open the repository root itself as the workspace; Git mutations are confined to that root. |
 | Fetch/pull/push says the remote requires authentication | Configure an SSH key or Git credential helper on the Host; the plugin never prompts for or stores credentials. |
@@ -469,7 +469,7 @@ repository root, not a subdirectory).
 ### Open the workspace
 
 1. Click the new workspace icon in the left sidebar, **or** open the right
-   sidebar's Start page and pick **Code Workspace**.
+   sidebar's Start page and pick **Dev Workspace**.
 2. Pick a workspace in the header, or type a path in the address bar.
    Opening the code workspace from a workspace session first selects that
    session's workspace; after a manual workspace switch, the explorer respects
@@ -611,7 +611,7 @@ flowchart TB
 
 ## Security and privacy
 
-DSH Web Filebrowser is a **local-first** plugin with filesystem access. Review the source
+Dev Workspace is a **local-first** plugin with filesystem access. Review the source
 before enabling it, and only install bundles you trust. To report a
 vulnerability, follow [`SECURITY.md`](SECURITY.md) — please do not open a public
 issue for security-sensitive reports.
@@ -755,4 +755,4 @@ recording if you can.
 
 ## License
 
-[MIT](LICENSE) © DSH Web Filebrowser contributors.
+[MIT](LICENSE) © DSH Web Dev Workspace contributors.

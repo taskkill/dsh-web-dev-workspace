@@ -4,6 +4,19 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Renamed to Development Workspace
+
+- The plugin is now **Dev Workspace** (开发工作区) instead of "Workspace Files".
+  Package names and loader ids move to `@local/dsh-web-dev-workspace`,
+  `@local/dsh-web-dev-workspace-io` and `@local/dsh-web-dev-workspace-git`; the
+  panel title, sidebar tooltip, welcome page, guide card and plugin-list titles
+  use the new name.
+- API routes (`/api/dsh-web-filebrowser*`), locale keys, browser storage keys and
+  the saved right-sidebar tab kind are unchanged, so existing installs keep their
+  preferences and layouts after the rename. Restart the Host and refresh the page
+  to load the new module id; plugin-manager installs must be reinstalled under the
+  new package name.
+
 ### Cross-session workspace memory
 
 - Add **workspace memory**: durable notes stored per local workspace in

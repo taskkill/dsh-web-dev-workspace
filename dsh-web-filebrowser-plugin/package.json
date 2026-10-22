@@ -1,8 +1,8 @@
 {
-  "name": "@local/dsh-web-filebrowser",
+  "name": "@local/dsh-web-dev-workspace",
   "version": "1.0.0",
   "private": true,
-  "description": "VS Code-style workspace file explorer, editor, terminal and preview browser for the DeepSeek Harness Web UI",
+  "description": "VS Code-style development workspace: file explorer, editor, terminal and preview browser for the DeepSeek Harness Web UI",
   "type": "module",
   "exports": {
     ".": "./index.js",

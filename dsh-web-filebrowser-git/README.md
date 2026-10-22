@@ -1,7 +1,7 @@
-# Workspace Git (`@local/dsh-web-filebrowser-git`)
+# Dev Workspace Git (`@local/dsh-web-dev-workspace-git`)
 
-Host-only companion bundle for **[Workspace Files](../dsh-web-filebrowser-plugin)** — part of
-[DSH Web Filebrowser](../README.md). It adds Git operations to the workspace panel: status,
+Host-only companion bundle for **[Dev Workspace](../dsh-web-filebrowser-plugin)** — part of
+the combined [Dev Workspace](../README.md) bundle. It adds Git operations to the workspace panel: status,
 staging, commits, restoring (discarding) changes, stashes, diffs, branches,
 comparison, a commit graph, and explicit fetch/pull/push.
 
@@ -106,4 +106,4 @@ interactive editors and askpass prompts are disabled.
 
 ## License
 
-[MIT](../LICENSE) © DSH Web Filebrowser contributors.
+[MIT](../LICENSE) © DSH Web Dev Workspace contributors.

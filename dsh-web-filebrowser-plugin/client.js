@@ -1,5 +1,5 @@
 window.__ModuleLoader__.load({
-  id: '@local/dsh-web-filebrowser',
+  id: '@local/dsh-web-dev-workspace',
   factory(require) {
     const React = require('react')
     const h = React.createElement
@@ -8,8 +8,11 @@ window.__ModuleLoader__.load({
     /** Locale namespace owned by this plugin. */
     const NS = 'dsh-web-filebrowser'
 
-    /** Right-sidebar tab-type identity and kind for the guide entry. */
-    const IDE_ID = '@local/dsh-web-filebrowser'
+    /**
+     * Right-sidebar tab-type identity and kind for the guide entry. The kind keeps
+     * its original value so layouts saved by earlier builds keep restoring.
+     */
+    const IDE_ID = '@local/dsh-web-dev-workspace'
     const IDE_KIND = 'dsh-web-filebrowser'
 
     /** Public repository shown by the update prompt. */
@@ -138,7 +141,7 @@ window.__ModuleLoader__.load({
      * ------------------------------------------------------------------ */
 
     const zh = {
-      'panel.title': '文件工作区',
+      'panel.title': '开发工作区',
       'terminal.toggle': '终端',
       'terminal.open': '打开终端',
       'terminal.title': '终端 {n}',
@@ -197,7 +200,7 @@ window.__ModuleLoader__.load({
       'chat.unavailable': '当前界面不支持悬浮对话',
       'terminal.sessionMissing': '终端会话已关闭',
       'panel.description': '浏览工作区目录，编辑代码，预览 Markdown 与 PDF。',
-      'guide.title': '代码工作区',
+      'guide.title': '开发工作区',
       'guide.description': '浏览并编辑文件，支持代码高亮、Markdown 与 PDF 预览。',
       'compact.back': '返回目录',
       explorer: '资源管理器',
@@ -369,7 +372,7 @@ window.__ModuleLoader__.load({
       'version.updateFailed': '更新失败',
       'version.updateOutput': '更新输出',
       'version.checkFailed': '检查更新失败：{message}',
-      welcomeTitle: '文件工作区',
+      welcomeTitle: '开发工作区',
       welcomeHint: '在左侧资源管理器中浏览目录。单击文件即可打开，单击目录选中，双击目录展开或收起。',
       welcomeShortcuts: '⌘/Ctrl + S 保存 · F2 重命名 · Delete 删除',
       welcomeNewFile: '新建第一个文件',
@@ -486,7 +489,7 @@ window.__ModuleLoader__.load({
       'title.readError': '无法打开文件',
       'title.preview': '预览',
       'title.edit': '编辑',
-      'panel.tooltip': '打开文件工作区',
+      'panel.tooltip': '打开开发工作区',
       'root.none': '没有工作区',
       'markdown.empty': '这个 Markdown 文件是空的。',
       'pdf.open': '在新标签页中打开 PDF',
@@ -566,7 +569,7 @@ window.__ModuleLoader__.load({
       'git.openFile': '打开文件',
       'git.close': '关闭',
       'git.retry': '重试',
-      'git.installHint': 'Git 支持未安装：请安装 @local/dsh-web-filebrowser-git',
+      'git.installHint': 'Git 支持未安装：请安装 @local/dsh-web-dev-workspace-git',
       'git.error': 'Git 操作失败',
       'git.busy': '处理中…',
       'git.fetch': '获取',
@@ -634,7 +637,7 @@ window.__ModuleLoader__.load({
     }
 
     const en = {
-      'panel.title': 'Workspace Files',
+      'panel.title': 'Dev Workspace',
       'terminal.toggle': 'Terminal',
       'terminal.open': 'Open terminal',
       'terminal.title': 'Terminal {n}',
@@ -693,7 +696,7 @@ window.__ModuleLoader__.load({
       'chat.unavailable': 'Floating conversations are unavailable in this layout',
       'terminal.sessionMissing': 'Terminal session is closed',
       'panel.description': 'Browse the workspace tree, edit code, and preview Markdown and PDF files.',
-      'guide.title': 'Code Workspace',
+      'guide.title': 'Dev Workspace',
       'guide.description': 'Browse and edit files with highlighting, Markdown, and PDF previews.',
       'compact.back': 'Back to explorer',
       explorer: 'Explorer',
@@ -865,7 +868,7 @@ window.__ModuleLoader__.load({
       'version.updateFailed': 'Update failed',
       'version.updateOutput': 'Update output',
       'version.checkFailed': 'Update check failed: {message}',
-      welcomeTitle: 'Workspace Files',
+      welcomeTitle: 'Dev Workspace',
       welcomeHint: 'Browse directories in the Explorer. Click a file to open it, click a folder to select it, and double-click a folder to expand or collapse it.',
       welcomeShortcuts: '⌘/Ctrl + S save · F2 rename · Delete remove',
       welcomeNewFile: 'Create your first file',
@@ -982,7 +985,7 @@ window.__ModuleLoader__.load({
       'title.readError': 'Could not open the file',
       'title.preview': 'Preview',
       'title.edit': 'Edit',
-      'panel.tooltip': 'Open Workspace Files',
+      'panel.tooltip': 'Open Dev Workspace',
       'root.none': 'No workspace',
       'markdown.empty': 'This Markdown file is empty.',
       'pdf.open': 'Open PDF in a new tab',
@@ -1062,7 +1065,7 @@ window.__ModuleLoader__.load({
       'git.openFile': 'Open file',
       'git.close': 'Close',
       'git.retry': 'Retry',
-      'git.installHint': 'Git support is not installed. Install @local/dsh-web-filebrowser-git.',
+      'git.installHint': 'Git support is not installed. Install @local/dsh-web-dev-workspace-git.',
       'git.error': 'Git operation failed',
       'git.busy': 'Working…',
       'git.fetch': 'Fetch',
@@ -1331,7 +1334,7 @@ window.__ModuleLoader__.load({
         throw new SideRequestError('git-offline', `无法连接 Git 服务：${errorText(error)}`)
       }
       if (response.status === 404) {
-        throw new SideRequestError('git-bridge-missing', 'Git 支持未安装：请安装 @local/dsh-web-filebrowser-git')
+        throw new SideRequestError('git-bridge-missing', 'Git 支持未安装：请安装 @local/dsh-web-dev-workspace-git')
       }
       if (!response.ok) {
         throw new SideRequestError(`http-${String(response.status)}`, `HTTP ${String(response.status)} ${response.statusText}`)

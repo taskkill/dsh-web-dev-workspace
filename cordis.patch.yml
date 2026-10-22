@@ -1,4 +1,4 @@
-# Combined DSH Web Filebrowser bundle: one entry starts the files, IO and Git components.
+# Combined DSH Web Dev Workspace bundle: one entry starts the files, IO and Git components.
 - insert:
-    - id: dsh-web-filebrowser
-      name: '@local/dsh-web-filebrowser'
+    - id: dsh-web-dev-workspace
+      name: '@local/dsh-web-dev-workspace'

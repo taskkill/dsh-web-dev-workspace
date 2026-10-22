@@ -1,7 +1,7 @@
 /**
- * Host half of the Workspace Files IO companion bundle.
+ * Host half of the Dev Workspace IO companion bundle.
  *
- * The main Workspace Files plugin registers JSON and raw-read routes, and its
+ * The main Dev Workspace plugin registers JSON and raw-read routes, and its
  * module is already loaded in this Harness process. Binary upload needs a host
  * write path; this separate bundle adds one without replacing the loaded main
  * plugin, so activation can happen through the normal new-bundle path.

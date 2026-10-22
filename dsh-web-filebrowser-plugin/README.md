@@ -1,10 +1,10 @@
-# Workspace Files (`@local/dsh-web-filebrowser`)
+# Dev Workspace (`@local/dsh-web-dev-workspace`)
 
-Part of **[DSH Web Filebrowser](../README.md)** — a VS Code-style workspace for the
+Part of **[Dev Workspace](../README.md)** — a VS Code-style development workspace for the
 DeepSeek Harness Web UI. This package is the main bundle: it provides the Host
 file API and the browser explorer/editor. Upload and forced download are provided
-by the companion host-only bundle [`@local/dsh-web-filebrowser-io`](../dsh-web-filebrowser-io); the Git
-view is provided by [`@local/dsh-web-filebrowser-git`](../dsh-web-filebrowser-git).
+by the companion host-only bundle [`@local/dsh-web-dev-workspace-io`](../dsh-web-filebrowser-io); the Git
+view is provided by [`@local/dsh-web-dev-workspace-git`](../dsh-web-filebrowser-git).
 
 Chinese overview: [`README.zh.md`](../README.zh.md).
 
@@ -53,7 +53,7 @@ third-party runtime dependencies.
 - A **Git** tab at the bottom of the sidebar switches to the source-control view; the Explorer tab returns to the tree.
 - A **Memory** tab (local workspaces only) edits the same per-workspace memory
   the model uses across sessions; the refresh button re-reads the file.
-- **Right Sidebar Start / guide page** lists a third card, "Code Workspace", next
+- **Right Sidebar Start / guide page** lists a third card, "Dev Workspace", next
   to "Workspace files" and "New terminal". Picking it opens the same workspace as
   a right-sidebar tab. In a narrow sidebar the page switches to a compact
   single-column layout: the explorer fills the tab first, and opening a file
@@ -195,7 +195,7 @@ third-party runtime dependencies.
 - Compare the current branch with upstream, a local branch or a remote branch:
   commits unique to each side, ahead/behind counts and files changed since the
   merge base, each with a diff against the base.
-- Requires the [`@local/dsh-web-filebrowser-git`](../dsh-web-filebrowser-git) host companion; if it is not
+- Requires the [`@local/dsh-web-dev-workspace-git`](../dsh-web-filebrowser-git) host companion; if it is not
   installed, the Git view shows an install hint.
 - Pull is fast-forward only and push never forces; conflicts must be resolved in a
   terminal. Network commands use the Host's SSH key or credential helper and never
@@ -244,14 +244,14 @@ third-party runtime dependencies.
   `workspaceFiles` Remote namespace is read-only. Editor text reads are capped at
   8 MiB; raw preview passthrough at 128 MiB.
 - Binary upload/download lives in the separate host-only bundle
-  [`@local/dsh-web-filebrowser-io`](../dsh-web-filebrowser-io) at `/api/dsh-web-filebrowser-io`. It accepts raw
+  [`@local/dsh-web-dev-workspace-io`](../dsh-web-filebrowser-io) at `/api/dsh-web-filebrowser-io`. It accepts raw
   octet-stream uploads, writes with `wx` so concurrent same-name uploads never
   overwrite each other, and confines every target to a registered workspace root
   (or the deployment default directory). Downloads are streamed with
   `Content-Disposition: attachment`.
 - Git status/stage/commit/diff/branch/compare and explicit fetch/pull/push
   operations live in the separate host-only bundle
-  [`@local/dsh-web-filebrowser-git`](../dsh-web-filebrowser-git) at `/api/dsh-web-filebrowser-git`. It invokes `git`
+  [`@local/dsh-web-dev-workspace-git`](../dsh-web-filebrowser-git) at `/api/dsh-web-filebrowser-git`. It invokes `git`
   with `execFile`, requires the workspace to be the repository root, disables
   interactive prompts and never stores credentials.
 - Registers only the workspace-memory tools and prompt guide; no general-purpose
@@ -296,4 +296,4 @@ privately, not in a public issue.
 
 ## License
 
-[MIT](../LICENSE) © DSH Web Filebrowser contributors.
+[MIT](../LICENSE) © DSH Web Dev Workspace contributors.

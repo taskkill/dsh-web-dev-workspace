@@ -1,8 +1,8 @@
 {
-  "name": "@local/dsh-web-filebrowser-git",
+  "name": "@local/dsh-web-dev-workspace-git",
   "version": "1.0.0",
   "private": true,
-  "description": "Git status, staging, commit, restore, stash, compare and explicit fetch/pull/push support for the Workspace Files plugin",
+  "description": "Git status, staging, commit, restore, stash, compare and explicit fetch/pull/push support for the Dev Workspace plugin",
   "type": "module",
   "exports": {
     ".": "./index.js",

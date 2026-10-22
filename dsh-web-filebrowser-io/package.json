@@ -1,8 +1,8 @@
 {
-  "name": "@local/dsh-web-filebrowser-io",
+  "name": "@local/dsh-web-dev-workspace-io",
   "version": "1.0.0",
   "private": true,
-  "description": "Binary upload/download bridge for the Workspace Files plugin",
+  "description": "Binary upload/download bridge for the Dev Workspace plugin",
   "type": "module",
   "exports": {
     ".": "./index.js",

@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Workspace Files IO",
-    "description": "Binary upload and download bridge used by the Workspace Files plugin. It writes uploads into registered workspace roots and serves forced downloads over the authenticated host channel."
+    "title": "Dev Workspace IO",
+    "description": "Binary upload and download bridge used by the Dev Workspace plugin. It writes uploads into registered workspace roots and serves forced downloads over the authenticated host channel."
   }
 }

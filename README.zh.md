@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="dsh-web-filebrowser-plugin/icon.svg" width="88" height="88" alt="DSH Web Filebrowser 图标" />
+  <img src="dsh-web-filebrowser-plugin/icon.svg" width="88" height="88" alt="DSH Web Dev Workspace 图标" />
 </p>
 
-<h1 align="center">Deepseek Harness Web 文件管理器</h1>
+<h1 align="center">Deepseek Harness Web 开发工作区</h1>
 
 <p align="center">
   为 <strong>DeepSeek Harness</strong> Web UI 提供 VS Code 风格工作区：
@@ -21,7 +21,7 @@
 
 ---
 
-DSH Web Filebrowser 把 Harness Web UI 变成一个真正可用的编码工作区：它在左侧栏和右侧栏
+开发工作区把 Harness Web UI 变成一个真正可用的编码工作区：它在左侧栏和右侧栏
 「开始」页中加入文件树与多标签编辑器，同时保持原有的对话和会话界面不变。
 
 这是一个**本地组合 bundle**（不是 npm 包）：从克隆下来的仓库根目录，通过 Harness
@@ -116,7 +116,7 @@ DSH Web Filebrowser 把 Harness Web UI 变成一个真正可用的编码工作�
 ### 集成
 
 - **左侧栏**图标：在中央面板打开完整工作区。
-- **右侧栏「开始」页**：新增第三张「代码工作区」卡片，点击后以右侧栏标签页打开；
+- **右侧栏「开始」页**：新增第三张「开发工作区」卡片，点击后以右侧栏标签页打开；
   窄侧栏自动切换为「目录 / 编辑器」单列布局，面包屑提供返回按钮。
 - 中英文 UI；仅使用 Harness 主题 token（`--dsw-*`），不引入任何 Harness Client 包。
 - **移动端/平板适配**：面板窄于 900px 时自动切换为单列布局（资源管理器/编辑器二选一，
@@ -153,15 +153,15 @@ DSH Web Filebrowser 把 Harness Web UI 变成一个真正可用的编码工作�
 ### 悬浮对话
 
 - 点文件面板**右上角的对话按钮**，把当前 Session 的 DeepSeek 对话打开为可移动、可缩放的悬浮面板；
-  文件工作区在主面板或右侧栏中都可以使用。
+  开发工作区在主面板或右侧栏中都可以使用。
 - 悬浮面板使用当前 Session 的真实对话界面，消息、流式输出、草稿和附件都与主对话同步。
   拖标题栏可移动，拖右下角可缩放，点标题栏的折叠箭头可收起成一条标题栏，再点可展开；
   点关闭按钮则关闭悬浮对话。
 - 点标题栏的 **+** 可以在当前工作区新建一个 Session，并直接在悬浮面板中显示，
-  不需要离开文件工作区；新 Session 也会出现在正常的会话列表里。SSH 远程工作区暂不支持。
+  不需要离开开发工作区；新 Session 也会出现在正常的会话列表里。SSH 远程工作区暂不支持。
 - 标题栏的对话选择器会列出同一工作区的其它 Session；选中即可让悬浮面板切换到该对话，
   选「当前对话」则回到主界面当前选中的 Session。
-- 悬浮面板在最大化文件工作区时仍然可见，可以一边让编辑器占满区域，一边继续当前对话。
+- 悬浮面板在最大化开发工作区时仍然可见，可以一边让编辑器占满区域，一边继续当前对话。
 - **移动端浏览器**（手机/平板 UA）中悬浮对话会自动切换为全屏模式，隐藏拖拽/缩放控件，保留会话选择、新建和关闭操作，并适配安全区；PC 浏览器只是窗口变窄时仍保持普通悬浮窗。
 
 ### Agent 协作
@@ -191,7 +191,7 @@ DSH Web Filebrowser 把 Harness Web UI 变成一个真正可用的编码工作�
 - 点文件面板**右上角**的**地球按钮**、欢迎页的 **内置浏览器**，或按 `Alt+B` 打开浏览器标签。
 - 地址栏支持 `localhost:5173`、`:3000`、`https://example.com` 等写法；提供前进/后退/刷新和外部打开。
 - 文件面板**右上角**的**最大化编辑区**按钮会隐藏资源浏览器，让编辑器/内置浏览器占满整个
-  文件工作区组件（不进入浏览器全屏）；按 Esc 或再点一次还原布局。
+  开发工作区组件（不进入浏览器全屏）；按 Esc 或再点一次还原布局。
 - 工具栏可切换 **PC / 手机** 视口；手机模式支持 iPhone 14、iPhone SE、Pixel 7、iPad
   预设和横竖屏切换，画面会按面板大小自动缩放。只模拟 CSS 视口宽度，不模拟触摸事件或
   User-Agent，需要完整移动端模拟时请用浏览器 DevTools。
@@ -231,7 +231,7 @@ DSH Web Filebrowser 把 Harness Web UI 变成一个真正可用的编码工作�
 - SSH 远程目录：在仓库根目录执行 `npm install` 安装 `ssh2`，并准备好 SSH agent 或 `~/.ssh` 私钥。
 - Git 功能需要 Host 的 `PATH` 中有 `git`，并配置提交身份（`user.name` / `user.email`）。
 
-仓库现在是一个**组合 bundle**（`@local/dsh-web-filebrowser`），内部包含三个组件；安装时只需要填仓库根目录一次：
+仓库现在是一个**组合 bundle**（`@local/dsh-web-dev-workspace`），内部包含三个组件；安装时只需要填仓库根目录一次：
 
 | 目录 | 作用 |
 | --- | --- |
@@ -288,7 +288,7 @@ Agent 会走与插件管理器相同的安装流程（安装的是仓库根目�
 
 - **从旧 `dsh-side` 升级**：卸载旧的 `@local/dsh-side` 及其两个配套插件，重新安装仓库根目录；
   浏览器里的根目录、收藏、偏好和 SSH 远程列表会自动从 `dsh-side:` 迁移到新键。旧页面标签需要硬刷新。
-- **版本提示**：文件工作区标题旁显示当前版本（例如 `v1.1.1`）。点击版本徽标会检查
+- **版本提示**：开发工作区标题旁显示当前版本（例如 `v1.1.1`）。点击版本徽标会检查
   GitHub 上 `taskkill/dsh-web-filebrowser` 的 `package.json`，发现更高版本时徽标高亮并
   给出更新方式。检查结果在 Host 内存中缓存 6 小时；只请求公开的版本清单，不发送工作区数据。
   更新提示基于 `package.json` 的 `version` 字段，发布新版本时需要同步提升版本号。仓库地址：https://github.com/taskkill/dsh-web-filebrowser 。
@@ -305,7 +305,7 @@ Agent 会走与插件管理器相同的安装流程（安装的是仓库根目�
   # 插件管理器安装/更新：先卸载旧版，再安装最新 GitHub 版本
   dsh plugin --profile web add github:taskkill/dsh-web-filebrowser
   ```
-- **卸载**：卸载 `@local/dsh-web-filebrowser` 这一个组合包即可。会移除 profile 的依赖/链接与插件行，不会删除你克隆的源码或工作区文件。
+- **卸载**：卸载 `@local/dsh-web-dev-workspace` 这一个组合包即可。会移除 profile 的依赖/链接与插件行，不会删除你克隆的源码或工作区文件。
 - **浏览器数据**：偏好与收藏保存在浏览器 `localStorage`，卸载插件不会自动清除；
   如需彻底清理，可在浏览器站点数据中删除。
 
@@ -314,8 +314,8 @@ Agent 会走与插件管理器相同的安装流程（安装的是仓库根目�
 | 现象 | 处理 |
 | --- | --- |
 | 没有新的侧栏图标 / 开始页卡片 | 刷新页面；确认主 bundle 已启用。 |
-| 上传或下载失败 | 确认组合包 `@local/dsh-web-filebrowser` 已安装并启用。 |
-| Git 视图提示未安装 | 确认组合包 `@local/dsh-web-filebrowser` 已启用；SSH 远程工作区不提供 Git。 |
+| 上传或下载失败 | 确认组合包 `@local/dsh-web-dev-workspace` 已安装并启用。 |
+| Git 视图提示未安装 | 确认组合包 `@local/dsh-web-dev-workspace` 已启用；SSH 远程工作区不提供 Git。 |
 | Git 视图提示不是仓库根目录 | 直接打开仓库根目录作为工作区；Git 操作只允许在该根目录内。 |
 | 获取/拉取/推送提示远程要求认证 | 在 Host 上配置 SSH 密钥或 Git 凭据助手；插件不会提示输入密码，也不保存凭据。 |
 | 拉取提示已分叉 | 默认只做快进；请在终端对本地分支变基或合并后再拉取。 |
@@ -330,9 +330,9 @@ Agent 会走与插件管理器相同的安装流程（安装的是仓库根目�
 
 ### 打开工作区
 
-1. 点击左侧栏新增的工作区图标，**或**打开右侧栏「开始」页选择「代码工作区」。
+1. 点击左侧栏新增的工作区图标，**或**打开右侧栏「开始」页选择「开发工作区」。
 2. 在顶部选择工作区，或在地址栏输入路径。
-   从某个工作区的会话界面打开代码工作区时，会优先把根目录定位到该会话所属的工作区；
+   从某个工作区的会话界面打开开发工作区时，会优先把根目录定位到该会话所属的工作区；
    之后手动切换过工作区则尊重你的选择，不再自动跟随。
 
 ### 快捷键
@@ -440,7 +440,7 @@ flowchart TB
 
 ## 安全与隐私
 
-DSH Web Filebrowser 是**本地优先**插件，拥有文件系统访问能力。启用前请阅读源码，只安装可信来源。
+开发工作区是**本地优先**插件，拥有文件系统访问能力。启用前请阅读源码，只安装可信来源。
 安全问题请按 [`SECURITY.md`](SECURITY.md) 私下报告，不要开公开 Issue。
 
 - **鉴权**：`/api` 精确路由只有携带有效 Harness 会话 Cookie 的 owner 浏览器可达，
@@ -552,4 +552,4 @@ npm run check:json
 
 ## 许可证
 
-[MIT](LICENSE) © DSH Web Filebrowser contributors.
+[MIT](LICENSE) © DSH Web Dev Workspace contributors.

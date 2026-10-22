@@ -1,7 +1,7 @@
-# Workspace Files IO (`@local/dsh-web-filebrowser-io`)
+# Dev Workspace IO (`@local/dsh-web-dev-workspace-io`)
 
-Host-only companion bundle for **[Workspace Files](../dsh-web-filebrowser-plugin)** — part of
-[DSH Web Filebrowser](../README.md). It provides the binary upload and forced-download host
+Host-only companion bundle for **[Dev Workspace](../dsh-web-filebrowser-plugin)** — part of
+the combined [Dev Workspace](../README.md) bundle. It provides the binary upload and forced-download host
 routes used by the main explorer/editor UI.
 
 ## Why a separate bundle?
@@ -74,4 +74,4 @@ GET /api/dsh-web-filebrowser-io?op=download&root=<absolute-root>&path=<relative-
 
 ## License
 
-[MIT](../LICENSE) © DSH Web Filebrowser contributors.
+[MIT](../LICENSE) © DSH Web Dev Workspace contributors.

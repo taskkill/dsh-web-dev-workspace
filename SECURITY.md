@@ -1,6 +1,6 @@
 # Security Policy
 
-DSH Web Filebrowser runs inside the DeepSeek Harness host and can read and write files inside
+Dev Workspace runs inside the DeepSeek Harness host and can read and write files inside
 the workspace roots you open. Please report security-sensitive issues privately.
 
 ## Reporting a vulnerability
@@ -14,7 +14,7 @@ through the repository's private contact channel.
 Please include:
 
 - the affected version or commit, and the DeepSeek Harness version;
-- whether the companion bundle `@local/dsh-web-filebrowser-io` is installed;
+- whether the companion bundle `@local/dsh-web-dev-workspace-io` is installed;
 - a minimal reproduction and the expected/actual behavior;
 - the impact (files read or written, paths reached, data exposed);
 - any relevant logs with secrets removed.

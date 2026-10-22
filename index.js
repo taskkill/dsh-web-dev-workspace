@@ -1,5 +1,5 @@
 /**
- * Combined DSH Web Filebrowser bundle.
+ * Combined DSH Web Dev Workspace bundle.
  *
  * A single profile entry hosts three interchangeable halves:
  * - the workspace files API and browser client (`dsh-web-filebrowser-plugin/`)
