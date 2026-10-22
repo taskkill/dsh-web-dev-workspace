@@ -270,6 +270,15 @@ Agent 会走与插件管理器相同的安装流程（安装的是仓库根目�
   更新提示基于 `package.json` 的 `version` 字段，发布新版本时需要同步提升版本号。仓库地址：https://github.com/taskkill/dsh-web-filebrowser 。
 - **更新**：在 **插件 → 已安装插件** 中卸载后，从新的本地路径重新安装；如果页面
   提供 Update 操作也可直接使用。本地 patch 加载的开发副本则直接 `git pull` 后重启 DSH。
+- **更新提示里的命令**：更新弹窗会直接显示并可复制以下命令。
+
+  ```bash
+  # 本地仓库加载：拉取后重启 DSH
+  git pull
+
+  # 插件管理器安装/更新：先卸载旧版，再安装最新 GitHub 版本
+  dsh plugin --profile web add github:taskkill/dsh-web-filebrowser
+  ```
 - **卸载**：卸载 `@local/dsh-web-filebrowser` 这一个组合包即可。会移除 profile 的依赖/链接与插件行，不会删除你克隆的源码或工作区文件。
 - **浏览器数据**：偏好与收藏保存在浏览器 `localStorage`，卸载插件不会自动清除；
   如需彻底清理，可在浏览器站点数据中删除。

@@ -386,6 +386,15 @@ repository root, not a subdirectory).
   combined bundle from the updated local path (or use the UI's update action when
   it is offered). A local-patch development copy can be updated with `git pull`
   followed by a DSH restart.
+- **Commands shown by the update prompt** (copyable from the dialog):
+
+  ```bash
+  # Local checkout: pull, then restart DSH
+  git pull
+
+  # Plugin manager: install the latest GitHub build
+  dsh plugin --profile web add github:taskkill/dsh-web-filebrowser
+  ```
 - **Uninstall**: uninstall `@local/dsh-web-filebrowser` from **Installed plugins**. This removes
   the profile dependency/link and the plugin row; it does not delete your cloned
   source or workspace files.

@@ -318,6 +318,8 @@ window.__ModuleLoader__.load({
       'version.updateTitle': '发现新版本 v{latest}',
       'version.updateMessage': '当前版本 v{current}，最新版本 v{latest}。本地加载请在插件仓库执行 git pull 后重启 DSH；插件管理器安装请在“设置 → 插件”中卸载后重新安装。GitHub 仓库：https://github.com/taskkill/dsh-web-filebrowser',
       'version.openGithub': '打开 GitHub',
+      'version.localUpdate': '本地加载：更新仓库',
+      'version.pluginInstall': '插件管理器：安装（已安装则先卸载）',
       'version.checkFailed': '检查更新失败：{message}',
       welcomeTitle: '文件工作区',
       welcomeHint: '在左侧资源管理器中浏览目录。单击文件即可打开，单击目录选中，双击目录展开或收起。',
@@ -764,6 +766,8 @@ window.__ModuleLoader__.load({
       'version.updateTitle': 'Version v{latest} is available',
       'version.updateMessage': 'Current version v{current}; latest version v{latest}. For a local checkout, run git pull in the plugin repository and restart DSH. For a plugin-manager install, uninstall and reinstall it under Settings → Plugins. GitHub: https://github.com/taskkill/dsh-web-filebrowser',
       'version.openGithub': 'Open GitHub',
+      'version.localUpdate': 'Local checkout: update repository',
+      'version.pluginInstall': 'Plugin manager: install (uninstall first if present)',
       'version.checkFailed': 'Update check failed: {message}',
       welcomeTitle: 'Workspace Files',
       welcomeHint: 'Browse directories in the Explorer. Click a file to open it, click a folder to select it, and double-click a folder to expand or collapse it.',
@@ -6157,6 +6161,13 @@ window.__ModuleLoader__.load({
                   message: t('version.updateMessage', { current: value.current, latest: value.latest }),
                   link: GITHUB_URL,
                   linkLabel: t('version.openGithub'),
+                  commands: [
+                    { label: t('version.localUpdate'), command: 'git pull' },
+                    {
+                      label: t('version.pluginInstall'),
+                      command: 'dsh plugin --profile web add github:taskkill/dsh-web-filebrowser',
+                    },
+                  ],
                   confirmLabel: t('action.ok'),
                   onConfirm: () => setModal(null),
                 })
@@ -8399,11 +8410,42 @@ window.__ModuleLoader__.load({
           if (entries.length === 0) {
             const hiddenOnly = !state.showHidden && allEntries.some((entry) => entry.name.startsWith('.'))
             if (draftRow === null) {
+              const rootLabel = state.rootTitle || (state.root === null ? '' : basename(state.root))
+              const parts = [...rootLabel.split('/').filter(Boolean), ...levelPath.split('/').filter(Boolean)]
+              const fullPath = state.root === null ? levelPath : levelPath.length === 0 ? state.root : `${state.root}/${levelPath}`
               nodes.push(
                 h(
                   'div',
-                  { key: `empty-${levelPath}`, className: 'ds-hint' },
-                  hiddenOnly ? t('hint.hiddenOnly') : t('hint.empty'),
+                  { key: `empty-${levelPath}`, className: 'ds-empty-dir' },
+                  h(
+                    'div',
+                    { className: 'ds-empty-path', title: fullPath },
+                    h('span', { className: 'ds-empty-chevron' }, '›'),
+                    parts.length === 0
+                      ? h('span', { className: 'ds-empty-seg ds-empty-seg-current' }, t('workspace.label'))
+                      : parts.map((part, index) =>
+                          h(
+                            React.Fragment,
+                            { key: `${String(index)}-${part}` },
+                            index === 0 ? null : h('span', { className: 'ds-empty-sep' }, '/'),
+                            h(
+                              'span',
+                              {
+                                className:
+                                  index === parts.length - 1
+                                    ? 'ds-empty-seg ds-empty-seg-current'
+                                    : 'ds-empty-seg',
+                              },
+                              part,
+                            ),
+                          ),
+                        ),
+                  ),
+                  h(
+                    'div',
+                    { className: 'ds-empty-note' },
+                    hiddenOnly ? t('hint.hiddenOnly') : t('hint.empty'),
+                  ),
                 ),
               )
             }
@@ -10149,19 +10191,6 @@ window.__ModuleLoader__.load({
                   h(SearchIcon),
                   h('span', null, t('side.search')),
                 ),
-                h(
-                  'button',
-                  {
-                    type: 'button',
-                    role: 'tab',
-                    className: 'ds-side-tab',
-                    'data-active': showHarness ? 'true' : undefined,
-                    'aria-selected': showHarness,
-                    onClick: () => void openHarness(),
-                  },
-                  h(HarnessIcon),
-                  h('span', null, t('side.harness')),
-                ),
                 gitAvailable
                   ? h(
                       'button',
@@ -10177,6 +10206,19 @@ window.__ModuleLoader__.load({
                       h('span', null, t('git.title')),
                     )
                   : null,
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    role: 'tab',
+                    className: 'ds-side-tab',
+                    'data-active': showHarness ? 'true' : undefined,
+                    'aria-selected': showHarness,
+                    onClick: () => void openHarness(),
+                  },
+                  h(HarnessIcon),
+                  h('span', null, t('side.harness')),
+                ),
               ),
             ),
             h('div', {
@@ -10739,9 +10781,46 @@ window.__ModuleLoader__.load({
                 },
                 h(
                   'div',
-                  { className: 'ds-modal', role: 'dialog', 'aria-modal': true },
+                  {
+                    className: clsx(
+                      'ds-modal',
+                      Array.isArray(modal.commands) && modal.commands.length > 0 ? 'ds-modal-wide' : undefined,
+                    ),
+                    role: 'dialog',
+                    'aria-modal': true,
+                  },
                   h('div', { className: 'ds-modal-title' }, modal.title),
                   h('div', { className: 'ds-modal-text' }, modal.message),
+                  Array.isArray(modal.commands) && modal.commands.length > 0
+                    ? h(
+                        'div',
+                        { className: 'ds-modal-commands' },
+                        modal.commands.map((item, index) =>
+                          h(
+                            'div',
+                            { key: index, className: 'ds-modal-command' },
+                            h('div', { className: 'ds-modal-command-label' }, item.label),
+                            h(
+                              'div',
+                              { className: 'ds-modal-command-row' },
+                              h('code', { className: 'ds-modal-command-code' }, item.command),
+                              h(
+                                'button',
+                                {
+                                  type: 'button',
+                                  className: 'ds-btn ds-modal-command-copy',
+                                  onClick: () => {
+                                    if (typeof navigator.clipboard?.writeText !== 'function') return
+                                    void navigator.clipboard.writeText(item.command).catch(() => {})
+                                  },
+                                },
+                                t('harness.copy'),
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                    : null,
                   h(
                     'div',
                     { className: 'ds-modal-actions' },
@@ -11205,6 +11284,34 @@ window.__ModuleLoader__.load({
 }
 .ds-row-draft { padding-right: 6px; }
 .ds-hint { padding: 5px 13px; color: var(--dsw-alias-label-secondary); font-size: 12px; }
+.ds-empty-dir { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; padding: 10px 13px 12px; }
+.ds-empty-path {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  min-height: 26px;
+  padding: 2px 8px 2px 5px;
+  overflow: hidden;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent);
+  color: var(--dsw-alias-label-secondary);
+  font-family: var(--ds-mono);
+  font-size: 10.5px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+.ds-empty-chevron { flex: 0 0 auto; color: var(--dsw-alias-label-caption); font-size: 14px; line-height: 1; }
+.ds-empty-sep { flex: 0 0 auto; color: var(--dsw-alias-label-caption); }
+.ds-empty-seg { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ds-empty-seg-current {
+  color: var(--dsw-alias-label-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--dsw-alias-label-caption);
+}
+.ds-empty-note { color: var(--dsw-alias-label-caption); font-size: 11px; line-height: 1.5; }
 .ds-errorline {
   display: flex;
   align-items: center;
@@ -12687,6 +12794,25 @@ window.__ModuleLoader__.load({
 .ds-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
 .ds-modal-link { margin-right: auto; align-self: center; color: var(--dsw-alias-brand-primary); font-size: 12px; text-decoration: none; }
 .ds-modal-link:hover { text-decoration: underline; }
+.ds-modal-wide { width: min(680px, 100%); }
+.ds-modal-commands { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.ds-modal-command-label { margin-bottom: 3px; color: var(--dsw-alias-label-caption); font-size: 10px; }
+.ds-modal-command-row { display: flex; align-items: stretch; gap: 6px; }
+.ds-modal-command-code {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 5px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-secondary);
+  font-family: var(--ds-mono);
+  font-size: 10.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.ds-modal-command-copy { flex: 0 0 auto; height: auto; padding: 0 10px; font-size: 11px; }
 .ds-agent-modal { width: min(720px, 100%); }
 .ds-agent-context { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin-top: 10px; }
 .ds-agent-path { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-primary); font-family: var(--ds-mono); font-size: 11px; }

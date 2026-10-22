@@ -4,6 +4,11 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Explorer
+
+- Empty directories now show a breadcrumb-style path chip (chevron, slash-separated
+  segments, underlined current segment) instead of a plain text hint.
+
 ### Agent collaboration
 
 - Add an **Agent** action to the editor toolbar: send the selected code (or the
@@ -28,6 +33,8 @@ All notable changes to this project are documented here.
 
 ### Version and update hints
 
+- The update dialog now shows the GitHub repository URL plus copyable `git pull`
+  and `dsh plugin --profile web add github:taskkill/dsh-web-filebrowser` commands.
 - Show the bundle version in the workspace header. Clicking the badge checks the
   public `package.json` in `taskkill/dsh-web-filebrowser` on GitHub (cached for six
   hours), highlights a newer version, and explains how to update a local checkout
