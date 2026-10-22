@@ -4,6 +4,19 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Responsive layout
+
+- Adapt the workspace for phones and tablets: compact single-column explorer/editor
+  below 900px, a wrapping header with a full-width address row, larger touch targets,
+  a clamped sidebar width on tablets, stacked Markdown split view, and narrow-screen
+  fixes for the terminal quick commands, search, Harness panel, dialogs and palette.
+
+### Markdown split view
+
+- Markdown tabs now offer **Preview / Edit / Split**. Split shows the editor on the
+  left and live preview on the right, with a draggable divider (double-click to
+  reset), automatic vertical stacking on narrow panels, and independent scrolling.
+
 ### Terminal quick commands
 
 - Add a quick-command bar to every terminal. The Host detects package scripts,

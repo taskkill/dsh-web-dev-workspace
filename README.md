@@ -133,7 +133,9 @@ it for you.
   width.
 - Word-wrap toggle (remembered, labeled) and **copy all** of the active buffer.
 - Markdown preview with headings, lists, tables, fenced code, links and relative
-  images; one click to switch between preview and edit.
+  images; switch between preview, edit and **split** view. Split puts the editor on
+  the left and live preview on the right with a draggable divider, and stacks on
+  narrow panels.
 
 ### Previews and transfer
 
@@ -159,6 +161,11 @@ it for you.
   then the editor with a back button in the breadcrumb.
 - English and Chinese UI; the client uses only Harness theme tokens (`--dsw-*`) and
   imports no Harness Client package.
+- **Mobile/tablet layout**: below a 900px panel width the explorer and editor switch to
+  a single-column layout with a back button in the breadcrumb; the header wraps with a
+  full-width address row; tree rows, sidebar tabs and action buttons get larger touch
+  targets; Markdown split stacks vertically; terminal quick commands, search, Harness,
+  modals and the command palette all fit narrow screens.
 - No model-facing tools, prompts, or session events are registered.
 
 ### Git source control

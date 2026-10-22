@@ -298,6 +298,7 @@ window.__ModuleLoader__.load({
       'action.discard': '放弃更改',
       'action.preview': '预览',
       'action.edit': '编辑',
+      'action.split': '分屏',
       'action.retry': '重试',
       'action.newFileHere': '在此新建文件',
       'action.newFolderHere': '在此新建文件夹',
@@ -750,6 +751,7 @@ window.__ModuleLoader__.load({
       'action.discard': 'Discard changes',
       'action.preview': 'Preview',
       'action.edit': 'Edit',
+      'action.split': 'Split',
       'action.retry': 'Retry',
       'action.newFileHere': 'New file here',
       'action.newFolderHere': 'New folder here',
@@ -5938,6 +5940,7 @@ window.__ModuleLoader__.load({
         const [editorSelection, setEditorSelection] = useState(null)
         const [, setLocaleVersion] = useState(0)
         const [containerWidth, setContainerWidth] = useState(0)
+        const [mdSplitRatio, setMdSplitRatio] = useState(50)
         const [compactView, setCompactView] = useState('tree')
         const [address, setAddress] = useState('')
         const [pickerOpen, setPickerOpen] = useState(false)
@@ -5983,6 +5986,7 @@ window.__ModuleLoader__.load({
         const [paneView, setPaneView] = useState('files')
         const [uploading, setUploading] = useState(false)
         const rootRef = useRef(null)
+        const mdSplitRef = useRef(null)
         const uploadInputRef = useRef(null)
         const uploadTargetRef = useRef({ root: null, parent: '' })
         const dragPathRef = useRef(null)
@@ -6203,12 +6207,16 @@ window.__ModuleLoader__.load({
         const activeTab = state.tabs.find((tab) => tab.path === state.active) ?? null
         const activePath = activeTab?.path ?? null
         const rootIsOpen = state.expanded[''] !== undefined
-        const compact = containerWidth > 0 && containerWidth < 640
+        const compact = containerWidth > 0 && containerWidth < 900
+        const splitStacked = containerWidth > 0 && containerWidth < 1000
         const gitAvailable = !isSshRootPath(state.root)
         const showGit = paneView === 'git' && gitAvailable
         const showSearch = paneView === 'search'
         const showHarness = paneView === 'harness'
         const showFiles = !showGit && !showSearch && !showHarness
+        const treeDisplayWidth = compact
+          ? '100%'
+          : `${String(containerWidth > 0 ? Math.min(state.treeWidth, Math.max(220, Math.floor(containerWidth * 0.42))) : state.treeWidth)}px`
         const showSide = !maximized && (!compact || compactView === 'tree' || activeTab === null)
         const showMain = maximized || !compact || (activeTab !== null && compactView === 'editor')
         const canCollapse = Object.keys(state.expanded).some((entry) => entry !== '')
@@ -8452,6 +8460,29 @@ window.__ModuleLoader__.load({
           window.addEventListener('pointerup', finish)
         }
 
+        function beginMdSplitDrag(event) {
+          if (splitStacked) return
+          const container = mdSplitRef.current
+          if (container === null) return
+          event.preventDefault()
+          const rect = container.getBoundingClientRect()
+          if (rect.width <= 0) return
+          const move = (moveEvent) => {
+            const ratio = ((moveEvent.clientX - rect.left) / rect.width) * 100
+            setMdSplitRatio(Math.min(80, Math.max(20, ratio)))
+          }
+          const finish = () => {
+            window.removeEventListener('pointermove', move)
+            window.removeEventListener('pointerup', finish)
+            document.body.style.cursor = ''
+            document.body.style.userSelect = ''
+          }
+          document.body.style.cursor = 'col-resize'
+          document.body.style.userSelect = 'none'
+          window.addEventListener('pointermove', move)
+          window.addEventListener('pointerup', finish)
+        }
+
         function renderDraftRow(levelPath, depth) {
           if (draft === null || draft.kind === 'rename' || draft.parent !== levelPath) return null
           return h(NameInput, {
@@ -8908,6 +8939,17 @@ window.__ModuleLoader__.load({
                     h(CodeIcon),
                     t('action.edit'),
                   ),
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-switch-btn',
+                      'data-active': tab.view === 'split' ? 'true' : undefined,
+                      onClick: () => patchTab(tab.path, { view: 'split' }),
+                    },
+                    h(PanelRightIcon),
+                    t('action.split'),
+                  ),
                 )
               : h('span', { className: 'ds-lang' }, tab.language.label),
             h('span', { className: 'ds-spacer' }),
@@ -8999,6 +9041,29 @@ window.__ModuleLoader__.load({
                 )
               : null,
           )
+        }
+
+        function textEditorNode(tab) {
+          return h(CodeEditor, {
+            key: tab.path,
+            tab,
+            language: tab.language,
+            t,
+            wrap: state.wordWrap,
+            onChange: (content) =>
+              store.set((current) => ({
+                ...current,
+                tabs: current.tabs.map((entry) =>
+                  entry.path === tab.path
+                    ? { ...entry, content, dirty: content !== entry.saved }
+                    : entry,
+                ),
+              })),
+            onSave: () => void saveTab(tab.path),
+            onCursor: setCursor,
+            onSelection: (selection) =>
+              setEditorSelection(selection === null ? null : { ...selection, path: tab.path }),
+          })
         }
 
         function tabBody(tab) {
@@ -9096,26 +9161,48 @@ window.__ModuleLoader__.load({
               t,
             })
           }
-          return h(CodeEditor, {
-            key: tab.path,
-            tab,
-            language: tab.language,
-            t,
-            wrap: state.wordWrap,
-            onChange: (content) =>
-              store.set((current) => ({
-                ...current,
-                tabs: current.tabs.map((entry) =>
-                  entry.path === tab.path
-                    ? { ...entry, content, dirty: content !== entry.saved }
-                    : entry,
-                ),
-              })),
-            onSave: () => void saveTab(tab.path),
-            onCursor: setCursor,
-            onSelection: (selection) =>
-              setEditorSelection(selection === null ? null : { ...selection, path: tab.path }),
-          })
+          if (tab.mode === 'markdown' && tab.view === 'split') {
+            return h(
+              'div',
+              {
+                className: 'ds-md-split',
+                ref: mdSplitRef,
+                'data-stacked': splitStacked ? 'true' : undefined,
+                style: splitStacked
+                  ? undefined
+                  : { gridTemplateColumns: `${String(mdSplitRatio)}% 5px minmax(0, 1fr)` },
+              },
+              h('div', { className: 'ds-md-split-pane ds-md-split-editor' }, textEditorNode(tab)),
+              h('div', {
+                className: 'ds-md-split-divider',
+                role: 'separator',
+                'aria-orientation': 'vertical',
+                title: t('action.split'),
+                onPointerDown: beginMdSplitDrag,
+                onDoubleClick: () => setMdSplitRatio(50),
+              }),
+              h(
+                'div',
+                { className: 'ds-md-split-pane ds-md-split-preview' },
+                h(MarkdownView, {
+                  key: `${tab.path}:split-preview`,
+                  text: tab.content,
+                  root: state.root,
+                  file: tab.path,
+                  onOpenPath: (relative) => {
+                    if (relative.endsWith('/')) {
+                      void ensureExpanded(relative.replace(/\/$/u, ''))
+                    } else {
+                      void openFile(relative)
+                    }
+                  },
+                  t,
+                }),
+              ),
+            )
+          }
+          return textEditorNode(tab)
+
         }
 
         function renderWorkspaceSelect() {
@@ -9818,7 +9905,7 @@ window.__ModuleLoader__.load({
               'button',
               {
                 type: 'button',
-                className: 'ds-iconbtn',
+                className: 'ds-iconbtn ds-header-root',
                 title: t('action.jumpRoot'),
                 onClick: jumpToWorkspaceRoot,
                 disabled: state.root === null,
@@ -9829,7 +9916,7 @@ window.__ModuleLoader__.load({
               'button',
               {
                 type: 'button',
-                className: 'ds-iconbtn',
+                className: 'ds-iconbtn ds-header-refresh',
                 title: t('action.refreshRoots'),
                 onClick: () => void loadRoots(),
                 disabled: state.loadingRoots,
@@ -9968,7 +10055,7 @@ window.__ModuleLoader__.load({
               {
                 className: 'ds-side',
                 'data-view': showGit ? 'git' : showSearch ? 'search' : showHarness ? 'harness' : 'files',
-                style: { width: compact ? '100%' : `${String(state.treeWidth)}px`, display: showSide ? undefined : 'none' },
+                style: { width: treeDisplayWidth, display: showSide ? undefined : 'none' },
               },
               h(
                 'div',
@@ -11147,6 +11234,44 @@ window.__ModuleLoader__.load({
 .ds-root[data-compact="true"] .ds-go-label { display: none; }
 .ds-root[data-compact="true"] .ds-header-new { display: none; }
 .ds-root[data-compact="true"] .ds-address-wrap { flex-basis: 120px; min-width: 64px; }
+.ds-root[data-compact="true"] .ds-header {
+  flex-wrap: wrap;
+  height: auto;
+  min-height: 44px;
+  padding: 6px 8px;
+  row-gap: 5px;
+}
+.ds-root[data-compact="true"] .ds-version,
+.ds-root[data-compact="true"] .ds-header-root,
+.ds-root[data-compact="true"] .ds-header-refresh { display: none; }
+.ds-root[data-compact="true"] .ds-header-title { flex: 0 0 auto; }
+.ds-root[data-compact="true"] .ds-workspace-wrap { flex: 1 1 120px; max-width: none; }
+.ds-root[data-compact="true"] .ds-address-wrap {
+  order: 20;
+  flex: 1 1 100%;
+  width: 100%;
+  max-width: none;
+}
+.ds-root[data-compact="true"] .ds-spacer { display: none; }
+.ds-root[data-compact="true"] .ds-edit-toolbar {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+.ds-root[data-compact="true"] .ds-edit-toolbar::-webkit-scrollbar { display: none; }
+.ds-root[data-compact="true"] .ds-breadcrumb { overflow-x: auto; scrollbar-width: none; }
+.ds-root[data-compact="true"] .ds-row { height: 30px; }
+.ds-root[data-compact="true"] .ds-side-tab { height: 32px; }
+.ds-root[data-compact="true"] .ds-pane-actions .ds-iconbtn { width: 30px; height: 30px; }
+.ds-root[data-compact="true"] .ds-terminal-quick { flex-wrap: wrap; }
+.ds-root[data-compact="true"] .ds-terminal-command-select { flex-basis: 100%; max-width: none; }
+.ds-root[data-compact="true"] .ds-modal-backdrop { padding: 12px; align-items: flex-start; }
+.ds-root[data-compact="true"] .ds-modal { max-height: calc(100vh - 24px); overflow: auto; }
+.ds-root[data-compact="true"] .ds-palette-backdrop { padding: 8px; align-items: flex-start; }
+.ds-root[data-compact="true"] .ds-palette { max-height: calc(100% - 16px); }
+.ds-root[data-compact="true"] .ds-toast { max-width: calc(100% - 24px); white-space: normal; }
 .ds-spacer { flex: 1 1 auto; }
 .ds-vspacer { flex: 0 0 4px; }
 .ds-iconbtn {
@@ -12681,6 +12806,34 @@ window.__ModuleLoader__.load({
 .ds-savebtn:hover:not(:disabled) { border-color: var(--dsw-alias-brand-primary); }
 .ds-savebtn:disabled { opacity: 0.4; cursor: default; }
 .ds-dirty-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--dsw-alias-brand-primary); }
+.ds-md-split { display: grid; flex: 1 1 auto; min-width: 0; min-height: 0; overflow: hidden; }
+.ds-md-split[data-stacked="true"] { display: flex; flex-direction: column; }
+.ds-md-split-pane { display: flex; min-width: 0; min-height: 0; overflow: hidden; }
+.ds-md-split-editor { background: var(--dsw-alias-bg-base); }
+.ds-md-split-preview { background: var(--dsw-alias-bg-base); }
+.ds-md-split-preview .ds-md { flex: 1 1 auto; min-height: 0; padding: 18px 22px 50px; }
+.ds-md-split-preview .ds-md-inner { max-width: none; }
+.ds-md-split-divider {
+  position: relative;
+  z-index: 2;
+  cursor: col-resize;
+  touch-action: none;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent);
+}
+.ds-md-split-divider::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 2px;
+  width: 1px;
+  background: var(--dsw-alias-border-l1);
+}
+.ds-md-split-divider:hover { background: color-mix(in srgb, var(--dsw-alias-brand-primary) 16%, transparent); }
+.ds-md-split[data-stacked="true"] .ds-md-split-divider { display: none; }
+.ds-md-split[data-stacked="true"] .ds-md-split-editor,
+.ds-md-split[data-stacked="true"] .ds-md-split-preview { flex: 1 1 50%; }
+.ds-md-split[data-stacked="true"] .ds-md-split-preview { border-top: 1px solid var(--dsw-alias-border-l1); }
 .ds-editor-wrap { display: flex; flex: 1 1 auto; min-height: 0; position: relative; }
 .ds-gutter {
   flex: 0 0 auto;
