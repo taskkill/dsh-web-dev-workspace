@@ -225,6 +225,7 @@ window.__ModuleLoader__.load({
       'memory.deleted': '已删除记忆',
       'memory.deleteFailed': '删除记忆失败：{message}',
       'memory.loadFailed': '读取记忆失败：{message}',
+      'memory.restartRequired': 'Host 仍在运行旧版本，请重启 DSH 后再使用记忆面板。',
       'memory.sshUnsupported': 'SSH 远程工作区没有本地记忆',
       'memory.noRoot': '请先选择工作区',
       'memory.count': '{count} 条',
@@ -720,6 +721,7 @@ window.__ModuleLoader__.load({
       'memory.deleted': 'Memory deleted',
       'memory.deleteFailed': 'Could not delete the memory: {message}',
       'memory.loadFailed': 'Could not read memory: {message}',
+      'memory.restartRequired': 'The Host is still running an older build. Restart DSH to use workspace memory.',
       'memory.sshUnsupported': 'SSH remote workspaces have no local memory',
       'memory.noRoot': 'Choose a workspace first',
       'memory.count': '{count} entries',
@@ -6734,6 +6736,11 @@ window.__ModuleLoader__.load({
           setCompactView('tree')
         }
 
+        /** Explain a Host that was not restarted after the plugin update. */
+        function memoryErrorText(error) {
+          return errorCode(error) === 'bad-op' ? t('memory.restartRequired') : errorText(error)
+        }
+
         /** Read the current workspace's memory document. */
         async function loadMemory() {
           const targetRoot = store.get().root
@@ -6761,7 +6768,7 @@ window.__ModuleLoader__.load({
             setMemoryPath(typeof value?.path === 'string' ? value.path : null)
             setMemoryUpdatedAt(Number.isFinite(value?.updatedAt) ? value.updatedAt : 0)
           } catch (error) {
-            if (store.get().root === targetRoot) setMemoryError(t('memory.loadFailed', { message: errorText(error) }))
+            if (store.get().root === targetRoot) setMemoryError(t('memory.loadFailed', { message: memoryErrorText(error) }))
           } finally {
             setMemoryBusy(false)
           }
@@ -6813,7 +6820,7 @@ window.__ModuleLoader__.load({
             setMemoryEditing(null)
             await loadMemory()
           } catch (error) {
-            setMemoryError(t('memory.saveFailed', { message: errorText(error) }))
+            setMemoryError(t('memory.saveFailed', { message: memoryErrorText(error) }))
           } finally {
             setMemorySaving(false)
           }
@@ -6845,7 +6852,7 @@ window.__ModuleLoader__.load({
             await loadMemory()
             showToast(t('memory.deleted'))
           } catch (error) {
-            setMemoryError(t('memory.deleteFailed', { message: errorText(error) }))
+            setMemoryError(t('memory.deleteFailed', { message: memoryErrorText(error) }))
           }
         }
 
