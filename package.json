@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-web-filebrowser",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "private": true,
   "description": "VS Code-style workspace files, SSH remotes, Git, a terminal and a preview browser for the DeepSeek Harness Web UI",
   "license": "MIT",
