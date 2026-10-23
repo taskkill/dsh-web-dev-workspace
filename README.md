@@ -454,12 +454,12 @@ repository root, not a subdirectory).
   preferences and SSH remotes are copied from the old `dsh-side:` browser keys on
   first load. Hard-refresh any tab opened with the old client.
 - **Version hint**: the file workspace header shows the current version (for
-  example `v1.2.5`). Clicking the badge checks `taskkill/dsh-web-filebrowser`'s
+  example `v1.2.6`). Clicking the badge checks `taskkill/dsh-web-dev-workspace`'s
   `package.json` on GitHub and highlights a newer version with update guidance.
   The result is cached in Host memory for six hours; the check requests only the
   public version manifest and sends no workspace data. The hint compares the
   `version` field, so publish a version bump with each release. Repository:
-  https://github.com/taskkill/dsh-web-filebrowser. The update dialog also offers
+  https://github.com/taskkill/dsh-web-dev-workspace. The update dialog also offers
   **Update now**: it only runs `git pull --ff-only` in a clean checkout, refuses
   local changes, shows the output, and asks for a DSH restart; it never restarts
   the Host process silently.
@@ -474,7 +474,7 @@ repository root, not a subdirectory).
   git pull
 
   # Plugin manager: install the latest GitHub build
-  dsh plugin --profile web add github:taskkill/dsh-web-filebrowser
+  dsh plugin --profile web add github:taskkill/dsh-web-dev-workspace
   ```
 - **Uninstall**: uninstall `@local/dsh-web-dev-workspace` from **Installed plugins**. This removes
   the profile dependency/link and the plugin row; it does not delete your cloned

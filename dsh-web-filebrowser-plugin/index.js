@@ -69,8 +69,11 @@ const VERSION_FILES = [
   fileURLToPath(new URL('./package.json', import.meta.url)),
 ]
 
+/** GitHub repository that publishes the manifest and version history. */
+const VERSION_REPO = 'taskkill/dsh-web-dev-workspace'
+
 /** Public manifest used to discover the latest published version. */
-const VERSION_SOURCE = 'https://api.github.com/repos/taskkill/dsh-web-filebrowser/contents/package.json?ref=main'
+const VERSION_SOURCE = `https://api.github.com/repos/${VERSION_REPO}/contents/package.json?ref=main`
 
 /** Reuse a successful update check for six hours. */
 const VERSION_CACHE_MS = 6 * 60 * 60 * 1000
@@ -339,7 +342,7 @@ async function checkLatestVersion(force) {
   }
   try {
     const response = await fetch(VERSION_SOURCE, {
-      headers: { accept: 'application/vnd.github+json', 'user-agent': 'dsh-web-filebrowser' },
+      headers: { accept: 'application/vnd.github+json', 'user-agent': 'dsh-web-dev-workspace' },
       signal: AbortSignal.timeout(8000),
     })
     if (!response.ok) throw new Error(`GitHub HTTP ${String(response.status)}`)

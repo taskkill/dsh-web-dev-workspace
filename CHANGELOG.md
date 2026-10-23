@@ -4,6 +4,14 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Update prompt repository
+
+- Point the version check, the GitHub link and the plugin-manager install command
+  at the canonical repository **`taskkill/dsh-web-dev-workspace`** (the old
+  `taskkill/dsh-web-filebrowser` URL only redirects). The update dialog now
+  interpolates the repository URL from one constant, and both package manifests
+  carry the same `repository`, `homepage` and `bugs` metadata.
+
 ### Terminal quick-command performance
 
 - Reduce the cost of terminal quick-command detection, which could make terminal
@@ -180,9 +188,9 @@ All notable changes to this project are documented here.
 ### Version and update hints
 
 - The update dialog now shows the GitHub repository URL plus copyable `git pull`
-  and `dsh plugin --profile web add github:taskkill/dsh-web-filebrowser` commands.
+  and `dsh plugin --profile web add github:taskkill/dsh-web-dev-workspace` commands.
 - Show the bundle version in the workspace header. Clicking the badge checks the
-  public `package.json` in `taskkill/dsh-web-filebrowser` on GitHub (cached for six
+  public `package.json` in `taskkill/dsh-web-dev-workspace` on GitHub (cached for six
   hours), highlights a newer version, and explains how to update a local checkout
   or a plugin-manager install. The hint compares the manifest `version`, so each
   release must bump it.

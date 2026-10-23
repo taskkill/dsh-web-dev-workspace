@@ -16,7 +16,8 @@ window.__ModuleLoader__.load({
     const IDE_KIND = 'dsh-web-filebrowser'
 
     /** Public repository shown by the update prompt. */
-    const GITHUB_URL = 'https://github.com/taskkill/dsh-web-filebrowser'
+    const GITHUB_REPO = 'taskkill/dsh-web-dev-workspace'
+    const GITHUB_URL = `https://github.com/${GITHUB_REPO}`
 
     /** Absolute route below `/api` served by the Host half. */
     const API_PATH = 'api/dsh-web-filebrowser'
@@ -493,7 +494,7 @@ window.__ModuleLoader__.load({
       'version.checking': '检查中…',
       'version.latest': '已是最新版本 v{version}',
       'version.updateTitle': '发现新版本 v{latest}',
-      'version.updateMessage': '当前版本 v{current}，最新版本 v{latest}。本地加载请在插件仓库执行 git pull 后重启 DSH；插件管理器安装请在“设置 → 插件”中卸载后重新安装。GitHub 仓库：https://github.com/taskkill/dsh-web-filebrowser',
+      'version.updateMessage': '当前版本 v{current}，最新版本 v{latest}。本地加载请在插件仓库执行 git pull 后重启 DSH；插件管理器安装请在“设置 → 插件”中卸载后重新安装。GitHub 仓库：{repo}',
       'version.openGithub': '打开 GitHub',
       'version.localUpdate': '本地加载：更新仓库',
       'version.pluginInstall': '插件管理器：安装（已安装则先卸载）',
@@ -1059,7 +1060,7 @@ window.__ModuleLoader__.load({
       'version.checking': 'Checking…',
       'version.latest': 'Up to date: v{version}',
       'version.updateTitle': 'Version v{latest} is available',
-      'version.updateMessage': 'Current version v{current}; latest version v{latest}. For a local checkout, run git pull in the plugin repository and restart DSH. For a plugin-manager install, uninstall and reinstall it under Settings → Plugins. GitHub: https://github.com/taskkill/dsh-web-filebrowser',
+      'version.updateMessage': 'Current version v{current}; latest version v{latest}. For a local checkout, run git pull in the plugin repository and restart DSH. For a plugin-manager install, uninstall and reinstall it under Settings → Plugins. GitHub: {repo}',
       'version.openGithub': 'Open GitHub',
       'version.localUpdate': 'Local checkout: update repository',
       'version.pluginInstall': 'Plugin manager: install (uninstall first if present)',
@@ -6905,14 +6906,18 @@ window.__ModuleLoader__.load({
               if (value.updateAvailable === true && typeof value.latest === 'string') {
                 setModal({
                   title: t('version.updateTitle', { latest: value.latest }),
-                  message: t('version.updateMessage', { current: value.current, latest: value.latest }),
+                  message: t('version.updateMessage', {
+                    current: value.current,
+                    latest: value.latest,
+                    repo: GITHUB_URL,
+                  }),
                   link: GITHUB_URL,
                   linkLabel: t('version.openGithub'),
                   commands: [
                     { label: t('version.localUpdate'), command: 'git pull' },
                     {
                       label: t('version.pluginInstall'),
-                      command: 'dsh plugin --profile web add github:taskkill/dsh-web-filebrowser',
+                      command: `dsh plugin --profile web add github:${GITHUB_REPO}`,
                     },
                   ],
                   confirmLabel: t('action.ok'),

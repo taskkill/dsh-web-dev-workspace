@@ -320,10 +320,10 @@ Agent 会走与插件管理器相同的安装流程（安装的是仓库根目�
 
 - **从旧 `dsh-side` 升级**：卸载旧的 `@local/dsh-side` 及其两个配套插件，重新安装仓库根目录；
   浏览器里的根目录、收藏、偏好和 SSH 远程列表会自动从 `dsh-side:` 迁移到新键。旧页面标签需要硬刷新。
-- **版本提示**：开发工作区标题旁显示当前版本（例如 `v1.2.5`）。点击版本徽标会检查
-  GitHub 上 `taskkill/dsh-web-filebrowser` 的 `package.json`，发现更高版本时徽标高亮并
+- **版本提示**：开发工作区标题旁显示当前版本（例如 `v1.2.6`）。点击版本徽标会检查
+  GitHub 上 `taskkill/dsh-web-dev-workspace` 的 `package.json`，发现更高版本时徽标高亮并
   给出更新方式。检查结果在 Host 内存中缓存 6 小时；只请求公开的版本清单，不发送工作区数据。
-  更新提示基于 `package.json` 的 `version` 字段，发布新版本时需要同步提升版本号。仓库地址：https://github.com/taskkill/dsh-web-filebrowser 。
+  更新提示基于 `package.json` 的 `version` 字段，发布新版本时需要同步提升版本号。仓库地址：https://github.com/taskkill/dsh-web-dev-workspace 。
   更新弹窗提供 **立即更新**：仅对干净的 git 检出执行 `git pull --ff-only`，拒绝脏工作区，显示命令输出，
   完成后提示重启 DSH；不会静默自动重启进程。
 - **更新**：在 **插件 → 已安装插件** 中卸载后，从新的本地路径重新安装；如果页面
@@ -335,7 +335,7 @@ Agent 会走与插件管理器相同的安装流程（安装的是仓库根目�
   git pull
 
   # 插件管理器安装/更新：先卸载旧版，再安装最新 GitHub 版本
-  dsh plugin --profile web add github:taskkill/dsh-web-filebrowser
+  dsh plugin --profile web add github:taskkill/dsh-web-dev-workspace
   ```
 - **卸载**：卸载 `@local/dsh-web-dev-workspace` 这一个组合包即可。会移除 profile 的依赖/链接与插件行，不会删除你克隆的源码或工作区文件。
 - **浏览器数据**：偏好与收藏保存在浏览器 `localStorage`，卸载插件不会自动清除；
