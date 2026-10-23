@@ -4,6 +4,16 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Open-file change detection
+
+- Open local text files are now checked every five seconds and whenever the window
+  regains focus. A clean tab reloads automatically when the file changes on disk
+  (with a toast for the active tab); a tab with unsaved edits shows a warning with
+  **Reload** and **Keep my changes** instead of silently applying the external
+  change. SSH roots follow the existing local-only auto-refresh policy.
+- Saving and reloading mark the tab as busy so the watcher cannot race an
+  in-flight write or read.
+
 ### Renamed to Development Workspace
 
 - The plugin is now **Dev Workspace** (开发工作区) instead of "Workspace Files".

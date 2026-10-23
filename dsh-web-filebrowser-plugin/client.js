@@ -303,6 +303,7 @@ window.__ModuleLoader__.load({
       'action.go': '直达',
       'action.save': '保存',
       'action.reload': '重新加载',
+      'action.keepMine': '保留我的更改',
       'action.overwrite': '强制覆盖',
       'action.open': '打开',
       'action.openInBrowser': '在浏览器中打开',
@@ -454,6 +455,7 @@ window.__ModuleLoader__.load({
       'error.notFound': '文件或目录不存在，可能已被移动或删除。',
       'error.outsideRoot': '只能访问工作区内的路径。',
       'error.stale': '磁盘上的文件已被其他程序修改，保存已阻止。',
+      'error.externalChanged': '“{name}”已在磁盘上被修改。重新加载会丢弃当前未保存的更改。',
       'error.tooLarge': '文件超出编辑器的大小上限。',
       'error.binary': '这是二进制文件，无法作为文本编辑。',
       'error.exists': '同名文件或目录已存在。',
@@ -473,6 +475,7 @@ window.__ModuleLoader__.load({
       'modal.confirmDelete': '删除',
       'toast.saved': '已保存',
       'toast.refreshed': '已刷新',
+      'toast.autoReloaded': '“{name}”已在磁盘上更新，已自动重新加载。',
       'toast.copied': '路径已复制',
       'toast.copyFailed': '无法复制路径',
       'toast.copiedAll': '已复制全文',
@@ -799,6 +802,7 @@ window.__ModuleLoader__.load({
       'action.go': 'Go',
       'action.save': 'Save',
       'action.reload': 'Reload',
+      'action.keepMine': 'Keep my changes',
       'action.overwrite': 'Overwrite',
       'action.open': 'Open',
       'action.openInBrowser': 'Open in browser',
@@ -950,6 +954,7 @@ window.__ModuleLoader__.load({
       'error.notFound': 'The file or folder no longer exists.',
       'error.outsideRoot': 'Only paths inside the workspace can be accessed.',
       'error.stale': 'The file changed on disk, so the save was blocked.',
+      'error.externalChanged': '“{name}” changed on disk. Reloading discards your unsaved changes.',
       'error.tooLarge': 'The file exceeds the editor size limit.',
       'error.binary': 'This is a binary file and cannot be edited as text.',
       'error.exists': 'A file or folder with that name already exists.',
@@ -969,6 +974,7 @@ window.__ModuleLoader__.load({
       'modal.confirmDelete': 'Delete',
       'toast.saved': 'Saved',
       'toast.refreshed': 'Refreshed',
+      'toast.autoReloaded': '“{name}” changed on disk and was reloaded.',
       'toast.copied': 'Path copied',
       'toast.copyFailed': 'Could not copy the path',
       'toast.copiedAll': 'Copied the whole file',
@@ -6155,6 +6161,9 @@ window.__ModuleLoader__.load({
         const paletteInputRef = useRef(null)
         const searchInputRef = useRef(null)
         const autoRefreshRef = useRef(false)
+        const fileWatchRef = useRef(false)
+        const tabBusyRef = useRef(new Set())
+        const externalNoticeRef = useRef(new Map())
         const autoRootRef = useRef(null)
         const workspaceItemsRef = useRef(workspaceItems)
         workspaceItemsRef.current = workspaceItems
@@ -6230,6 +6239,95 @@ window.__ModuleLoader__.load({
           }
           const timer = window.setInterval(() => void poll(), 5000)
           return () => window.clearInterval(timer)
+        }, [])
+
+        useEffect(() => {
+          const poll = async () => {
+            if (document.hidden || fileWatchRef.current) return
+            const root = store.get().root
+            if (root === null || isSshRootPath(root)) return
+            const watched = store.get().tabs.filter(
+              (tab) =>
+                isTextMode(tab.mode) &&
+                !tab.loading &&
+                tab.error === null &&
+                typeof tab.version === 'string' &&
+                !tabBusyRef.current.has(tab.path),
+            )
+            if (watched.length === 0) return
+            fileWatchRef.current = true
+            try {
+              for (const tab of watched) {
+                if (store.get().root !== root) return
+                if (tabBusyRef.current.has(tab.path)) continue
+                let info
+                try {
+                  info = await call('stat', { root, path: tab.path })
+                } catch {
+                  continue
+                }
+                if (store.get().root !== root) return
+                const version = typeof info?.version === 'string' ? info.version : null
+                const current = store.get().tabs.find((entry) => entry.path === tab.path)
+                if (current === undefined || version === null || version === current.version) continue
+                if (current.dirty) {
+                  const noticeKey = `${root}\u0000${tab.path}`
+                  if (externalNoticeRef.current.get(noticeKey) === version) continue
+                  externalNoticeRef.current.set(noticeKey, version)
+                  setBanner({
+                    kind: 'warn',
+                    message: t('error.externalChanged', { name: current.name }),
+                    actions: [
+                      {
+                        label: t('action.reload'),
+                        run: () => {
+                          setBanner(null)
+                          void reloadTab(tab.path)
+                        },
+                      },
+                      { label: t('action.keepMine'), run: () => setBanner(null) },
+                    ],
+                  })
+                  continue
+                }
+                try {
+                  const value = await call('read', { root, path: tab.path })
+                  if (store.get().root !== root) return
+                  const latest = store.get().tabs.find((entry) => entry.path === tab.path)
+                  if (latest === undefined || latest.dirty) continue
+                  const content = typeof value?.content === 'string' ? value.content : ''
+                  const nextVersion = typeof value?.version === 'string' ? value.version : version
+                  patchTab(tab.path, {
+                    content,
+                    saved: content,
+                    version: nextVersion,
+                    dirty: false,
+                    error: null,
+                    code: null,
+                  })
+                  if (store.get().active === tab.path && content !== latest.saved) {
+                    showToast(t('toast.autoReloaded', { name: latest.name }))
+                  }
+                } catch {
+                  /* a transient read failure is retried on the next tick */
+                }
+              }
+            } finally {
+              fileWatchRef.current = false
+            }
+          }
+          const timer = window.setInterval(() => void poll(), 5000)
+          const checkNow = () => {
+            if (!document.hidden) void poll()
+          }
+          document.addEventListener('visibilitychange', checkNow)
+          window.addEventListener('focus', checkNow)
+          void poll()
+          return () => {
+            window.clearInterval(timer)
+            document.removeEventListener('visibilitychange', checkNow)
+            window.removeEventListener('focus', checkNow)
+          }
         }, [])
 
         useEffect(() => {
@@ -8462,6 +8560,8 @@ window.__ModuleLoader__.load({
           const tab = current.tabs.find((entry) => entry.path === relative)
           if (tab === undefined || !isTextMode(tab.mode) || tab.loading) return
           if (current.root === null) return
+          if (tabBusyRef.current.has(relative)) return
+          tabBusyRef.current.add(relative)
           try {
             const value = await call('write', {
               root: current.root,
@@ -8490,6 +8590,8 @@ window.__ModuleLoader__.load({
             } else {
               setBanner({ kind: 'error', message: t('error.saveFailed', { message: errorText(error) }) })
             }
+          } finally {
+            tabBusyRef.current.delete(relative)
           }
         }
 
@@ -8497,6 +8599,8 @@ window.__ModuleLoader__.load({
           const current = store.get()
           const tab = current.tabs.find((entry) => entry.path === relative)
           if (tab === undefined || current.root === null) return
+          if (tabBusyRef.current.has(relative)) return
+          tabBusyRef.current.add(relative)
           try {
             const value = await call('write', { root: current.root, path: relative, content: tab.content })
             patchTab(relative, {
@@ -8508,12 +8612,16 @@ window.__ModuleLoader__.load({
             showToast(t('toast.saved'))
           } catch (error) {
             setBanner({ kind: 'error', message: t('error.saveFailed', { message: errorText(error) }) })
+          } finally {
+            tabBusyRef.current.delete(relative)
           }
         }
 
         async function reloadTab(relative) {
           const current = store.get()
           if (current.root === null) return
+          if (tabBusyRef.current.has(relative)) return
+          tabBusyRef.current.add(relative)
           try {
             const value = await call('read', { root: current.root, path: relative })
             patchTab(relative, {
@@ -8527,8 +8635,11 @@ window.__ModuleLoader__.load({
             })
             setBanner(null)
             showToast(t('toast.refreshed'))
+            externalNoticeRef.current.delete(`${current.root}\u0000${relative}`)
           } catch (error) {
             setBanner({ kind: 'error', message: t('error.read', { message: errorText(error) }) })
+          } finally {
+            tabBusyRef.current.delete(relative)
           }
         }
 

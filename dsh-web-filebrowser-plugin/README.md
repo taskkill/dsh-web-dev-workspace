@@ -171,6 +171,9 @@ third-party runtime dependencies.
 - Multi-tab editing: dirty indicators, save (button or `⌘/Ctrl+S`), reload,
   stale-file protection, drag-to-resize explorer width, a remembered and visibly
   labeled word-wrap toggle, and one-click **copy all** of the active buffer.
+- Open local files are checked every five seconds and on window focus: a clean tab
+  reloads automatically when the file changes on disk, while a dirty tab shows a
+  warning to **Reload** or **Keep my changes**.
 - Syntax highlighting for JavaScript/TypeScript, JSON, CSS, HTML/XML, Python,
   Shell, YAML, SQL, Markdown, Rust, Go, Java, Kotlin, Scala, Swift, Dart, Groovy, C#,
   C/C++, Objective-C, Ruby, PHP, Lua, R, Perl, PowerShell, F#, VB.NET, Razor,
@@ -279,13 +282,13 @@ file clears the workspace's memory; nothing is shared with another root.
 
 - Only registered workspaces (or the deployment default directory) are
   accessible; an absolute path typed in the address bar is registered first.
-- No folder upload/download, no automatic file watching, no search, and no
-  binary editing. SSH host keys are not pinned; password auth is one-time per
-  connection and is never stored.
+- No folder upload/download and no binary editing. Local workspaces poll the
+  expanded tree and open text files; SSH roots are not polled. A clean tab
+  reloads automatically when its file changes on disk, while a dirty tab asks
+  before discarding edits. Saves use stale-file protection. SSH host keys are not
+  pinned; password auth is one-time per connection and is never stored.
 - Git is limited to the repository root; no automatic merge/rebase or hunk-level
   staging. A diverged pull must be resolved in a terminal, and pushes never force.
-- External changes require a manual refresh/reload; saves use stale-file
-  protection.
 - Built against Harness `0.2.1-rc.2`; newer releases may change slot/service
   contracts.
 

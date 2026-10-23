@@ -1,36 +1,21 @@
-<p align="center">
-  <img src="dsh-web-filebrowser-plugin/icon.svg" width="88" height="88" alt="DSH Web Dev Workspace icon" />
-</p>
+![DSH Web Dev Workspace icon](dsh-web-filebrowser-plugin/icon.svg)
 
-<h1 align="center">Deepseek Harness Web Dev Workspace</h1>
+# DeepSeek Harness Web Dev Workspace
 
-<p align="center">
-  A VS Code-style workspace for the <strong>DeepSeek Harness</strong> Web UI:
-  browse, edit, preview, favorite, upload and download workspace files, commit,
-  compare and sync Git changes, and preview a local dev server in the built-in
-  browser — without leaving the chat.
-</p>
+A VS Code-style workspace for the **DeepSeek Harness** Web UI:
+browse, edit and search workspace files, run Git, terminal and browser tasks,
+and keep the floating conversation, Agent actions and workspace memory in one
+place — without leaving the chat.
 
-<p align="center">
-  <a href="#installation"><strong>Install</strong></a> ·
-  <a href="#features">Features</a> ·
-  <a href="#usage">Usage</a> ·
-  <a href="#how-it-works">How it works</a> ·
-  <a href="#development">Development</a> ·
-  <a href="README.zh.md">中文文档</a>
-</p>
+**[Install](#installation)** · [Highlights](#highlights) · [Features](#features) · [Usage](#usage) · [How it works](#how-it-works) · [Development](#development) · [中文文档](README.zh.md)
 
-<p align="center">
-  <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg" />
-  <img alt="DeepSeek Harness 0.2.1-rc.2" src="https://img.shields.io/badge/DeepSeek%20Harness-0.2.1--rc.2-4c6ef5" />
-  <img alt="No build step" src="https://img.shields.io/badge/build-none-brightgreen" />
-</p>
+![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg) ![DeepSeek Harness 0.2.1-rc.2](https://img.shields.io/badge/DeepSeek%20Harness-0.2.1--rc.2-4c6ef5) ![No build step](https://img.shields.io/badge/build-none-brightgreen)
 
 ---
 
-Dev Workspace turns the Harness Web UI into a practical coding workspace. It adds a
-file explorer and a tabbed editor to the left sidebar and to the right sidebar's
-Start page, while keeping the chat and the sessions exactly where they are.
+Dev Workspace turns the Harness Web UI into a practical coding workspace. It adds
+the workspace to the left sidebar and the right sidebar's Start page, while keeping
+the chat and the sessions exactly where they are.
 
 It is one **local combined bundle**, not an npm package: install the repository
 root once through the Harness Plugin Manager, or ask the Harness agent to install
@@ -53,23 +38,32 @@ it for you.
 ## Highlights
 
 - **A real editor inside the chat UI** — tabs, syntax highlighting, line numbers,
-  word-wrap toggle, save and one-click copy-all.
+  a word-wrap toggle, find/replace, save and one-click copy-all.
 - **Files, not just previews** — create, rename, move, copy, delete, upload and
-  download; save with stale-file protection.
-- **Markdown and PDF previews** — Markdown renders in the panel; PDF and images
-  render inline, with a browser handoff.
-- **Favorites and a workspace switcher** — single-click a favorite to open a file
-  or jump to a folder; clean up workspace entries from the picker.
-- **Local Git workflow** — branch/ahead/behind, staged and unstaged changes,
-  per-file staging, commits, restore, stashes, diffs and branch switching without
-  leaving the panel.
-- **Floating DeepSeek chat** — one click turns the current conversation into a
-  movable, resizable, collapsible panel that stays visible while the file
-  workspace is maximized.
-- **Cross-session workspace memory** — each workspace keeps its own durable notes,
-  shared by every chat session in that workspace and injected automatically.
-- **Fits the host** — theme-token styling, English/Chinese copy, compact
-  single-column layout in narrow sidebars, and a right-sidebar Start card.
+  download; drag files in from the OS; save with stale-file protection.
+- **Search and Quick Open** — workspace-wide content search, a `Ctrl/⌘ + P` file
+  picker and a `Ctrl/⌘ + Shift + P` command palette.
+- **Markdown, PDF and image previews** — rendered Markdown with a live split view,
+  inline PDF/images, and a browser handoff for binaries.
+- **Local Git workflow** — changes and commit graph, staging, commits, restore,
+  stash, branch switching, diffs, compare and fetch/pull/push.
+- **Built-in terminal** — vendored xterm.js terminals that move between the bottom
+  panel and editor tabs, plus project-aware quick commands.
+- **Built-in browser** — preview a running dev server beside the code, with
+  PC/mobile viewports and a public-page proxy fallback.
+- **Favorites and a workspace switcher** — one click opens a favorite file or
+  folder; remove stale workspace records from the picker.
+- **Floating DeepSeek chat** — keep the current conversation in a movable,
+  resizable, collapsible panel while the file workspace is maximized.
+- **Agent collaboration** — send a selection to the conversation to explain, fix
+  or write tests; nothing is sent until you choose an action.
+- **SSH remote folders** — browse and edit a remote directory over SFTP using the
+  Host's SSH agent, keys or a one-time password.
+- **Cross-session workspace memory** — each workspace keeps durable notes shared
+  by every chat session in that workspace and injected automatically.
+- **Fits the host** — theme-token styling, English/Chinese copy, a compact
+  single-column layout in narrow sidebars, a right-sidebar Start card, and a
+  mobile/tablet layout.
 
 ## Features
 
@@ -87,6 +81,9 @@ it for you.
   are resolved automatically (128 MiB per file).
 - Single-click a file to open it; single-click a folder to select it, double-click
   a folder (or its chevron) to expand/collapse.
+- Explorer rows follow VS Code: when an expanded folder contains exactly one
+  subfolder and that subfolder is expanded too, the chain collapses into one
+  `parent/child/grandchild` row; an expanded empty folder shows no placeholder.
 - The explorer header has one-click buttons for **collapse all**,
   **show/hide hidden files**, **go to workspace root**, and refresh.
 - **Favorites** per workspace: right-click an entry or use the star in the
@@ -113,7 +110,9 @@ it for you.
   opens the command palette for new file/folder, search, refresh, terminal, browser,
   memory and Harness actions.
 - **Auto refresh**: local workspaces re-check expanded directories every five seconds,
-  so external creates, deletes and renames update the tree.
+  so external creates, deletes and renames update the tree. Open text tabs are
+  checked too: a clean tab reloads automatically when its file changes on disk, and
+  a dirty tab offers **Reload** or **Keep my changes**.
 - **In-file find/replace**: `Ctrl/⌘ + F` opens the editor find bar with next/previous,
   case sensitivity, replace and replace all.
 - **Harness panel**: the Harness sidebar tab shows the active profile, plugin version,
@@ -282,6 +281,8 @@ it for you.
   **Built-in browser** action on the welcome page, or `Alt+B`.
 - The address bar accepts `localhost:5173`, `:3000`, `https://example.com` and
   similar; back, forward, reload and external-open are built in.
+- An HTTPS mixed-content warning can be dismissed; it returns after a reload,
+  navigation or Direct/Proxy switch.
 - The **Maximize editor** button at the panel's top-right hides the explorer so
   the editor/built-in browser fills the file-workspace component itself (no
   browser fullscreen); press Esc or click Restore to bring the tree back.
@@ -418,7 +419,7 @@ repository root, not a subdirectory).
   preferences and SSH remotes are copied from the old `dsh-side:` browser keys on
   first load. Hard-refresh any tab opened with the old client.
 - **Version hint**: the file workspace header shows the current version (for
-  example `v1.1.1`). Clicking the badge checks `taskkill/dsh-web-filebrowser`'s
+  example `v1.2.1`). Clicking the badge checks `taskkill/dsh-web-filebrowser`'s
   `package.json` on GitHub and highlights a newer version with update guidance.
   The result is cached in Host memory for six hours; the check requests only the
   public version manifest and sends no workspace data. The hint compares the
@@ -659,8 +660,9 @@ issue for security-sensitive reports.
   publish your own fork to a registry.
 - **No folder upload/download**: only individual files are transferred. Upload a
   folder by creating it in the UI and uploading its files, or zip it externally.
-- **Auto refresh is local-only**: expanded local directories are polled every five
-  seconds; SSH roots are not polled and open files still need a manual reload.
+- **Auto refresh is local-only**: expanded local directories and open text files are
+  polled every five seconds; SSH roots are not polled. Clean tabs reload
+  automatically, while tabs with unsaved edits prompt before discarding changes.
   Saves use stale-file protection.
 - **No automatic merge/rebase or hunk staging**: search and Quick Open currently
   support local workspaces only; use the tree for SSH roots. A diverged pull only
