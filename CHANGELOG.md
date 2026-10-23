@@ -4,6 +4,22 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Terminal quick-command performance
+
+- Reduce the cost of terminal quick-command detection, which could make terminal
+  output feel sluggish in large workspaces:
+  - The Host caches a detected command list for 30 seconds instead of 5; the
+    refresh button sends a forced rescan, while background polls reuse the cache.
+  - Recursive `.jar` / `.dll` discovery now runs only when the root looks like a
+    Java or .NET project (or contains a root-level artifact), instead of walking
+    up to 4,000 files on every refresh in a normal JS/Python project.
+  - The client checks for a changed shell cwd every 20 seconds instead of every
+    4, pauses while the page is hidden, and refreshes immediately only after
+    `cd` / `pushd` / `popd` rather than after every command.
+  - The panel now updates its command list only when the detected commands or
+    root actually change, so polling no longer re-renders the terminal every few
+    seconds.
+
 ### Workspace todo list
 
 - Add a **Todo** sidebar tab backed by `.dsh/todos.json` in the current local
@@ -32,7 +48,7 @@ All notable changes to this project are documented here.
 - The **Git** sidebar tab now shows an amber count badge when the workspace has
   uncommitted changes. The count is the number of distinct changed paths across
   staged, working-tree and untracked entries, capped at `99+` on the tab.
-- The hidden Git panel refreshes its status every ten seconds (and on window
+- The hidden Git panel refreshes its status every thirty seconds (and on window
   focus) while the workspace is a repository, so the badge also reacts to editor
   saves and external changes. It updates immediately after Git actions and
   disappears when the workspace is clean or is not a repository.

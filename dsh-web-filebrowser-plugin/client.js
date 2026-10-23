@@ -53,7 +53,10 @@ window.__ModuleLoader__.load({
     const SIDE_TAB_ICON_WIDTH = 36
 
     /** How often the hidden Git panel refreshes its status for the tab badge. */
-    const GIT_STATUS_POLL_MS = 10000
+    const GIT_STATUS_POLL_MS = 30000
+
+    /** How often the terminal quick-command list follows the shell cwd. */
+    const TERMINAL_COMMANDS_POLL_MS = 20000
 
     /** Host-side HTML proxy for public preview pages. */
     const PROXY_PATH = 'api/dsh-web-filebrowser-proxy'
@@ -5792,27 +5795,45 @@ window.__ModuleLoader__.load({
       useEffect(() => {
         let alive = true
         let busy = false
-        const refresh = async () => {
-          if (!alive || busy) return
+        let lastKey = ''
+        const refresh = async (force = false) => {
+          if (!alive || busy || document.hidden) return
           busy = true
           try {
-            const value = await callTerminal('commands', { id: session.hostId })
+            const value = await callTerminal('commands', { id: session.hostId, refresh: force === true })
             if (!alive) return
-            if (Array.isArray(value?.commands)) setCommands(value.commands)
-            if (typeof value?.root === 'string') setCommandsRoot(value.root)
+            const nextCommands = Array.isArray(value?.commands) ? value.commands : []
+            const nextRoot = typeof value?.root === 'string' ? value.root : null
+            const key = `${nextRoot ?? ''}\u0000${nextCommands
+              .map((item) => `${item.id ?? ''}\u0001${item.label ?? ''}\u0001${item.command ?? ''}`)
+              .join('\u0002')}`
+            // Polling must not re-render the terminal every few seconds when the
+            // detected commands are unchanged.
+            if (key !== lastKey) {
+              lastKey = key
+              setCommands(nextCommands)
+              setCommandsRoot(nextRoot)
+            }
           } catch {
             /* terminal backend may not support command detection yet */
           } finally {
             busy = false
           }
         }
-        refreshCommandsRef.current = () => void refresh()
-        void refresh()
-        const timer = window.setInterval(() => void refresh(), 4000)
+        refreshCommandsRef.current = (force) => void refresh(force === true)
+        void refresh(true)
+        const timer = window.setInterval(() => void refresh(), TERMINAL_COMMANDS_POLL_MS)
+        const onVisible = () => {
+          if (!document.hidden) void refresh()
+        }
+        document.addEventListener('visibilitychange', onVisible)
+        window.addEventListener('focus', onVisible)
         return () => {
           alive = false
           refreshCommandsRef.current = null
           window.clearInterval(timer)
+          document.removeEventListener('visibilitychange', onVisible)
+          window.removeEventListener('focus', onVisible)
         }
       }, [session.hostId])
 
@@ -5866,7 +5887,12 @@ window.__ModuleLoader__.load({
               sendInput(`${text}\r\n`)
             }
             terminal.focus()
-            window.setTimeout(() => refreshCommandsRef.current?.(), 400)
+            // Only a directory-changing command can change the detected quick
+            // commands immediately; a project scan after every command made
+            // busy output feel sluggish.
+            if (/(^|[;&|]\s*)(cd|pushd|popd)(\s|$)/iu.test(text)) {
+              window.setTimeout(() => refreshCommandsRef.current?.(), 400)
+            }
           }
           runCommandRef.current = runLine
           terminal.onData((data) => {
@@ -5996,7 +6022,7 @@ window.__ModuleLoader__.load({
               type: 'button',
               className: 'ds-terminal-command-refresh',
               title: t('terminal.refreshCommands'),
-              onClick: () => refreshCommandsRef.current?.(),
+              onClick: () => refreshCommandsRef.current?.(true),
             },
             h(RefreshIcon),
           ),

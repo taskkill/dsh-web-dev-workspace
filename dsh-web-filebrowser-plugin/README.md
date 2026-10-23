@@ -219,7 +219,7 @@ third-party runtime dependencies.
 
 - Branch, upstream and ahead/behind status; staged, unstaged and untracked files.
 - The bottom **Git** tab shows an amber badge with the number of distinct changed
-  files. A hidden Git panel refreshes status every ten seconds and on focus, so
+  files. A hidden Git panel refreshes status every thirty seconds and on focus, so
   the badge also reflects editor saves and external changes; it disappears when
   the workspace is clean or is not a repository.
 - Stage/unstage a file or everything, commit with a message (`Ctrl/⌘+Enter`), view a

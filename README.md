@@ -304,7 +304,11 @@ it for you.
   `dotnet`, Django, Go, Cargo and Docker Compose. Pick a command, edit it if needed,
   and press **Run**; the input also accepts arbitrary commands. On Linux the list
   follows the terminal's live cwd (read from `/proc`), so changing projects refreshes
-  it; a refresh button is also available.
+  it; a refresh button forces a rescan. The list is cached for 30 seconds and
+  checked every 20 seconds, refreshes immediately only after `cd` / `pushd` /
+  `popd`, and pauses while the page is hidden so project scanning cannot make the
+  terminal output sluggish. Recursive `.jar` / `.dll` discovery only runs in Java
+  or .NET projects.
 
 ### Built-in browser
 
@@ -450,7 +454,7 @@ repository root, not a subdirectory).
   preferences and SSH remotes are copied from the old `dsh-side:` browser keys on
   first load. Hard-refresh any tab opened with the old client.
 - **Version hint**: the file workspace header shows the current version (for
-  example `v1.2.4`). Clicking the badge checks `taskkill/dsh-web-filebrowser`'s
+  example `v1.2.5`). Clicking the badge checks `taskkill/dsh-web-filebrowser`'s
   `package.json` on GitHub and highlights a newer version with update guidance.
   The result is cached in Host memory for six hours; the check requests only the
   public version manifest and sends no workspace data. The hint compares the

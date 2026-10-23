@@ -32,6 +32,8 @@ const TITLE_PREFIX = 'Terminal'
 const MAX_COMMANDS = 40
 const COMMAND_SCAN_DEPTH = 4
 const COMMAND_SCAN_FILES = 2000
+/** Reuse a detected command list for this long unless the client forces a refresh. */
+const COMMAND_CACHE_MS = 30_000
 
 const ASSETS = new Map([
   ['xterm.js', 'text/javascript; charset=utf-8'],
@@ -264,7 +266,8 @@ export function createTerminalManager({ resolveRoot, vendorDir }) {
       throw new TerminalError('ssh-unsupported', 'SSH 远程工作区暂不支持本地终端')
     }
     const cached = commandCache.get(root)
-    if (cached !== undefined && Date.now() - cached.at < 5000) return cached.value
+    const force = body.refresh === true
+    if (!force && cached !== undefined && Date.now() - cached.at < COMMAND_CACHE_MS) return cached.value
     const commands = []
     const seen = new Set()
     const add = (label, command) => {
@@ -279,13 +282,9 @@ export function createTerminalManager({ resolveRoot, vendorDir }) {
         return false
       }
     }
-    const isDirectory = async (name) => {
-      try {
-        return (await fsp.stat(path.join(root, name))).isDirectory()
-      } catch {
-        return false
-      }
-    }
+
+    let hasJava = false
+    let hasDotnet = false
 
     if (await isFile('package.json')) {
       let scripts = {}
@@ -305,9 +304,11 @@ export function createTerminalManager({ resolveRoot, vendorDir }) {
       add(`${manager} install`, `${manager} install`)
     }
     if (await isFile('pom.xml')) {
+      hasJava = true
       add('Maven Spring Boot', `${(await isFile('mvnw')) ? './mvnw' : 'mvn'} spring-boot:run`)
     }
     if ((await isFile('build.gradle')) || (await isFile('build.gradle.kts'))) {
+      hasJava = true
       add('Gradle Boot Run', `${(await isFile('gradlew')) ? './gradlew' : 'gradle'} bootRun`)
     }
     if (await isFile('manage.py')) add('Django runserver', 'python manage.py runserver')
@@ -317,26 +318,46 @@ export function createTerminalManager({ resolveRoot, vendorDir }) {
     if ((await isFile('docker-compose.yml')) || (await isFile('docker-compose.yaml')) || (await isFile('compose.yaml'))) {
       add('Docker Compose', 'docker compose up')
     }
-    if ((await isFile('build.sbt'))) add('sbt run', 'sbt run')
-    if ((await isFile('mix.exs'))) add('mix phx.server', 'mix phx.server')
+    if (await isFile('build.sbt')) {
+      hasJava = true
+      add('sbt run', 'sbt run')
+    }
+    if (await isFile('mix.exs')) add('mix phx.server', 'mix phx.server')
 
     const csproj = []
     try {
       for (const entry of await fsp.readdir(root, { withFileTypes: true })) {
-        if (entry.isFile() && entry.name.toLowerCase().endsWith('.csproj')) csproj.push(entry.name)
-        if (entry.isFile() && entry.name.toLowerCase().endsWith('.sln')) add('dotnet build', `dotnet build ${quotePath(entry.name)}`)
+        if (!entry.isFile()) continue
+        const lower = entry.name.toLowerCase()
+        if (lower.endsWith('.csproj')) {
+          hasDotnet = true
+          csproj.push(entry.name)
+        }
+        if (lower.endsWith('.sln') || lower.endsWith('.fsproj') || lower.endsWith('.vbproj')) hasDotnet = true
+        if (lower.endsWith('.sln')) add('dotnet build', `dotnet build ${quotePath(entry.name)}`)
+        // A root-level artifact is enough to justify a recursive scan even
+        // without a build file.
+        if (lower.endsWith('.jar')) hasJava = true
+        if (lower.endsWith('.dll')) hasDotnet = true
       }
     } catch {
       /* unreadable root: other detectors already ran */
     }
     if (csproj.length > 0) add('dotnet run', csproj.length === 1 ? `dotnet run --project ${quotePath(csproj[0])}` : 'dotnet run')
 
-    const jars = { path: [], files: 0, results: [] }
-    await scanFiles(root, ['.jar'], jars)
-    for (const jar of jars.results) add(`java -jar ${jar}`, `java -jar ${quotePath(jar)}`)
-    const dlls = { path: [], files: 0, results: [] }
-    await scanFiles(root, ['.dll'], dlls)
-    for (const dll of dlls.results) add(`dotnet ${dll}`, `dotnet ${quotePath(dll)}`)
+    // Recursive .jar/.dll discovery is expensive. Only run it when the root
+    // actually looks like a Java or .NET project; otherwise a normal JS/Python
+    // workspace would be walked on every refresh for no commands.
+    if (hasJava) {
+      const jars = { path: [], files: 0, results: [] }
+      await scanFiles(root, ['.jar'], jars)
+      for (const jar of jars.results) add(`java -jar ${jar}`, `java -jar ${quotePath(jar)}`)
+    }
+    if (hasDotnet) {
+      const dlls = { path: [], files: 0, results: [] }
+      await scanFiles(root, ['.dll'], dlls)
+      for (const dll of dlls.results) add(`dotnet ${dll}`, `dotnet ${quotePath(dll)}`)
+    }
 
     const value = { root, commands }
     commandCache.set(root, { at: Date.now(), value })

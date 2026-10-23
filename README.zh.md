@@ -213,7 +213,9 @@
   `package.json` 脚本（如 `npm run dev`）、Maven/Gradle、`java -jar`、`dotnet`、
   Django、Go、Cargo、Docker Compose 等。选择命令后可先编辑再点 **运行**，也可直接在输入框输入命令。
   Linux 上会跟随终端当前目录（通过 `/proc` 读取 shell cwd），切换项目后命令自动刷新；
-  也可点快捷命令栏的刷新按钮手动刷新。
+  也可点快捷命令栏的刷新按钮强制重新扫描。命令列表缓存 30 秒并每 20 秒检查一次；
+  只有 `cd` / `pushd` / `popd` 后会立即刷新，页面隐藏时暂停，避免项目扫描拖慢终端输出。
+  递归查找 `.jar` / `.dll` 仅在 Java 或 .NET 项目中执行。
 
 ### 内置浏览器
 
@@ -318,7 +320,7 @@ Agent 会走与插件管理器相同的安装流程（安装的是仓库根目�
 
 - **从旧 `dsh-side` 升级**：卸载旧的 `@local/dsh-side` 及其两个配套插件，重新安装仓库根目录；
   浏览器里的根目录、收藏、偏好和 SSH 远程列表会自动从 `dsh-side:` 迁移到新键。旧页面标签需要硬刷新。
-- **版本提示**：开发工作区标题旁显示当前版本（例如 `v1.2.4`）。点击版本徽标会检查
+- **版本提示**：开发工作区标题旁显示当前版本（例如 `v1.2.5`）。点击版本徽标会检查
   GitHub 上 `taskkill/dsh-web-filebrowser` 的 `package.json`，发现更高版本时徽标高亮并
   给出更新方式。检查结果在 Host 内存中缓存 6 小时；只请求公开的版本清单，不发送工作区数据。
   更新提示基于 `package.json` 的 `version` 字段，发布新版本时需要同步提升版本号。仓库地址：https://github.com/taskkill/dsh-web-filebrowser 。
