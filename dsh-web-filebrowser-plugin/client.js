@@ -549,6 +549,8 @@ window.__ModuleLoader__.load({
       'browser.bookmarksReload': '重试',
       'browser.bookmarkAdd': '收藏此地址（记住当前 PC / 手机模式）',
       'browser.bookmarkRemove': '取消收藏',
+      'browser.bookmarkDeleteTitle': '删除收藏',
+      'browser.bookmarkRemoveConfirm': '确定删除收藏「{title}」吗？',
       'browser.bookmarkRename': '设置别名',
       'browser.bookmarkAliasPlaceholder': '别名（留空恢复默认）',
       'browser.bookmarkRenamed': '别名已保存',
@@ -571,6 +573,8 @@ window.__ModuleLoader__.load({
       'browser.hostReset': '重置为 localhost',
       'browser.resetDefaults': '重置',
       'browser.openExternal': '在外部浏览器打开',
+      'workspace.fullscreen': '工作区全屏',
+      'workspace.exitFullscreen': '退出全屏',
       'browser.badUrl': '只支持 http/https 地址',
       'browser.startTitle': '预览运行中的页面',
       'browser.startHint': '在地址栏输入开发服务器地址并回车，或直接点下面的本地端口。',
@@ -1136,6 +1140,8 @@ window.__ModuleLoader__.load({
       'browser.bookmarksReload': 'Retry',
       'browser.bookmarkAdd': 'Bookmark this address (remembers the current PC/Mobile mode)',
       'browser.bookmarkRemove': 'Remove bookmark',
+      'browser.bookmarkDeleteTitle': 'Delete bookmark',
+      'browser.bookmarkRemoveConfirm': 'Delete the bookmark “{title}”?',
       'browser.bookmarkRename': 'Set alias',
       'browser.bookmarkAliasPlaceholder': 'Alias (leave empty for the default name)',
       'browser.bookmarkRenamed': 'Alias saved',
@@ -1158,6 +1164,8 @@ window.__ModuleLoader__.load({
       'browser.hostReset': 'Reset to localhost',
       'browser.resetDefaults': 'Reset',
       'browser.openExternal': 'Open in external browser',
+      'workspace.fullscreen': 'Fullscreen workspace',
+      'workspace.exitFullscreen': 'Exit fullscreen',
       'browser.badUrl': 'Only http/https addresses are supported',
       'browser.startTitle': 'Preview a running page',
       'browser.startHint': 'Enter a dev-server address and press Enter, or pick a detected local port below.',
@@ -2721,6 +2729,22 @@ window.__ModuleLoader__.load({
 
     function PhoneIcon() {
       return icon(15, h('rect', { x: 4.25, y: 1.75, width: 7.5, height: 12.5, rx: 1.5 }), h('path', { d: 'M7 12.5h2' }))
+    }
+
+    function FullscreenIcon() {
+      return icon(
+        15,
+        h('rect', { x: 1.75, y: 2.25, width: 11.5, height: 9, rx: 1 }),
+        h('path', { d: 'M5.5 8.5 9.5 4.5M9.5 4.5H6.5M9.5 4.5v3' }),
+      )
+    }
+
+    function ExitFullscreenIcon() {
+      return icon(
+        15,
+        h('rect', { x: 1.75, y: 2.25, width: 11.5, height: 9, rx: 1 }),
+        h('path', { d: 'M9.5 5.5 5.5 9.5M5.5 9.5h3M5.5 9.5v-3' }),
+      )
     }
 
     function RotateIcon() {
@@ -6677,6 +6701,8 @@ window.__ModuleLoader__.load({
         const [clipboard, setClipboard] = useState(null)
         const [dropTarget, setDropTarget] = useState(null)
         const [maximized, setMaximized] = useState(false)
+        const [workspaceFullscreen, setWorkspaceFullscreen] = useState(false)
+        const workspaceFullscreenNativeRef = useRef(false)
         const [sidePosition, setSidePosition] = useState(() => (readStorage(SIDE_POSITION_KEY) === 'right' ? 'right' : 'left'))
         const [terminals, setTerminals] = useState([])
         const [terminalPanelOpen, setTerminalPanelOpen] = useState(false)
@@ -7197,6 +7223,56 @@ window.__ModuleLoader__.load({
         // the workspace panel closes.
         useEffect(() => () => {
           void flushPreviewSettingsWrite()
+        }, [])
+
+        // Lock the page behind the fullscreen workspace, especially on touch devices.
+        useEffect(() => {
+          if (!workspaceFullscreen) return undefined
+          const previous = document.body.style.overflow
+          document.body.style.overflow = 'hidden'
+          return () => {
+            document.body.style.overflow = previous
+          }
+        }, [workspaceFullscreen])
+
+        // Escape leaves fullscreen unless an input or a modal is using the key.
+        useEffect(() => {
+          if (!workspaceFullscreen) return undefined
+          const onKeyDown = (event) => {
+            if (event.key !== 'Escape' || event.defaultPrevented || modal !== null) return
+            const target = event.target
+            if (
+              target instanceof HTMLElement &&
+              (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable)
+            ) {
+              return
+            }
+            event.preventDefault()
+            exitWorkspaceFullscreen()
+          }
+          window.addEventListener('keydown', onKeyDown)
+          return () => window.removeEventListener('keydown', onKeyDown)
+        }, [workspaceFullscreen, modal])
+
+        // If the user leaves native fullscreen with Esc or system UI, drop the
+        // CSS fallback layout too.
+        useEffect(() => {
+          const sync = () => {
+            const active =
+              document.fullscreenElement ??
+              document.webkitFullscreenElement ??
+              document.mozFullScreenElement ??
+              document.msFullscreenElement
+            if (active !== null && active !== undefined) return
+            if (!workspaceFullscreenNativeRef.current) return
+            workspaceFullscreenNativeRef.current = false
+            setWorkspaceFullscreen(false)
+          }
+          const events = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange']
+          for (const eventName of events) document.addEventListener(eventName, sync)
+          return () => {
+            for (const eventName of events) document.removeEventListener(eventName, sync)
+          }
         }, [])
 
         function showToast(message) {
@@ -9438,6 +9514,22 @@ window.__ModuleLoader__.load({
           }
         }
 
+        /** Confirm before removing one saved address from the start page. */
+        function requestRemoveBrowserBookmark(id) {
+          const bookmark = browserBookmarks.find((entry) => entry.id === id)
+          if (bookmark === undefined) return
+          setModal({
+            title: t('browser.bookmarkDeleteTitle'),
+            message: t('browser.bookmarkRemoveConfirm', { title: bookmark.title }),
+            confirmLabel: t('action.delete'),
+            danger: true,
+            onConfirm: () => {
+              setModal(null)
+              void removeBrowserBookmark(id)
+            },
+          })
+        }
+
         /** Remove one saved address from the start page. */
         async function removeBrowserBookmark(id) {
           if (browserBookmarkSavingRef.current) return
@@ -9828,6 +9920,73 @@ window.__ModuleLoader__.load({
           const tab = store.get().tabs.find((entry) => entry.path === tabPath)
           if (tab === undefined || tab.mode !== 'browser' || tab.url.length === 0) return
           patchTab(tabPath, { reloadKey: (tab.reloadKey ?? 0) + 1, loading: true, mixedDismissed: false })
+        }
+
+        /**
+         * Enter workspace fullscreen. Native Fullscreen API when the browser
+         * supports it; the fixed-position CSS layout is the fallback for iOS
+         * Safari and embedded webviews that refuse element fullscreen.
+         */
+        function enterWorkspaceFullscreen() {
+          setWorkspaceFullscreen(true)
+          const element = rootRef.current
+          if (element === null) return
+          const request =
+            element.requestFullscreen ??
+            element.webkitRequestFullscreen ??
+            element.mozRequestFullScreen ??
+            element.msRequestFullscreen
+          if (typeof request !== 'function') return
+          workspaceFullscreenNativeRef.current = true
+          try {
+            const result = request.call(element)
+            if (result !== null && typeof result === 'object' && typeof result.catch === 'function') {
+              result.catch(() => {
+                workspaceFullscreenNativeRef.current = false
+              })
+            }
+          } catch {
+            workspaceFullscreenNativeRef.current = false
+          }
+        }
+
+        /** Leave workspace fullscreen and release native fullscreen if we own it. */
+        function exitWorkspaceFullscreen() {
+          setWorkspaceFullscreen(false)
+          const element = rootRef.current
+          const active =
+            document.fullscreenElement ??
+            document.webkitFullscreenElement ??
+            document.mozFullScreenElement ??
+            document.msFullscreenElement
+          if (active === null || active === undefined) {
+            workspaceFullscreenNativeRef.current = false
+            return
+          }
+          if (element !== null && active !== element) {
+            workspaceFullscreenNativeRef.current = false
+            return
+          }
+          workspaceFullscreenNativeRef.current = false
+          const exit =
+            document.exitFullscreen ??
+            document.webkitExitFullscreen ??
+            document.mozCancelFullScreen ??
+            document.msExitFullscreen
+          if (typeof exit !== 'function') return
+          try {
+            const result = exit.call(document)
+            if (result !== null && typeof result === 'object' && typeof result.catch === 'function') {
+              result.catch(() => {})
+            }
+          } catch {
+            /* the browser already left fullscreen */
+          }
+        }
+
+        function toggleWorkspaceFullscreen() {
+          if (workspaceFullscreen) exitWorkspaceFullscreen()
+          else enterWorkspaceFullscreen()
         }
 
         function closeNow(relative) {
@@ -12529,7 +12688,7 @@ window.__ModuleLoader__.load({
 
         return h(
           'div',
-          { className: 'ds-root', ref: rootRef, onKeyDown: onRootKeyDown, 'data-compact': compact ? 'true' : undefined, 'data-maximized': maximized ? 'true' : undefined },
+          { className: 'ds-root', ref: rootRef, onKeyDown: onRootKeyDown, 'data-compact': compact ? 'true' : undefined, 'data-maximized': maximized ? 'true' : undefined, 'data-workspace-fullscreen': workspaceFullscreen ? 'true' : undefined },
           h('style', null, CSS),
           h('input', {
             ref: uploadInputRef,
@@ -12700,6 +12859,18 @@ window.__ModuleLoader__.load({
                 onClick: toggleMaximize,
               },
               maximized ? h(MinimizeIcon) : h(MaximizeIcon),
+            ),
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'ds-iconbtn ds-workspace-fullscreen-btn',
+                title: workspaceFullscreen ? t('workspace.exitFullscreen') : t('workspace.fullscreen'),
+                'aria-pressed': workspaceFullscreen,
+                'data-active': workspaceFullscreen ? 'true' : undefined,
+                onClick: toggleWorkspaceFullscreen,
+              },
+              workspaceFullscreen ? h(ExitFullscreenIcon) : h(FullscreenIcon),
             ),
           ),
           banner === null
@@ -13246,7 +13417,7 @@ window.__ModuleLoader__.load({
                                   bookmarksStatus: browserBookmarksStatus,
                                   bookmarksError: browserBookmarksError,
                                   onOpenBookmark: (bookmark) => openBrowserBookmark(tab.path, bookmark),
-                                  onRemoveBookmark: removeBrowserBookmark,
+                                  onRemoveBookmark: requestRemoveBrowserBookmark,
                                   onRenameBookmark: renameBrowserBookmark,
                                   onReloadBookmarks: () => void refreshBrowserBookmarks(),
                                   onExternal: (targetUrl) => {
@@ -13695,6 +13866,25 @@ window.__ModuleLoader__.load({
 }
 .ds-root[data-maximized="true"] .ds-side,
 .ds-root[data-maximized="true"] .ds-splitter { display: none; }
+.ds-root[data-workspace-fullscreen="true"] {
+  position: fixed;
+  inset: 0;
+  z-index: 1600;
+  box-sizing: border-box;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  border-radius: 0;
+  box-shadow: none;
+}
+.ds-workspace-fullscreen-btn[data-active="true"] { color: var(--dsw-alias-brand-primary); }
+@media (max-width: 720px) {
+  .ds-root .ds-workspace-fullscreen-btn { width: 30px; height: 30px; }
+}
 .ds-root *, .ds-root *::before, .ds-root *::after { box-sizing: border-box; }
 .ds-header {
   display: flex;

@@ -124,18 +124,26 @@ third-party runtime dependencies.
   `resize` and `close`; `GET ?op=asset&name=…` serves the vendored xterm assets.
   Root is a registered local workspace; SSH roots are rejected.
 
+### Workspace layout
+
+- The header's Maximize editor/Restore button hides the explorer so the editor or
+  built-in browser fills the component.
+- The adjacent **fullscreen** toggle makes the whole workspace fill the real
+  browser viewport. It uses the native Fullscreen API when available and a
+  fixed-position fallback otherwise (iOS Safari and embedded webviews), keeping the
+  explorer, tabs, browser/editor and terminal available; safe-area insets are
+  respected. Esc or the exit-fullscreen button leaves it.
+
 ### Built-in browser
 
 - Browser tabs (globe button, welcome action or `Alt+B`) preview a running dev
   server beside the code, with an address bar, history, reload and external open.
-  A Maximize editor/Restore layout button hides the explorer so the editor or
-  browser fills the component; it does not enter browser fullscreen.
 - PC/Mobile viewport switching includes iPhone 14, iPhone SE, Pixel 7 and iPad
   presets, portrait/landscape rotation and fit-to-panel scaling. It emulates the
   CSS viewport only, not touch events or the User-Agent.
 - The toolbar star bookmarks the current address and records the active PC/Mobile
   viewport (preset and orientation). The start page lists bookmarks; clicking one
-  reopens it in that viewport, each row can be removed, and its pencil button
+  reopens it in that viewport, each row can be removed after a confirmation, and its pencil button
   edits an **alias** (empty restores the automatic name). Bookmarks and the
   start page's Protocol/Host fields are stored per workspace in
   `.dsh/browser-bookmarks.json` (max 50) and ignored by the generated

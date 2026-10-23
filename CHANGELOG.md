@@ -4,6 +4,23 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Bookmark delete confirmation
+
+- Deleting a bookmark from the browser start page now opens a confirmation
+  dialog showing its alias, with a red **Delete** button. Cancel, Esc or clicking
+  the backdrop aborts; the address itself is never affected.
+
+### Workspace fullscreen mode
+
+- The panel header has a new fullscreen toggle for the whole workspace: it fills
+  the real browser viewport while keeping the explorer, tabs, browser/editor,
+  terminal and status bar available. It uses the native Fullscreen API when
+  available and a fixed-position CSS fallback for iOS Safari and embedded
+  webviews, so it also works on phones and tablets (safe-area insets are
+  respected). Press Esc or the exit-fullscreen button to leave. This is separate
+  from the Maximize editor button, which only hides the explorer inside the
+  component.
+
 ### Bookmark aliases
 
 - Each saved address on the browser start page now has a pencil button. Edit the

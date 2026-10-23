@@ -53,6 +53,8 @@ it for you.
 - **Built-in browser** — preview a running dev server beside the code, with
   PC/mobile viewports, workspace-stored address bookmarks, protocol/host settings
   and a public-page proxy fallback.
+- **Workspace fullscreen** — fill the real browser viewport with the whole
+  workspace (explorer, tabs, editor/browser and terminal), on desktop and mobile.
 - **Favorites and a workspace switcher** — one click opens a favorite file or
   folder; remove stale workspace records from the picker.
 - **Floating DeepSeek chat** — keep the current conversation in a movable,
@@ -320,7 +322,8 @@ it for you.
 - The toolbar star **bookmarks the current address** together with the active
   **PC / Mobile** viewport (device preset and orientation); click the filled star
   again to remove it. The start page lists every bookmark and reopens one in its
-  saved viewport with a single click, and each row can be deleted there. The
+  saved viewport with a single click, and each row can be deleted there after a
+  confirmation. The
   pencil button beside a row edits its **alias** (Enter/Save persists it, Escape
   cancels; an empty alias restores the automatic `host+path` name).
   Bookmarks and the start page's **Protocol / Host** fields are stored per
@@ -330,8 +333,13 @@ it for you.
 - An HTTPS mixed-content warning can be dismissed; it hides itself after three
   seconds and returns after a reload, navigation or Direct/Proxy switch.
 - The **Maximize editor** button at the panel's top-right hides the explorer so
-  the editor/built-in browser fills the file-workspace component itself (no
-  browser fullscreen); press Esc or click Restore to bring the tree back.
+  the editor/built-in browser fills the file-workspace component itself; press Esc
+  or click Restore to bring the tree back.
+- The adjacent **fullscreen** button makes the whole workspace fill the real
+  browser viewport, keeping the explorer, tabs, browser/editor and terminal
+  available. It uses the native Fullscreen API when available and a fixed-position
+  fallback otherwise, so it also works on phones and tablets (safe-area insets are
+  respected). Press Esc or the exit-fullscreen button to leave.
 - The toolbar switches between **PC** and **Mobile** viewports. Mobile offers
   iPhone 14 / iPhone SE / Pixel 7 / iPad presets plus portrait-landscape rotation,
   scaled to fit the panel. Only the CSS viewport is emulated (no touch events or
