@@ -4,6 +4,40 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Workspace todo list
+
+- Add a **Todo** sidebar tab backed by `.dsh/todos.json` in the current local
+  workspace. Quick-add tasks with priority, due date and tags; edit title, note,
+  priority, deadline and tags inline; check tasks off, reopen them, delete one or
+  clear every completed task in one step.
+- The panel shows open/done counts, a completion bar, overdue counts and due-date
+  states (overdue/today/tomorrow). Filter by open/done/all, search titles, notes
+  and tags, and sort by priority, due date, last update or creation time; the
+  filter and sort choices persist in localStorage.
+- Add model tools `todo_list`, `todo_add`, `todo_update` and `todo_delete` plus a
+  short system-prompt guide. They are deliberately separate from the built-in
+  session `todo_write` plan tool: these tools curate the user's persistent
+  workspace board.
+- Every mutation returns the refreshed board so the panel stays consistent even
+  when the model edits tasks at the same time. The panel re-reads the document
+  every eight seconds and on window focus while it is visible (never while an
+  inline edit is open); writes use a temp-file rename under a per-root lock.
+- Todo state is confined to the workspace: a `.dsh` directory or `todos.json`
+  that is a symlink (or resolves outside the root) is refused, and SSH remote
+  roots keep the panel read-only with an explicit explanation. The first write
+  creates `.dsh/.gitignore` (`*`) when absent.
+
+### Responsive sidebar view switcher
+
+- The sidebar's bottom view tabs now adapt to the available width instead of
+  squeezing every label into one row: full labels when they fit, icon-only tabs
+  with tooltips when the sidebar narrows, and icon tabs plus a **More views**
+  menu when even the icons no longer fit.
+- The active view always stays in the visible strip (it is swapped into the last
+  slot if necessary), the Todo icon keeps its open-task badge, and the overflow
+  menu lists every view with icons, labels and the same badge. The menu closes on
+  selection, Escape, a change of view or a resize.
+
 ### Open-file change detection
 
 - Open local text files are now checked every five seconds and whenever the window

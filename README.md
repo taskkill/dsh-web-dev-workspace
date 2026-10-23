@@ -61,6 +61,8 @@ it for you.
   Host's SSH agent, keys or a one-time password.
 - **Cross-session workspace memory** — each workspace keeps durable notes shared
   by every chat session in that workspace and injected automatically.
+- **Workspace todo list** — per-workspace tasks with priority, due dates, tags,
+  notes, filters and sorting, also available to the model.
 - **Fits the host** — theme-token styling, English/Chinese copy, a compact
   single-column layout in narrow sidebars, a right-sidebar Start card, and a
   mobile/tablet layout.
@@ -108,7 +110,7 @@ it for you.
   global search yet.
 - **Quick Open**: `Ctrl/⌘ + P` filters workspace files by name. `Ctrl/⌘ + Shift + P`
   opens the command palette for new file/folder, search, refresh, terminal, browser,
-  memory and Harness actions.
+  memory, todo and Harness actions.
 - **Auto refresh**: local workspaces re-check expanded directories every five seconds,
   so external creates, deletes and renames update the tree. Open text tabs are
   checked too: a clean tab reloads automatically when its file changes on disk, and
@@ -140,6 +142,30 @@ it for you.
 - Limits: 200 entries per workspace, 4,000 characters per entry, 8 tags per
   entry. SSH remote roots and profiles without the `tools` / `systemPrompt`
   services have no memory support.
+
+### Workspace todo list
+
+- Every **local workspace** keeps its tasks in `.dsh/todos.json`. The **Todo**
+  sidebar tab and the model tools share that document, and switching workspaces
+  switches the board.
+- Quick-add from the input (press Enter); set a priority (low/normal/high/urgent),
+  due date and tags while adding. Each task can be checked off, reopened, edited
+  inline (title, note, priority, due, tags), deleted, or cleared in bulk once done.
+- The header shows open/done counts, a completion bar and the overdue count. Due
+  dates display as **overdue by N days**, **due today** or **due tomorrow** as
+  appropriate. Filter by open/done/all, search titles, notes and tags, and sort by
+  priority, due date, last update or creation time; filter/sort choices persist.
+- The model gets `todo_list`, `todo_add`, `todo_update` and `todo_delete` tools
+  plus a short prompt guide. These are separate from Harness's session-scoped
+  `todo_write` plan tool: they manage the user's persistent workspace board.
+- While the panel is visible it re-reads the document every eight seconds and on
+  window focus (not during an inline edit), so model or external edits appear
+  promptly. Writes use a temp-file rename under a per-root lock so the panel and
+  a tool call cannot overwrite each other.
+- The first write creates `.dsh/.gitignore` containing `*` when absent. Limits:
+  500 tasks per workspace, 500 characters per title, 4,000 per note and 8 tags per
+  task. SSH remote roots have no local todos; without the `tools` / `systemPrompt`
+  services the panel still works but the model tools stay off.
 
 ### Editor
 
@@ -184,13 +210,16 @@ it for you.
   then the editor with a back button in the breadcrumb.
 - English and Chinese UI; the client uses only Harness theme tokens (`--dsw-*`) and
   imports no Harness Client package.
+- Sidebar tabs include **Explorer / Search / Todo / Git / Memory / Harness**; the
+  Todo tab shows the number of open tasks. The strip collapses labels to icons and
+  then to a **More views** menu as it narrows, so adding views does not crowd it.
 - **Mobile/tablet layout**: below a 900px panel width the explorer and editor switch to
   a single-column layout with a back button in the breadcrumb; the header wraps with a
   full-width address row; tree rows, sidebar tabs and action buttons get larger touch
   targets; Markdown split stacks vertically; terminal quick commands, search, Harness,
   modals and the command palette all fit narrow screens.
-- Registers only the workspace-memory tools and prompt guide; no general-purpose
-  tools or session events.
+- Registers only the workspace-memory and todo tools with their prompt guides; no
+  general-purpose tools or session events.
 
 ### Git source control
 
@@ -419,7 +448,7 @@ repository root, not a subdirectory).
   preferences and SSH remotes are copied from the old `dsh-side:` browser keys on
   first load. Hard-refresh any tab opened with the old client.
 - **Version hint**: the file workspace header shows the current version (for
-  example `v1.2.1`). Clicking the badge checks `taskkill/dsh-web-filebrowser`'s
+  example `v1.2.3`). Clicking the badge checks `taskkill/dsh-web-filebrowser`'s
   `package.json` on GitHub and highlights a newer version with update guidance.
   The result is cached in Host memory for six hours; the check requests only the
   public version manifest and sends no workspace data. The hint compares the
@@ -627,15 +656,16 @@ issue for security-sensitive reports.
   External links/images inside a Markdown file are loaded only when you preview
   that file; images use `referrerPolicy="no-referrer"` so the Harness page URL is
   not sent to the third-party host.
-- **Model-visible memory is explicit and scoped**: the plugin registers four
-  workspace-memory tools and one short prompt guide, and injects only the current
-  workspace's notes (bounded) to sessions in that workspace. It registers no
+- **Model-visible workspace data is explicit and scoped**: the plugin registers four
+  workspace-memory tools, four todo tools and two short prompt guides. Only the
+  current workspace's notes (bounded) are injected into its sessions; the todo
+  board is not injected and is read on demand via `todo_list`. It registers no
   general-purpose tools or session events. Opening, searching or browsing files
   still adds nothing to the conversation; only an explicit **Agent** action sends
-  the selected code and path as a user message. Memory never crosses workspace
-  boundaries, and deleting `.dsh/memory.json` removes it. Memory content is sent
-  to the model on every request in that workspace, so do not store secrets there;
-  the prompt tells the model the same.
+  the selected code and path as a user message. Memory and todos never cross
+  workspace boundaries, and deleting `.dsh/memory.json` or `.dsh/todos.json`
+  removes them. Memory content is sent to the model on every request in that
+  workspace, so do not store secrets there; the prompt tells the model the same.
 - **SSH remote folders**: authentication uses the Host's SSH agent or keys under
   `~/.ssh`, and optionally a password supplied for one connection. That password
   lives only in the request/connection in memory, is never written to disk, and
@@ -664,6 +694,9 @@ issue for security-sensitive reports.
   polled every five seconds; SSH roots are not polled. Clean tabs reload
   automatically, while tabs with unsaved edits prompt before discarding changes.
   Saves use stale-file protection.
+- **Todos are local-only**: tasks live in `.dsh/todos.json`; SSH remote roots show
+  an explanation instead of an editor. The panel refreshes every eight seconds
+  while visible and pauses that refresh during an inline edit.
 - **No automatic merge/rebase or hunk staging**: search and Quick Open currently
   support local workspaces only; use the tree for SSH roots. A diverged pull only
   reports the condition; resolve it in a terminal first.
@@ -687,6 +720,7 @@ dsh-web-filebrowser/
 ├── dsh-web-filebrowser-plugin/  # main component: Host API, SSH, browser UI
 │   ├── index.js              # /api/dsh-web-filebrowser host routes
 │   ├── memory.js             # per-workspace cross-session memory store and tools
+│   ├── todo.js               # per-workspace todo store and model tools
 │   ├── ssh.js                # optional SFTP backend
 │   ├── client.js             # main panel, sidebar entries, explorer/editor UI
 │   ├── cordis.patch.yml      # standalone component row

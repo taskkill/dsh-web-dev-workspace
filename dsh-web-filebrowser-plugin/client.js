@@ -41,6 +41,17 @@ window.__ModuleLoader__.load({
     const SSH_ROOTS_KEY = 'dsh-web-filebrowser:ssh-roots'
     const SSH_UPLOAD_PATH = 'api/dsh-web-filebrowser-ssh'
 
+    /** Todo panel preferences and enumerations. */
+    const TODO_FILTER_KEY = 'dsh-web-filebrowser:todo-filter'
+    const TODO_SORT_KEY = 'dsh-web-filebrowser:todo-sort'
+    const TODO_FILTERS = ['open', 'done', 'all']
+    const TODO_SORTS = ['priority', 'due', 'updated', 'created']
+    const TODO_PRIORITIES = ['low', 'normal', 'high', 'urgent']
+
+    /** Minimum per-tab widths used by the sidebar view switcher. */
+    const SIDE_TAB_LABEL_WIDTH = 72
+    const SIDE_TAB_ICON_WIDTH = 36
+
     /** Host-side HTML proxy for public preview pages. */
     const PROXY_PATH = 'api/dsh-web-filebrowser-proxy'
 
@@ -109,6 +120,51 @@ window.__ModuleLoader__.load({
       return tab.orientation === 'landscape'
         ? { width: preset.height, height: preset.width, label: preset.label }
         : { width: preset.width, height: preset.height, label: preset.label }
+    }
+
+    function normalizeTodoFilter(value) {
+      return TODO_FILTERS.includes(value) ? value : 'open'
+    }
+
+    function normalizeTodoSort(value) {
+      return TODO_SORTS.includes(value) ? value : 'priority'
+    }
+
+    function todoPriorityRank(priority) {
+      const index = TODO_PRIORITIES.indexOf(priority)
+      return index < 0 ? TODO_PRIORITIES.indexOf('normal') : index
+    }
+
+    /** Whole-day distance from today to a local `YYYY-MM-DD` date, or null. */
+    function todoDueDiff(due) {
+      if (typeof due !== 'string' || due.length === 0) return null
+      const match = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(due)
+      if (match === null) return null
+      const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+      if (Number.isNaN(date.getTime())) return null
+      const now = new Date()
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      return Math.round((date.getTime() - today.getTime()) / 86_400_000)
+    }
+
+    /** Local relative label for a due date; future dates stay explicit. */
+    function todoDueLabel(due, t) {
+      if (typeof due !== 'string' || due.length === 0) return ''
+      const diff = todoDueDiff(due)
+      if (diff === null) return due
+      if (diff < 0) return diff === -1 ? t('todo.overdueOne') : t('todo.overdueDays', { count: String(-diff) })
+      if (diff === 0) return t('todo.dueToday')
+      if (diff === 1) return t('todo.dueTomorrow')
+      return due
+    }
+
+    function todoDueState(due, done) {
+      if (done === true) return 'done'
+      const diff = todoDueDiff(due)
+      if (diff === null) return 'none'
+      if (diff < 0) return 'overdue'
+      if (diff === 0) return 'today'
+      return 'future'
     }
 
     /**
@@ -208,6 +264,8 @@ window.__ModuleLoader__.load({
       'side.harness': 'Harness',
       'side.memory': '记忆',
       'side.tabs': '侧栏视图',
+      'side.views': '视图',
+      'side.more': '更多视图',
       'memory.title': '工作区记忆',
       'memory.hint': '跨会话共享，仅当前工作区生效',
       'memory.loading': '正在读取记忆…',
@@ -240,6 +298,70 @@ window.__ModuleLoader__.load({
       'memory.help': 'DeepSeek 可通过 memory_save / memory_search / memory_update / memory_delete 读写这些记忆。',
       'memory.justNow': '刚刚',
       'memory.updatedAt': '更新于 {time}',
+      'side.todo': '待办',
+      'todo.title': '待办清单',
+      'todo.hint': '随工作区保存，面板、会话工具和 DeepSeek 共享同一份任务',
+      'todo.loading': '正在读取待办…',
+      'todo.empty': '还没有任务。输入任务后按回车即可添加。',
+      'todo.emptyFiltered': '没有符合当前筛选的任务。',
+      'todo.placeholder': '添加任务，按回车创建…',
+      'todo.add': '添加',
+      'todo.notePlaceholder': '备注（可选）',
+      'todo.tagsPlaceholder': '标签，逗号分隔',
+      'todo.priorityLabel': '优先级',
+      'todo.dueLabel': '截止',
+      'todo.tagsLabel': '标签',
+      'todo.priority.low': '低',
+      'todo.priority.normal': '普通',
+      'todo.priority.high': '高',
+      'todo.priority.urgent': '紧急',
+      'todo.added': '已添加任务',
+      'todo.updated': '已更新任务',
+      'todo.completed': '已完成任务',
+      'todo.reopened': '已重新打开任务',
+      'todo.deleted': '已删除任务',
+      'todo.cleared': '已清理 {count} 个已完成任务',
+      'todo.clearCompleted': '清理已完成',
+      'todo.clearTitle': '清理已完成任务',
+      'todo.clearMessage': '删除全部 {count} 个已完成任务？此操作无法撤销。',
+      'todo.deleteTitle': '删除任务',
+      'todo.deleteMessage': '删除这个任务？\n\n{title}',
+      'todo.deleteFailed': '删除任务失败：{message}',
+      'todo.saveFailed': '保存任务失败：{message}',
+      'todo.loadFailed': '读取待办失败：{message}',
+      'todo.restartRequired': 'Host 仍在运行旧版本，请重启 DSH 后再使用待办面板。',
+      'todo.sshUnsupported': 'SSH 远程工作区暂不支持本地待办',
+      'todo.noRoot': '请先选择工作区',
+      'todo.count': '{open} 待办 · {done} 完成',
+      'todo.progress': '{done}/{total} 已完成',
+      'todo.overdueOne': '逾期 1 天',
+      'todo.overdueDays': '逾期 {count} 天',
+      'todo.overdueCount': '{count} 个已过期',
+      'todo.dueToday': '今天到期',
+      'todo.dueTomorrow': '明天到期',
+      'todo.filter.open': '待办',
+      'todo.filter.done': '已完成',
+      'todo.filter.all': '全部',
+      'todo.search': '筛选任务',
+      'todo.sort': '排序',
+      'todo.sort.priority': '按优先级',
+      'todo.sort.due': '按截止日期',
+      'todo.sort.updated': '按最近更新',
+      'todo.sort.created': '按创建时间',
+      'todo.edit': '编辑',
+      'todo.delete': '删除',
+      'todo.save': '保存',
+      'todo.cancel': '取消',
+      'todo.saving': '正在保存…',
+      'todo.titleRequired': '任务标题不能为空',
+      'todo.toggle': '标记完成',
+      'todo.refresh': '刷新待办',
+      'todo.file': '.dsh/todos.json',
+      'todo.fileHint': '保存在当前工作区，可手动编辑；.dsh/.gitignore 会默认忽略它。',
+      'todo.help': 'DeepSeek 可通过 todo_list / todo_add / todo_update / todo_delete 读写这些任务；这与会话内的 todo_write 计划工具相互独立。',
+      'todo.justNow': '刚刚',
+      'todo.updatedAt': '更新于 {time}',
+      'todo.completedAt': '完成于 {time}',
       'side.moveLeft': '资源管理器移到左侧',
       'side.moveRight': '资源管理器移到右侧',
       'search.placeholder': '在工作区中搜索',
@@ -707,6 +829,8 @@ window.__ModuleLoader__.load({
       'side.harness': 'Harness',
       'side.memory': 'Memory',
       'side.tabs': 'Sidebar views',
+      'side.views': 'Views',
+      'side.more': 'More views',
       'memory.title': 'Workspace memory',
       'memory.hint': 'Shared across sessions, scoped to this workspace',
       'memory.loading': 'Reading memory…',
@@ -739,6 +863,70 @@ window.__ModuleLoader__.load({
       'memory.help': 'DeepSeek reads and writes these notes through memory_save / memory_search / memory_update / memory_delete.',
       'memory.justNow': 'just now',
       'memory.updatedAt': 'Updated {time}',
+      'side.todo': 'Todo',
+      'todo.title': 'Workspace todos',
+      'todo.hint': 'Saved with the workspace; the panel, chat tools and DeepSeek share one task board',
+      'todo.loading': 'Reading todos…',
+      'todo.empty': 'No tasks yet. Type one below and press Enter to add it.',
+      'todo.emptyFiltered': 'No tasks match the current filter.',
+      'todo.placeholder': 'Add a task and press Enter…',
+      'todo.add': 'Add',
+      'todo.notePlaceholder': 'Note (optional)',
+      'todo.tagsPlaceholder': 'Tags, comma separated',
+      'todo.priorityLabel': 'Priority',
+      'todo.dueLabel': 'Due',
+      'todo.tagsLabel': 'Tags',
+      'todo.priority.low': 'Low',
+      'todo.priority.normal': 'Normal',
+      'todo.priority.high': 'High',
+      'todo.priority.urgent': 'Urgent',
+      'todo.added': 'Task added',
+      'todo.updated': 'Task updated',
+      'todo.completed': 'Task completed',
+      'todo.reopened': 'Task reopened',
+      'todo.deleted': 'Task deleted',
+      'todo.cleared': 'Cleared {count} completed tasks',
+      'todo.clearCompleted': 'Clear completed',
+      'todo.clearTitle': 'Clear completed tasks',
+      'todo.clearMessage': 'Delete all {count} completed tasks? This cannot be undone.',
+      'todo.deleteTitle': 'Delete task',
+      'todo.deleteMessage': 'Delete this task?\n\n{title}',
+      'todo.deleteFailed': 'Could not delete the task: {message}',
+      'todo.saveFailed': 'Could not save the task: {message}',
+      'todo.loadFailed': 'Could not read todos: {message}',
+      'todo.restartRequired': 'The Host is still running an older build. Restart DSH to use the todo panel.',
+      'todo.sshUnsupported': 'SSH remote workspaces have no local todos',
+      'todo.noRoot': 'Choose a workspace first',
+      'todo.count': '{open} open · {done} done',
+      'todo.progress': '{done}/{total} done',
+      'todo.overdueOne': 'overdue by 1 day',
+      'todo.overdueDays': 'overdue by {count} days',
+      'todo.overdueCount': '{count} overdue',
+      'todo.dueToday': 'due today',
+      'todo.dueTomorrow': 'due tomorrow',
+      'todo.filter.open': 'Open',
+      'todo.filter.done': 'Done',
+      'todo.filter.all': 'All',
+      'todo.search': 'Filter tasks',
+      'todo.sort': 'Sort',
+      'todo.sort.priority': 'By priority',
+      'todo.sort.due': 'By due date',
+      'todo.sort.updated': 'By last update',
+      'todo.sort.created': 'By creation time',
+      'todo.edit': 'Edit',
+      'todo.delete': 'Delete',
+      'todo.save': 'Save',
+      'todo.cancel': 'Cancel',
+      'todo.saving': 'Saving…',
+      'todo.titleRequired': 'The task title cannot be empty',
+      'todo.toggle': 'Mark done',
+      'todo.refresh': 'Refresh todos',
+      'todo.file': '.dsh/todos.json',
+      'todo.fileHint': 'Stored in this workspace and editable by hand; .dsh/.gitignore keeps it out of Git by default.',
+      'todo.help': 'DeepSeek reads and writes these tasks through todo_list / todo_add / todo_update / todo_delete; this is separate from the session todo_write plan tool.',
+      'todo.justNow': 'just now',
+      'todo.updatedAt': 'Updated {time}',
+      'todo.completedAt': 'Completed {time}',
       'side.moveLeft': 'Move explorer to the left',
       'side.moveRight': 'Move explorer to the right',
       'search.placeholder': 'Search the workspace',
@@ -3375,6 +3563,22 @@ window.__ModuleLoader__.load({
         h('path', { d: 'M5.1 2.75h4.8a2.3 2.3 0 0 1 2.3 2.3v5.9a2.3 2.3 0 0 1-2.3 2.3H5.1a2.3 2.3 0 0 1-2.3-2.3v-5.9a2.3 2.3 0 0 1 2.3-2.3Z' }),
         h('path', { d: 'M5.7 5.5h3.6M5.7 8h3.6M5.7 10.5h2.2' }),
         h('path', { d: 'M2.8 6H1.4M14.6 6h-1.4M2.8 10H1.4M14.6 10h-1.4', strokeWidth: 1.1 }),
+      )
+    }
+
+    function TodoIcon() {
+      return icon(15,
+        h('rect', { x: 2.1, y: 2.6, width: 11.8, height: 10.8, rx: 2.1 }),
+        h('path', { d: 'm4.8 5.7 1 1 1.8-1.9M8.9 6.1h2.6' }),
+        h('path', { d: 'm4.8 9.7 1 1 1.8-1.9M8.9 10.1h2.6' }),
+      )
+    }
+
+    function MoreIcon() {
+      return icon(15,
+        h('circle', { cx: 3.2, cy: 8, r: 1, fill: 'currentColor', stroke: 'none' }),
+        h('circle', { cx: 8, cy: 8, r: 1, fill: 'currentColor', stroke: 'none' }),
+        h('circle', { cx: 12.8, cy: 8, r: 1, fill: 'currentColor', stroke: 'none' }),
       )
     }
 
@@ -6148,7 +6352,23 @@ window.__ModuleLoader__.load({
         const [memoryTagsDraft, setMemoryTagsDraft] = useState('')
         const [memoryEditing, setMemoryEditing] = useState(null)
         const [memorySaving, setMemorySaving] = useState(false)
+        const [todoTasks, setTodoTasks] = useState([])
+        const [todoPath, setTodoPath] = useState(null)
+        const [todoUpdatedAt, setTodoUpdatedAt] = useState(0)
+        const [todoBusy, setTodoBusy] = useState(false)
+        const [todoError, setTodoError] = useState(null)
+        const [todoDraft, setTodoDraft] = useState('')
+        const [todoPriorityDraft, setTodoPriorityDraft] = useState('normal')
+        const [todoDueDraft, setTodoDueDraft] = useState('')
+        const [todoTagsDraft, setTodoTagsDraft] = useState('')
+        const [todoFilter, setTodoFilter] = useState(() => normalizeTodoFilter(readStorage(TODO_FILTER_KEY)))
+        const [todoSort, setTodoSort] = useState(() => normalizeTodoSort(readStorage(TODO_SORT_KEY)))
+        const [todoQuery, setTodoQuery] = useState('')
+        const [todoEditing, setTodoEditing] = useState(null)
+        const [todoSaving, setTodoSaving] = useState(false)
         const [paneView, setPaneView] = useState('files')
+        const [sideTabsWidth, setSideTabsWidth] = useState(0)
+        const [sideViewsOpen, setSideViewsOpen] = useState(false)
         const [uploading, setUploading] = useState(false)
         const rootRef = useRef(null)
         const mdSplitRef = useRef(null)
@@ -6160,7 +6380,13 @@ window.__ModuleLoader__.load({
         const terminalCounterRef = useRef(0)
         const paletteInputRef = useRef(null)
         const searchInputRef = useRef(null)
+        const sideTabsRef = useRef(null)
         const autoRefreshRef = useRef(false)
+        const todoEditingRef = useRef(null)
+        const todoSavingRef = useRef(false)
+        const todoLoadRef = useRef(false)
+        todoEditingRef.current = todoEditing
+        todoSavingRef.current = todoSaving
         const fileWatchRef = useRef(false)
         const tabBusyRef = useRef(new Set())
         const externalNoticeRef = useRef(new Map())
@@ -6364,8 +6590,77 @@ window.__ModuleLoader__.load({
           }
           if (paneView === 'harness') void loadHarness()
           if (paneView === 'memory') void loadMemory()
+          if (paneView === 'todo') void loadTodo()
           return undefined
+        }, [paneView, state.root])
+
+        useEffect(() => {
+          if (paneView !== 'todo') return undefined
+          const refresh = () => {
+            if (!document.hidden && todoEditingRef.current === null && !todoSavingRef.current) {
+              void loadTodo({ silent: true })
+            }
+          }
+          const timer = window.setInterval(refresh, 8000)
+          window.addEventListener('focus', refresh)
+          return () => {
+            window.clearInterval(timer)
+            window.removeEventListener('focus', refresh)
+          }
         }, [paneView])
+
+        // Keep the sidebar's open-task badge accurate without opening the panel.
+        useEffect(() => {
+          if (state.root === null || isSshRootPath(state.root)) {
+            setTodoTasks([])
+            setTodoPath(null)
+            setTodoUpdatedAt(0)
+            setTodoError(null)
+            return
+          }
+          if (paneView === 'todo') return
+          void loadTodo({ silent: true })
+        }, [state.root])
+
+        // Measure the tab strip so labels can collapse and extra views can move
+        // into an overflow menu instead of squeezing every tab.
+        useEffect(() => {
+          const node = sideTabsRef.current
+          if (node === null) return undefined
+          const measure = () => setSideTabsWidth(node.clientWidth)
+          measure()
+          if (typeof ResizeObserver === 'undefined') {
+            window.addEventListener('resize', measure)
+            return () => window.removeEventListener('resize', measure)
+          }
+          const observer = new ResizeObserver(measure)
+          observer.observe(node)
+          return () => observer.disconnect()
+        }, [])
+
+        // Splitter drags update the stored width before the observer fires; this
+        // fallback keeps the layout in sync even without ResizeObserver.
+        useEffect(() => {
+          const node = sideTabsRef.current
+          if (node !== null) setSideTabsWidth(node.clientWidth)
+        }, [state.treeWidth, sidePosition])
+
+        useEffect(() => {
+          if (!sideViewsOpen) return undefined
+          const onKey = (event) => {
+            if (event.key === 'Escape') setSideViewsOpen(false)
+          }
+          window.addEventListener('keydown', onKey)
+          return () => window.removeEventListener('keydown', onKey)
+        }, [sideViewsOpen])
+
+        useEffect(() => {
+          setSideViewsOpen(false)
+        }, [paneView])
+
+        useEffect(() => {
+          setSideViewsOpen(false)
+        }, [sideTabsWidth])
 
         useEffect(() => {
           if (!maximized) return
@@ -6490,7 +6785,9 @@ window.__ModuleLoader__.load({
         const showSearch = paneView === 'search'
         const showMemory = paneView === 'memory' && gitAvailable
         const showHarness = paneView === 'harness'
-        const showFiles = !showGit && !showSearch && !showMemory && !showHarness
+        const showTodo = paneView === 'todo'
+        const showFiles = !showGit && !showSearch && !showMemory && !showHarness && !showTodo
+        const todoOpenCount = todoTasks.reduce((count, task) => count + (task.status === 'open' ? 1 : 0), 0)
         const treeDisplayWidth = compact
           ? '100%'
           : `${String(containerWidth > 0 ? Math.min(state.treeWidth, Math.max(220, Math.floor(containerWidth * 0.42))) : state.treeWidth)}px`
@@ -6767,6 +7064,7 @@ window.__ModuleLoader__.load({
             { id: 'terminal', label: t('terminal.open'), run: () => void openTerminal('panel') },
             { id: 'browser', label: t('browser.open'), run: () => openBrowser() },
             { id: 'memory', label: t('side.memory'), run: openMemory },
+            { id: 'todo', label: t('todo.title'), run: openTodo },
             { id: 'harness', label: t('side.harness'), run: () => void openHarness() },
           ]
           if (gitAvailable) commands.push({ id: 'git', label: t('git.title'), run: () => setPaneView('git') })
@@ -6968,6 +7266,267 @@ window.__ModuleLoader__.load({
             onConfirm: () => {
               setModal(null)
               void deleteMemoryEntry(entry.id)
+            },
+          })
+        }
+
+        /** Open the Todo panel for the current workspace. */
+        function openTodo() {
+          setPaneView('todo')
+          setCompactView('tree')
+        }
+
+        /** Explain a Host that was not restarted after the plugin update. */
+        function todoErrorText(error) {
+          return errorCode(error) === 'bad-op' ? t('todo.restartRequired') : errorText(error)
+        }
+
+        /** Apply one full board snapshot returned by every todo mutation. */
+        function applyTodoSnapshot(value) {
+          setTodoTasks(Array.isArray(value?.tasks) ? value.tasks : [])
+          if (typeof value?.path === 'string') setTodoPath(value.path)
+          setTodoUpdatedAt(Number.isFinite(value?.updatedAt) ? value.updatedAt : 0)
+        }
+
+        /** Read the current workspace's todo document. */
+        async function loadTodo(options = {}) {
+          const silent = options?.silent === true
+          const targetRoot = store.get().root
+          if (targetRoot === null) {
+            setTodoTasks([])
+            setTodoPath(null)
+            setTodoUpdatedAt(0)
+            setTodoError(null)
+            return
+          }
+          if (isSshRootPath(targetRoot)) {
+            setTodoTasks([])
+            setTodoPath(null)
+            setTodoUpdatedAt(0)
+            setTodoError(t('todo.sshUnsupported'))
+            return
+          }
+          if (todoLoadRef.current) return
+          todoLoadRef.current = true
+          if (!silent) {
+            setTodoBusy(true)
+            setTodoError(null)
+          }
+          try {
+            const value = await call('todoList', { root: targetRoot })
+            if (store.get().root !== targetRoot) return
+            applyTodoSnapshot(value)
+            setTodoError(null)
+          } catch (error) {
+            if (store.get().root === targetRoot) {
+              setTodoError(t('todo.loadFailed', { message: todoErrorText(error) }))
+            }
+          } finally {
+            todoLoadRef.current = false
+            if (!silent) setTodoBusy(false)
+          }
+        }
+
+        /** Persist the filter choice so the panel reopens the same view. */
+        function updateTodoFilter(next) {
+          const value = normalizeTodoFilter(next)
+          setTodoFilter(value)
+          writeStorage(TODO_FILTER_KEY, value)
+        }
+
+        /** Persist the sort choice so the panel reopens the same order. */
+        function updateTodoSort(next) {
+          const value = normalizeTodoSort(next)
+          setTodoSort(value)
+          writeStorage(TODO_SORT_KEY, value)
+        }
+
+        /** Short, stable label for one todo timestamp. */
+        function formatTodoTime(value) {
+          if (!Number.isFinite(value) || value <= 0) return ''
+          if (Date.now() - value < 60_000) return t('todo.justNow')
+          try {
+            return new Date(value).toLocaleString()
+          } catch {
+            return ''
+          }
+        }
+
+        /** Create a task from the quick-add row. */
+        async function addTodoTask() {
+          if (todoSaving) return
+          const root = store.get().root
+          if (root === null) {
+            setTodoError(t('todo.noRoot'))
+            return
+          }
+          const title = todoDraft.trim()
+          if (title.length === 0) return
+          setTodoSaving(true)
+          setTodoError(null)
+          try {
+            const value = await call('todoAdd', {
+              root,
+              title,
+              priority: todoPriorityDraft,
+              due: todoDueDraft,
+              tags: parseMemoryTags(todoTagsDraft),
+            })
+            applyTodoSnapshot(value)
+            setTodoDraft('')
+            setTodoDueDraft('')
+            setTodoTagsDraft('')
+            setTodoPriorityDraft('normal')
+            if (todoFilter === 'done') updateTodoFilter('open')
+            showToast(t('todo.added'))
+          } catch (error) {
+            setTodoError(t('todo.saveFailed', { message: todoErrorText(error) }))
+          } finally {
+            setTodoSaving(false)
+          }
+        }
+
+        /** Toggle one task between open and done. */
+        async function toggleTodoTask(task) {
+          if (todoSaving || task === null) return
+          const root = store.get().root
+          if (root === null) return
+          const status = task.status === 'open' ? 'done' : 'open'
+          setTodoSaving(true)
+          setTodoError(null)
+          try {
+            const value = await call('todoUpdate', { root, id: task.id, status })
+            applyTodoSnapshot(value)
+            showToast(status === 'done' ? t('todo.completed') : t('todo.reopened'))
+          } catch (error) {
+            setTodoError(t('todo.saveFailed', { message: todoErrorText(error) }))
+          } finally {
+            setTodoSaving(false)
+          }
+        }
+
+        /** Load one task into the inline editor. */
+        function beginEditTodo(task) {
+          setTodoEditing({
+            id: task.id,
+            title: task.title,
+            note: typeof task.note === 'string' ? task.note : '',
+            priority: TODO_PRIORITIES.includes(task.priority) ? task.priority : 'normal',
+            due: typeof task.due === 'string' ? task.due : '',
+            tags: Array.isArray(task.tags) ? task.tags.join(', ') : '',
+          })
+          setTodoError(null)
+        }
+
+        /** Patch the inline edit draft. */
+        function patchTodoEditing(patch) {
+          setTodoEditing((current) => (current === null ? current : { ...current, ...patch }))
+        }
+
+        /** Leave edit mode without saving. */
+        function cancelTodoEdit() {
+          setTodoEditing(null)
+          setTodoError(null)
+        }
+
+        /** Save the inline editor. */
+        async function saveTodoEdit() {
+          if (todoEditing === null || todoSaving) return
+          const root = store.get().root
+          if (root === null) {
+            setTodoError(t('todo.noRoot'))
+            return
+          }
+          const title = todoEditing.title.trim()
+          if (title.length === 0) {
+            setTodoError(t('todo.titleRequired'))
+            return
+          }
+          const editing = todoEditing
+          setTodoSaving(true)
+          setTodoError(null)
+          try {
+            const value = await call('todoUpdate', {
+              root,
+              id: editing.id,
+              title,
+              note: editing.note,
+              priority: editing.priority,
+              due: editing.due,
+              tags: parseMemoryTags(editing.tags),
+            })
+            applyTodoSnapshot(value)
+            setTodoEditing(null)
+            showToast(t('todo.updated'))
+          } catch (error) {
+            setTodoError(t('todo.saveFailed', { message: todoErrorText(error) }))
+          } finally {
+            setTodoSaving(false)
+          }
+        }
+
+        /** Delete one task after confirmation. */
+        async function deleteTodoTask(id) {
+          const root = store.get().root
+          if (root === null) return
+          setTodoSaving(true)
+          setTodoError(null)
+          try {
+            const value = await call('todoDelete', { root, id })
+            applyTodoSnapshot(value)
+            if (todoEditing !== null && todoEditing.id === id) setTodoEditing(null)
+            showToast(t('todo.deleted'))
+          } catch (error) {
+            setTodoError(t('todo.deleteFailed', { message: todoErrorText(error) }))
+          } finally {
+            setTodoSaving(false)
+          }
+        }
+
+        /** Ask before deleting one task. */
+        function requestDeleteTodo(task) {
+          const preview = task.title.length > 300 ? `${task.title.slice(0, 300)}…` : task.title
+          setModal({
+            title: t('todo.deleteTitle'),
+            message: t('todo.deleteMessage', { title: preview }),
+            confirmLabel: t('action.delete'),
+            danger: true,
+            onConfirm: () => {
+              setModal(null)
+              void deleteTodoTask(task.id)
+            },
+          })
+        }
+
+        /** Remove every completed task after confirmation. */
+        async function clearCompletedTodo() {
+          const root = store.get().root
+          if (root === null) return
+          setTodoSaving(true)
+          setTodoError(null)
+          try {
+            const value = await call('todoClearCompleted', { root })
+            applyTodoSnapshot(value)
+            showToast(t('todo.cleared', { count: String(value?.deleted ?? 0) }))
+          } catch (error) {
+            setTodoError(t('todo.saveFailed', { message: todoErrorText(error) }))
+          } finally {
+            setTodoSaving(false)
+          }
+        }
+
+        /** Ask before clearing every completed task. */
+        function requestClearCompletedTodo() {
+          const count = todoTasks.reduce((total, task) => total + (task.status === 'done' ? 1 : 0), 0)
+          if (count === 0) return
+          setModal({
+            title: t('todo.clearTitle'),
+            message: t('todo.clearMessage', { count: String(count) }),
+            confirmLabel: t('todo.clearCompleted'),
+            danger: true,
+            onConfirm: () => {
+              setModal(null)
+              void clearCompletedTodo()
             },
           })
         }
@@ -10232,6 +10791,623 @@ window.__ModuleLoader__.load({
           )
         }
 
+        function renderTodoPanel() {
+          const local = !isSshRootPath(state.root)
+          const openCount = todoTasks.reduce((count, task) => count + (task.status === 'open' ? 1 : 0), 0)
+          const doneCount = todoTasks.length - openCount
+          const overdueCount = todoTasks.reduce(
+            (count, task) =>
+              count + (task.status === 'open' && (todoDueDiff(task.due) ?? 0) < 0 ? 1 : 0),
+            0,
+          )
+          const query = todoQuery.trim().toLowerCase()
+          const compare = (left, right) => {
+            if (todoFilter === 'all' && left.status !== right.status) return left.status === 'open' ? -1 : 1
+            if (todoSort === 'due') {
+              const due = (left.due ?? '9999-12-31').localeCompare(right.due ?? '9999-12-31')
+              if (due !== 0) return due
+              return todoPriorityRank(right.priority) - todoPriorityRank(left.priority)
+            }
+            if (todoSort === 'updated') return right.updatedAt - left.updatedAt
+            if (todoSort === 'created') return right.createdAt - left.createdAt
+            return (
+              todoPriorityRank(right.priority) - todoPriorityRank(left.priority) ||
+              (left.due ?? '9999-12-31').localeCompare(right.due ?? '9999-12-31') ||
+              right.updatedAt - left.updatedAt
+            )
+          }
+          const visible = todoTasks
+            .filter((task) => {
+              if (todoFilter !== 'all' && task.status !== todoFilter) return false
+              if (query.length === 0) return true
+              const tags = Array.isArray(task.tags) ? task.tags.join('\n') : ''
+              return `${task.title}\n${task.note ?? ''}\n${tags}`.toLowerCase().includes(query)
+            })
+            .sort(compare)
+          const percent = todoTasks.length === 0 ? 0 : Math.round((doneCount / todoTasks.length) * 100)
+
+          function renderTodoItem(task) {
+            const done = task.status === 'done'
+            const state = todoDueState(task.due, done)
+            const tags = Array.isArray(task.tags) ? task.tags : []
+            const note = typeof task.note === 'string' ? task.note.trim() : ''
+            return h(
+              'div',
+              {
+                key: task.id,
+                className: 'ds-todo-item',
+                'data-status': task.status,
+                'data-priority': task.priority,
+              },
+              h('input', {
+                type: 'checkbox',
+                className: 'ds-todo-check',
+                checked: done,
+                disabled: todoSaving,
+                title: t('todo.toggle'),
+                'aria-label': t('todo.toggle'),
+                onChange: () => void toggleTodoTask(task),
+              }),
+              h(
+                'div',
+                { className: 'ds-todo-main' },
+                h(
+                  'div',
+                  { className: 'ds-todo-row1' },
+                  h('span', { className: 'ds-todo-item-title' }, task.title),
+                  h(
+                    'span',
+                    { className: 'ds-todo-actions' },
+                    h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'ds-todo-action',
+                        onClick: () => beginEditTodo(task),
+                      },
+                      t('todo.edit'),
+                    ),
+                    h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'ds-todo-action ds-todo-action-danger',
+                        onClick: () => requestDeleteTodo(task),
+                      },
+                      t('todo.delete'),
+                    ),
+                  ),
+                ),
+                note.length === 0 ? null : h('div', { className: 'ds-todo-note' }, note),
+                h(
+                  'div',
+                  { className: 'ds-todo-meta' },
+                  h(
+                    'span',
+                    { className: 'ds-todo-priority', 'data-priority': task.priority },
+                    t(`todo.priority.${task.priority}`),
+                  ),
+                  task.due
+                    ? h('span', { className: 'ds-todo-due', 'data-state': state }, todoDueLabel(task.due, t))
+                    : null,
+                  tags.map((tag) => h('span', { key: tag, className: 'ds-todo-tag' }, tag)),
+                  done && Number.isFinite(task.completedAt)
+                    ? h(
+                        'span',
+                        { className: 'ds-todo-time' },
+                        t('todo.completedAt', { time: formatTodoTime(task.completedAt) }),
+                      )
+                    : null,
+                ),
+              ),
+            )
+          }
+
+          function renderTodoEdit() {
+            const editing = todoEditing
+            if (editing === null) return null
+            return h(
+              'div',
+              { key: editing.id, className: 'ds-todo-item ds-todo-edit' },
+              h('input', {
+                className: 'ds-todo-input',
+                value: editing.title,
+                autoFocus: true,
+                spellCheck: false,
+                disabled: todoSaving,
+                'aria-label': t('todo.title'),
+                onChange: (event) => patchTodoEditing({ title: event.target.value }),
+                onKeyDown: (event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    void saveTodoEdit()
+                  } else if (event.key === 'Escape') {
+                    event.preventDefault()
+                    cancelTodoEdit()
+                  }
+                },
+              }),
+              h('textarea', {
+                className: 'ds-todo-note-input',
+                rows: 3,
+                value: editing.note,
+                placeholder: t('todo.notePlaceholder'),
+                disabled: todoSaving,
+                onChange: (event) => patchTodoEditing({ note: event.target.value }),
+                onKeyDown: (event) => {
+                  if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                    event.preventDefault()
+                    void saveTodoEdit()
+                  }
+                },
+              }),
+              h(
+                'div',
+                { className: 'ds-todo-fields' },
+                h(
+                  'label',
+                  { className: 'ds-todo-field ds-todo-field-priority' },
+                  h('span', null, t('todo.priorityLabel')),
+                  h(
+                    'select',
+                    {
+                      value: editing.priority,
+                      disabled: todoSaving,
+                      onChange: (event) => patchTodoEditing({ priority: event.target.value }),
+                    },
+                    TODO_PRIORITIES.map((priority) =>
+                      h('option', { key: priority, value: priority }, t(`todo.priority.${priority}`)),
+                    ),
+                  ),
+                ),
+                h(
+                  'label',
+                  { className: 'ds-todo-field ds-todo-field-due' },
+                  h('span', null, t('todo.dueLabel')),
+                  h('input', {
+                    type: 'date',
+                    value: editing.due,
+                    disabled: todoSaving,
+                    onChange: (event) => patchTodoEditing({ due: event.target.value }),
+                  }),
+                ),
+                h(
+                  'label',
+                  { className: 'ds-todo-field ds-todo-field-grow' },
+                  h('span', null, t('todo.tagsLabel')),
+                  h('input', {
+                    value: editing.tags,
+                    placeholder: t('todo.tagsPlaceholder'),
+                    spellCheck: false,
+                    disabled: todoSaving,
+                    onChange: (event) => patchTodoEditing({ tags: event.target.value }),
+                  }),
+                ),
+              ),
+              h(
+                'div',
+                { className: 'ds-todo-edit-actions' },
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-btn',
+                    disabled: todoSaving,
+                    onClick: cancelTodoEdit,
+                  },
+                  t('todo.cancel'),
+                ),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-btn ds-btn-primary',
+                    disabled: todoSaving || editing.title.trim().length === 0,
+                    onClick: () => void saveTodoEdit(),
+                  },
+                  todoSaving ? t('todo.saving') : t('todo.save'),
+                ),
+              ),
+            )
+          }
+
+          return h(
+            'div',
+            { className: 'ds-side-view ds-todo-view', style: { display: showTodo ? 'flex' : 'none' } },
+            h(
+              'div',
+              { className: 'ds-todo-intro' },
+              h(
+                'div',
+                { className: 'ds-todo-head' },
+                h('span', { className: 'ds-todo-title' }, t('todo.title')),
+                h(
+                  'span',
+                  { className: 'ds-todo-count' },
+                  t('todo.count', { open: String(openCount), done: String(doneCount) }),
+                ),
+                h('span', { className: 'ds-spacer' }),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-iconbtn ds-iconbtn-sm',
+                    title: t('todo.refresh'),
+                    disabled: todoBusy,
+                    onClick: () => void loadTodo(),
+                  },
+                  h(RefreshIcon),
+                ),
+              ),
+              h('div', { className: 'ds-todo-hint' }, t('todo.hint')),
+              h(
+                'div',
+                { className: 'ds-todo-progress' },
+                h(
+                  'div',
+                  { className: 'ds-todo-progress-bar' },
+                  h('div', {
+                    className: 'ds-todo-progress-fill',
+                    style: { width: `${String(percent)}%` },
+                  }),
+                ),
+                h(
+                  'span',
+                  { className: 'ds-todo-progress-label' },
+                  t('todo.progress', { done: String(doneCount), total: String(todoTasks.length) }),
+                ),
+              ),
+              overdueCount > 0
+                ? h(
+                    'div',
+                    { className: 'ds-todo-overdue' },
+                    t('todo.overdueCount', { count: String(overdueCount) }),
+                  )
+                : null,
+              h('div', { className: 'ds-todo-path', title: todoPath ?? '' }, todoPath ?? t('todo.file')),
+              h('div', { className: 'ds-todo-file-hint' }, t('todo.fileHint')),
+              todoUpdatedAt > 0
+                ? h(
+                    'div',
+                    { className: 'ds-todo-updated' },
+                    t('todo.updatedAt', { time: formatTodoTime(todoUpdatedAt) }),
+                  )
+                : null,
+            ),
+            state.root === null
+              ? h('div', { className: 'ds-hint' }, t('todo.noRoot'))
+              : !local
+                ? h('div', { className: 'ds-hint' }, t('todo.sshUnsupported'))
+                : h(
+                    'div',
+                    { className: 'ds-todo-body' },
+                    h(
+                      'div',
+                      { className: 'ds-todo-form' },
+                      h(
+                        'div',
+                        { className: 'ds-todo-addrow' },
+                        h('input', {
+                          className: 'ds-todo-input',
+                          value: todoDraft,
+                          placeholder: t('todo.placeholder'),
+                          spellCheck: false,
+                          disabled: todoSaving,
+                          'aria-label': t('todo.add'),
+                          onChange: (event) => setTodoDraft(event.target.value),
+                          onKeyDown: (event) => {
+                            if (event.key === 'Enter') {
+                              event.preventDefault()
+                              void addTodoTask()
+                            } else if (event.key === 'Escape') {
+                              setTodoDraft('')
+                            }
+                          },
+                        }),
+                        h(
+                          'button',
+                          {
+                            type: 'button',
+                            className: 'ds-btn ds-btn-primary ds-todo-add',
+                            disabled: todoSaving || todoDraft.trim().length === 0,
+                            onClick: () => void addTodoTask(),
+                          },
+                          todoSaving ? t('todo.saving') : t('todo.add'),
+                        ),
+                      ),
+                      h(
+                        'div',
+                        { className: 'ds-todo-fields' },
+                        h(
+                          'label',
+                          { className: 'ds-todo-field ds-todo-field-priority' },
+                          h('span', null, t('todo.priorityLabel')),
+                          h(
+                            'select',
+                            {
+                              value: todoPriorityDraft,
+                              disabled: todoSaving,
+                              onChange: (event) => setTodoPriorityDraft(event.target.value),
+                            },
+                            TODO_PRIORITIES.map((priority) =>
+                              h('option', { key: priority, value: priority }, t(`todo.priority.${priority}`)),
+                            ),
+                          ),
+                        ),
+                        h(
+                          'label',
+                          { className: 'ds-todo-field ds-todo-field-due' },
+                          h('span', null, t('todo.dueLabel')),
+                          h('input', {
+                            type: 'date',
+                            value: todoDueDraft,
+                            disabled: todoSaving,
+                            onChange: (event) => setTodoDueDraft(event.target.value),
+                          }),
+                        ),
+                        h(
+                          'label',
+                          { className: 'ds-todo-field ds-todo-field-grow' },
+                          h('span', null, t('todo.tagsLabel')),
+                          h('input', {
+                            value: todoTagsDraft,
+                            placeholder: t('todo.tagsPlaceholder'),
+                            spellCheck: false,
+                            disabled: todoSaving,
+                            onChange: (event) => setTodoTagsDraft(event.target.value),
+                          }),
+                        ),
+                      ),
+                    ),
+                    h(
+                      'div',
+                      { className: 'ds-todo-toolbar' },
+                      h(
+                        'div',
+                        { className: 'ds-todo-filters', role: 'tablist', 'aria-label': t('todo.title') },
+                        TODO_FILTERS.map((value) =>
+                          h(
+                            'button',
+                            {
+                              key: value,
+                              type: 'button',
+                              role: 'tab',
+                              className: 'ds-todo-filter',
+                              'data-active': todoFilter === value ? 'true' : undefined,
+                              'aria-selected': todoFilter === value,
+                              onClick: () => updateTodoFilter(value),
+                            },
+                            t(`todo.filter.${value}`),
+                          ),
+                        ),
+                      ),
+                      h('input', {
+                        className: 'ds-todo-search',
+                        value: todoQuery,
+                        placeholder: t('todo.search'),
+                        spellCheck: false,
+                        'aria-label': t('todo.search'),
+                        onChange: (event) => setTodoQuery(event.target.value),
+                      }),
+                      h(
+                        'select',
+                        {
+                          className: 'ds-todo-sort',
+                          value: todoSort,
+                          title: t('todo.sort'),
+                          'aria-label': t('todo.sort'),
+                          onChange: (event) => updateTodoSort(event.target.value),
+                        },
+                        TODO_SORTS.map((value) =>
+                          h('option', { key: value, value }, t(`todo.sort.${value}`)),
+                        ),
+                      ),
+                      doneCount > 0
+                        ? h(
+                            'button',
+                            {
+                              type: 'button',
+                              className: 'ds-linkbtn ds-todo-clear',
+                              disabled: todoSaving,
+                              onClick: requestClearCompletedTodo,
+                            },
+                            t('todo.clearCompleted'),
+                          )
+                        : null,
+                    ),
+                    todoError === null ? null : h('div', { className: 'ds-errorline' }, todoError),
+                    todoBusy && todoTasks.length === 0
+                      ? h('div', { className: 'ds-hint' }, t('todo.loading'))
+                      : visible.length === 0
+                        ? h(
+                            'div',
+                            { className: 'ds-todo-empty' },
+                            todoTasks.length === 0 ? t('todo.empty') : t('todo.emptyFiltered'),
+                          )
+                        : h(
+                            'div',
+                            { className: 'ds-todo-list' },
+                            visible.map((task) =>
+                              todoEditing !== null && todoEditing.id === task.id
+                                ? renderTodoEdit()
+                                : renderTodoItem(task),
+                            ),
+                          ),
+                    h('div', { className: 'ds-todo-help' }, t('todo.help')),
+                  ),
+          )
+        }
+
+        /**
+         * Render the sidebar view switcher.
+         *
+         * Three layouts keep the strip readable as views are added:
+         * - every view fits with its label;
+         * - labels collapse to icons;
+         * - icons plus a "more" menu, keeping the active view in the strip.
+         */
+        function renderSideViews() {
+          const views = [
+            {
+              id: 'files',
+              label: t('explorer'),
+              icon: h(FolderIcon, { open: showFiles }),
+              active: showFiles,
+              select: () => setPaneView('files'),
+            },
+            {
+              id: 'search',
+              label: t('side.search'),
+              icon: h(SearchIcon),
+              active: showSearch,
+              select: focusSearch,
+            },
+            {
+              id: 'todo',
+              label: t('side.todo'),
+              icon: h(TodoIcon),
+              active: showTodo,
+              count: todoOpenCount,
+              select: openTodo,
+            },
+          ]
+          if (gitAvailable) {
+            views.push({
+              id: 'git',
+              label: t('git.title'),
+              icon: h(GitIcon),
+              active: showGit,
+              select: () => setPaneView('git'),
+            })
+            views.push({
+              id: 'memory',
+              label: t('side.memory'),
+              icon: h(MemoryIcon),
+              active: showMemory,
+              select: openMemory,
+            })
+          }
+          views.push({
+            id: 'harness',
+            label: t('side.harness'),
+            icon: h(HarnessIcon),
+            active: showHarness,
+            select: () => void openHarness(),
+          })
+
+          const width = sideTabsWidth
+          const labelBudget = width > 0 ? width / views.length : 0
+          const labelMode = width <= 0 || labelBudget >= SIDE_TAB_LABEL_WIDTH
+          const iconMode = !labelMode && labelBudget >= SIDE_TAB_ICON_WIDTH
+          const overflow = !labelMode && !iconMode
+          let visible = views
+          if (overflow) {
+            const capacity = Math.max(1, Math.floor(width / SIDE_TAB_ICON_WIDTH) - 1)
+            visible = views.slice(0, capacity)
+            const active = views.find((view) => view.active)
+            if (active !== undefined && !visible.includes(active) && visible.length > 0) {
+              const swapIndex = visible.length - 1
+              visible = [...visible.slice(0, swapIndex), active]
+            }
+          }
+          const hidden = views.filter((view) => !visible.includes(view))
+          const iconOnly = !labelMode
+
+          function renderTab(view) {
+            const title = view.count === undefined || view.count <= 0 ? view.label : `${view.label} (${String(view.count)})`
+            return h(
+              'button',
+              {
+                key: view.id,
+                type: 'button',
+                role: 'tab',
+                className: 'ds-side-tab',
+                'data-active': view.active ? 'true' : undefined,
+                'data-icon-only': iconOnly ? 'true' : undefined,
+                'aria-selected': view.active,
+                'aria-label': title,
+                title,
+                onClick: () => {
+                  setSideViewsOpen(false)
+                  view.select()
+                },
+              },
+              view.icon,
+              iconOnly ? null : h('span', null, view.label),
+              view.count !== undefined && view.count > 0
+                ? h('span', { className: 'ds-side-tab-count' }, String(view.count))
+                : null,
+            )
+          }
+
+          return h(
+            React.Fragment,
+            null,
+            sideViewsOpen
+              ? h('div', {
+                  className: 'ds-side-views-backdrop',
+                  onPointerDown: () => setSideViewsOpen(false),
+                })
+              : null,
+            h(
+              'div',
+              {
+                ref: sideTabsRef,
+                className: 'ds-side-tabs',
+                role: 'tablist',
+                'aria-label': t('side.tabs'),
+                'data-views-open': sideViewsOpen ? 'true' : undefined,
+              },
+              visible.map(renderTab),
+              hidden.length > 0
+                ? h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-side-tab ds-side-tab-more',
+                      'data-active': sideViewsOpen ? 'true' : undefined,
+                      title: t('side.more'),
+                      'aria-label': t('side.more'),
+                      'aria-haspopup': 'menu',
+                      'aria-expanded': sideViewsOpen,
+                      onClick: () => setSideViewsOpen((open) => !open),
+                    },
+                    h(MoreIcon),
+                  )
+                : null,
+              sideViewsOpen
+                ? h(
+                    'div',
+                    { className: 'ds-side-views-menu', role: 'menu', 'aria-label': t('side.views') },
+                    h('div', { className: 'ds-side-views-title' }, t('side.views')),
+                    views.map((view) =>
+                      h(
+                        'button',
+                        {
+                          key: view.id,
+                          type: 'button',
+                          role: 'menuitemradio',
+                          'aria-checked': view.active,
+                          className: 'ds-side-views-item',
+                          'data-active': view.active ? 'true' : undefined,
+                          onClick: () => {
+                            setSideViewsOpen(false)
+                            view.select()
+                          },
+                        },
+                        view.icon,
+                        h('span', { className: 'ds-side-views-name' }, view.label),
+                        view.count !== undefined && view.count > 0
+                          ? h('span', { className: 'ds-side-views-count' }, String(view.count))
+                          : null,
+                      ),
+                    ),
+                  )
+                : null,
+            ),
+          )
+        }
+
         function renderPalette() {
           if (!paletteOpen) return null
           const query = paletteQuery.trim().toLowerCase()
@@ -10737,7 +11913,7 @@ window.__ModuleLoader__.load({
               'aside',
               {
                 className: 'ds-side',
-                'data-view': showGit ? 'git' : showSearch ? 'search' : showMemory ? 'memory' : showHarness ? 'harness' : 'files',
+                'data-view': showGit ? 'git' : showSearch ? 'search' : showMemory ? 'memory' : showHarness ? 'harness' : showTodo ? 'todo' : 'files',
                 style: { width: treeDisplayWidth, display: showSide ? undefined : 'none' },
               },
               h(
@@ -10749,7 +11925,7 @@ window.__ModuleLoader__.load({
                   h(
                     'span',
                     { className: 'ds-pane-title-text' },
-                    showGit ? t('git.title') : showSearch ? t('side.search') : showMemory ? t('side.memory') : showHarness ? t('side.harness') : t('explorer'),
+                    showGit ? t('git.title') : showSearch ? t('side.search') : showMemory ? t('side.memory') : showHarness ? t('side.harness') : showTodo ? t('todo.title') : t('explorer'),
                   ),
                   h(
                     'button',
@@ -10995,6 +12171,7 @@ window.__ModuleLoader__.load({
               renderSearchPanel(),
               renderHarnessPanel(),
               renderMemoryPanel(),
+              renderTodoPanel(),
               gitAvailable
                 ? h(
                     'div',
@@ -11013,79 +12190,7 @@ window.__ModuleLoader__.load({
                 { className: 'ds-side-foot' },
                 h('span', { className: 'ds-side-path', title: state.root ?? '' }, state.root ?? ''),
               ),
-              h(
-                'div',
-                { className: 'ds-side-tabs', role: 'tablist', 'aria-label': t('side.tabs') },
-                h(
-                  'button',
-                  {
-                    type: 'button',
-                    role: 'tab',
-                    className: 'ds-side-tab',
-                    'data-active': showFiles ? 'true' : undefined,
-                    'aria-selected': showFiles,
-                    onClick: () => setPaneView('files'),
-                  },
-                  h(FolderIcon, { open: showFiles }),
-                  h('span', null, t('explorer')),
-                ),
-                h(
-                  'button',
-                  {
-                    type: 'button',
-                    role: 'tab',
-                    className: 'ds-side-tab',
-                    'data-active': showSearch ? 'true' : undefined,
-                    'aria-selected': showSearch,
-                    onClick: focusSearch,
-                  },
-                  h(SearchIcon),
-                  h('span', null, t('side.search')),
-                ),
-                gitAvailable
-                  ? h(
-                      'button',
-                      {
-                        type: 'button',
-                        role: 'tab',
-                        className: 'ds-side-tab',
-                        'data-active': showGit ? 'true' : undefined,
-                        'aria-selected': showGit,
-                        onClick: () => setPaneView('git'),
-                      },
-                      h(GitIcon),
-                      h('span', null, t('git.title')),
-                    )
-                  : null,
-                gitAvailable
-                  ? h(
-                      'button',
-                      {
-                        type: 'button',
-                        role: 'tab',
-                        className: 'ds-side-tab',
-                        'data-active': showMemory ? 'true' : undefined,
-                        'aria-selected': showMemory,
-                        onClick: openMemory,
-                      },
-                      h(MemoryIcon),
-                      h('span', null, t('side.memory')),
-                    )
-                  : null,
-                h(
-                  'button',
-                  {
-                    type: 'button',
-                    role: 'tab',
-                    className: 'ds-side-tab',
-                    'data-active': showHarness ? 'true' : undefined,
-                    'aria-selected': showHarness,
-                    onClick: () => void openHarness(),
-                  },
-                  h(HarnessIcon),
-                  h('span', null, t('side.harness')),
-                ),
-              ),
+              renderSideViews(),
             ),
             h('div', {
               className: 'ds-splitter',
@@ -12237,6 +13342,7 @@ window.__ModuleLoader__.load({
 .ds-side[data-view="git"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch) { display: none; }
 .ds-side[data-view="search"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
 .ds-side[data-view="harness"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
+.ds-side[data-view="todo"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
 .ds-side[data-view="memory"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch) { display: none; }
 .ds-git-toggle[data-active="true"] {
   color: var(--dsw-alias-brand-primary);
@@ -12943,12 +14049,14 @@ window.__ModuleLoader__.load({
 .ds-git-compare-busy { flex: 0 0 auto; padding: 0; font-size: 10px; }
 .ds-side-view { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow: hidden; }
 .ds-side-tabs {
+  position: relative;
   display: flex;
   flex: 0 0 auto;
   align-items: stretch;
   border-top: 1px solid var(--dsw-alias-border-l1);
   background: var(--dsw-alias-bg-layer-1);
 }
+.ds-side-tabs[data-views-open="true"] { z-index: 90; }
 .ds-side-tab {
   display: inline-flex;
   flex: 1 1 0;
@@ -12974,6 +14082,64 @@ window.__ModuleLoader__.load({
 }
 .ds-side-tab svg { flex: 0 0 auto; width: 12px; height: 12px; }
 .ds-side-tab span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-side-tab[data-icon-only="true"] { gap: 2px; }
+.ds-side-views-backdrop { position: fixed; inset: 0; z-index: 80; background: transparent; }
+.ds-side-views-menu {
+  position: absolute;
+  right: 4px;
+  bottom: calc(100% + 5px);
+  left: 4px;
+  z-index: 91;
+  max-height: min(60vh, 340px);
+  padding: 4px;
+  overflow: auto;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-overlay);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--dsw-alias-label-primary) 20%, transparent);
+}
+.ds-side-views-title {
+  padding: 4px 7px 3px;
+  color: var(--dsw-alias-label-caption);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.ds-side-views-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 5px 7px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 11.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.ds-side-views-item:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent); color: var(--dsw-alias-label-primary); }
+.ds-side-views-item[data-active="true"] {
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 10%, transparent);
+  color: var(--dsw-alias-brand-primary);
+  font-weight: 600;
+}
+.ds-side-views-item svg { flex: 0 0 auto; width: 14px; height: 14px; }
+.ds-side-views-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-side-views-count {
+  flex: 0 0 auto;
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 14%, transparent);
+  color: var(--dsw-alias-brand-primary);
+  font-size: 9px;
+  line-height: 15px;
+  text-align: center;
+}
 .ds-toggle {
   height: 22px;
   padding: 0 6px;
@@ -13138,6 +14304,296 @@ window.__ModuleLoader__.load({
 .ds-memory-action:hover { color: var(--dsw-alias-label-primary); text-decoration: underline; }
 .ds-memory-action-danger:hover { color: var(--dsw-alias-state-error-primary); }
 .ds-memory-help { padding: 8px 10px 12px; color: var(--dsw-alias-label-caption); font-size: 9.5px; line-height: 1.5; }
+.ds-todo-view { overflow: hidden; }
+.ds-todo-intro {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-alias-bg-layer-1);
+}
+.ds-todo-head { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.ds-todo-title { flex: 0 1 auto; min-width: 0; overflow: hidden; font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.ds-todo-count {
+  flex: 0 0 auto;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 9.5px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+.ds-todo-hint { margin-top: 3px; color: var(--dsw-alias-label-secondary); font-size: 10.5px; }
+.ds-todo-progress { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.ds-todo-progress-bar {
+  flex: 1 1 auto;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 10%, transparent);
+}
+.ds-todo-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--dsw-alias-brand-primary);
+  transition: width 160ms ease;
+}
+.ds-todo-progress-label { flex: 0 0 auto; color: var(--dsw-alias-label-caption); font-size: 9.5px; white-space: nowrap; }
+.ds-todo-overdue { margin-top: 4px; color: var(--dsw-alias-state-warn-primary); font-size: 9.5px; }
+.ds-todo-path {
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--dsw-alias-label-caption);
+  font-family: var(--ds-mono);
+  font-size: 9.5px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+}
+.ds-todo-file-hint { margin-top: 2px; color: var(--dsw-alias-label-caption); font-size: 9.5px; line-height: 1.45; }
+.ds-todo-updated { margin-top: 2px; color: var(--dsw-alias-label-caption); font-size: 9.5px; }
+.ds-todo-body { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow: auto; }
+.ds-todo-form { flex: 0 0 auto; padding: 8px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
+.ds-todo-addrow { display: flex; gap: 6px; }
+.ds-todo-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 11.5px;
+  outline: none;
+}
+.ds-todo-input:focus { border-color: var(--dsw-alias-brand-primary); }
+.ds-todo-add { flex: 0 0 auto; height: 28px; padding: 0 10px; font-size: 11px; }
+.ds-todo-fields { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 5px; margin-top: 6px; }
+.ds-todo-field { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ds-todo-field > span { color: var(--dsw-alias-label-caption); font-size: 9px; }
+.ds-todo-field select,
+.ds-todo-field input {
+  height: 24px;
+  min-width: 0;
+  padding: 0 4px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 5px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 10.5px;
+  outline: none;
+}
+.ds-todo-field select:focus,
+.ds-todo-field input:focus { border-color: var(--dsw-alias-brand-primary); }
+.ds-todo-field-priority select { width: 74px; }
+.ds-todo-field-due input { width: 122px; }
+.ds-todo-field-grow { flex: 1 1 100px; }
+.ds-todo-field-grow input { width: 100%; }
+.ds-todo-toolbar {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-alias-bg-layer-1);
+}
+.ds-todo-filters {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-base);
+}
+.ds-todo-filter {
+  height: 22px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+.ds-todo-filter:hover { color: var(--dsw-alias-label-primary); }
+.ds-todo-filter[data-active="true"] {
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 14%, transparent);
+  color: var(--dsw-alias-brand-primary);
+  font-weight: 600;
+}
+.ds-todo-search {
+  flex: 1 1 90px;
+  min-width: 70px;
+  height: 26px;
+  padding: 0 7px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 5px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 10.5px;
+  outline: none;
+}
+.ds-todo-search:focus { border-color: var(--dsw-alias-brand-primary); }
+.ds-todo-sort {
+  flex: 0 0 auto;
+  height: 26px;
+  padding: 0 3px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 5px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 10px;
+  outline: none;
+}
+.ds-todo-sort:focus { border-color: var(--dsw-alias-brand-primary); }
+.ds-todo-clear { margin-left: auto; font-size: 10px; white-space: nowrap; }
+.ds-todo-list { display: flex; flex-direction: column; }
+.ds-todo-item {
+  display: flex;
+  gap: 7px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+}
+.ds-todo-item:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent); }
+.ds-todo-item[data-status="done"] { opacity: 0.72; }
+.ds-todo-check {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  margin: 1px 0 0;
+  accent-color: var(--dsw-alias-brand-primary);
+  cursor: pointer;
+}
+.ds-todo-main { flex: 1 1 auto; min-width: 0; }
+.ds-todo-row1 { display: flex; align-items: flex-start; gap: 6px; }
+.ds-todo-item-title { min-width: 0; overflow-wrap: anywhere; font-size: 11.5px; line-height: 1.45; }
+.ds-todo-item[data-status="done"] .ds-todo-item-title {
+  color: var(--dsw-alias-label-secondary);
+  text-decoration: line-through;
+}
+.ds-todo-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 100ms ease;
+}
+.ds-todo-item:hover .ds-todo-actions,
+.ds-todo-item:focus-within .ds-todo-actions { opacity: 1; }
+@media (hover: none) { .ds-todo-actions { opacity: 1; } }
+.ds-todo-action {
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+.ds-todo-action:hover { color: var(--dsw-alias-label-primary); text-decoration: underline; }
+.ds-todo-action-danger:hover { color: var(--dsw-alias-state-error-primary); }
+.ds-todo-note {
+  display: -webkit-box;
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10.5px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.ds-todo-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 4px; }
+.ds-todo-priority {
+  padding: 0 5px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 999px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 9px;
+  line-height: 15px;
+}
+.ds-todo-priority[data-priority="urgent"] {
+  border-color: color-mix(in srgb, var(--dsw-alias-state-error-primary) 45%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 10%, transparent);
+  color: var(--dsw-alias-state-error-primary);
+}
+.ds-todo-priority[data-priority="high"] {
+  border-color: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 45%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 10%, transparent);
+  color: var(--dsw-alias-state-warn-primary);
+}
+.ds-todo-priority[data-priority="low"] { color: var(--dsw-alias-label-caption); }
+.ds-todo-due {
+  padding: 0 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 9px;
+  line-height: 15px;
+}
+.ds-todo-due[data-state="overdue"] {
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent);
+  color: var(--dsw-alias-state-error-primary);
+}
+.ds-todo-due[data-state="today"] {
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 14%, transparent);
+  color: var(--dsw-alias-state-warn-primary);
+}
+.ds-todo-tag {
+  padding: 0 5px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 999px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 9px;
+  line-height: 15px;
+}
+.ds-todo-time { margin-left: auto; color: var(--dsw-alias-label-caption); font-size: 9px; }
+.ds-todo-empty { padding: 18px 12px; color: var(--dsw-alias-label-secondary); font-size: 11.5px; line-height: 1.6; }
+.ds-todo-help { padding: 8px 10px 12px; color: var(--dsw-alias-label-caption); font-size: 9.5px; line-height: 1.5; }
+.ds-todo-edit { display: flex; flex-direction: column; gap: 5px; background: color-mix(in srgb, var(--dsw-alias-brand-primary) 5%, transparent); }
+.ds-todo-note-input {
+  width: 100%;
+  min-height: 52px;
+  max-height: 140px;
+  padding: 6px 8px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.5;
+  outline: none;
+  resize: vertical;
+}
+.ds-todo-note-input:focus { border-color: var(--dsw-alias-brand-primary); }
+.ds-todo-edit-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.ds-todo-edit-actions .ds-btn { height: 26px; font-size: 11px; }
+.ds-side-tab-count {
+  flex: 0 0 auto;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 14%, transparent);
+  color: var(--dsw-alias-brand-primary);
+  font-size: 9px;
+  line-height: 14px;
+  text-align: center;
+}
+.ds-root[data-compact="true"] .ds-side-tab-count { display: none; }
 .ds-harness-view { overflow: auto; }
 .ds-harness-section { padding: 8px 10px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
 .ds-harness-label { margin: 2px 0 3px; color: var(--dsw-alias-label-caption); font-size: 9.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }

@@ -1,8 +1,8 @@
 {
   "name": "@local/dsh-web-dev-workspace",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "private": true,
-  "description": "VS Code-style development workspace: file explorer, editor, terminal and preview browser for the DeepSeek Harness Web UI",
+  "description": "VS Code-style development workspace: file explorer, editor, terminal, todo board and preview browser for the DeepSeek Harness Web UI",
   "type": "module",
   "exports": {
     ".": "./index.js",
@@ -13,6 +13,7 @@
   "files": [
     "index.js",
     "memory.js",
+    "todo.js",
     "ssh.js",
     "terminal.js",
     "client.js",
@@ -40,7 +41,8 @@
     "workspace",
     "file-manager",
     "code-editor",
-    "git"
+    "git",
+    "todo"
   ],
   "dependencies": {
     "@xterm/addon-fit": "^0.10.0",

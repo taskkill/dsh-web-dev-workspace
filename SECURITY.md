@@ -82,12 +82,14 @@ General UI bugs, missing features and questions belong in public issues.
   attempt, and is never written to disk. `ssh2` does not pin host keys, so connect
   only to hosts you trust.
 - The plugin registers four workspace-memory tools (`memory_save`,
-  `memory_search`, `memory_update`, `memory_delete`) and one short prompt guide.
-  It injects only the calling session's workspace memory (bounded) as model
-  context, and the tools write only `.dsh/memory.json` inside that workspace;
-  symlinked state that escapes the root is refused. Opening, searching or browsing
-  files still sends nothing, and only a user-clicked **Agent** action sends the
-  selected code and path to the active conversation. Memory content is
+  `memory_search`, `memory_update`, `memory_delete`), four todo tools
+  (`todo_list`, `todo_add`, `todo_update`, `todo_delete`) and two short prompt
+  guides. It injects only the calling session's workspace memory (bounded) as
+  model context; the todo board is read on demand and is never injected. The
+  tools write only `.dsh/memory.json` and `.dsh/todos.json` inside that
+  workspace; symlinked state that escapes the root is refused. Opening, searching
+  or browsing files still sends nothing, and only a user-clicked **Agent** action
+  sends the selected code and path to the active conversation. Memory content is
   model-visible, so do not store secrets or credentials there.
 
 ## Before you publish

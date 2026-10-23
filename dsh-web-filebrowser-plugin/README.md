@@ -53,6 +53,12 @@ third-party runtime dependencies.
 - A **Git** tab at the bottom of the sidebar switches to the source-control view; the Explorer tab returns to the tree.
 - A **Memory** tab (local workspaces only) edits the same per-workspace memory
   the model uses across sessions; the refresh button re-reads the file.
+- A **Todo** tab (local workspaces only) is a per-workspace task board with
+  quick add, priorities, due dates, tags, notes, filters and sorting; it shows the
+  open-task count on the tab.
+- The bottom view strip adapts to the sidebar width: full labels when they fit,
+  icon-only tabs with tooltips when they do not, and a **More views** menu once
+  even the icons no longer fit. The active view stays visible.
 - **Right Sidebar Start / guide page** lists a third card, "Dev Workspace", next
   to "Workspace files" and "New terminal". Picking it opens the same workspace as
   a right-sidebar tab. In a narrow sidebar the page switches to a compact
@@ -166,6 +172,27 @@ third-party runtime dependencies.
 - Requires the `tools` and `systemPrompt` services; without them the file browser
   loads normally and memory support stays off.
 
+### Workspace todo list
+
+- A local workspace owns `.dsh/todos.json`; the **Todo** sidebar tab and the model
+  tools share that document, and switching workspaces switches the board.
+- Quick-add with an optional priority, due date and tags. Tasks support inline
+  editing of title, note, priority, due date and tags; check, reopen, delete and
+  clear-completed actions are one click each.
+- The panel shows open/done counts, a completion bar and overdue counts, labels
+  due dates as overdue/today/tomorrow, filters by open/done/all, searches titles,
+  notes and tags, and sorts by priority, due date, last update or creation time.
+  Filter/sort choices persist in localStorage.
+- Host tools `todo_list`, `todo_add`, `todo_update` and `todo_delete` manage the
+  same board. They are separate from the built-in session `todo_write` plan tool.
+- Every mutation returns the refreshed board. Writes use a temp-file rename under a
+  per-root lock, and the panel refreshes every eight seconds (and on focus) while
+  visible, pausing during an inline edit.
+- `.dsh/.gitignore` (`*`) is created on first write when absent; limits are 500
+  tasks / 500 title characters / 4,000 note characters / 8 tags per task.
+- Requires the `tools` and `systemPrompt` services for the model half; the panel
+  works without them. SSH roots show a read-only explanation.
+
 ### Editor
 
 - Multi-tab editing: dirty indicators, save (button or `⌘/Ctrl+S`), reload,
@@ -257,8 +284,8 @@ third-party runtime dependencies.
   [`@local/dsh-web-dev-workspace-git`](../dsh-web-filebrowser-git) at `/api/dsh-web-filebrowser-git`. It invokes `git`
   with `execFile`, requires the workspace to be the repository root, disables
   interactive prompts and never stores credentials.
-- Registers only the workspace-memory tools and prompt guide; no general-purpose
-  tools or session events.
+- Registers only the workspace-memory and todo tools with their prompt guides; no
+  general-purpose tools or session events.
 
 ## Local data
 
@@ -273,10 +300,16 @@ Preferences and favorites are stored in the browser's `localStorage`:
 | `dsh-web-filebrowser:favorites-open` | Favorites section open state |
 | `dsh-web-filebrowser:word-wrap` | Word-wrap toggle |
 | `dsh-web-filebrowser:hidden-roots` | Locally hidden directory paths |
+| `dsh-web-filebrowser:todo-filter` | Last Todo filter (`open`/`done`/`all`) |
+| `dsh-web-filebrowser:todo-sort` | Last Todo sort order |
 
 Workspace memory is **not** stored in localStorage: each local root owns
 `.dsh/memory.json` and a generated `.dsh/.gitignore` (`*`). Deleting that JSON
 file clears the workspace's memory; nothing is shared with another root.
+
+Todos are stored per workspace at `.dsh/todos.json` and are not in localStorage
+either. The same generated `.dsh/.gitignore` keeps them out of Git; deleting the
+JSON file clears the board.
 
 ## Limitations
 
@@ -287,6 +320,8 @@ file clears the workspace's memory; nothing is shared with another root.
   reloads automatically when its file changes on disk, while a dirty tab asks
   before discarding edits. Saves use stale-file protection. SSH host keys are not
   pinned; password auth is one-time per connection and is never stored.
+- Todos are local-only: SSH roots show an explanation instead of an editor, and
+  the panel's automatic refresh pauses while an inline edit is open.
 - Git is limited to the repository root; no automatic merge/rebase or hunk-level
   staging. A diverged pull must be resolved in a terminal, and pushes never force.
 - Built against Harness `0.2.1-rc.2`; newer releases may change slot/service

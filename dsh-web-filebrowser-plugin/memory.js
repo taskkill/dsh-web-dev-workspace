@@ -626,6 +626,12 @@ export function resolveMemoryWorkspace(ctx, agent) {
   return null
 }
 
+/**
+ * Generic alias for the same workspace lookup, shared with other per-workspace
+ * stores (for example the todo list) that resolve a session's workspace.
+ */
+export const resolveAgentWorkspace = resolveMemoryWorkspace
+
 /** Resolve the workspace for one assembly, or an empty guidance string. */
 function assemblyWorkspace(ctx, assembly) {
   const agent = assembly?.agent ?? assembly?.scope

@@ -25,6 +25,7 @@ import { fileURLToPath } from 'node:url'
 import * as memory from './memory.js'
 import * as ssh from './ssh.js'
 import { createTerminalManager } from './terminal.js'
+import * as todo from './todo.js'
 
 /** Exact URL below `/api` that this plugin owns. */
 const ROUTE = '/api/dsh-web-filebrowser'
@@ -139,9 +140,11 @@ const CONTENT_TYPES = new Map([
 export function apply(ctx) {
   // Cross-session memory is optional: a deployment without the tools and
   // system-prompt services keeps the file browser fully usable.
-  ctx.inject(['tools', 'systemPrompt'], (memoryCtx) => {
-    memoryCtx.effect(() => memory.registerMemoryTools(memoryCtx), 'dsh-web-filebrowser: workspace memory tools')
-    memoryCtx.effect(() => memory.registerMemoryPrompt(memoryCtx), 'dsh-web-filebrowser: workspace memory prompt')
+  ctx.inject(['tools', 'systemPrompt'], (toolsCtx) => {
+    toolsCtx.effect(() => memory.registerMemoryTools(toolsCtx), 'dsh-web-filebrowser: workspace memory tools')
+    toolsCtx.effect(() => memory.registerMemoryPrompt(toolsCtx), 'dsh-web-filebrowser: workspace memory prompt')
+    toolsCtx.effect(() => todo.registerTodoTools(toolsCtx), 'dsh-web-filebrowser: workspace todo tools')
+    toolsCtx.effect(() => todo.registerTodoPrompt(toolsCtx), 'dsh-web-filebrowser: workspace todo prompt')
   })
   ctx.effect(() => {
     let disposed = false
@@ -273,6 +276,16 @@ async function dispatch(ctx, op, body) {
       return updateMemory(ctx, body)
     case 'memoryDelete':
       return deleteMemory(ctx, body)
+    case 'todoList':
+      return listTodo(ctx, body)
+    case 'todoAdd':
+      return addTodo(ctx, body)
+    case 'todoUpdate':
+      return updateTodo(ctx, body)
+    case 'todoDelete':
+      return deleteTodo(ctx, body)
+    case 'todoClearCompleted':
+      return clearCompletedTodos(ctx, body)
     case 'version':
       return { version: await readPackageVersion() }
     case 'versionCheck':
@@ -774,6 +787,85 @@ async function updateMemory(ctx, body) {
 async function deleteMemory(ctx, body) {
   const root = await memoryRoot(ctx, body.root)
   return memory.deleteMemory(root, body.id)
+}
+
+/**
+ * Resolve a local workspace root for a todo operation. SSH remote roots have no
+ * local todo document.
+ * @param ctx - Host context.
+ * @param requested - root path sent by the browser.
+ * @returns canonical local root.
+ */
+async function todoRoot(ctx, requested) {
+  const root = await resolveRoot(ctx, requested)
+  if (ssh.isSshRoot(root)) throw new SideError('ssh-unsupported', 'SSH 远程工作区暂不支持本地待办')
+  return root
+}
+
+/**
+ * Read one workspace's todo board for the Todo panel.
+ * @param ctx - Host context.
+ * @param body - `{ root }`.
+ * @returns tasks plus document metadata.
+ */
+async function listTodo(ctx, body) {
+  const root = await todoRoot(ctx, body.root)
+  return todo.listTodos(root)
+}
+
+/**
+ * Add one task from the Todo panel.
+ * @param ctx - Host context.
+ * @param body - `{ root, title, note?, priority?, due?, tags? }`.
+ * @returns the new task plus the refreshed board.
+ */
+async function addTodo(ctx, body) {
+  const root = await todoRoot(ctx, body.root)
+  return todo.addTodo(root, {
+    title: body.title,
+    note: body.note,
+    priority: body.priority,
+    due: body.due,
+    tags: body.tags,
+    source: 'todo-panel',
+  })
+}
+
+/**
+ * Update one task from the Todo panel.
+ * @param ctx - Host context.
+ * @param body - `{ root, id, title?, note?, priority?, due?, tags?, status? }`.
+ * @returns the updated task plus the refreshed board.
+ */
+async function updateTodo(ctx, body) {
+  const root = await todoRoot(ctx, body.root)
+  const patch = { id: body.id }
+  for (const key of ['title', 'note', 'priority', 'due', 'tags', 'status']) {
+    if (Object.prototype.hasOwnProperty.call(body, key)) patch[key] = body[key]
+  }
+  return todo.updateTodo(root, patch)
+}
+
+/**
+ * Delete one task from the Todo panel.
+ * @param ctx - Host context.
+ * @param body - `{ root, id }`.
+ * @returns `{ deleted, tasks, total, open, done, updatedAt }`.
+ */
+async function deleteTodo(ctx, body) {
+  const root = await todoRoot(ctx, body.root)
+  return todo.deleteTodo(root, body.id)
+}
+
+/**
+ * Remove every completed task from the Todo panel.
+ * @param ctx - Host context.
+ * @param body - `{ root }`.
+ * @returns `{ deleted, tasks, total, open, done, updatedAt }`.
+ */
+async function clearCompletedTodos(ctx, body) {
+  const root = await todoRoot(ctx, body.root)
+  return todo.clearCompletedTodos(root)
 }
 
 /**
