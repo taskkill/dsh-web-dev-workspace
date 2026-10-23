@@ -4,6 +4,15 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Fix editor Agent send
+
+- The editor **Agent** actions failed with “当前会话不支持发送消息” on DSH
+  0.2.1: the plugin looked the live Session up through `sessions.get()`, an
+  API `ClientSessions` no longer exposes, so every send aborted before the
+  prompt left the browser. The live Session is now resolved through the
+  retained binding (`sessions.binding(id).session`), the same path the
+  built-in composer uses.
+
 ### Update prompt repository
 
 - Point the version check, the GitHub link and the plugin-manager install command

@@ -454,7 +454,7 @@ repository root, not a subdirectory).
   preferences and SSH remotes are copied from the old `dsh-side:` browser keys on
   first load. Hard-refresh any tab opened with the old client.
 - **Version hint**: the file workspace header shows the current version (for
-  example `v1.2.6`). Clicking the badge checks `taskkill/dsh-web-dev-workspace`'s
+  example `v1.2.7`). Clicking the badge checks `taskkill/dsh-web-dev-workspace`'s
   `package.json` on GitHub and highlights a newer version with update guidance.
   The result is cached in Host memory for six hours; the check requests only the
   public version manifest and sends no workspace data. The hint compares the

@@ -7036,7 +7036,12 @@ window.__ModuleLoader__.load({
               owned = true
             }
             if (reference.ready !== undefined) await reference.ready
-            const session = typeof sessions.get === 'function' ? sessions.get(reference.sessionId) : undefined
+            // ClientSessions has no `get()`: the live object-layer Session is
+            // reached through the retained binding (the same path the built-in
+            // composer uses via conversation.scopedSession).
+            const binding =
+              typeof sessions.binding === 'function' ? sessions.binding(reference.sessionId) : reference.binding
+            const session = binding?.session
             if (session === undefined || typeof session.prompt !== 'function') {
               throw new Error('当前会话不支持发送消息')
             }
