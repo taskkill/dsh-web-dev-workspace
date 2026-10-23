@@ -4,6 +4,19 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Bookmark aliases
+
+- Each saved address on the browser start page now has a pencil button. Edit the
+  display name inline: Enter or the save button persists it, Escape cancels, and
+  an empty alias restores the automatic `host+path` name. The URL, viewport and
+  position in the list are unchanged.
+
+### Mixed-content note auto-closes
+
+- The built-in browser's HTTPS/HTTP mixed-content note now hides itself after
+  three seconds. The × button still dismisses it immediately, and it reappears on
+  reload, navigation or a Direct/Proxy switch as before.
+
 ### Browser bookmarks and start-page settings
 
 - The built-in browser can now keep **bookmarked addresses**: click the star in

@@ -135,7 +135,8 @@ third-party runtime dependencies.
   CSS viewport only, not touch events or the User-Agent.
 - The toolbar star bookmarks the current address and records the active PC/Mobile
   viewport (preset and orientation). The start page lists bookmarks; clicking one
-  reopens it in that viewport, and each row can be removed. Bookmarks and the
+  reopens it in that viewport, each row can be removed, and its pencil button
+  edits an **alias** (empty restores the automatic name). Bookmarks and the
   start page's Protocol/Host fields are stored per workspace in
   `.dsh/browser-bookmarks.json` (max 50) and ignored by the generated
   `.dsh/.gitignore`; SSH remote workspaces cannot store them.

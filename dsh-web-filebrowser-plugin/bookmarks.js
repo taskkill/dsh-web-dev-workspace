@@ -413,6 +413,33 @@ export async function saveSettings(root, input) {
   })
 }
 
+/**
+ * Rename one bookmark. An empty title falls back to the address.
+ *
+ * @param root - absolute workspace root.
+ * @param id - bookmark id.
+ * @param title - new display name; trimmed and bounded.
+ * @returns the refreshed snapshot plus `renamed`.
+ */
+export async function renameBookmark(root, id, title) {
+  const workspace = assertRoot(root)
+  if (typeof id !== 'string' || id.length === 0) {
+    throw new BookmarksError('bad-id', '收藏标识无效')
+  }
+  const name = typeof title === 'string' ? title.trim().slice(0, BOOKMARKS_MAX_TITLE) : ''
+  return withMutationLock(workspace, async () => {
+    const state = await readBookmarks(workspace)
+    const bookmark = state.bookmarks.find((item) => item.id === id)
+    if (bookmark === undefined) {
+      return { ...snapshot(state), path: bookmarksFile(workspace), renamed: false }
+    }
+    bookmark.title = name.length > 0 ? name : bookmark.url
+    state.updatedAt = Date.now()
+    await writeBookmarks(workspace, state)
+    return { ...snapshot(state), path: bookmarksFile(workspace), renamed: true }
+  })
+}
+
 /** Generate a short id that is unique within one document. */
 function createId(bookmarks) {
   const used = new Set(bookmarks.map((item) => item.id))

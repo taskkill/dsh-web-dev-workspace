@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-web-dev-workspace",
-  "version": "1.0.9",
+  "version": "1.0.11",
   "private": true,
   "description": "VS Code-style development workspace: file explorer, editor, terminal, todo board and preview browser for the DeepSeek Harness Web UI",
   "type": "module",

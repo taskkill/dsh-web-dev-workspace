@@ -88,6 +88,9 @@ window.__ModuleLoader__.load({
     /** Remember the last PC/mobile viewport choice. */
     const BROWSER_VIEW_KEY = 'dsh-web-filebrowser:browser-view'
 
+    /** How long the informational mixed-content note stays on screen. */
+    const BROWSER_MIXED_NOTE_MS = 3000
+
     /** Bookmarked preview addresses, each with the viewport it was saved in. */
     const BROWSER_BOOKMARKS_PATH = '.dsh/browser-bookmarks.json'
     const BROWSER_BOOKMARKS_LEGACY_KEY = 'dsh-web-filebrowser:browser-bookmarks'
@@ -546,6 +549,10 @@ window.__ModuleLoader__.load({
       'browser.bookmarksReload': '重试',
       'browser.bookmarkAdd': '收藏此地址（记住当前 PC / 手机模式）',
       'browser.bookmarkRemove': '取消收藏',
+      'browser.bookmarkRename': '设置别名',
+      'browser.bookmarkAliasPlaceholder': '别名（留空恢复默认）',
+      'browser.bookmarkRenamed': '别名已保存',
+      'browser.bookmarkAliasCleared': '已恢复默认名称',
       'browser.bookmarkAdded': '已收藏（{device}模式）',
       'browser.bookmarkRemoved': '已取消收藏',
       'browser.bookmarkNoRoot': '收藏保存在工作区，请先打开一个本地工作区',
@@ -1129,6 +1136,10 @@ window.__ModuleLoader__.load({
       'browser.bookmarksReload': 'Retry',
       'browser.bookmarkAdd': 'Bookmark this address (remembers the current PC/Mobile mode)',
       'browser.bookmarkRemove': 'Remove bookmark',
+      'browser.bookmarkRename': 'Set alias',
+      'browser.bookmarkAliasPlaceholder': 'Alias (leave empty for the default name)',
+      'browser.bookmarkRenamed': 'Alias saved',
+      'browser.bookmarkAliasCleared': 'Default name restored',
       'browser.bookmarkAdded': 'Bookmarked in {device} mode',
       'browser.bookmarkRemoved': 'Bookmark removed',
       'browser.bookmarkNoRoot': 'Bookmarks are stored in a workspace; open a local workspace first',
@@ -5514,9 +5525,11 @@ window.__ModuleLoader__.load({
     }
 
     /** Start page shown by a fresh browser tab. */
-    function BrowserStart({ t, onOpen, host, onHostChange, onHostBlur, scheme, onSchemeChange, bookmarks = [], bookmarksStatus = 'ready', bookmarksError = null, onOpenBookmark, onRemoveBookmark, onReloadBookmarks }) {
+    function BrowserStart({ t, onOpen, host, onHostChange, onHostBlur, scheme, onSchemeChange, bookmarks = [], bookmarksStatus = 'ready', bookmarksError = null, onOpenBookmark, onRemoveBookmark, onRenameBookmark, onReloadBookmarks }) {
       const [scan, setScan] = useState({ status: 'loading', ports: [], supported: false })
       const [scanNonce, setScanNonce] = useState(0)
+      const [bookmarkEditor, setBookmarkEditor] = useState(null)
+      const [bookmarkRenameBusy, setBookmarkRenameBusy] = useState(false)
       useEffect(() => {
         let alive = true
         call('ports')
@@ -5556,6 +5569,34 @@ window.__ModuleLoader__.load({
             h('span', { className: 'ds-browser-port-host' }, normalizePreviewHost(host)),
           ),
         )
+      function beginBookmarkRename(bookmark) {
+        setBookmarkEditor({ id: bookmark.id, title: bookmark.title })
+      }
+
+      function cancelBookmarkRename() {
+        setBookmarkEditor(null)
+      }
+
+      async function commitBookmarkRename(bookmark) {
+        if (bookmarkEditor === null || bookmarkEditor.id !== bookmark.id || bookmarkRenameBusy) return
+        if (typeof onRenameBookmark !== 'function') return
+        const title = bookmarkEditor.title
+        if (title.trim() === bookmark.title.trim()) {
+          setBookmarkEditor(null)
+          return
+        }
+        setBookmarkRenameBusy(true)
+        let saved = false
+        try {
+          saved = await onRenameBookmark(bookmark.id, title)
+        } catch {
+          saved = false
+        } finally {
+          setBookmarkRenameBusy(false)
+        }
+        if (saved) setBookmarkEditor(null)
+      }
+
       const bookmarkList =
         bookmarks.length === 0
           ? null
@@ -5565,42 +5606,120 @@ window.__ModuleLoader__.load({
               bookmarks.map((bookmark) => {
                 const mobile = bookmark.device === 'mobile'
                 const deviceLabel = mobile ? t('browser.mobile') : t('browser.pc')
+                const editing = bookmarkEditor !== null && bookmarkEditor.id === bookmark.id
+                const deviceBadge = h(
+                  'span',
+                  { className: 'ds-browser-bookmark-device', 'data-device': mobile ? 'mobile' : 'pc' },
+                  mobile ? h(PhoneIcon) : h(MonitorIcon),
+                  h('span', null, deviceLabel),
+                )
+                const actions = editing
+                  ? [
+                      h(
+                        'button',
+                        {
+                          key: 'save',
+                          type: 'button',
+                          className: 'ds-browser-bookmark-remove ds-browser-bookmark-save',
+                          title: t('action.save'),
+                          'aria-label': t('action.save'),
+                          disabled: bookmarkRenameBusy,
+                          onClick: () => void commitBookmarkRename(bookmark),
+                        },
+                        h(SaveIcon),
+                      ),
+                      h(
+                        'button',
+                        {
+                          key: 'cancel',
+                          type: 'button',
+                          className: 'ds-browser-bookmark-remove',
+                          title: t('action.cancel'),
+                          'aria-label': t('action.cancel'),
+                          onClick: cancelBookmarkRename,
+                        },
+                        h(CloseIcon),
+                      ),
+                    ]
+                  : [
+                      h(
+                        'button',
+                        {
+                          key: 'rename',
+                          type: 'button',
+                          className: 'ds-browser-bookmark-remove ds-browser-bookmark-edit',
+                          title: t('browser.bookmarkRename'),
+                          'aria-label': t('browser.bookmarkRename'),
+                          onClick: () => beginBookmarkRename(bookmark),
+                        },
+                        h(PencilIcon),
+                      ),
+                      h(
+                        'button',
+                        {
+                          key: 'remove',
+                          type: 'button',
+                          className: 'ds-browser-bookmark-remove',
+                          title: t('browser.bookmarkRemove'),
+                          'aria-label': t('browser.bookmarkRemove'),
+                          onClick: () => onRemoveBookmark(bookmark.id),
+                        },
+                        h(TrashIcon),
+                      ),
+                    ]
                 return h(
                   'div',
                   { key: bookmark.id, className: 'ds-browser-bookmark-row' },
-                  h(
-                    'button',
-                    {
-                      type: 'button',
-                      className: 'ds-browser-bookmark',
-                      title: `${bookmark.url} · ${deviceLabel}`,
-                      onClick: () => onOpenBookmark(bookmark),
-                    },
-                    h('span', { className: 'ds-browser-bookmark-icon' }, h(GlobeIcon)),
-                    h(
-                      'span',
-                      { className: 'ds-browser-bookmark-text' },
-                      h('span', { className: 'ds-browser-bookmark-title' }, bookmark.title),
-                      h('span', { className: 'ds-browser-bookmark-url' }, bookmark.url),
-                    ),
-                    h(
-                      'span',
-                      { className: 'ds-browser-bookmark-device', 'data-device': mobile ? 'mobile' : 'pc' },
-                      mobile ? h(PhoneIcon) : h(MonitorIcon),
-                      h('span', null, deviceLabel),
-                    ),
-                  ),
-                  h(
-                    'button',
-                    {
-                      type: 'button',
-                      className: 'ds-browser-bookmark-remove',
-                      title: t('browser.bookmarkRemove'),
-                      'aria-label': t('browser.bookmarkRemove'),
-                      onClick: () => onRemoveBookmark(bookmark.id),
-                    },
-                    h(TrashIcon),
-                  ),
+                  editing
+                    ? h(
+                        'div',
+                        { className: 'ds-browser-bookmark ds-browser-bookmark-editing' },
+                        h('span', { className: 'ds-browser-bookmark-icon' }, h(GlobeIcon)),
+                        h(
+                          'span',
+                          { className: 'ds-browser-bookmark-text' },
+                          h('input', {
+                            className: 'ds-browser-bookmark-alias',
+                            value: bookmarkEditor.title,
+                            placeholder: t('browser.bookmarkAliasPlaceholder'),
+                            spellCheck: false,
+                            maxLength: 200,
+                            autoFocus: true,
+                            disabled: bookmarkRenameBusy,
+                            'aria-label': t('browser.bookmarkRename'),
+                            onChange: (event) => setBookmarkEditor({ id: bookmark.id, title: event.target.value }),
+                            onKeyDown: (event) => {
+                              if (event.key === 'Enter') {
+                                event.preventDefault()
+                                void commitBookmarkRename(bookmark)
+                              } else if (event.key === 'Escape') {
+                                event.preventDefault()
+                                cancelBookmarkRename()
+                              }
+                            },
+                          }),
+                          h('span', { className: 'ds-browser-bookmark-url' }, bookmark.url),
+                        ),
+                        deviceBadge,
+                      )
+                    : h(
+                        'button',
+                        {
+                          type: 'button',
+                          className: 'ds-browser-bookmark',
+                          title: `${bookmark.url} · ${deviceLabel}`,
+                          onClick: () => onOpenBookmark(bookmark),
+                        },
+                        h('span', { className: 'ds-browser-bookmark-icon' }, h(GlobeIcon)),
+                        h(
+                          'span',
+                          { className: 'ds-browser-bookmark-text' },
+                          h('span', { className: 'ds-browser-bookmark-title' }, bookmark.title),
+                          h('span', { className: 'ds-browser-bookmark-url' }, bookmark.url),
+                        ),
+                        deviceBadge,
+                      ),
+                  ...actions,
                 )
               }),
             )
@@ -5741,7 +5860,7 @@ window.__ModuleLoader__.load({
     }
 
     /** Embedded page for one browser tab, with a same-origin guard and fallbacks. */
-    function BrowserPanel({ tab, t, onNavigate, onFinished, onExternal, onDismissMixed, host, onHostChange, onHostBlur, scheme, onSchemeChange, bookmarks, bookmarksStatus, bookmarksError, onOpenBookmark, onRemoveBookmark, onReloadBookmarks }) {
+    function BrowserPanel({ tab, t, onNavigate, onFinished, onExternal, onDismissMixed, host, onHostChange, onHostBlur, scheme, onSchemeChange, bookmarks, bookmarksStatus, bookmarksError, onOpenBookmark, onRemoveBookmark, onRenameBookmark, onReloadBookmarks }) {
       const frameRef = useRef(null)
       const stageRef = useRef(null)
       const [stageSize, setStageSize] = useState({ width: 0, height: 0 })
@@ -5775,7 +5894,20 @@ window.__ModuleLoader__.load({
         window.addEventListener('message', onMessage)
         return () => window.removeEventListener('message', onMessage)
       }, [onNavigate, onExternal])
-      if (tab.url.length === 0) return h(BrowserStart, { t, onOpen: onNavigate, host, onHostChange, onHostBlur, scheme, onSchemeChange, bookmarks, bookmarksStatus, bookmarksError, onOpenBookmark, onRemoveBookmark, onReloadBookmarks })
+      const mixed = window.location.protocol === 'https:' && tab.url.startsWith('http://')
+      const dismissMixedRef = useRef(onDismissMixed)
+      useEffect(() => {
+        dismissMixedRef.current = onDismissMixed
+      }, [onDismissMixed])
+      // The mixed-content note is informational: keep it on screen for three
+      // seconds, then hide it without user action. Reloads and navigations
+      // reset `mixedDismissed`, so the note (and this timer) starts again.
+      useEffect(() => {
+        if (!mixed || tab.mixedDismissed === true) return
+        const timer = window.setTimeout(() => dismissMixedRef.current(), BROWSER_MIXED_NOTE_MS)
+        return () => window.clearTimeout(timer)
+      }, [mixed, tab.mixedDismissed, tab.url, tab.reloadKey])
+      if (tab.url.length === 0) return h(BrowserStart, { t, onOpen: onNavigate, host, onHostChange, onHostBlur, scheme, onSchemeChange, bookmarks, bookmarksStatus, bookmarksError, onOpenBookmark, onRemoveBookmark, onRenameBookmark, onReloadBookmarks })
       let sameOrigin = false
       try {
         const target = new URL(tab.url)
@@ -5805,7 +5937,6 @@ window.__ModuleLoader__.load({
           ),
         )
       }
-      const mixed = window.location.protocol === 'https:' && tab.url.startsWith('http://')
       const mobile = tab.device === 'mobile'
       const device = browserDeviceSize(tab)
       const availableWidth = stageSize.width > 0 ? stageSize.width : device.width
@@ -9322,6 +9453,38 @@ window.__ModuleLoader__.load({
             if (store.get().root === root) {
               setBanner({ kind: 'error', message: t('browser.bookmarkSaveFailed', { message: browserBookmarkErrorText(error) }) })
             }
+          } finally {
+            browserBookmarkSavingRef.current = false
+          }
+        }
+
+        /**
+         * Rename one saved address. An empty alias restores the automatic
+         * `host+path` label, while the URL itself never changes.
+         */
+        async function renameBrowserBookmark(id, title) {
+          if (browserBookmarkSavingRef.current) return false
+          const root = bookmarkWorkspaceRoot()
+          if (root === null) return false
+          const bookmark = browserBookmarks.find((entry) => entry.id === id)
+          if (bookmark === undefined) return false
+          const name = typeof title === 'string' ? title.trim().slice(0, 200) : ''
+          browserBookmarkSavingRef.current = true
+          try {
+            const value = await call('browserBookmarkRename', {
+              root,
+              id,
+              title: name.length > 0 ? name : browserTitle(bookmark.url),
+            })
+            if (store.get().root !== root) return false
+            applyBrowserBookmarkSnapshot(value)
+            showToast(name.length > 0 ? t('browser.bookmarkRenamed') : t('browser.bookmarkAliasCleared'))
+            return true
+          } catch (error) {
+            if (store.get().root === root) {
+              setBanner({ kind: 'error', message: t('browser.bookmarkSaveFailed', { message: browserBookmarkErrorText(error) }) })
+            }
+            return false
           } finally {
             browserBookmarkSavingRef.current = false
           }
@@ -13084,6 +13247,7 @@ window.__ModuleLoader__.load({
                                   bookmarksError: browserBookmarksError,
                                   onOpenBookmark: (bookmark) => openBrowserBookmark(tab.path, bookmark),
                                   onRemoveBookmark: removeBrowserBookmark,
+                                  onRenameBookmark: renameBrowserBookmark,
                                   onReloadBookmarks: () => void refreshBrowserBookmarks(),
                                   onExternal: (targetUrl) => {
                                     const target = normalizeBrowserUrl(
@@ -16392,6 +16556,24 @@ window.__ModuleLoader__.load({
 }
 .ds-browser-bookmark-remove:hover { border-color: var(--dsw-alias-state-error-primary); color: var(--dsw-alias-state-error-primary); }
 .ds-browser-bookmark-remove svg { width: 13px; height: 13px; }
+.ds-browser-bookmark-remove:disabled { opacity: 0.5; cursor: default; }
+.ds-browser-bookmark-editing { cursor: default; }
+.ds-browser-bookmark-alias {
+  width: 100%;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--dsw-alias-brand-primary);
+  border-radius: 5px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}
+.ds-browser-bookmark-alias:focus { border-color: var(--dsw-alias-brand-primary); }
+.ds-browser-bookmark-save { color: var(--dsw-alias-brand-primary); }
+.ds-browser-bookmark-save:hover { border-color: var(--dsw-alias-brand-primary); color: var(--dsw-alias-brand-primary); }
+.ds-browser-bookmark-edit:hover { border-color: var(--dsw-alias-brand-primary); color: var(--dsw-alias-brand-primary); }
 .ds-browser-bookmark-error { color: var(--dsw-alias-state-error-primary); font-size: 11.5px; line-height: 1.5; }
 .ds-browser-bookmarks-hint { color: var(--dsw-alias-label-secondary); font-size: 10.5px; line-height: 1.5; }
 .ds-browser-start-hint { max-width: 620px; color: var(--dsw-alias-label-secondary); font-size: 11px; line-height: 1.6; }

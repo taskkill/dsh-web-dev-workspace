@@ -320,13 +320,15 @@ it for you.
 - The toolbar star **bookmarks the current address** together with the active
   **PC / Mobile** viewport (device preset and orientation); click the filled star
   again to remove it. The start page lists every bookmark and reopens one in its
-  saved viewport with a single click, and each row can be deleted there.
+  saved viewport with a single click, and each row can be deleted there. The
+  pencil button beside a row edits its **alias** (Enter/Save persists it, Escape
+  cancels; an empty alias restores the automatic `host+path` name).
   Bookmarks and the start page's **Protocol / Host** fields are stored per
   workspace in `.dsh/browser-bookmarks.json` and kept out of Git by the generated
   `.dsh/.gitignore`, so the port shortcuts survive reloads, a browser-data wipe or
   a different Harness origin without ever being committed.
-- An HTTPS mixed-content warning can be dismissed; it returns after a reload,
-  navigation or Direct/Proxy switch.
+- An HTTPS mixed-content warning can be dismissed; it hides itself after three
+  seconds and returns after a reload, navigation or Direct/Proxy switch.
 - The **Maximize editor** button at the panel's top-right hides the explorer so
   the editor/built-in browser fills the file-workspace component itself (no
   browser fullscreen); press Esc or click Restore to bring the tree back.

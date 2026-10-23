@@ -296,6 +296,8 @@ async function dispatch(ctx, op, body) {
       return addBrowserBookmark(ctx, body)
     case 'browserBookmarkRemove':
       return removeBrowserBookmark(ctx, body)
+    case 'browserBookmarkRename':
+      return renameBrowserBookmark(ctx, body)
     case 'browserSettingsSave':
       return saveBrowserSettings(ctx, body)
     case 'version':
@@ -930,6 +932,17 @@ async function addBrowserBookmark(ctx, body) {
 async function removeBrowserBookmark(ctx, body) {
   const root = await browserBookmarkRoot(ctx, body.root)
   return bookmarks.removeBookmark(root, body.id)
+}
+
+/**
+ * Rename one bookmarked address.
+ * @param ctx - Host context.
+ * @param body - `{ root, id, title }`.
+ * @returns the refreshed snapshot plus `renamed`.
+ */
+async function renameBrowserBookmark(ctx, body) {
+  const root = await browserBookmarkRoot(ctx, body.root)
+  return bookmarks.renameBookmark(root, body.id, body.title)
 }
 
 /**
