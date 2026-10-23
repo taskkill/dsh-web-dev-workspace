@@ -52,6 +52,9 @@ window.__ModuleLoader__.load({
     const SIDE_TAB_LABEL_WIDTH = 72
     const SIDE_TAB_ICON_WIDTH = 36
 
+    /** How often the hidden Git panel refreshes its status for the tab badge. */
+    const GIT_STATUS_POLL_MS = 10000
+
     /** Host-side HTML proxy for public preview pages. */
     const PROXY_PATH = 'api/dsh-web-filebrowser-proxy'
 
@@ -165,6 +168,11 @@ window.__ModuleLoader__.load({
       if (diff < 0) return 'overdue'
       if (diff === 0) return 'today'
       return 'future'
+    }
+
+    /** Cap a tab badge so a large count cannot squeeze the tab. */
+    function formatBadgeCount(value) {
+      return value > 99 ? '99+' : String(value)
     }
 
     /**
@@ -621,6 +629,7 @@ window.__ModuleLoader__.load({
       'image.open': '在新标签页中打开图片',
       'file.openExternal': '用浏览器打开',
       'git.title': 'Git',
+      'git.tabDirty': '{count} 个文件有未提交修改',
       'git.toggle': 'Git 源代码管理',
       'git.backToFiles': '返回文件树',
       'git.loading': '正在读取 Git 状态…',
@@ -1186,6 +1195,7 @@ window.__ModuleLoader__.load({
       'image.open': 'Open image in a new tab',
       'file.openExternal': 'Open with the browser',
       'git.title': 'Git',
+      'git.tabDirty': '{count} files with uncommitted changes',
       'git.toggle': 'Git source control',
       'git.backToFiles': 'Back to files',
       'git.loading': 'Reading Git status…',
@@ -3891,7 +3901,7 @@ window.__ModuleLoader__.load({
       )
     }
 
-    function GitPanel({ root, t, onOpenDiff, showToast, onFilesChanged }) {
+    function GitPanel({ root, t, onOpenDiff, showToast, onFilesChanged, onStatusChange }) {
       const [status, setStatus] = useState(null)
       const [loading, setLoading] = useState(root !== null)
       const [error, setError] = useState(null)
@@ -3923,6 +3933,8 @@ window.__ModuleLoader__.load({
       const [stashMessage, setStashMessage] = useState('')
       const [stashIncludeUntracked, setStashIncludeUntracked] = useState(false)
       const [confirmState, setConfirmState] = useState(null)
+      const onStatusChangeRef = useRef(onStatusChange)
+      onStatusChangeRef.current = onStatusChange
 
       async function loadHistory(silent = false) {
         if (root === null) {
@@ -4026,6 +4038,35 @@ window.__ModuleLoader__.load({
         if (root !== null) void loadStatus()
         // eslint-disable-next-line react-hooks/exhaustive-deps
       }, [root])
+
+      // Publish every status snapshot to the sidebar badge. The callback lives in
+      // a ref so a parent re-render cannot create a notification loop.
+      useEffect(() => {
+        if (typeof onStatusChangeRef.current === 'function') onStatusChangeRef.current(status)
+      }, [status])
+
+      // The panel may be hidden while the Git badge is visible, so keep the badge
+      // fresh for editor saves and external changes. A workspace that is not a
+      // repository stops polling after its first failed lookup.
+      const hasRepo = status?.repo === true
+      useEffect(() => {
+        if (root === null || !hasRepo) return undefined
+        let polling = false
+        const refresh = () => {
+          if (polling || document.hidden || busy || stashBusy) return
+          polling = true
+          void loadStatus(true).finally(() => {
+            polling = false
+          })
+        }
+        const timer = window.setInterval(refresh, GIT_STATUS_POLL_MS)
+        window.addEventListener('focus', refresh)
+        return () => {
+          window.clearInterval(timer)
+          window.removeEventListener('focus', refresh)
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [root, hasRepo, busy, stashBusy])
 
       useEffect(() => {
         if (!branchOpen && !compareOpen && !stashOpen && confirmState === null) return undefined
@@ -6369,6 +6410,7 @@ window.__ModuleLoader__.load({
         const [paneView, setPaneView] = useState('files')
         const [sideTabsWidth, setSideTabsWidth] = useState(0)
         const [sideViewsOpen, setSideViewsOpen] = useState(false)
+        const [gitChangeCount, setGitChangeCount] = useState(0)
         const [uploading, setUploading] = useState(false)
         const rootRef = useRef(null)
         const mdSplitRef = useRef(null)
@@ -6807,6 +6849,23 @@ window.__ModuleLoader__.load({
 
         function showToast(message) {
           setToast(message)
+        }
+
+        /**
+         * Keep the Git tab badge in sync with the panel's status.
+         *
+         * A path that is both staged and modified appears in both lists, so count
+         * distinct paths rather than change entries.
+         */
+        function updateGitStatus(status) {
+          const paths = new Set()
+          for (const list of [status?.staged, status?.changes]) {
+            if (!Array.isArray(list)) continue
+            for (const entry of list) {
+              if (typeof entry?.path === 'string' && entry.path.length > 0) paths.add(entry.path)
+            }
+          }
+          setGitChangeCount(paths.size)
         }
 
         async function checkVersionNow() {
@@ -11277,6 +11336,9 @@ window.__ModuleLoader__.load({
               label: t('git.title'),
               icon: h(GitIcon),
               active: showGit,
+              count: gitChangeCount,
+              countTone: 'warn',
+              title: gitChangeCount > 0 ? t('git.tabDirty', { count: String(gitChangeCount) }) : t('git.title'),
               select: () => setPaneView('git'),
             })
             views.push({
@@ -11303,18 +11365,33 @@ window.__ModuleLoader__.load({
           let visible = views
           if (overflow) {
             const capacity = Math.max(1, Math.floor(width / SIDE_TAB_ICON_WIDTH) - 1)
-            visible = views.slice(0, capacity)
+            // Keep the active view and a dirty Git tab visible so their badges do
+            // not disappear into the overflow menu. The original order is kept.
+            const required = []
             const active = views.find((view) => view.active)
-            if (active !== undefined && !visible.includes(active) && visible.length > 0) {
-              const swapIndex = visible.length - 1
-              visible = [...visible.slice(0, swapIndex), active]
+            if (active !== undefined) required.push(active)
+            for (const view of views) {
+              if (view.countTone === 'warn' && view.count > 0 && !required.includes(view)) required.push(view)
             }
+            const chosen = new Set(required.slice(0, capacity))
+            for (const view of views) {
+              if (chosen.size >= capacity) break
+              chosen.add(view)
+            }
+            visible = views.filter((view) => chosen.has(view))
           }
           const hidden = views.filter((view) => !visible.includes(view))
+          const hiddenWarn = hidden.some((view) => view.countTone === 'warn' && view.count > 0)
+          const hiddenCount = hidden.some((view) => view.count > 0)
           const iconOnly = !labelMode
 
           function renderTab(view) {
-            const title = view.count === undefined || view.count <= 0 ? view.label : `${view.label} (${String(view.count)})`
+            const title =
+              typeof view.title === 'string' && view.title.length > 0
+                ? view.title
+                : view.count === undefined || view.count <= 0
+                  ? view.label
+                  : `${view.label} (${String(view.count)})`
             return h(
               'button',
               {
@@ -11335,7 +11412,14 @@ window.__ModuleLoader__.load({
               view.icon,
               iconOnly ? null : h('span', null, view.label),
               view.count !== undefined && view.count > 0
-                ? h('span', { className: 'ds-side-tab-count' }, String(view.count))
+                ? h(
+                    'span',
+                    {
+                      className: 'ds-side-tab-count',
+                      'data-tone': view.countTone === undefined ? undefined : view.countTone,
+                    },
+                    formatBadgeCount(view.count),
+                  )
                 : null,
             )
           }
@@ -11373,6 +11457,13 @@ window.__ModuleLoader__.load({
                       onClick: () => setSideViewsOpen((open) => !open),
                     },
                     h(MoreIcon),
+                    hiddenCount
+                      ? h('span', {
+                          className: 'ds-side-tab-alert',
+                          'data-tone': hiddenWarn ? 'warn' : undefined,
+                          'aria-hidden': true,
+                        })
+                      : null,
                   )
                 : null,
               sideViewsOpen
@@ -11398,7 +11489,14 @@ window.__ModuleLoader__.load({
                         view.icon,
                         h('span', { className: 'ds-side-views-name' }, view.label),
                         view.count !== undefined && view.count > 0
-                          ? h('span', { className: 'ds-side-views-count' }, String(view.count))
+                          ? h(
+                              'span',
+                              {
+                                className: 'ds-side-views-count',
+                                'data-tone': view.countTone === undefined ? undefined : view.countTone,
+                              },
+                              formatBadgeCount(view.count),
+                            )
                           : null,
                       ),
                     ),
@@ -12182,6 +12280,7 @@ window.__ModuleLoader__.load({
                       onOpenDiff: (request) => void openDiffView(request),
                       showToast,
                       onFilesChanged: () => void refreshTree(),
+                      onStatusChange: updateGitStatus,
                     }),
                   )
                 : null,
@@ -14083,6 +14182,17 @@ window.__ModuleLoader__.load({
 .ds-side-tab svg { flex: 0 0 auto; width: 12px; height: 12px; }
 .ds-side-tab span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ds-side-tab[data-icon-only="true"] { gap: 2px; }
+.ds-side-tab-alert {
+  flex: 0 0 auto;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--dsw-alias-brand-primary);
+}
+.ds-side-tab-alert[data-tone="warn"] {
+  background: var(--dsw-alias-state-warn-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--dsw-alias-state-warn-primary) 20%, transparent);
+}
 .ds-side-views-backdrop { position: fixed; inset: 0; z-index: 80; background: transparent; }
 .ds-side-views-menu {
   position: absolute;
@@ -14593,7 +14703,11 @@ window.__ModuleLoader__.load({
   line-height: 14px;
   text-align: center;
 }
-.ds-root[data-compact="true"] .ds-side-tab-count { display: none; }
+.ds-side-tab-count[data-tone="warn"],
+.ds-side-views-count[data-tone="warn"] {
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 18%, transparent);
+  color: var(--dsw-alias-state-warn-primary);
+}
 .ds-harness-view { overflow: auto; }
 .ds-harness-section { padding: 8px 10px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
 .ds-harness-label { margin: 2px 0 3px; color: var(--dsw-alias-label-caption); font-size: 9.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }

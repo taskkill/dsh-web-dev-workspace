@@ -46,7 +46,8 @@ it for you.
 - **Markdown, PDF and image previews** — rendered Markdown with a live split view,
   inline PDF/images, and a browser handoff for binaries.
 - **Local Git workflow** — changes and commit graph, staging, commits, restore,
-  stash, branch switching, diffs, compare and fetch/pull/push.
+  stash, branch switching, diffs, compare and fetch/pull/push; the bottom Git tab
+  shows an amber badge with the number of uncommitted files.
 - **Built-in terminal** — vendored xterm.js terminals that move between the bottom
   panel and editor tabs, plus project-aware quick commands.
 - **Built-in browser** — preview a running dev server beside the code, with
@@ -211,8 +212,9 @@ it for you.
 - English and Chinese UI; the client uses only Harness theme tokens (`--dsw-*`) and
   imports no Harness Client package.
 - Sidebar tabs include **Explorer / Search / Todo / Git / Memory / Harness**; the
-  Todo tab shows the number of open tasks. The strip collapses labels to icons and
-  then to a **More views** menu as it narrows, so adding views does not crowd it.
+  Todo tab shows the number of open tasks, and Git shows an amber changed-file
+  count while the worktree is dirty. The strip collapses labels to icons and then
+  to a **More views** menu as it narrows, so adding views does not crowd it.
 - **Mobile/tablet layout**: below a 900px panel width the explorer and editor switch to
   a single-column layout with a back button in the breadcrumb; the header wraps with a
   full-width address row; tree rows, sidebar tabs and action buttons get larger touch
@@ -448,7 +450,7 @@ repository root, not a subdirectory).
   preferences and SSH remotes are copied from the old `dsh-side:` browser keys on
   first load. Hard-refresh any tab opened with the old client.
 - **Version hint**: the file workspace header shows the current version (for
-  example `v1.2.3`). Clicking the badge checks `taskkill/dsh-web-filebrowser`'s
+  example `v1.2.4`). Clicking the badge checks `taskkill/dsh-web-filebrowser`'s
   `package.json` on GitHub and highlights a newer version with update guidance.
   The result is cached in Host memory for six hours; the check requests only the
   public version manifest and sends no workspace data. The hint compares the

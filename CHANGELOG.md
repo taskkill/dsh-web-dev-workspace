@@ -27,6 +27,16 @@ All notable changes to this project are documented here.
   roots keep the panel read-only with an explicit explanation. The first write
   creates `.dsh/.gitignore` (`*`) when absent.
 
+### Git change badge
+
+- The **Git** sidebar tab now shows an amber count badge when the workspace has
+  uncommitted changes. The count is the number of distinct changed paths across
+  staged, working-tree and untracked entries, capped at `99+` on the tab.
+- The hidden Git panel refreshes its status every ten seconds (and on window
+  focus) while the workspace is a repository, so the badge also reacts to editor
+  saves and external changes. It updates immediately after Git actions and
+  disappears when the workspace is clean or is not a repository.
+
 ### Responsive sidebar view switcher
 
 - The sidebar's bottom view tabs now adapt to the available width instead of

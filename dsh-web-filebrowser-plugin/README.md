@@ -50,7 +50,7 @@ third-party runtime dependencies.
 
 - **Left Sidebar** panel icon (`sidebar.panellist`, id `files`) opens the full
   workspace in the centre column.
-- A **Git** tab at the bottom of the sidebar switches to the source-control view; the Explorer tab returns to the tree.
+- A **Git** tab at the bottom of the sidebar switches to the source-control view; the Explorer tab returns to the tree. It shows an amber badge with the number of distinct changed files while the worktree is dirty.
 - A **Memory** tab (local workspaces only) edits the same per-workspace memory
   the model uses across sessions; the refresh button re-reads the file.
 - A **Todo** tab (local workspaces only) is a per-workspace task board with
@@ -218,6 +218,10 @@ third-party runtime dependencies.
 ### Git
 
 - Branch, upstream and ahead/behind status; staged, unstaged and untracked files.
+- The bottom **Git** tab shows an amber badge with the number of distinct changed
+  files. A hidden Git panel refreshes status every ten seconds and on focus, so
+  the badge also reflects editor saves and external changes; it disappears when
+  the workspace is clean or is not a repository.
 - Stage/unstage a file or everything, commit with a message (`Ctrl/⌘+Enter`), view a
   read-only diff in the editor (side-by-side by default, unified on demand), initialize a repository and switch local branches.
 - Fetch, pull and push from the Git toolbar; **Commit & push** commits and pushes
