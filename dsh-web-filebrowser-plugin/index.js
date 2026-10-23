@@ -22,6 +22,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { Readable } from 'node:stream'
 import { fileURLToPath } from 'node:url'
+import * as bookmarks from './bookmarks.js'
 import * as memory from './memory.js'
 import * as ssh from './ssh.js'
 import { createTerminalManager } from './terminal.js'
@@ -289,6 +290,14 @@ async function dispatch(ctx, op, body) {
       return deleteTodo(ctx, body)
     case 'todoClearCompleted':
       return clearCompletedTodos(ctx, body)
+    case 'browserBookmarks':
+      return listBrowserBookmarks(ctx, body)
+    case 'browserBookmarkAdd':
+      return addBrowserBookmark(ctx, body)
+    case 'browserBookmarkRemove':
+      return removeBrowserBookmark(ctx, body)
+    case 'browserSettingsSave':
+      return saveBrowserSettings(ctx, body)
     case 'version':
       return { version: await readPackageVersion() }
     case 'versionCheck':
@@ -869,6 +878,70 @@ async function deleteTodo(ctx, body) {
 async function clearCompletedTodos(ctx, body) {
   const root = await todoRoot(ctx, body.root)
   return todo.clearCompletedTodos(root)
+}
+
+/**
+ * Resolve a local workspace root for a browser-bookmark operation. Bookmarks
+ * live in the workspace's `.dsh` directory, so SSH remote roots have none.
+ * @param ctx - Host context.
+ * @param requested - root path sent by the browser.
+ * @returns canonical local root.
+ */
+async function browserBookmarkRoot(ctx, requested) {
+  const root = await resolveRoot(ctx, requested)
+  if (ssh.isSshRoot(root)) throw new SideError('ssh-unsupported', 'SSH 远程工作区不支持本地收藏')
+  return root
+}
+
+/**
+ * Read one workspace's built-in browser bookmarks and start-page settings.
+ * @param ctx - Host context.
+ * @param body - `{ root }`.
+ * @returns `{ settings, bookmarks, total, updatedAt, path }`.
+ */
+async function listBrowserBookmarks(ctx, body) {
+  const root = await browserBookmarkRoot(ctx, body.root)
+  return bookmarks.listBookmarks(root)
+}
+
+/**
+ * Add or refresh one bookmarked address, remembering its PC/Mobile viewport.
+ * @param ctx - Host context.
+ * @param body - `{ root, url, title?, device?, preset?, orientation? }`.
+ * @returns the refreshed snapshot plus `created`.
+ */
+async function addBrowserBookmark(ctx, body) {
+  const root = await browserBookmarkRoot(ctx, body.root)
+  return bookmarks.addBookmark(root, {
+    url: body.url,
+    title: body.title,
+    device: body.device,
+    preset: body.preset,
+    orientation: body.orientation,
+  })
+}
+
+/**
+ * Remove one bookmarked address.
+ * @param ctx - Host context.
+ * @param body - `{ root, id }`.
+ * @returns the refreshed snapshot plus `removed`.
+ */
+async function removeBrowserBookmark(ctx, body) {
+  const root = await browserBookmarkRoot(ctx, body.root)
+  return bookmarks.removeBookmark(root, body.id)
+}
+
+/**
+ * Save the built-in browser start page's protocol/host preferences for one
+ * workspace.
+ * @param ctx - Host context.
+ * @param body - `{ root, scheme?, host? }`.
+ * @returns the refreshed browser-state snapshot.
+ */
+async function saveBrowserSettings(ctx, body) {
+  const root = await browserBookmarkRoot(ctx, body.root)
+  return bookmarks.saveSettings(root, { scheme: body.scheme, host: body.host })
 }
 
 /**

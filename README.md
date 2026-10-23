@@ -51,7 +51,8 @@ it for you.
 - **Built-in terminal** — vendored xterm.js terminals that move between the bottom
   panel and editor tabs, plus project-aware quick commands.
 - **Built-in browser** — preview a running dev server beside the code, with
-  PC/mobile viewports and a public-page proxy fallback.
+  PC/mobile viewports, workspace-stored address bookmarks, protocol/host settings
+  and a public-page proxy fallback.
 - **Favorites and a workspace switcher** — one click opens a favorite file or
   folder; remove stale workspace records from the picker.
 - **Floating DeepSeek chat** — keep the current conversation in a movable,
@@ -316,6 +317,14 @@ it for you.
   **Built-in browser** action on the welcome page, or `Alt+B`.
 - The address bar accepts `localhost:5173`, `:3000`, `https://example.com` and
   similar; back, forward, reload and external-open are built in.
+- The toolbar star **bookmarks the current address** together with the active
+  **PC / Mobile** viewport (device preset and orientation); click the filled star
+  again to remove it. The start page lists every bookmark and reopens one in its
+  saved viewport with a single click, and each row can be deleted there.
+  Bookmarks and the start page's **Protocol / Host** fields are stored per
+  workspace in `.dsh/browser-bookmarks.json` and kept out of Git by the generated
+  `.dsh/.gitignore`, so the port shortcuts survive reloads, a browser-data wipe or
+  a different Harness origin without ever being committed.
 - An HTTPS mixed-content warning can be dismissed; it returns after a reload,
   navigation or Direct/Proxy switch.
 - The **Maximize editor** button at the panel's top-right hides the explorer so
@@ -479,9 +488,11 @@ repository root, not a subdirectory).
 - **Uninstall**: uninstall `@local/dsh-web-dev-workspace` from **Installed plugins**. This removes
   the profile dependency/link and the plugin row; it does not delete your cloned
   source or workspace files.
-- **Browser state**: preferences and favorites live in the browser's
-  `localStorage`. Uninstalling the plugin does not clear them; use your browser's
-  site-data controls if you want a clean slate.
+- **Browser state**: view preferences and file favorites live in the browser's
+  `localStorage`; preview-address bookmarks live in each workspace's
+  `.dsh/browser-bookmarks.json` (git-ignored). Uninstalling the plugin does not
+  clear either; use your browser's site-data controls for the former, or delete
+  the `.dsh` file for the latter.
 
 ### Troubleshooting
 

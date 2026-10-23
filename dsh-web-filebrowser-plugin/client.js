@@ -88,6 +88,11 @@ window.__ModuleLoader__.load({
     /** Remember the last PC/mobile viewport choice. */
     const BROWSER_VIEW_KEY = 'dsh-web-filebrowser:browser-view'
 
+    /** Bookmarked preview addresses, each with the viewport it was saved in. */
+    const BROWSER_BOOKMARKS_PATH = '.dsh/browser-bookmarks.json'
+    const BROWSER_BOOKMARKS_LEGACY_KEY = 'dsh-web-filebrowser:browser-bookmarks'
+    const BROWSER_BOOKMARK_LIMIT = 50
+
     /** Hostname used for all detected/common port shortcuts. */
     const PREVIEW_HOST_KEY = 'dsh-web-filebrowser:preview-host'
     const PREVIEW_SCHEME_KEY = 'dsh-web-filebrowser:preview-scheme'
@@ -530,6 +535,23 @@ window.__ModuleLoader__.load({
       'status.encoding': 'UTF-8',
       'browser.open': '内置浏览器',
       'browser.newTab': '新浏览器标签',
+      'browser.bookmarks': '收藏地址',
+      'browser.bookmarksEmpty': '还没有收藏地址。打开页面后点工具栏的星标即可收藏，并会记住当时的 PC / 手机模式。',
+      'browser.bookmarksLoading': '正在读取工作区收藏…',
+      'browser.bookmarksNoRoot': '收藏保存在工作区；请先打开一个本地工作区。',
+      'browser.bookmarksSsh': 'SSH 远程工作区不支持本地收藏；请切换到本地工作区。',
+      'browser.bookmarksStorage': '收藏和「协议 / 主机」设置保存在当前工作区的 {path}，并由 .dsh/.gitignore 忽略，不会提交到 Git。',
+      'browser.bookmarksLoadFailed': '读取收藏失败：{message}',
+      'browser.bookmarksRestart': 'Host 还没有加载收藏接口，请重启 Harness 后刷新页面',
+      'browser.bookmarksReload': '重试',
+      'browser.bookmarkAdd': '收藏此地址（记住当前 PC / 手机模式）',
+      'browser.bookmarkRemove': '取消收藏',
+      'browser.bookmarkAdded': '已收藏（{device}模式）',
+      'browser.bookmarkRemoved': '已取消收藏',
+      'browser.bookmarkNoRoot': '收藏保存在工作区，请先打开一个本地工作区',
+      'browser.bookmarkSsh': 'SSH 远程工作区不支持本地收藏',
+      'browser.bookmarkSaveFailed': '保存收藏失败：{message}',
+      'browser.settingsSaveFailed': '保存协议/主机设置失败：{message}',
       'browser.back': '后退',
       'browser.forward': '前进',
       'browser.reload': '刷新',
@@ -538,7 +560,7 @@ window.__ModuleLoader__.load({
       'browser.host': '主机',
       'browser.scheme': '协议',
       'browser.schemeAuto': '自动',
-      'browser.hostHint': '端口快捷方式统一使用此协议和主机',
+      'browser.hostHint': '端口快捷方式统一使用此协议和主机（本地工作区会保存设置）',
       'browser.hostReset': '重置为 localhost',
       'browser.resetDefaults': '重置',
       'browser.openExternal': '在外部浏览器打开',
@@ -1096,6 +1118,23 @@ window.__ModuleLoader__.load({
       'status.encoding': 'UTF-8',
       'browser.open': 'Built-in browser',
       'browser.newTab': 'New browser tab',
+      'browser.bookmarks': 'Bookmarked addresses',
+      'browser.bookmarksEmpty': 'No bookmarks yet. Open a page and click the star in the toolbar; the current PC/Mobile mode is saved with it.',
+      'browser.bookmarksLoading': 'Loading workspace bookmarks…',
+      'browser.bookmarksNoRoot': 'Bookmarks are stored in a workspace; open a local workspace first.',
+      'browser.bookmarksSsh': 'SSH remote workspaces cannot store local bookmarks; switch to a local workspace.',
+      'browser.bookmarksStorage': 'Bookmarks and the Protocol/Host fields are stored in this workspace at {path} and ignored by .dsh/.gitignore, so they are never committed to Git.',
+      'browser.bookmarksLoadFailed': 'Could not read bookmarks: {message}',
+      'browser.bookmarksRestart': 'The Host has not loaded the bookmark API yet; restart Harness and refresh this page',
+      'browser.bookmarksReload': 'Retry',
+      'browser.bookmarkAdd': 'Bookmark this address (remembers the current PC/Mobile mode)',
+      'browser.bookmarkRemove': 'Remove bookmark',
+      'browser.bookmarkAdded': 'Bookmarked in {device} mode',
+      'browser.bookmarkRemoved': 'Bookmark removed',
+      'browser.bookmarkNoRoot': 'Bookmarks are stored in a workspace; open a local workspace first',
+      'browser.bookmarkSsh': 'SSH remote workspaces cannot store local bookmarks',
+      'browser.bookmarkSaveFailed': 'Could not save the bookmark: {message}',
+      'browser.settingsSaveFailed': 'Could not save the Protocol/Host setting: {message}',
       'browser.back': 'Back',
       'browser.forward': 'Forward',
       'browser.reload': 'Reload',
@@ -1104,7 +1143,7 @@ window.__ModuleLoader__.load({
       'browser.host': 'Host',
       'browser.scheme': 'Protocol',
       'browser.schemeAuto': 'Auto',
-      'browser.hostHint': 'Port shortcuts use this protocol and host',
+      'browser.hostHint': 'Port shortcuts use this protocol and host (local workspaces save these settings)',
       'browser.hostReset': 'Reset to localhost',
       'browser.resetDefaults': 'Reset',
       'browser.openExternal': 'Open in external browser',
@@ -2814,6 +2853,43 @@ window.__ModuleLoader__.load({
       } catch {
         return {}
       }
+    }
+
+    /**
+     * Sanitize the bookmark list returned by the Host. The Host already
+     * normalizes the document, but the UI still drops unexpected rows so a
+     * hand-edited file cannot break rendering.
+     */
+    function browserBookmarkList(value) {
+      if (!Array.isArray(value)) return []
+      const seen = new Set()
+      const result = []
+      for (const item of value) {
+        if (item === null || typeof item !== 'object') continue
+        if (typeof item.id !== 'string' || item.id.length === 0) continue
+        if (typeof item.url !== 'string' || item.url.length === 0 || item.url.length > 4096) continue
+        let url
+        try {
+          const parsed = new URL(item.url)
+          if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') continue
+          url = parsed.href
+        } catch {
+          continue
+        }
+        if (seen.has(url)) continue
+        seen.add(url)
+        result.push({
+          id: item.id,
+          url,
+          title: typeof item.title === 'string' && item.title.length > 0 ? item.title : url,
+          device: item.device === 'mobile' ? 'mobile' : 'pc',
+          preset: Object.prototype.hasOwnProperty.call(BROWSER_DEVICES, item.preset) ? item.preset : 'iphone14',
+          orientation: item.orientation === 'landscape' ? 'landscape' : 'portrait',
+          addedAt: Number.isFinite(item.addedAt) ? item.addedAt : 0,
+        })
+        if (result.length >= BROWSER_BOOKMARK_LIMIT) break
+      }
+      return result
     }
 
     function isSshRootPath(value) {
@@ -5438,7 +5514,7 @@ window.__ModuleLoader__.load({
     }
 
     /** Start page shown by a fresh browser tab. */
-    function BrowserStart({ t, onOpen, host, onHostChange, scheme, onSchemeChange }) {
+    function BrowserStart({ t, onOpen, host, onHostChange, onHostBlur, scheme, onSchemeChange, bookmarks = [], bookmarksStatus = 'ready', bookmarksError = null, onOpenBookmark, onRemoveBookmark, onReloadBookmarks }) {
       const [scan, setScan] = useState({ status: 'loading', ports: [], supported: false })
       const [scanNonce, setScanNonce] = useState(0)
       useEffect(() => {
@@ -5480,6 +5556,54 @@ window.__ModuleLoader__.load({
             h('span', { className: 'ds-browser-port-host' }, normalizePreviewHost(host)),
           ),
         )
+      const bookmarkList =
+        bookmarks.length === 0
+          ? null
+          : h(
+              'div',
+              { className: 'ds-browser-bookmark-list' },
+              bookmarks.map((bookmark) => {
+                const mobile = bookmark.device === 'mobile'
+                const deviceLabel = mobile ? t('browser.mobile') : t('browser.pc')
+                return h(
+                  'div',
+                  { key: bookmark.id, className: 'ds-browser-bookmark-row' },
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-browser-bookmark',
+                      title: `${bookmark.url} · ${deviceLabel}`,
+                      onClick: () => onOpenBookmark(bookmark),
+                    },
+                    h('span', { className: 'ds-browser-bookmark-icon' }, h(GlobeIcon)),
+                    h(
+                      'span',
+                      { className: 'ds-browser-bookmark-text' },
+                      h('span', { className: 'ds-browser-bookmark-title' }, bookmark.title),
+                      h('span', { className: 'ds-browser-bookmark-url' }, bookmark.url),
+                    ),
+                    h(
+                      'span',
+                      { className: 'ds-browser-bookmark-device', 'data-device': mobile ? 'mobile' : 'pc' },
+                      mobile ? h(PhoneIcon) : h(MonitorIcon),
+                      h('span', null, deviceLabel),
+                    ),
+                  ),
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-browser-bookmark-remove',
+                      title: t('browser.bookmarkRemove'),
+                      'aria-label': t('browser.bookmarkRemove'),
+                      onClick: () => onRemoveBookmark(bookmark.id),
+                    },
+                    h(TrashIcon),
+                  ),
+                )
+              }),
+            )
       return h(
         'div',
         { className: 'ds-browser-start' },
@@ -5518,6 +5642,9 @@ window.__ModuleLoader__.load({
             spellCheck: false,
             'aria-label': t('browser.host'),
             onChange: (event) => onHostChange(event.target.value),
+            onBlur: () => {
+              if (typeof onHostBlur === 'function') onHostBlur()
+            },
           }),
           h(
             'button',
@@ -5533,6 +5660,51 @@ window.__ModuleLoader__.load({
             t('browser.resetDefaults'),
           ),
           h('span', { className: 'ds-browser-host-hint' }, t('browser.hostHint')),
+        ),
+        h(
+          'div',
+          { className: 'ds-browser-section' },
+          h(
+            'div',
+            { className: 'ds-browser-section-head' },
+            h('div', { className: 'ds-browser-section-title' }, t('browser.bookmarks')),
+            bookmarksStatus === 'error'
+              ? h(
+                  'button',
+                  { type: 'button', className: 'ds-linkbtn', onClick: onReloadBookmarks },
+                  t('browser.bookmarksReload'),
+                )
+              : null,
+          ),
+          bookmarksStatus === 'loading'
+            ? h('div', { className: 'ds-browser-muted' }, t('browser.bookmarksLoading'))
+            : bookmarksStatus === 'no-root'
+              ? h('div', { className: 'ds-browser-muted' }, t('browser.bookmarksNoRoot'))
+              : bookmarksStatus === 'unsupported'
+                ? h('div', { className: 'ds-browser-muted' }, t('browser.bookmarksSsh'))
+                : h(
+                    React.Fragment,
+                    null,
+                    bookmarksStatus === 'error'
+                      ? h(
+                          'div',
+                          { className: 'ds-browser-bookmark-error' },
+                          t('browser.bookmarksLoadFailed', { message: bookmarksError ?? '' }),
+                        )
+                      : null,
+                    bookmarkList === null
+                      ? bookmarksStatus === 'ready'
+                        ? h('div', { className: 'ds-browser-muted' }, t('browser.bookmarksEmpty'))
+                        : null
+                      : bookmarkList,
+                  ),
+          bookmarksStatus === 'ready' || bookmarksStatus === 'error'
+            ? h(
+                'div',
+                { className: 'ds-browser-bookmarks-hint' },
+                t('browser.bookmarksStorage', { path: BROWSER_BOOKMARKS_PATH }),
+              )
+            : null,
         ),
         h(
           'div',
@@ -5569,7 +5741,7 @@ window.__ModuleLoader__.load({
     }
 
     /** Embedded page for one browser tab, with a same-origin guard and fallbacks. */
-    function BrowserPanel({ tab, t, onNavigate, onFinished, onExternal, onDismissMixed, host, onHostChange, scheme, onSchemeChange }) {
+    function BrowserPanel({ tab, t, onNavigate, onFinished, onExternal, onDismissMixed, host, onHostChange, onHostBlur, scheme, onSchemeChange, bookmarks, bookmarksStatus, bookmarksError, onOpenBookmark, onRemoveBookmark, onReloadBookmarks }) {
       const frameRef = useRef(null)
       const stageRef = useRef(null)
       const [stageSize, setStageSize] = useState({ width: 0, height: 0 })
@@ -5603,7 +5775,7 @@ window.__ModuleLoader__.load({
         window.addEventListener('message', onMessage)
         return () => window.removeEventListener('message', onMessage)
       }, [onNavigate, onExternal])
-      if (tab.url.length === 0) return h(BrowserStart, { t, onOpen: onNavigate, host, onHostChange, scheme, onSchemeChange })
+      if (tab.url.length === 0) return h(BrowserStart, { t, onOpen: onNavigate, host, onHostChange, onHostBlur, scheme, onSchemeChange, bookmarks, bookmarksStatus, bookmarksError, onOpenBookmark, onRemoveBookmark, onReloadBookmarks })
       let sameOrigin = false
       try {
         const target = new URL(tab.url)
@@ -6381,6 +6553,15 @@ window.__ModuleLoader__.load({
         const [terminalPanelActive, setTerminalPanelActive] = useState(null)
         const [previewHost, setPreviewHost] = useState(() => readStorage(PREVIEW_HOST_KEY) ?? 'localhost')
         const [previewScheme, setPreviewScheme] = useState(() => normalizePreviewScheme(readStorage(PREVIEW_SCHEME_KEY)))
+        const previewSettingsRef = useRef({ host: previewHost, scheme: previewScheme })
+        const previewSettingsPendingRef = useRef(null)
+        const previewSettingsTimerRef = useRef(null)
+        const [browserBookmarks, setBrowserBookmarks] = useState([])
+        const [browserBookmarksStatus, setBrowserBookmarksStatus] = useState('loading')
+        const [browserBookmarksError, setBrowserBookmarksError] = useState(null)
+        const browserBookmarksRequestRef = useRef(0)
+        const browserBookmarksRootRef = useRef(undefined)
+        const browserBookmarkSavingRef = useRef(false)
         const [sshOpen, setSshOpen] = useState(false)
         const [sshSpec, setSshSpec] = useState('')
         const [sshPassword, setSshPassword] = useState('')
@@ -6873,6 +7054,19 @@ window.__ModuleLoader__.load({
           setEditorSelection(null)
           setAgentOpen(false)
         }, [activePath])
+
+        // Browser bookmarks and the start page's protocol/host live in the
+        // current workspace's `.dsh` folder.
+        useEffect(() => {
+          void flushPreviewSettingsWrite()
+          void refreshBrowserBookmarks()
+        }, [state.root])
+
+        // Do not lose a host edit that is still inside the debounce window when
+        // the workspace panel closes.
+        useEffect(() => () => {
+          void flushPreviewSettingsWrite()
+        }, [])
 
         function showToast(message) {
           setToast(message)
@@ -8857,6 +9051,300 @@ window.__ModuleLoader__.load({
           )
         }
 
+        /** The viewport fields worth storing with a browser bookmark. */
+        function browserBookmarkView(tab) {
+          return {
+            device: tab.device === 'mobile' ? 'mobile' : 'pc',
+            preset: Object.prototype.hasOwnProperty.call(BROWSER_DEVICES, tab.mobilePreset) ? tab.mobilePreset : 'iphone14',
+            orientation: tab.orientation === 'landscape' ? 'landscape' : 'portrait',
+          }
+        }
+
+        function findBrowserBookmark(url) {
+          if (typeof url !== 'string' || url.length === 0) return null
+          return browserBookmarks.find((entry) => entry.url === url) ?? null
+        }
+
+        /** Explain a missing Host route (an older Host process) instead of a raw op error. */
+        function browserBookmarkErrorText(error) {
+          return errorCode(error) === 'bad-op' ? t('browser.bookmarksRestart') : errorText(error)
+        }
+
+        /** Read the start page's protocol/host out of a Host snapshot. */
+        function readBrowserSettings(value) {
+          if (value === null || typeof value !== 'object') return null
+          const settings = value.settings
+          if (settings === null || typeof settings !== 'object') return null
+          return {
+            host: typeof settings.host === 'string' && settings.host.length > 0 ? settings.host : 'localhost',
+            scheme: normalizePreviewScheme(settings.scheme),
+          }
+        }
+
+        /** Apply one workspace's protocol/host settings to the start page. */
+        function applyPreviewSettings(settings) {
+          if (settings === null) return
+          const host = typeof settings.host === 'string' && settings.host.length > 0 ? settings.host : 'localhost'
+          const scheme = normalizePreviewScheme(settings.scheme)
+          setPreviewHost(host)
+          setPreviewScheme(scheme)
+          writeStorage(PREVIEW_HOST_KEY, host)
+          writeStorage(PREVIEW_SCHEME_KEY, scheme)
+          previewSettingsRef.current = { host, scheme }
+        }
+
+        /** Persist the pending protocol/host for the workspace that produced it. */
+        async function flushPreviewSettingsWrite() {
+          if (previewSettingsTimerRef.current !== null) {
+            window.clearTimeout(previewSettingsTimerRef.current)
+            previewSettingsTimerRef.current = null
+          }
+          const pending = previewSettingsPendingRef.current
+          if (pending === null) return
+          previewSettingsPendingRef.current = null
+          try {
+            await call('browserSettingsSave', {
+              root: pending.root,
+              scheme: pending.scheme,
+              host: pending.host,
+            })
+          } catch (error) {
+            if (store.get().root === pending.root) {
+              setBanner({
+                kind: 'error',
+                message: t('browser.settingsSaveFailed', { message: browserBookmarkErrorText(error) }),
+              })
+            }
+          }
+        }
+
+        /** Debounce the workspace write while the host field is being typed. */
+        function schedulePreviewSettingsSave(patch = {}) {
+          const root = store.get().root
+          if (root === null || isSshRootPath(root)) return
+          const pending = previewSettingsPendingRef.current
+          const base = pending !== null && pending.root === root ? pending : { root, ...previewSettingsRef.current }
+          previewSettingsPendingRef.current = {
+            root,
+            host: patch.host !== undefined ? patch.host : base.host,
+            scheme: patch.scheme !== undefined ? patch.scheme : base.scheme,
+          }
+          if (previewSettingsTimerRef.current !== null) {
+            window.clearTimeout(previewSettingsTimerRef.current)
+          }
+          previewSettingsTimerRef.current = window.setTimeout(() => {
+            previewSettingsTimerRef.current = null
+            void flushPreviewSettingsWrite()
+          }, 400)
+        }
+
+        /**
+         * Import bookmarks saved by the first (localStorage) build into the
+         * workspace document, then drop the legacy key. Runs only when the
+         * workspace has no bookmarks yet, so it cannot overwrite a real list.
+         */
+        async function importLegacyBrowserBookmarks(root) {
+          const raw = readStorage(BROWSER_BOOKMARKS_LEGACY_KEY)
+          if (typeof raw !== 'string' || raw.length === 0) return null
+          let parsed
+          try {
+            parsed = JSON.parse(raw)
+          } catch {
+            parsed = null
+          }
+          const legacy = browserBookmarkList(Array.isArray(parsed) ? parsed : [])
+          if (legacy.length === 0) {
+            try {
+              window.localStorage.removeItem(BROWSER_BOOKMARKS_LEGACY_KEY)
+            } catch {
+              /* storage may be unavailable */
+            }
+            return null
+          }
+          let value = null
+          for (const item of [...legacy].reverse()) {
+            if (store.get().root !== root) return null
+            try {
+              value = await call('browserBookmarkAdd', {
+                root,
+                url: item.url,
+                title: item.title,
+                device: item.device,
+                preset: item.preset,
+                orientation: item.orientation,
+              })
+            } catch {
+              return null
+            }
+          }
+          try {
+            window.localStorage.removeItem(BROWSER_BOOKMARKS_LEGACY_KEY)
+          } catch {
+            /* storage may be unavailable */
+          }
+          return Array.isArray(value?.bookmarks) ? value.bookmarks : null
+        }
+
+        /** Refresh bookmarks for the current workspace from `.dsh/browser-bookmarks.json`. */
+        async function refreshBrowserBookmarks() {
+          const root = store.get().root
+          const request = browserBookmarksRequestRef.current + 1
+          browserBookmarksRequestRef.current = request
+          const previousRoot = browserBookmarksRootRef.current
+          browserBookmarksRootRef.current = root
+          if (root === null) {
+            setBrowserBookmarks([])
+            setBrowserBookmarksStatus('no-root')
+            setBrowserBookmarksError(null)
+            return
+          }
+          if (isSshRootPath(root)) {
+            setBrowserBookmarks([])
+            setBrowserBookmarksStatus('unsupported')
+            setBrowserBookmarksError(null)
+            return
+          }
+          if (previousRoot !== root) {
+            setBrowserBookmarks([])
+            setBrowserBookmarksStatus('loading')
+          } else {
+            setBrowserBookmarksStatus((current) => (current === 'ready' ? 'ready' : 'loading'))
+          }
+          try {
+            const value = await call('browserBookmarks', { root })
+            if (request !== browserBookmarksRequestRef.current) return
+            if (previousRoot !== root) {
+              const settings = readBrowserSettings(value)
+              if (settings !== null) {
+                applyPreviewSettings(settings)
+              } else {
+                // First open in this workspace: carry the current/last-used
+                // protocol and host into the workspace document.
+                const current = previewSettingsRef.current
+                void call('browserSettingsSave', {
+                  root,
+                  scheme: current.scheme,
+                  host: current.host,
+                }).catch(() => {})
+              }
+            }
+            let list = browserBookmarkList(value?.bookmarks)
+            if (list.length === 0 && previousRoot !== root) {
+              const legacy = await importLegacyBrowserBookmarks(root)
+              if (request !== browserBookmarksRequestRef.current) return
+              if (legacy !== null) list = browserBookmarkList(legacy)
+            }
+            setBrowserBookmarks(list)
+            setBrowserBookmarksStatus('ready')
+            setBrowserBookmarksError(null)
+          } catch (error) {
+            if (request !== browserBookmarksRequestRef.current) return
+            setBrowserBookmarksStatus('error')
+            setBrowserBookmarksError(browserBookmarkErrorText(error))
+          }
+        }
+
+        /** Apply the snapshot returned by an add/remove call. */
+        function applyBrowserBookmarkSnapshot(value) {
+          if (value === null || typeof value !== 'object') return
+          setBrowserBookmarks(browserBookmarkList(value.bookmarks))
+          setBrowserBookmarksStatus('ready')
+          setBrowserBookmarksError(null)
+        }
+
+        /** Resolve the workspace whose `.dsh` folder stores browser bookmarks. */
+        function bookmarkWorkspaceRoot() {
+          const root = store.get().root
+          if (root === null) {
+            setBanner({ kind: 'error', message: t('browser.bookmarkNoRoot') })
+            return null
+          }
+          if (isSshRootPath(root)) {
+            setBanner({ kind: 'error', message: t('browser.bookmarkSsh') })
+            return null
+          }
+          return root
+        }
+
+        /** Star/unstar the current address, remembering the active viewport. */
+        async function toggleBrowserBookmark(tab) {
+          if (tab === undefined || tab.mode !== 'browser' || typeof tab.url !== 'string' || tab.url.length === 0) return
+          if (browserBookmarkSavingRef.current) return
+          const root = bookmarkWorkspaceRoot()
+          if (root === null) return
+          const existing = findBrowserBookmark(tab.url)
+          const view = browserBookmarkView(tab)
+          browserBookmarkSavingRef.current = true
+          try {
+            if (existing !== null) {
+              const value = await call('browserBookmarkRemove', { root, id: existing.id })
+              if (store.get().root !== root) return
+              applyBrowserBookmarkSnapshot(value)
+              showToast(t('browser.bookmarkRemoved'))
+            } else {
+              const value = await call('browserBookmarkAdd', {
+                root,
+                url: tab.url,
+                title: browserTitle(tab.url),
+                device: view.device,
+                preset: view.preset,
+                orientation: view.orientation,
+              })
+              if (store.get().root !== root) return
+              applyBrowserBookmarkSnapshot(value)
+              showToast(
+                t('browser.bookmarkAdded', {
+                  device: view.device === 'mobile' ? t('browser.mobile') : t('browser.pc'),
+                }),
+              )
+            }
+          } catch (error) {
+            if (store.get().root === root) {
+              setBanner({ kind: 'error', message: t('browser.bookmarkSaveFailed', { message: browserBookmarkErrorText(error) }) })
+            }
+          } finally {
+            browserBookmarkSavingRef.current = false
+          }
+        }
+
+        /** Remove one saved address from the start page. */
+        async function removeBrowserBookmark(id) {
+          if (browserBookmarkSavingRef.current) return
+          const root = bookmarkWorkspaceRoot()
+          if (root === null) return
+          browserBookmarkSavingRef.current = true
+          try {
+            const value = await call('browserBookmarkRemove', { root, id })
+            if (store.get().root !== root) return
+            applyBrowserBookmarkSnapshot(value)
+            showToast(t('browser.bookmarkRemoved'))
+          } catch (error) {
+            if (store.get().root === root) {
+              setBanner({ kind: 'error', message: t('browser.bookmarkSaveFailed', { message: browserBookmarkErrorText(error) }) })
+            }
+          } finally {
+            browserBookmarkSavingRef.current = false
+          }
+        }
+
+        /** Open a saved address in the current (empty) browser tab with its viewport. */
+        function openBrowserBookmark(tabPath, bookmark) {
+          if (bookmark === null || typeof bookmark !== 'object' || typeof bookmark.url !== 'string') return
+          const tab = store.get().tabs.find((entry) => entry.path === tabPath)
+          if (tab === undefined || tab.mode !== 'browser') return
+          const target = normalizeBrowserUrl(bookmark.url)
+          if (target === null) {
+            setBanner({ kind: 'error', message: t('browser.badUrl') })
+            return
+          }
+          setBrowserView(tab, {
+            device: bookmark.device === 'mobile' ? 'mobile' : 'pc',
+            mobilePreset: Object.prototype.hasOwnProperty.call(BROWSER_DEVICES, bookmark.preset) ? bookmark.preset : 'iphone14',
+            orientation: bookmark.orientation === 'landscape' ? 'landscape' : 'portrait',
+          })
+          navigateBrowser(tabPath, target)
+        }
+
         /** Short tab title for a browser URL. */
         function browserTitle(url) {
           try {
@@ -8914,6 +9402,9 @@ window.__ModuleLoader__.load({
             setBanner({ kind: 'error', message: t('browser.badUrl') })
             return
           }
+          // A new tab shows the start page; pick up bookmarks saved by another
+          // plugin mount (main panel vs. right sidebar) or another tab.
+          void refreshBrowserBookmarks()
           browserCounterRef.current += 1
           const id = `browser:${String(Date.now())}:${String(browserCounterRef.current)}`
           const view = readBrowserView()
@@ -9148,12 +9639,16 @@ window.__ModuleLoader__.load({
         function updatePreviewHost(value) {
           setPreviewHost(value)
           writeStorage(PREVIEW_HOST_KEY, value)
+          previewSettingsRef.current = { ...previewSettingsRef.current, host: value }
+          schedulePreviewSettingsSave({ host: value })
         }
 
         function updatePreviewScheme(value) {
           const next = normalizePreviewScheme(value)
           setPreviewScheme(next)
           writeStorage(PREVIEW_SCHEME_KEY, next)
+          previewSettingsRef.current = { ...previewSettingsRef.current, scheme: next }
+          schedulePreviewSettingsSave({ scheme: next })
         }
 
         function toggleBrowserProxy(tab) {
@@ -9860,6 +10355,16 @@ window.__ModuleLoader__.load({
           if (tab.mode === 'browser') {
             const canBack = tab.historyIndex > 0
             const canForward = tab.historyIndex < tab.history.length - 1
+            const bookmarked = findBrowserBookmark(tab.url) !== null
+            const bookmarkWritable = state.root !== null && !isSshRootPath(state.root)
+            const bookmarkHint =
+              state.root === null
+                ? t('browser.bookmarkNoRoot')
+                : isSshRootPath(state.root)
+                  ? t('browser.bookmarkSsh')
+                  : bookmarked
+                    ? t('browser.bookmarkRemove')
+                    : t('browser.bookmarkAdd')
             return h(
               'div',
               { className: 'ds-edit-toolbar ds-browser-toolbar' },
@@ -9961,6 +10466,19 @@ window.__ModuleLoader__.load({
                     }
                   },
                 }),
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-iconbtn ds-iconbtn-sm ds-browser-bookmark-btn',
+                  title: bookmarkHint,
+                  'aria-pressed': bookmarked,
+                  'data-active': bookmarked ? 'true' : undefined,
+                  disabled: tab.url.length === 0 || !bookmarkWritable,
+                  onClick: () => void toggleBrowserBookmark(tab),
+                },
+                h(StarIcon, { filled: bookmarked }),
               ),
               tab.device === 'mobile'
                 ? h(
@@ -12558,8 +13076,15 @@ window.__ModuleLoader__.load({
                                   onDismissMixed: () => patchTab(tab.path, { mixedDismissed: true }),
                                   host: previewHost,
                                   onHostChange: updatePreviewHost,
+                                  onHostBlur: () => void flushPreviewSettingsWrite(),
                                   scheme: previewScheme,
                                   onSchemeChange: updatePreviewScheme,
+                                  bookmarks: browserBookmarks,
+                                  bookmarksStatus: browserBookmarksStatus,
+                                  bookmarksError: browserBookmarksError,
+                                  onOpenBookmark: (bookmark) => openBrowserBookmark(tab.path, bookmark),
+                                  onRemoveBookmark: removeBrowserBookmark,
+                                  onReloadBookmarks: () => void refreshBrowserBookmarks(),
                                   onExternal: (targetUrl) => {
                                     const target = normalizeBrowserUrl(
                                       typeof targetUrl === 'string' && targetUrl.length > 0 ? targetUrl : tab.url,
@@ -15566,6 +16091,8 @@ window.__ModuleLoader__.load({
   outline: none;
 }
 .ds-browser-address:focus { border-color: var(--dsw-alias-brand-primary); }
+.ds-browser-bookmark-btn[data-active="true"] { color: var(--dsw-alias-brand-primary); }
+.ds-browser-bookmark-btn:disabled { opacity: 0.45; cursor: default; }
 .ds-glyph-browser { color: var(--dsw-alias-brand-primary); }
 .ds-glyph-browser svg { width: 14px; height: 14px; }
 .ds-crumb-browser {
@@ -15813,6 +16340,60 @@ window.__ModuleLoader__.load({
 .ds-browser-port-num { color: var(--dsw-alias-brand-primary); font-family: var(--ds-mono); font-size: 12px; font-weight: 600; }
 .ds-browser-port-host { color: var(--dsw-alias-label-secondary); font-size: 10px; }
 .ds-browser-muted { color: var(--dsw-alias-label-secondary); font-size: 12px; }
+.ds-browser-bookmark-list { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.ds-browser-bookmark-row { display: flex; align-items: stretch; gap: 6px; }
+.ds-browser-bookmark {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ds-browser-bookmark:hover { border-color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 8%, transparent); }
+.ds-browser-bookmark-icon { display: inline-flex; flex: 0 0 auto; color: var(--dsw-alias-brand-primary); }
+.ds-browser-bookmark-icon svg { width: 14px; height: 14px; }
+.ds-browser-bookmark-text { display: flex; flex: 1 1 auto; flex-direction: column; gap: 1px; min-width: 0; }
+.ds-browser-bookmark-title { overflow: hidden; color: var(--dsw-alias-label-primary); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.ds-browser-bookmark-url { overflow: hidden; color: var(--dsw-alias-label-secondary); font-family: var(--ds-mono); font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap; }
+.ds-browser-bookmark-device {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+  white-space: nowrap;
+}
+.ds-browser-bookmark-device svg { width: 11px; height: 11px; }
+.ds-browser-bookmark-device[data-device="mobile"] { background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent); color: var(--dsw-alias-brand-primary); }
+.ds-browser-bookmark-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 30px;
+  padding: 0;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+.ds-browser-bookmark-remove:hover { border-color: var(--dsw-alias-state-error-primary); color: var(--dsw-alias-state-error-primary); }
+.ds-browser-bookmark-remove svg { width: 13px; height: 13px; }
+.ds-browser-bookmark-error { color: var(--dsw-alias-state-error-primary); font-size: 11.5px; line-height: 1.5; }
+.ds-browser-bookmarks-hint { color: var(--dsw-alias-label-secondary); font-size: 10.5px; line-height: 1.5; }
 .ds-browser-start-hint { max-width: 620px; color: var(--dsw-alias-label-secondary); font-size: 11px; line-height: 1.6; }
 .ds-browser-blocked { align-items: center; justify-content: center; }
 .ds-pdfwrap { display: flex; flex: 1 1 auto; min-height: 0; }

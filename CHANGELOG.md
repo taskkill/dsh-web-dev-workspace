@@ -4,6 +4,27 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Browser bookmarks and start-page settings
+
+- The built-in browser can now keep **bookmarked addresses**: click the star in
+  the browser toolbar to save the current page, and the active **PC / Mobile**
+  mode (device preset and orientation) is stored with it. Clicking the filled
+  star again removes the bookmark.
+- The browser start page lists saved addresses; one click reopens the page in its
+  saved viewport, and each row has a remove button. Removing or adding a bookmark
+  updates the list immediately.
+- The start page's **Protocol / Host** fields are saved with the workspace too
+  (debounced while typing, flushed on blur/tab switch), so port shortcuts keep
+  working after a reload, a browser-data wipe or accessing Harness from a
+  different origin. They continue to be mirrored to `localStorage` as a fallback.
+- Bookmarks and settings are stored **per workspace** in
+  `.dsh/browser-bookmarks.json` instead of `localStorage`, so they travel with the
+  project. The generated `.dsh/.gitignore` (`*`) keeps the file out of Git; SSH
+  remote workspaces cannot store them. The list is capped at 50 entries, and both
+  the file and its directory are checked so a symlink cannot escape the workspace.
+  Bookmarks saved by the earlier localStorage build are imported once into the
+  first workspace whose list is empty, then the legacy key is removed.
+
 ### Fix editor Agent send
 
 - The editor **Agent** actions failed with “当前会话不支持发送消息” on DSH

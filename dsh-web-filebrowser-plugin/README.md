@@ -133,6 +133,12 @@ third-party runtime dependencies.
 - PC/Mobile viewport switching includes iPhone 14, iPhone SE, Pixel 7 and iPad
   presets, portrait/landscape rotation and fit-to-panel scaling. It emulates the
   CSS viewport only, not touch events or the User-Agent.
+- The toolbar star bookmarks the current address and records the active PC/Mobile
+  viewport (preset and orientation). The start page lists bookmarks; clicking one
+  reopens it in that viewport, and each row can be removed. Bookmarks and the
+  start page's Protocol/Host fields are stored per workspace in
+  `.dsh/browser-bookmarks.json` (max 50) and ignored by the generated
+  `.dsh/.gitignore`; SSH remote workspaces cannot store them.
 - The start page detects listening local TCP ports on Linux (`ports` op); other
   platforms fall back to common ports.
 - Local/private and public pages are embedded directly by default. When a public
@@ -293,7 +299,7 @@ third-party runtime dependencies.
 
 ## Local data
 
-Preferences and favorites are stored in the browser's `localStorage`:
+View preferences and file favorites are stored in the browser's `localStorage`:
 
 | Key | Contents |
 | --- | --- |
@@ -306,6 +312,11 @@ Preferences and favorites are stored in the browser's `localStorage`:
 | `dsh-web-filebrowser:hidden-roots` | Locally hidden directory paths |
 | `dsh-web-filebrowser:todo-filter` | Last Todo filter (`open`/`done`/`all`) |
 | `dsh-web-filebrowser:todo-sort` | Last Todo sort order |
+
+Built-in browser bookmarks and the start page's Protocol/Host fields are **not** in
+localStorage: each local workspace keeps them in `.dsh/browser-bookmarks.json`,
+next to memory and todos, and the generated `.dsh/.gitignore` (`*`) keeps the file
+out of Git. SSH remote workspaces cannot store them.
 
 Workspace memory is **not** stored in localStorage: each local root owns
 `.dsh/memory.json` and a generated `.dsh/.gitignore` (`*`). Deleting that JSON
