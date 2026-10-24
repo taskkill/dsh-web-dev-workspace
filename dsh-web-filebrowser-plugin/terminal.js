@@ -1,21 +1,24 @@
 /**
- * Minimal local terminal backend for the file browser.
+ * Terminal backend for the file browser: local workspaces and SSH remotes.
  *
- * On POSIX, a `script(1)` pseudo-terminal keeps the shell interactive
+ * On POSIX, a `script(1)` pseudo-terminal keeps the local shell interactive
  * (prompt, colours, line editing, full-screen programs) without a native
  * node-pty dependency. Windows has no `script`, so it uses the system command
  * processor over pipes; that fallback is line-buffered and does not provide a
- * real PTY. The browser half uses a vendored xterm.js and holds a long poll on
- * a bounded output buffer, so bytes are delivered as soon as they arrive
- * instead of on a fixed timer.
+ * real PTY. A workspace rooted at `ssh://user@host:port/path` instead opens a
+ * shell channel through the host's ssh2 connection pool, with a remote PTY and
+ * the remote root as the start directory. The browser half uses a vendored
+ * xterm.js and holds a long poll on a bounded output buffer, so bytes are
+ * delivered as soon as they arrive instead of on a fixed timer.
  *
- * Terminals run as the Harness host user inside a registered local workspace.
- * They are owner-authenticated like every other route; no shell command is
- * sandboxed beyond that. SSH workspaces are rejected (the shell is local).
+ * Terminals run as the Harness host user (local) or as the SSH login user, and
+ * are owner-authenticated like every other route; no shell command is
+ * sandboxed beyond that.
  */
 
 import { execFile, spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
+import { EventEmitter } from 'node:events'
 import { promises as fsp } from 'node:fs'
 import { StringDecoder } from 'node:string_decoder'
 import os from 'node:os'
@@ -59,8 +62,9 @@ class TerminalError extends Error {
  * Create the terminal manager bound to one host context.
  * @param options.resolveRoot - validates and canonicalizes a workspace root.
  * @param options.vendorDir - absolute directory containing xterm assets.
+ * @param options.openSshShell - opens a shell channel for an `ssh://` root.
  */
-export function createTerminalManager({ resolveRoot, vendorDir }) {
+export function createTerminalManager({ resolveRoot, vendorDir, openSshShell }) {
   const sessions = new Map()
   const commandCache = new Map()
   let counter = 0
@@ -104,16 +108,29 @@ export function createTerminalManager({ resolveRoot, vendorDir }) {
   async function open(body) {
     if (sessions.size >= MAX_SESSIONS) throw new TerminalError('too-many', `最多同时打开 ${String(MAX_SESSIONS)} 个终端`)
     const root = await resolveRoot(typeof body.root === 'string' ? body.root : '')
-    if (typeof root === 'string' && root.startsWith('ssh://')) {
-      throw new TerminalError('ssh-unsupported', 'SSH 远程工作区暂不支持本地终端')
-    }
+    const sshRoot = typeof root === 'string' && root.startsWith('ssh://')
     const cols = clampDimension(body.cols, 20, 300, 100)
     const rows = clampDimension(body.rows, 10, 100, 28)
     counter += 1
     const id = randomUUID()
     let ptsFile = null
     let child
-    if (IS_WINDOWS) {
+    let channel = null
+    let sshInfo = null
+    if (sshRoot) {
+      if (typeof openSshShell !== 'function') {
+        throw new TerminalError('ssh-unsupported', '当前 Host 没有加载 SSH 终端支持')
+      }
+      try {
+        const opened = await openSshShell(root, { cols, rows })
+        channel = opened.channel
+        sshInfo = opened.parsed ?? null
+        child = sshChild(channel)
+      } catch (error) {
+        const code = typeof error?.sideCode === 'string' ? error.sideCode : 'ssh-failed'
+        throw new TerminalError(code, error instanceof Error ? error.message : String(error))
+      }
+    } else if (IS_WINDOWS) {
       // Windows has no script(1) or /dev/pts. Keep the command processor alive
       // over pipes and switch its code page to UTF-8 so output matches xterm.
       const shell = process.env.ComSpec || process.env.COMSPEC || 'cmd.exe'
@@ -148,13 +165,15 @@ export function createTerminalManager({ resolveRoot, vendorDir }) {
     }
     const session = {
       id,
-      title: `${TITLE_PREFIX} ${String(counter)}`,
-      cwd: root,
+      title: sshInfo === null ? `${TITLE_PREFIX} ${String(counter)}` : sshTitle(sshInfo),
+      cwd: sshInfo === null ? root : sshInfo.path,
       child,
+      channel,
+      ssh: sshRoot,
       ptsFile,
       cols,
       rows,
-      pty: !IS_WINDOWS,
+      pty: sshRoot || !IS_WINDOWS,
       buffer: '',
       base: 0,
       closed: false,
@@ -193,7 +212,7 @@ export function createTerminalManager({ resolveRoot, vendorDir }) {
       session.exitCode = code
       wake(session)
     })
-    return { id, title: session.title, cwd: root, cols, rows, pty: session.pty }
+    return { id, title: session.title, cwd: session.cwd, cols, rows, pty: session.pty, ssh: session.ssh }
   }
 
   /** Quote one relative file path for the shell that owns this terminal. */
@@ -270,15 +289,17 @@ export function createTerminalManager({ resolveRoot, vendorDir }) {
   /** Detect runnable commands for the terminal's current directory. */
   async function listCommands(body) {
     let root
+    let session = null
     if (typeof body.id === 'string' && body.id.length > 0) {
-      const session = requireSession(body.id)
+      session = requireSession(body.id)
       root = await sessionCwd(session)
     } else {
       root = await resolveRoot(typeof body.root === 'string' ? body.root : '')
     }
-    if (typeof root === 'string' && root.startsWith('ssh://')) {
-      throw new TerminalError('ssh-unsupported', 'SSH 远程工作区暂不支持本地终端')
-    }
+    // Project files live on the remote host; the local scanner would look at
+    // an unrelated (or nonexistent) path. SSH terminals type commands instead.
+    if (session !== null && session.ssh) return { root, commands: [] }
+    if (typeof root === 'string' && root.startsWith('ssh://')) return { root, commands: [] }
     const cached = commandCache.get(root)
     const force = body.refresh === true
     if (!force && cached !== undefined && Date.now() - cached.at < COMMAND_CACHE_MS) return cached.value
@@ -457,6 +478,15 @@ export function createTerminalManager({ resolveRoot, vendorDir }) {
     const rows = clampDimension(body.rows, 10, 100, session.rows)
     session.cols = cols
     session.rows = rows
+    if (session.ssh) {
+      if (session.channel === null) return { ok: false }
+      try {
+        session.channel.setWindow(rows, cols, 0, 0)
+        return { ok: true, pty: true }
+      } catch {
+        return { ok: false }
+      }
+    }
     if (!session.pty || session.ptsFile === null) return { ok: false, pty: false }
     let pts = ''
     for (let attempt = 0; attempt < 8; attempt += 1) {
@@ -563,6 +593,81 @@ export function createTerminalManager({ resolveRoot, vendorDir }) {
   }
 
   return { handle, closeAll }
+}
+
+/** Human label for an SSH terminal tab: `user@host: directory`. */
+function sshTitle(parsed) {
+  const base = path.posix.basename(parsed.path) || '/'
+  const user = parsed.username === null || parsed.username === undefined ? '' : `${parsed.username}@`
+  return `${user}${parsed.host}: ${base}`
+}
+
+/**
+ * Wrap an SSH shell channel with the small ChildProcess surface the session
+ * code uses: stdout/stderr data events, stdin.write/end, kill, pid and the
+ * error/exit events. The channel is duplex, so stdout is the channel itself
+ * and stderr is its extended-data stream. Resizing goes through setWindow
+ * directly instead of a local `stty`.
+ */
+function sshChild(channel) {
+  const child = new EventEmitter()
+  child.pid = null
+  child.exitCode = null
+  child.stdout = channel
+  child.stderr = channel.stderr ?? null
+  child.stdin = {
+    write(data, callback) {
+      try {
+        channel.write(data, (error) => {
+          if (typeof callback !== 'function') return
+          if (error === null || error === undefined) callback()
+          else callback(error)
+        })
+      } catch (error) {
+        if (typeof callback === 'function') callback(error)
+      }
+    },
+    end() {
+      try {
+        channel.end()
+      } catch {
+        /* channel already gone */
+      }
+    },
+  }
+  let finished = false
+  const finish = (code) => {
+    if (finished) return
+    finished = true
+    child.exitCode = code
+    child.emit('exit', code, null)
+  }
+  child.kill = (signal) => {
+    try {
+      if (signal === 'SIGKILL') channel.close()
+      else channel.signal('TERM')
+    } catch {
+      /* channel already gone */
+    }
+    try {
+      channel.end()
+    } catch {
+      /* channel already gone */
+    }
+  }
+  channel.once('exit', (code) => finish(typeof code === 'number' ? code : null))
+  channel.once('close', (code) => {
+    if (!finished) finish(typeof code === 'number' ? code : null)
+  })
+  // A channel can report more than one error while it tears down; forward only
+  // the first one so the session's `once` listener always owns it.
+  let errored = false
+  channel.on('error', (error) => {
+    if (errored) return
+    errored = true
+    child.emit('error', error)
+  })
+  return child
 }
 
 function clampDimension(value, min, max, fallback) {

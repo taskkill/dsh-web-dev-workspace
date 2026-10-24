@@ -49,7 +49,8 @@ it for you.
   stash, branch switching, diffs, compare and fetch/pull/push; the bottom Git tab
   shows an amber badge with the number of uncommitted files.
 - **Built-in terminal** — vendored xterm.js terminals that move between the bottom
-  panel and editor tabs, plus project-aware quick commands.
+  panel and editor tabs, with manual project quick commands for local workspaces
+  and interactive remote shells over ssh2 for SSH workspaces.
 - **Built-in browser** — preview a running dev server beside the code, with
   PC/mobile viewports, workspace-stored address bookmarks, protocol/host settings
   and a public-page proxy fallback.
@@ -300,8 +301,20 @@ it for you.
 - Use the header **terminal button**, the welcome page's **Open terminal** action, or `Ctrl/⌘ + backtick` to show the bottom terminal panel; drag its top edge to resize.
 - A terminal can live either in the bottom panel or the editor. The panel header has **Open in editor**; an editor terminal's toolbar has **Move to panel**.
 - Rendering uses vendored xterm.js. On Linux the Host opens a `script(1)` PTY (util-linux `script` is required), so interactive Bash, colours, `Ctrl+C` and full-screen programs work. On Windows the system command processor (`cmd.exe`) runs over pipes because `script(1)`/`/dev/pts` do not exist there; simple line-buffered commands work (with local echo/backspace), while full-screen programs, terminal resizing and signal keys such as `Ctrl+C` are limited.
-- Terminals start in the local workspace root and run arbitrary commands as the Harness host user; only the owner can reach them. SSH workspaces are not supported.
-  Output buffers are capped at about 1 MB and up to 8 terminals can be open.
+- Local terminals start in the workspace root and run arbitrary commands as the
+  Harness host user; only the owner can reach them. Output buffers are capped at
+  about 1 MB and up to 8 terminals can be open.
+- **SSH terminals**: opening a terminal in an `ssh://user@host:port/path`
+  workspace makes the Host request a remote PTY and start the login shell over
+  the ssh2 connection the file panel already pooled, in the remote workspace
+  root. Input, output, `Ctrl+C`, window resizing (`window-change`) and close
+  behave like the local PTY. The connection is shared with file operations, so a
+  password entered in the SSH connect dialog is reused without being written to
+  disk; after the connection drops or DSH restarts, reconnect the SSH workspace
+  in the file panel. The remote side is expected to be a POSIX shell (`$SHELL
+  -l` is executed). SSH terminals do not detect project quick commands (the bar
+  shows an **SSH terminal** label) but the command input still works, and the
+  status bar says SSH terminal instead of local terminal.
 - Output is pushed by a Host-side long poll: the request answers as soon as the
   shell writes, so keystroke echo and command output are not delayed by a fixed
   polling interval; an idle terminal costs about one heartbeat request per
@@ -385,6 +398,9 @@ it for you.
 - SSH support requires `ssh2`: run `npm install` once at the repository root.
   Without it every other feature still works; SSH operations report the missing
   dependency.
+- Remote workspaces can also open a terminal: it reuses this SSH connection to
+  start a login shell on the remote host (see **Built-in terminal**), so the
+  password or key is only supplied when the connection is established.
 - **Host keys are not pinned** (ssh2 accepts the key presented at connect time).
   Only use remote folders on trusted hosts and networks.
 - Git is local-only: the Git tab is hidden for SSH roots.

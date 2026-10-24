@@ -528,6 +528,51 @@ export async function openRead(spec, relative) {
   }
 }
 
+/**
+ * Open an interactive remote shell on the pooled connection.
+ *
+ * The shell starts in the workspace root: the remote command changes into the
+ * parsed path and then execs the user's login shell, so the requested PTY
+ * window belongs to the shell itself instead of a wrapper. The channel runs on
+ * the same connection the file panel uses, so a password entered in the
+ * connect dialog is reused without being kept anywhere else.
+ * @param spec - `ssh://user@host:port/absolute/path` workspace root.
+ * @param options - PTY size and terminal type for the shell channel.
+ * @returns `{ channel, parsed }`; the caller owns the channel lifecycle.
+ */
+export async function openShell(spec, { cols = 80, rows = 24, term = 'xterm-256color' } = {}) {
+  const parsed = parseSshRoot(spec)
+  return guard(async () => {
+    let client
+    try {
+      client = await clientFor(parsed)
+    } catch (error) {
+      const mapped = mapError(error)
+      if (mapped.sideCode === 'ssh-auth') {
+        throw new SshError(
+          'ssh-auth',
+          'SSH 认证失败：请先在文件面板重新连接该 SSH 工作区（输入密码），或配置 ssh-agent / ~/.ssh 私钥后再打开终端',
+        )
+      }
+      throw mapped
+    }
+    const command = [
+      `cd ${shellQuote(parsed.path)} 2>/dev/null || cd "$HOME"`,
+      'sh=${SHELL:-/bin/sh}',
+      'command -v "$sh" >/dev/null 2>&1 || sh=/bin/sh',
+      'exec "$sh" -l',
+    ].join('; ')
+    const channel = await new Promise((resolve, reject) => {
+      client.exec(
+        command,
+        { pty: { term, cols: Math.floor(cols), rows: Math.floor(rows) } },
+        (error, stream) => (error ? reject(error) : resolve(stream)),
+      )
+    })
+    return { channel, parsed }
+  })
+}
+
 export async function closeAll() {
   for (const pending of pool.values()) {
     try {
@@ -543,6 +588,11 @@ export async function closeAll() {
 /* -------------------------------------------------------------------------- */
 /* Helpers                                                                    */
 /* -------------------------------------------------------------------------- */
+
+/** Quote one string for a POSIX shell. */
+export function shellQuote(value) {
+  return `'${String(value).replaceAll("'", "'\\''")}'`
+}
 
 async function statOrNullPath(parsed, target) {
   return withSftp(parsed, (sftp) => statOrNull(sftp, target))

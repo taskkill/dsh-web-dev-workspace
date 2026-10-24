@@ -127,9 +127,14 @@ third-party runtime dependencies.
 - The quick-command bar is filled only by its refresh button (manual) or the
   one-off check after `cd` / `pushd` / `popd`; opening a terminal detects
   nothing, and there is no timer, focus or visibility refresh.
+- An `ssh://` root opens a remote shell instead of a local PTY: `ssh.js`
+  requests a PTY on the pooled ssh2 connection, execs `$SHELL -l` in the remote
+  root, and the manager drives the resulting channel through the same
+  write/poll/resize/close path (`resize` maps to `window-change`). SSH terminals
+  skip quick-command detection because the project files are remote.
 - `POST /api/dsh-web-filebrowser-terminal` supports `open`, `write`, `poll`,
   `resize` and `close`; `GET ?op=asset&name=…` serves the vendored xterm assets.
-  Root is a registered local workspace; SSH roots are rejected.
+  Root is a registered local workspace or an `ssh://` workspace root.
 
 ### Workspace layout
 

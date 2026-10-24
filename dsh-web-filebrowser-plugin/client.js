@@ -238,7 +238,8 @@ window.__ModuleLoader__.load({
       'terminal.exited': '进程已退出；关闭标签可结束会话',
       'terminal.openFailed': '打开终端失败：{message}',
       'terminal.needRoot': '请先选择工作区再打开终端',
-      'terminal.sshUnsupported': 'SSH 远程工作区暂不支持本地终端',
+      'terminal.sshRemote': 'SSH 远程终端',
+      'terminal.sshQuickHint': 'SSH 远程终端不检测项目快捷命令，可直接在输入框执行命令',
       'terminal.moveToPanel': '移到下方',
       'terminal.moveToEditor': '在编辑区打开',
       'terminal.close': '关闭终端',
@@ -829,7 +830,8 @@ window.__ModuleLoader__.load({
       'terminal.exited': 'Process exited; close the tab to end the session',
       'terminal.openFailed': 'Could not open terminal: {message}',
       'terminal.needRoot': 'Choose a workspace before opening a terminal',
-      'terminal.sshUnsupported': 'Local terminals are not available for SSH workspaces',
+      'terminal.sshRemote': 'SSH terminal',
+      'terminal.sshQuickHint': 'Project quick commands are not detected for SSH terminals; type a command instead',
       'terminal.moveToPanel': 'Move to panel',
       'terminal.moveToEditor': 'Open in editor',
       'terminal.close': 'Close terminal',
@@ -6248,8 +6250,8 @@ window.__ModuleLoader__.load({
             terminal.focus()
             // Only a directory-changing command can change the detected quick
             // commands immediately; a project scan after every command made
-            // busy output feel sluggish.
-            if (/(^|[;&|]\s*)(cd|pushd|popd)(\s|$)/iu.test(text)) {
+            // busy output feel sluggish. SSH terminals have no local scan.
+            if (!session.ssh && /(^|[;&|]\s*)(cd|pushd|popd)(\s|$)/iu.test(text)) {
               window.setTimeout(() => refreshCommandsRef.current?.(), 400)
             }
           }
@@ -6371,38 +6373,48 @@ window.__ModuleLoader__.load({
           { className: 'ds-terminal-quick', title: commandsRoot ?? session.root ?? '' },
           // The refresh button belongs to the quick-command picker, so keep
           // the two in one group instead of leaving the input between them.
+          // SSH terminals cannot scan the remote project, so the group becomes
+          // a short remote label and only the command input stays usable.
           h(
             'div',
-            { className: 'ds-terminal-command-group' },
-            commands.length > 0
-              ? h(
-                  'select',
-                  {
-                    className: 'ds-terminal-command-select',
-                    title: t('terminal.quick'),
-                    value: '',
-                    onChange: (event) => {
-                      if (event.target.value.length > 0) setCommand(event.target.value)
+            {
+              className: session.ssh ? 'ds-terminal-quick-empty ds-terminal-quick-ssh' : 'ds-terminal-command-group',
+              title: session.ssh ? t('terminal.sshQuickHint') : undefined,
+            },
+            session.ssh ? t('terminal.sshRemote') : null,
+            session.ssh
+              ? null
+              : commands.length > 0
+                ? h(
+                    'select',
+                    {
+                      className: 'ds-terminal-command-select',
+                      title: t('terminal.quick'),
+                      value: '',
+                      onChange: (event) => {
+                        if (event.target.value.length > 0) setCommand(event.target.value)
+                      },
                     },
-                  },
-                  h('option', { value: '' }, t('terminal.quick')),
-                  commands.map((item) => h('option', { key: item.id, value: item.command }, item.label)),
-                )
+                    h('option', { value: '' }, t('terminal.quick')),
+                    commands.map((item) => h('option', { key: item.id, value: item.command }, item.label)),
+                  )
+                : h(
+                    'span',
+                    { className: 'ds-terminal-quick-empty', title: t('terminal.commandsEmpty') },
+                    t('terminal.commandsEmpty'),
+                  ),
+            session.ssh
+              ? null
               : h(
-                  'span',
-                  { className: 'ds-terminal-quick-empty', title: t('terminal.commandsEmpty') },
-                  t('terminal.commandsEmpty'),
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-terminal-command-refresh',
+                    title: t('terminal.refreshCommands'),
+                    onClick: () => refreshCommandsRef.current?.(true),
+                  },
+                  h(RefreshIcon),
                 ),
-            h(
-              'button',
-              {
-                type: 'button',
-                className: 'ds-terminal-command-refresh',
-                title: t('terminal.refreshCommands'),
-                onClick: () => refreshCommandsRef.current?.(true),
-              },
-              h(RefreshIcon),
-            ),
           ),
           h('input', {
             className: 'ds-terminal-command-input',
@@ -9206,25 +9218,24 @@ window.__ModuleLoader__.load({
             setBanner({ kind: 'error', message: t('terminal.needRoot') })
             return
           }
-          if (isSshRootPath(root)) {
-            setBanner({ kind: 'error', message: t('terminal.sshUnsupported') })
-            return
-          }
+          const remote = isSshRootPath(root)
           try {
             const value = await callTerminal('open', { root, cols: 100, rows: 28 })
             if (value === null || typeof value !== 'object' || typeof value.id !== 'string') {
               throw new Error('终端服务没有返回会话 ID')
             }
             terminalCounterRef.current += 1
+            const number = t('terminal.title', { n: String(terminalCounterRef.current) })
             const session = {
               id: value.id,
               hostId: value.id,
-              title: t('terminal.title', { n: String(terminalCounterRef.current) }),
+              title: remote ? `${number} · ${sshRootTitle(root)}` : number,
               root,
               placement,
               status: 'running',
               exitCode: null,
               pty: value.pty !== false,
+              ssh: value.ssh === true || remote,
             }
             setTerminals((current) => [...current, session])
             if (placement === 'panel') {
@@ -13520,7 +13531,9 @@ window.__ModuleLoader__.load({
                                   ? activeTab.url
                                   : t('browser.newTab')
                                 : activeTab.mode === 'terminal'
-                                  ? t('terminal.local')
+                                  ? terminals.find((entry) => entry.id === activeTab.terminalId)?.ssh === true
+                                    ? t('terminal.sshRemote')
+                                    : t('terminal.local')
                                 : activeTab.mode === 'diff'
                                 ? t('git.diffReadOnly')
                                 : activeTab.dirty
@@ -15961,6 +15974,7 @@ window.__ModuleLoader__.load({
   color: var(--dsw-alias-label-caption);
   font-size: 10px;
 }
+.ds-terminal-quick-ssh { flex: 0 0 auto; max-width: none; font-weight: 500; }
 .ds-terminal-command-input {
   flex: 1 1 auto;
   min-width: 0;

@@ -4,6 +4,23 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### SSH terminals
+
+- A terminal opened in an `ssh://user@host:port/path` workspace now runs on the
+  remote host: the Host requests a PTY and execs the login shell through the
+  ssh2 connection the file panel already pooled, starting in the remote
+  workspace root. Input, output, `Ctrl+C`, resizing (mapped to
+  `window-change`) and close follow the same path as the local PTY, and the
+  tab/status bar label the session as SSH.
+- The shell shares the pooled SSH connection with file operations, so a
+  password entered in the SSH connect dialog is reused without being stored.
+  When the connection drops or DSH restarts, reconnect the SSH workspace in the
+  file panel (or use ssh-agent / `~/.ssh` keys); an auth failure explains this
+  in the terminal.
+- SSH terminals skip quick-command detection because the project files live on
+  the remote host. The quick-command area shows an **SSH terminal** label
+  instead of the picker, while the command input still sends commands.
+
 ### Terminal output latency and manual command refresh
 
 - Terminal output is no longer delivered by a fixed 140 ms poll. The Host now

@@ -156,6 +156,7 @@ export function apply(ctx) {
     const terminals = createTerminalManager({
       resolveRoot: (requested) => resolveRoot(ctx, requested),
       vendorDir: VENDOR_DIR,
+      openSshShell: (spec, options) => ssh.openShell(spec, options),
     })
     const register = (route, methods, handler, label) => {
       const registration = ctx.connection.fetch.register({
