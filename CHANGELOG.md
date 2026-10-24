@@ -30,6 +30,10 @@ All notable changes to this project are documented here.
   session, so moving the terminal or switching panel tabs does not blank it
   (restoring it does not scan the Host). The Host-side 30-second cache still
   applies.
+- The quick-command refresh button now sits right beside the command picker
+  instead of at the far right of the bar, past the free-width input. On narrow
+  layouts the picker and its button share the first row, and the input and
+  **Run** share the next one.
 
 ### Bookmark delete confirmation
 

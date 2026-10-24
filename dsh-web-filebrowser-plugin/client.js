@@ -251,7 +251,7 @@ window.__ModuleLoader__.load({
       'terminal.quick': '快捷命令',
       'terminal.commandPlaceholder': '输入或选择命令…',
       'terminal.run': '运行',
-      'terminal.commandsEmpty': '点刷新按钮手动检测项目命令，也可直接输入',
+      'terminal.commandsEmpty': '点刷新检测项目命令，也可直接输入',
       'terminal.refreshCommands': '刷新项目命令',
       'chat.title': 'DeepSeek 对话',
       'chat.openFloating': '在悬浮窗口中打开当前对话',
@@ -842,7 +842,7 @@ window.__ModuleLoader__.load({
       'terminal.quick': 'Quick commands',
       'terminal.commandPlaceholder': 'Type or choose a command…',
       'terminal.run': 'Run',
-      'terminal.commandsEmpty': 'Use refresh to detect project commands, or type one directly',
+      'terminal.commandsEmpty': 'Refresh to detect project commands',
       'terminal.refreshCommands': 'Refresh project commands',
       'chat.title': 'DeepSeek conversation',
       'chat.openFloating': 'Open the current conversation in a floating panel',
@@ -6369,21 +6369,41 @@ window.__ModuleLoader__.load({
         h(
           'div',
           { className: 'ds-terminal-quick', title: commandsRoot ?? session.root ?? '' },
-          commands.length > 0
-            ? h(
-                'select',
-                {
-                  className: 'ds-terminal-command-select',
-                  title: t('terminal.quick'),
-                  value: '',
-                  onChange: (event) => {
-                    if (event.target.value.length > 0) setCommand(event.target.value)
+          // The refresh button belongs to the quick-command picker, so keep
+          // the two in one group instead of leaving the input between them.
+          h(
+            'div',
+            { className: 'ds-terminal-command-group' },
+            commands.length > 0
+              ? h(
+                  'select',
+                  {
+                    className: 'ds-terminal-command-select',
+                    title: t('terminal.quick'),
+                    value: '',
+                    onChange: (event) => {
+                      if (event.target.value.length > 0) setCommand(event.target.value)
+                    },
                   },
-                },
-                h('option', { value: '' }, t('terminal.quick')),
-                commands.map((item) => h('option', { key: item.id, value: item.command }, item.label)),
-              )
-            : h('span', { className: 'ds-terminal-quick-empty' }, t('terminal.commandsEmpty')),
+                  h('option', { value: '' }, t('terminal.quick')),
+                  commands.map((item) => h('option', { key: item.id, value: item.command }, item.label)),
+                )
+              : h(
+                  'span',
+                  { className: 'ds-terminal-quick-empty', title: t('terminal.commandsEmpty') },
+                  t('terminal.commandsEmpty'),
+                ),
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'ds-terminal-command-refresh',
+                title: t('terminal.refreshCommands'),
+                onClick: () => refreshCommandsRef.current?.(true),
+              },
+              h(RefreshIcon),
+            ),
+          ),
           h('input', {
             className: 'ds-terminal-command-input',
             value: command,
@@ -6397,16 +6417,6 @@ window.__ModuleLoader__.load({
               }
             },
           }),
-          h(
-            'button',
-            {
-              type: 'button',
-              className: 'ds-terminal-command-refresh',
-              title: t('terminal.refreshCommands'),
-              onClick: () => refreshCommandsRef.current?.(true),
-            },
-            h(RefreshIcon),
-          ),
           h(
             'button',
             {
@@ -14158,7 +14168,9 @@ window.__ModuleLoader__.load({
 .ds-root[data-compact="true"] .ds-side-tab { height: 32px; }
 .ds-root[data-compact="true"] .ds-pane-actions .ds-iconbtn { width: 30px; height: 30px; }
 .ds-root[data-compact="true"] .ds-terminal-quick { flex-wrap: wrap; }
-.ds-root[data-compact="true"] .ds-terminal-command-select { flex-basis: 100%; max-width: none; }
+.ds-root[data-compact="true"] .ds-terminal-command-group { flex: 1 1 100%; }
+.ds-root[data-compact="true"] .ds-terminal-command-select { flex: 1 1 auto; max-width: none; }
+.ds-root[data-compact="true"] .ds-terminal-quick-empty { max-width: none; }
 .ds-root[data-compact="true"] .ds-modal-backdrop { padding: 12px; align-items: flex-start; }
 .ds-root[data-compact="true"] .ds-modal { max-height: calc(100vh - 24px); overflow: auto; }
 .ds-root[data-compact="true"] .ds-palette-backdrop { padding: 8px; align-items: flex-start; }
@@ -15918,6 +15930,15 @@ window.__ModuleLoader__.load({
   border-bottom: 1px solid var(--dsw-alias-border-l1);
   background: var(--dsw-alias-bg-layer-1);
 }
+/* Quick-command picker and its refresh button stay together; the free-width
+   input sits after them instead of separating the two. */
+.ds-terminal-command-group {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
 .ds-terminal-command-select {
   flex: 0 1 190px;
   min-width: 0;
@@ -15930,7 +15951,16 @@ window.__ModuleLoader__.load({
   font: inherit;
   font-size: 10.5px;
 }
-.ds-terminal-quick-empty { flex: 0 0 auto; max-width: 190px; color: var(--dsw-alias-label-caption); font-size: 10px; }
+.ds-terminal-quick-empty {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dsw-alias-label-caption);
+  font-size: 10px;
+}
 .ds-terminal-command-input {
   flex: 1 1 auto;
   min-width: 0;
