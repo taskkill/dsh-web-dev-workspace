@@ -119,7 +119,14 @@ third-party runtime dependencies.
   resizing and signal keys such as `Ctrl+C` are limited. Open from the header terminal button or
   `Ctrl/⌘ + backtick`; the panel has tabs for multiple sessions.
 - Terminals can be moved between the bottom panel and editor tabs; the Host keeps
-  the shell alive and buffers output (1 MB) while the view is detached.
+  the shell alive and buffers output (about 1 MB) while the view is detached.
+- Output uses a long poll: `poll` accepts a `wait` window (up to 1 s) and
+  answers as soon as the shell writes, so the browser does not wait for a fixed
+  interval. Responses carry `longPoll: true`; a Host without it is detected and
+  polled at the old interval.
+- The quick-command bar is filled only by its refresh button (manual) or the
+  one-off check after `cd` / `pushd` / `popd`; opening a terminal detects
+  nothing, and there is no timer, focus or visibility refresh.
 - `POST /api/dsh-web-filebrowser-terminal` supports `open`, `write`, `poll`,
   `resize` and `close`; `GET ?op=asset&name=…` serves the vendored xterm assets.
   Root is a registered local workspace; SSH roots are rejected.

@@ -301,17 +301,22 @@ it for you.
 - A terminal can live either in the bottom panel or the editor. The panel header has **Open in editor**; an editor terminal's toolbar has **Move to panel**.
 - Rendering uses vendored xterm.js. On Linux the Host opens a `script(1)` PTY (util-linux `script` is required), so interactive Bash, colours, `Ctrl+C` and full-screen programs work. On Windows the system command processor (`cmd.exe`) runs over pipes because `script(1)`/`/dev/pts` do not exist there; simple line-buffered commands work (with local echo/backspace), while full-screen programs, terminal resizing and signal keys such as `Ctrl+C` are limited.
 - Terminals start in the local workspace root and run arbitrary commands as the Harness host user; only the owner can reach them. SSH workspaces are not supported.
-  Output buffers are capped at 1 MB and up to 8 terminals can be open.
-- A **Quick commands** bar above each terminal detects runnable project commands:
+  Output buffers are capped at about 1 MB and up to 8 terminals can be open.
+- Output is pushed by a Host-side long poll: the request answers as soon as the
+  shell writes, so keystroke echo and command output are not delayed by a fixed
+  polling interval; an idle terminal costs about one heartbeat request per
+  second, and output that arrives in tiny chunks is briefly coalesced before it
+  is rendered.
+- A **Quick commands** bar above each terminal can detect runnable project commands:
   `package.json` scripts such as `npm run dev`, Maven/Gradle, `java -jar`,
   `dotnet`, Django, Go, Cargo and Docker Compose. Pick a command, edit it if needed,
-  and press **Run**; the input also accepts arbitrary commands. On Linux the list
-  follows the terminal's live cwd (read from `/proc`), so changing projects refreshes
-  it; a refresh button forces a rescan. The list is cached for 30 seconds and
-  checked every 20 seconds, refreshes immediately only after `cd` / `pushd` /
-  `popd`, and pauses while the page is hidden so project scanning cannot make the
-  terminal output sluggish. Recursive `.jar` / `.dll` discovery only runs in Java
-  or .NET projects.
+  and press **Run**; the input also accepts arbitrary commands. Only two things
+  fill the list: the refresh button (manual, forces a rescan) and the one-off
+  check after `cd` / `pushd` / `popd`; opening a terminal detects nothing, and
+  the timer, window-focus and tab-visibility refreshes are gone. On Linux the
+  check follows the shell cwd read from `/proc`. The Host still caches the list
+  for 30 seconds, so manual refreshes do not rescan the project repeatedly.
+  Recursive `.jar` / `.dll` discovery only runs in Java or .NET projects.
 
 ### Built-in browser
 

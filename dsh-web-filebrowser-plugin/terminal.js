@@ -5,8 +5,9 @@
  * (prompt, colours, line editing, full-screen programs) without a native
  * node-pty dependency. Windows has no `script`, so it uses the system command
  * processor over pipes; that fallback is line-buffered and does not provide a
- * real PTY. The browser half uses a vendored xterm.js and polls a bounded
- * output buffer.
+ * real PTY. The browser half uses a vendored xterm.js and holds a long poll on
+ * a bounded output buffer, so bytes are delivered as soon as they arrive
+ * instead of on a fixed timer.
  *
  * Terminals run as the Harness host user inside a registered local workspace.
  * They are owner-authenticated like every other route; no shell command is
@@ -26,6 +27,10 @@ const execFileAsync = promisify(execFile)
 const IS_WINDOWS = process.platform === 'win32'
 const MAX_SESSIONS = 8
 const MAX_BUFFER = 1_000_000
+/** Trim a full buffer down to MAX_BUFFER only after this much extra output. */
+const TRIM_SLACK = 256 * 1024
+/** Longest an idle poll waits for output before answering empty. */
+const MAX_POLL_WAIT = 1000
 const MAX_WRITE = 64 * 1024
 const MAX_ASSET = 2 * 1024 * 1024
 const TITLE_PREFIX = 'Terminal'
@@ -79,7 +84,7 @@ export function createTerminalManager({ resolveRoot, vendorDir }) {
         case 'write':
           return success(await write(body))
         case 'poll':
-          return success(poll(body))
+          return success(await poll(body))
         case 'resize':
           return success(await resize(body))
         case 'close':
@@ -155,16 +160,23 @@ export function createTerminalManager({ resolveRoot, vendorDir }) {
       closed: false,
       exitCode: null,
       decoder: new StringDecoder('utf8'),
+      waiters: new Set(),
     }
     sessions.set(id, session)
     const append = (chunk) => {
       if (session.closed) return
-      session.buffer += session.decoder.write(chunk)
-      if (session.buffer.length > MAX_BUFFER) {
+      const text = session.decoder.write(chunk)
+      if (text.length === 0) return
+      session.buffer += text
+      // Trimming on every chunk once the buffer is full copies the whole
+      // buffer per write, which is what made heavy output feel sluggish.
+      // Let it grow a little past the cap and drop the excess in one slice.
+      if (session.buffer.length > MAX_BUFFER + TRIM_SLACK) {
         const drop = session.buffer.length - MAX_BUFFER
         session.buffer = session.buffer.slice(drop)
         session.base += drop
       }
+      wake(session)
     }
     child.stdout?.on('data', append)
     child.stderr?.on('data', append)
@@ -172,12 +184,14 @@ export function createTerminalManager({ resolveRoot, vendorDir }) {
       append(`\r\n[terminal error: ${error.message}]\r\n`)
       session.closed = true
       session.exitCode = null
+      wake(session)
     })
     child.once('exit', (code, signal) => {
       append(session.decoder.end())
       append(`\r\n[process exited${code === null ? '' : `: ${String(code)}`}${signal ? ` (${signal})` : ''}]\r\n`)
       session.closed = true
       session.exitCode = code
+      wake(session)
     })
     return { id, title: session.title, cwd: root, cols, rows, pty: session.pty }
   }
@@ -377,9 +391,8 @@ export function createTerminalManager({ resolveRoot, vendorDir }) {
     return { ok: true }
   }
 
-  function poll(body) {
-    const session = requireSession(body.id)
-    const since = Number.isFinite(Number(body.since)) ? Math.max(0, Math.floor(Number(body.since))) : 0
+  /** Answer one poll from the session buffer without waiting. */
+  function pollSnapshot(session, since) {
     if (since < session.base) {
       return {
         data: session.buffer,
@@ -387,6 +400,7 @@ export function createTerminalManager({ resolveRoot, vendorDir }) {
         reset: true,
         closed: session.closed,
         exitCode: session.exitCode,
+        longPoll: true,
       }
     }
     const offset = since - session.base
@@ -397,7 +411,44 @@ export function createTerminalManager({ resolveRoot, vendorDir }) {
       reset: false,
       closed: session.closed,
       exitCode: session.exitCode,
+      longPoll: true,
     }
+  }
+
+  /**
+   * Return what the client is missing right now, or hold the request until the
+   * terminal produces output (bounded by `wait`). Holding the request is what
+   * removes the fixed polling delay from keystroke echo and command output,
+   * while an idle terminal costs one request per wait window instead of seven.
+   */
+  async function poll(body) {
+    const session = requireSession(body.id)
+    const since = Number.isFinite(Number(body.since)) ? Math.max(0, Math.floor(Number(body.since))) : 0
+    const snapshot = pollSnapshot(session, since)
+    if (snapshot.data.length > 0 || snapshot.reset || snapshot.closed) return snapshot
+    const requested = Number(body.wait)
+    const wait = Number.isFinite(requested) ? Math.min(MAX_POLL_WAIT, Math.max(0, Math.floor(requested))) : 0
+    if (wait <= 0) return snapshot
+    await new Promise((resolve) => {
+      let settled = false
+      const finish = () => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        session.waiters.delete(finish)
+        resolve()
+      }
+      const timer = setTimeout(finish, wait)
+      timer.unref?.()
+      session.waiters.add(finish)
+    })
+    return pollSnapshot(session, since)
+  }
+
+  /** Release every poll waiting on this session (new output or a close). */
+  function wake(session) {
+    if (session.waiters.size === 0) return
+    for (const finish of [...session.waiters]) finish()
   }
 
   async function resize(body) {
@@ -436,6 +487,7 @@ export function createTerminalManager({ resolveRoot, vendorDir }) {
 
   function terminate(session) {
     session.closed = true
+    wake(session)
     let treeKill = false
     if (IS_WINDOWS && Number.isInteger(session.child.pid) && session.child.exitCode === null) {
       // cmd.exe alone can leave child processes alive; terminate the tree while

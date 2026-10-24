@@ -4,6 +4,33 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Terminal output latency and manual command refresh
+
+- Terminal output is no longer delivered by a fixed 140 ms poll. The Host now
+  holds the poll for up to one second and answers the moment the shell writes
+  anything, so keystroke echo and command output reach xterm.js immediately; an
+  idle terminal costs about one request per second instead of seven. A Host
+  that does not support the hold (an older build after a browser-only reload)
+  is detected through the `longPoll` flag and the client falls back to the old
+  interval without spinning.
+- The browser asks for output as soon as it has finished writing input, so a
+  keystroke echo does not wait out the idle interval even against a Host that
+  predates the long poll. Output that arrives in many tiny chunks is coalesced
+  with a 12 ms gap before the next poll, so a chatty command produces fewer,
+  larger terminal writes instead of one round trip per chunk.
+- A full 1 MB output buffer is now trimmed in one slice only after it grows a
+  little past the cap, instead of copying the whole buffer on every incoming
+  chunk. Heavy output (builds, `yes`, progress bars) no longer makes the
+  terminal sluggish.
+- The quick-command bar is filled only by two triggers: its refresh button
+  (manual, forces a rescan) and the one-off follow-up after `cd` / `pushd` /
+  `popd`. Nothing is detected when a terminal opens, and the 20-second timer,
+  window-focus and tab-visibility refreshes are gone. The empty hint now says
+  that detection is manual. A list detected once is remembered for that live
+  session, so moving the terminal or switching panel tabs does not blank it
+  (restoring it does not scan the Host). The Host-side 30-second cache still
+  applies.
+
 ### Bookmark delete confirmation
 
 - Deleting a bookmark from the browser start page now opens a confirmation
@@ -81,9 +108,9 @@ All notable changes to this project are documented here.
   - Recursive `.jar` / `.dll` discovery now runs only when the root looks like a
     Java or .NET project (or contains a root-level artifact), instead of walking
     up to 4,000 files on every refresh in a normal JS/Python project.
-  - The client checks for a changed shell cwd every 20 seconds instead of every
-    4, pauses while the page is hidden, and refreshes immediately only after
-    `cd` / `pushd` / `popd` rather than after every command.
+  - The client stopped rescanning after every command and only follows a
+    directory change (`cd` / `pushd` / `popd`); the later timer removal is
+    described under **Terminal output latency and manual command refresh**.
   - The panel now updates its command list only when the detected commands or
     root actually change, so polling no longer re-renders the terminal every few
     seconds.

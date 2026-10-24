@@ -56,8 +56,20 @@ window.__ModuleLoader__.load({
     /** How often the hidden Git panel refreshes its status for the tab badge. */
     const GIT_STATUS_POLL_MS = 30000
 
-    /** How often the terminal quick-command list follows the shell cwd. */
-    const TERMINAL_COMMANDS_POLL_MS = 20000
+    /**
+     * How long the Host may hold a terminal output poll while the shell is
+     * quiet. The Host answers as soon as bytes arrive, so this is only the
+     * idle heartbeat, not an output delay.
+     */
+    const TERMINAL_POLL_WAIT_MS = 800
+
+    /**
+     * Pause after a poll that delivered output, so a shell that writes in many
+     * tiny chunks is coalesced into fewer, larger terminal writes instead of
+     * one request per chunk. Idle polls return after the wait window and are
+     * reissued at once.
+     */
+    const TERMINAL_POLL_GAP_MS = 12
 
     /** Host-side HTML proxy for public preview pages. */
     const PROXY_PATH = 'api/dsh-web-filebrowser-proxy'
@@ -239,7 +251,7 @@ window.__ModuleLoader__.load({
       'terminal.quick': '快捷命令',
       'terminal.commandPlaceholder': '输入或选择命令…',
       'terminal.run': '运行',
-      'terminal.commandsEmpty': '未检测到常用命令，可直接输入',
+      'terminal.commandsEmpty': '点刷新按钮手动检测项目命令，也可直接输入',
       'terminal.refreshCommands': '刷新项目命令',
       'chat.title': 'DeepSeek 对话',
       'chat.openFloating': '在悬浮窗口中打开当前对话',
@@ -830,7 +842,7 @@ window.__ModuleLoader__.load({
       'terminal.quick': 'Quick commands',
       'terminal.commandPlaceholder': 'Type or choose a command…',
       'terminal.run': 'Run',
-      'terminal.commandsEmpty': 'No common commands detected; type one directly',
+      'terminal.commandsEmpty': 'Use refresh to detect project commands, or type one directly',
       'terminal.refreshCommands': 'Refresh project commands',
       'chat.title': 'DeepSeek conversation',
       'chat.openFloating': 'Open the current conversation in a floating panel',
@@ -6038,6 +6050,14 @@ window.__ModuleLoader__.load({
 
     let xtermPromise = null
 
+    /**
+     * Last detected quick-command list per live Host terminal session. Moving
+     * a terminal between the panel and the editor (or switching panel tabs)
+     * remounts the view; restoring the previous result keeps the list from
+     * going blank and needs no Host scan, so it is not another refresh trigger.
+     */
+    const terminalCommandCache = new Map()
+
     function terminalAssetUrl(name) {
       const url = new URL(TERMINAL_PATH, document.baseURI)
       url.searchParams.set('op', 'asset')
@@ -6115,8 +6135,8 @@ window.__ModuleLoader__.load({
       const [error, setError] = useState(null)
       const [loading, setLoading] = useState(true)
       const [exited, setExited] = useState(false)
-      const [commands, setCommands] = useState([])
-      const [commandsRoot, setCommandsRoot] = useState(null)
+      const [commands, setCommands] = useState(() => terminalCommandCache.get(session.hostId)?.commands ?? [])
+      const [commandsRoot, setCommandsRoot] = useState(() => terminalCommandCache.get(session.hostId)?.root ?? null)
       const [command, setCommand] = useState('')
       statusRef.current = onStatus
 
@@ -6135,12 +6155,13 @@ window.__ModuleLoader__.load({
             const key = `${nextRoot ?? ''}\u0000${nextCommands
               .map((item) => `${item.id ?? ''}\u0001${item.label ?? ''}\u0001${item.command ?? ''}`)
               .join('\u0002')}`
-            // Polling must not re-render the terminal every few seconds when the
-            // detected commands are unchanged.
+            // Only a changed list re-renders the terminal chrome; repeated
+            // manual refreshes that detect the same commands stay a no-op.
             if (key !== lastKey) {
               lastKey = key
               setCommands(nextCommands)
               setCommandsRoot(nextRoot)
+              terminalCommandCache.set(session.hostId, { commands: nextCommands, root: nextRoot })
             }
           } catch {
             /* terminal backend may not support command detection yet */
@@ -6149,25 +6170,22 @@ window.__ModuleLoader__.load({
           }
         }
         refreshCommandsRef.current = (force) => void refresh(force === true)
-        void refresh(true)
-        const timer = window.setInterval(() => void refresh(), TERMINAL_COMMANDS_POLL_MS)
-        const onVisible = () => {
-          if (!document.hidden) void refresh()
-        }
-        document.addEventListener('visibilitychange', onVisible)
-        window.addEventListener('focus', onVisible)
+        // Exactly two ways update the list: the refresh button in the
+        // quick-command bar (manual) and the one-off follow-up after
+        // cd / pushd / popd. Nothing is detected when the terminal opens, and
+        // there is no timer, focus or visibility refresh, so the Host never
+        // scans behind the user's back while output is being produced.
         return () => {
           alive = false
           refreshCommandsRef.current = null
-          window.clearInterval(timer)
-          document.removeEventListener('visibilitychange', onVisible)
-          window.removeEventListener('focus', onVisible)
         }
       }, [session.hostId])
 
       useEffect(() => {
         let disposed = false
         let pollTimer = null
+        let pollInFlight = false
+        let pollNudge = false
         let observer = null
         let fallbackResize = null
         let terminal = null
@@ -6201,8 +6219,21 @@ window.__ModuleLoader__.load({
             /* container not measured yet */
           }
           let inputLine = ''
+          // Nudge the output poll right after input is written, so a keystroke
+          // echo does not wait out the idle interval on a Host without long
+          // polling, nor a gap between polls on one with it.
+          const nudgePoll = () => {
+            if (disposed) return
+            pollNudge = true
+            if (pollInFlight) return
+            if (pollTimer !== null) {
+              clearTimeout(pollTimer)
+              pollTimer = null
+            }
+            void poll()
+          }
           const sendInput = (data) => {
-            void callTerminal('write', { id: session.hostId, data }).catch(() => {})
+            void callTerminal('write', { id: session.hostId, data }).then(nudgePoll, () => {})
           }
           const runLine = (line) => {
             const text = String(line ?? '').trim()
@@ -6269,10 +6300,24 @@ window.__ModuleLoader__.load({
           }
           setTimeout(resize, 120)
           setLoading(false)
-          const poll = async () => {
-            if (disposed) return
+          // Ask the Host to hold the poll until the shell writes something.
+          // Output (including the echo of a keystroke) then reaches the
+          // terminal as soon as it exists instead of waiting for a timer.
+          async function poll() {
+            if (disposed || pollInFlight) return
+            pollTimer = null
+            pollInFlight = true
             try {
-              const value = await callTerminal('poll', { id: session.hostId, since })
+              let value
+              try {
+                value = await callTerminal('poll', { id: session.hostId, since, wait: TERMINAL_POLL_WAIT_MS })
+              } catch (failure) {
+                if (!disposed) {
+                  setError(errorText(failure))
+                  report('error')
+                }
+                return
+              }
               if (disposed) return
               if (value.reset) terminal.reset()
               if (typeof value.data === 'string' && value.data.length > 0) terminal.write(value.data)
@@ -6282,12 +6327,20 @@ window.__ModuleLoader__.load({
                 report('closed', value.exitCode)
                 return
               }
-              pollTimer = setTimeout(() => void poll(), 140)
-            } catch (failure) {
-              if (!disposed) {
-                setError(errorText(failure))
-                report('error')
-              }
+              // A Host without long polling answers immediately; keep the old
+              // pause so the loop cannot spin. The current Host reports
+              // longPoll, so output is delivered as it is produced.
+              const delay = pollNudge
+                ? 0
+                : value.longPoll !== true
+                  ? 140
+                  : typeof value.data === 'string' && value.data.length > 0
+                    ? TERMINAL_POLL_GAP_MS
+                    : 0
+              pollNudge = false
+              pollTimer = setTimeout(() => void poll(), delay)
+            } finally {
+              pollInFlight = false
             }
           }
           void poll()
@@ -9117,6 +9170,7 @@ window.__ModuleLoader__.load({
           const session = terminals.find((entry) => entry.id === id)
           if (session !== undefined) {
             void callTerminal('close', { id: session.hostId }).catch(() => {})
+            terminalCommandCache.delete(session.hostId)
           }
           const next = terminals.filter((entry) => entry.id !== id)
           setTerminals(next)
@@ -9130,6 +9184,7 @@ window.__ModuleLoader__.load({
           for (const session of terminals) {
             void callTerminal('close', { id: session.hostId }).catch(() => {})
           }
+          terminalCommandCache.clear()
           setTerminals([])
           setTerminalPanelOpen(false)
           setTerminalPanelActive(null)
@@ -9211,6 +9266,7 @@ window.__ModuleLoader__.load({
         function closeTerminalPanel() {
           for (const session of terminals.filter((entry) => entry.placement === 'panel')) {
             void callTerminal('close', { id: session.hostId }).catch(() => {})
+            terminalCommandCache.delete(session.hostId)
           }
           setTerminals((current) => current.filter((entry) => entry.placement !== 'panel'))
           setTerminalPanelOpen(false)
