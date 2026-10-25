@@ -9587,6 +9587,8 @@ ${tail}
           if (root === null) return
           const title = requirementTitleDraft.trim()
           const detail = requirementDetailDraft.trim()
+          const currentRound =
+            pipelineDoc !== null && Number.isInteger(pipelineDoc.round) && pipelineDoc.round > 0 ? pipelineDoc.round : 1
           if (detail.length === 0) return
           setRequirementBusy(true)
           setWorkbenchError(null)
@@ -9623,7 +9625,7 @@ ${tail}
               setRequirementPanelOpen(false)
               setRequirementDetailDraft('')
               await loadPipeline({ silent: true })
-              await sendPromptText(buildRequirementPrompt(value?.entry ?? { title, detail }, round))
+              await sendPromptText(buildRequirementPrompt(value?.entry ?? { title, detail }, currentRound))
               setIntakeNotice(t('workbench.reqSaved'))
             }
             await loadWorkbench({ silent: true })

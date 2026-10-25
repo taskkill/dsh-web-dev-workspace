@@ -4,6 +4,16 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Fix: “round is not defined” when appending a requirement
+
+- `submitRequirementChange` referenced the render-scoped `round` variable, which
+  only existed inside the change-round branch; appending or editing a requirement
+  threw a ReferenceError and surfaced as “需求更新失败：round is not defined”.
+  The handler now reads the current round from the loaded pipeline document
+  (`currentRound`) and uses it for the prompt and notice. A quick scan of the
+  requirement/dashboard handlers for other render-scope references came back
+  clean.
+
 ### Fix: “error is not defined” crash on the dashboard
 
 - The problem-aggregation effect referenced the file-operation `error` state that
