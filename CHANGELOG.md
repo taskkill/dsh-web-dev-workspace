@@ -4,6 +4,23 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### OPC (one-person company) team charter and role handbooks
+
+- New `docs/opc/` team workspace: a company charter (`00-charter.md`) defining
+  mission, the five standing roles plus Lead and Owner, decision rights
+  (RACI), the six-stage cadence, definition of done, escalation paths and data
+  boundaries, and one role handbook per role — product manager, UI designer,
+  full-stack engineer, QA and ops — each with boundaries (what the role must and
+  must not do), inputs, artefact templates, pipeline SOP, quality checklists,
+  hand-off notes and failure modes.
+- `docs/opc/README.md` is the team index: it maps the standing roles to the
+  session's durable teammates, documents the Lead's orchestration rules
+  (task board, dependencies, dispatching stage prompts, waiting, gate handling)
+  and gives the Owner a copy-paste kickoff message for a new project.
+- The five handbooks were written and cross-checked by the five standing role
+  members themselves, so the boundaries and the pipeline they run match the
+  implementation. README and PLAYBOOK link the new workspace.
+
 ### Requirement-to-delivery playbook
 
 - `docs/PLAYBOOK.md` walks a project manager through one full delivery with the

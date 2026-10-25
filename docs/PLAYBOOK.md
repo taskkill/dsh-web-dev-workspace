@@ -1,7 +1,7 @@
 # Playbook：从一个需求到客户交付
 
 > 适用版本 **v1.2.32**。插件：Dev Workspace（`@local/dsh-web-dev-workspace`）+ Harness 原生 Agent Teams。
-> 角色分工与闸门细节见 [AGENT_TEAM.md](AGENT_TEAM.md)；功能复测步骤见 [ACCEPTANCE.md](ACCEPTANCE.md)。
+> 角色分工与闸门细节见 [AGENT_TEAM.md](AGENT_TEAM.md)；团队编制、角色边界手册与立项话术见 [opc/](opc/README.md)；功能复测步骤见 [ACCEPTANCE.md](ACCEPTANCE.md)。
 
 一次完整交付 = **1 个需求 → 6 个流水线阶段 → 2 个人工闸门（每阶段评审 + 最终确认）→ 1 次发布 → 1 套交付包**。
 
