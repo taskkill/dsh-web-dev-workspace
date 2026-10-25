@@ -77,7 +77,8 @@ it for you.
   exports a Markdown acceptance report, and sends failed items back to the agent;
   the Git changes list gains per-file **reviewed** marks; for delivery you can
   download a build-output ZIP or pack the report plus build output into
-  `.dsh/deliveries/`.
+  `.dsh/deliveries/`; screenshots and other evidence upload to `.dsh/evidence/`
+  and attach to the selected acceptance item note.
 - **Fits the host** — theme-token styling, English/Chinese copy, a compact
   single-column layout in narrow sidebars, a right-sidebar Start card, and a
   mobile/tablet layout.

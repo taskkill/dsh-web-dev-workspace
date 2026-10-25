@@ -4,6 +4,16 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Acceptance evidence
+
+- The Acceptance panel can now store **evidence** per workspace: pick screenshots
+  (or PDFs/logs) and they are uploaded to `.dsh/evidence/`, shown as thumbnails in
+  the panel, and the selected acceptance item gets a `证据：<path>` line appended to
+  its note automatically. Clicking a thumbnail opens the file in the editor's
+  image/PDF preview. Uploads reuse the IO bundle (128 MB cap, unique names) so
+  nothing new is exposed on the Host. Generated evidence files live under
+  `.dsh/`, which the plugin already keeps out of Git.
+
 ### Event-driven workspace sync
 
 - The file tree no longer re-lists every expanded directory on a five-second timer.

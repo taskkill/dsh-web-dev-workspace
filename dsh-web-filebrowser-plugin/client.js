@@ -413,6 +413,13 @@ window.__ModuleLoader__.load({
       'acceptance.markReviewed': '标记已审',
       'acceptance.unmarkReviewed': '取消已审',
       'acceptance.reviewProgress': '已审 {done}/{total}',
+      'acceptance.evidence': '证据',
+      'acceptance.evidenceAdd': '添加截图 / 证据',
+      'acceptance.evidenceEmpty': '还没有证据文件。可以把截图或产物放进验收记录。',
+      'acceptance.evidenceHint': '上传后会自动附到当前选中的验收项备注里；点击文件可在编辑区预览。',
+      'acceptance.evidenceUploading': '上传中…',
+      'acceptance.evidenceFailed': '证据上传失败：{message}',
+      'acceptance.evidenceNoItem': '已上传 1 个证据；先选中一条验收项即可自动附到备注。',
       'todo.title': '待办清单',
       'todo.hint': '随工作区保存，面板、会话工具和 DeepSeek 共享同一份任务',
       'todo.loading': '正在读取待办…',
@@ -1071,6 +1078,13 @@ window.__ModuleLoader__.load({
       'acceptance.markReviewed': 'Mark reviewed',
       'acceptance.unmarkReviewed': 'Unmark reviewed',
       'acceptance.reviewProgress': 'Reviewed {done}/{total}',
+      'acceptance.evidence': 'Evidence',
+      'acceptance.evidenceAdd': 'Add screenshot / evidence',
+      'acceptance.evidenceEmpty': 'No evidence files yet. Screenshots and artefacts can live in the acceptance record.',
+      'acceptance.evidenceHint': 'Uploads are attached to the selected item note; click a file to preview it in the editor.',
+      'acceptance.evidenceUploading': 'Uploading…',
+      'acceptance.evidenceFailed': 'Evidence upload failed: {message}',
+      'acceptance.evidenceNoItem': 'Uploaded 1 evidence file; select an acceptance item to attach it to the note.',
       'todo.title': 'Workspace todos',
       'todo.hint': 'Saved with the workspace; the panel, chat tools and DeepSeek share one task board',
       'todo.loading': 'Reading todos…',
@@ -7163,6 +7177,9 @@ window.__ModuleLoader__.load({
         const [acceptanceSelected, setAcceptanceSelected] = useState(null)
         const [acceptanceNoteDraft, setAcceptanceNoteDraft] = useState('')
         const [deliveryBusy, setDeliveryBusy] = useState(false)
+        const [evidenceFiles, setEvidenceFiles] = useState([])
+        const [evidenceBusy, setEvidenceBusy] = useState(false)
+        const evidenceInputRef = useRef(null)
         const [deliveryBundle, setDeliveryBundle] = useState(null)
         const [paneView, setPaneView] = useState('files')
         const [sideTabsWidth, setSideTabsWidth] = useState(0)
@@ -7452,7 +7469,10 @@ window.__ModuleLoader__.load({
           if (paneView === 'memory') void loadMemory()
           if (paneView === 'todo') void loadTodo()
           if (paneView === 'tasks') void loadTasks()
-          if (paneView === 'acceptance') void loadAcceptance()
+          if (paneView === 'acceptance') {
+            void loadAcceptance()
+            void loadEvidence()
+          }
           return undefined
         }, [paneView, state.root])
 
@@ -8964,6 +8984,103 @@ window.__ModuleLoader__.load({
           const prompt = `请修复下面这些未通过的验收项（工作区：\`${root}\`）。修好后请用 acceptance_update 把对应项回填为 pass 或保留 fail 并说明原因。\n\n${lines.join('\n')}`
           const sent = await sendPromptText(prompt)
           if (sent) setChatOpen(true)
+        }
+
+        /** Ensure the workspace evidence directory exists (best effort). */
+        async function ensureEvidenceDir(root) {
+          try {
+            await call('createDir', { root, path: '.dsh' })
+          } catch {
+            /* already exists */
+          }
+          try {
+            await call('createDir', { root, path: '.dsh/evidence' })
+          } catch {
+            /* already exists */
+          }
+        }
+
+        /** List uploaded evidence files from `.dsh/evidence`. */
+        async function loadEvidence(options = {}) {
+          const targetRoot = store.get().root
+          if (targetRoot === null) return
+          if (options?.silent !== true) setEvidenceBusy(true)
+          try {
+            const value = await call('list', { root: targetRoot, path: '.dsh/evidence' })
+            if (store.get().root !== targetRoot) return
+            const entries = (Array.isArray(value?.entries) ? value.entries : [])
+              .filter((entry) => entry !== null && typeof entry === 'object' && typeof entry.name === 'string')
+              .map((entry) => ({ name: entry.name, path: `.dsh/evidence/${entry.name}` }))
+            setEvidenceFiles(entries.slice(-40).reverse())
+          } catch {
+            if (store.get().root === targetRoot) setEvidenceFiles([])
+          } finally {
+            setEvidenceBusy(false)
+          }
+        }
+
+        /** Append one evidence path to the selected acceptance item note. */
+        async function attachEvidenceNote(relativePath) {
+          if (acceptanceSelected === null) {
+            showToast(t('acceptance.evidenceNoItem'))
+            return
+          }
+          const item = acceptanceItems.find((entry) => entry.id === acceptanceSelected)
+          if (item === undefined) return
+          const previous = typeof item.note === 'string' ? item.note.trim() : ''
+          const line = `证据：${relativePath}`
+          const note = previous.length === 0 ? line : `${previous}\n${line}`
+          const ok = await mutateAcceptance('acceptanceUpdate', { id: item.id, note })
+          if (ok) setAcceptanceNoteDraft(note)
+        }
+
+        /** Upload one screenshot / artefact into the workspace evidence folder. */
+        async function uploadEvidenceFile(root, file) {
+          const safe = String(file.name ?? 'evidence').replace(/[^A-Za-z0-9._-]+/gu, '-').slice(-80)
+          const target = `.dsh/evidence/${timestampSlug()}-${safe.length === 0 ? 'file' : safe}`
+          const url = new URL(
+            `${IO_PATH}?op=upload&root=${encodeURIComponent(root)}&path=${encodeURIComponent(target)}`,
+            document.baseURI,
+          )
+          const response = await fetch(url.href, { method: 'POST', credentials: 'same-origin', body: file })
+          if (!response.ok) throw new Error(`HTTP ${String(response.status)}`)
+          const payload = await response.json()
+          if (payload === null || typeof payload !== 'object' || payload.ok !== true) {
+            throw new Error(payload?.error?.message ?? 'upload failed')
+          }
+          return { path: typeof payload.value?.path === 'string' ? payload.value.path : target }
+        }
+
+        /** Handle the evidence file picker. */
+        async function handleEvidenceFiles(event) {
+          const root = store.get().root
+          const files = Array.from(event.target.files ?? [])
+          event.target.value = ''
+          if (root === null || files.length === 0) return
+          setEvidenceBusy(true)
+          setAcceptanceError(null)
+          try {
+            await ensureEvidenceDir(root)
+            const uploaded = []
+            for (const file of files) {
+              if (file.size > 128 * 1024 * 1024) {
+                setAcceptanceError(t('acceptance.evidenceFailed', { message: '128 MB' }))
+                continue
+              }
+              try {
+                uploaded.push(await uploadEvidenceFile(root, file))
+              } catch (error) {
+                setAcceptanceError(t('acceptance.evidenceFailed', { message: errorText(error) }))
+              }
+            }
+            if (uploaded.length > 0) {
+              if (uploaded.length === 1) await attachEvidenceNote(uploaded[0].path)
+              await loadEvidence({ silent: true })
+              if (uploaded.length > 1) showToast(t('acceptance.evidenceNoItem'))
+            }
+          } finally {
+            setEvidenceBusy(false)
+          }
         }
 
         /** Open the Todo panel for the current workspace. */
@@ -12975,6 +13092,63 @@ window.__ModuleLoader__.load({
                     h('button', { type: 'button', className: 'ds-linkbtn', onClick: () => selectAcceptanceItem(null) }, t('action.cancel')),
                   ),
                 ),
+            h(
+              'div',
+              { className: 'ds-acc-evidence' },
+              h(
+                'div',
+                { className: 'ds-acc-evidence-head' },
+                h('span', { className: 'ds-acc-detail-label' }, t('acceptance.evidence')),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-linkbtn ds-acc-evidence-add',
+                    disabled: evidenceBusy,
+                    onClick: () => evidenceInputRef.current?.click(),
+                  },
+                  evidenceBusy ? t('acceptance.evidenceUploading') : t('acceptance.evidenceAdd'),
+                ),
+              ),
+              h('input', {
+                ref: evidenceInputRef,
+                type: 'file',
+                multiple: true,
+                accept: 'image/*,.pdf,.txt,.log,.json',
+                style: { display: 'none' },
+                onChange: (event) => void handleEvidenceFiles(event),
+              }),
+              evidenceFiles.length === 0
+                ? h('div', { className: 'ds-hint ds-acc-evidence-empty' }, t('acceptance.evidenceEmpty'))
+                : h(
+                    'div',
+                    { className: 'ds-acc-evidence-list' },
+                    evidenceFiles.map((entry) =>
+                      h(
+                        'button',
+                        {
+                          key: entry.path,
+                          type: 'button',
+                          className: 'ds-acc-evidence-item',
+                          title: entry.path,
+                          onClick: () => void openFileAt(entry.path, 1, 1),
+                        },
+                        /\.(?:png|jpe?g|gif|webp|avif|bmp|svg)$/iu.test(entry.name)
+                          ? h('img', {
+                              className: 'ds-acc-evidence-thumb',
+                              src: new URL(
+                                `${API_PATH}?op=raw&root=${encodeURIComponent(state.root ?? '')}&path=${encodeURIComponent(entry.path)}`,
+                                document.baseURI,
+                              ).href,
+                              alt: entry.name,
+                              loading: 'lazy',
+                            })
+                          : h(FileGlyph, { name: entry.name, size: 18 }),
+                        h('span', { className: 'ds-acc-evidence-name' }, entry.name),
+                      ),
+                    ),
+                  ),
+            ),
             h(
               'div',
               { className: 'ds-acc-delivery' },
@@ -17302,6 +17476,15 @@ window.__ModuleLoader__.load({
 .ds-acc-actions .ds-btn { height: 24px; padding: 0 7px; font-size: 10px; }
 .ds-acc-bundle { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
 .ds-acc-bundle-path { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-caption); font-family: var(--ds-mono); font-size: 9.5px; }
+.ds-acc-evidence { flex: 0 0 auto; max-height: 32%; overflow: auto; border-top: 1px solid var(--dsw-alias-border-l1); padding: 6px 8px; }
+.ds-acc-evidence-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 4px; }
+.ds-acc-evidence-add { flex: 0 0 auto; font-size: 9.5px; }
+.ds-acc-evidence-empty { padding: 2px 0; font-size: 9.5px; }
+.ds-acc-evidence-list { display: flex; flex-wrap: wrap; gap: 5px; }
+.ds-acc-evidence-item { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 68px; padding: 3px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 6px; background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 8.5px; cursor: pointer; }
+.ds-acc-evidence-item:hover { border-color: var(--dsw-alias-border-l2); color: var(--dsw-alias-label-primary); }
+.ds-acc-evidence-thumb { width: 58px; height: 42px; object-fit: cover; border-radius: 4px; background: var(--dsw-alias-bg-layer-2); }
+.ds-acc-evidence-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ds-todo-edit { display: flex; flex-direction: column; gap: 5px; background: color-mix(in srgb, var(--dsw-alias-brand-primary) 5%, transparent); }
 .ds-todo-note-input {
   width: 100%;
