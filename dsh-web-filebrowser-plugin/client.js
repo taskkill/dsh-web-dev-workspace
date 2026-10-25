@@ -12257,6 +12257,10 @@ window.__ModuleLoader__.load({
          * - every view fits with its label;
          * - labels collapse to icons;
          * - icons plus a "more" menu, keeping the active view in the strip.
+         *
+         * The Harness info panel is a low-frequency view, so it keeps no
+         * permanent tab slot: it sits at the end of the "more views" menu (and
+         * stays reachable from the command palette) instead.
          */
         function renderSideViews() {
           const views = [
@@ -12302,16 +12306,24 @@ window.__ModuleLoader__.load({
               select: openMemory,
             })
           }
-          views.push({
-            id: 'harness',
-            label: t('side.harness'),
-            icon: h(HarnessIcon),
-            active: showHarness,
-            select: () => void openHarness(),
-          })
+          // Secondary views only appear in the "more views" menu: they are
+          // checked too rarely to earn a permanent tab slot.
+          const secondaryViews = [
+            {
+              id: 'harness',
+              label: t('side.harness'),
+              icon: h(HarnessIcon),
+              active: showHarness,
+              select: () => void openHarness(),
+            },
+          ]
+          const menuViews = [...views, ...secondaryViews]
 
+          // The trailing "more" button is permanent (it holds the secondary
+          // views), so it claims one icon slot when measuring the strip.
+          const slots = views.length + 1
           const width = sideTabsWidth
-          const labelBudget = width > 0 ? width / views.length : 0
+          const labelBudget = width > 0 ? width / slots : 0
           const labelMode = width <= 0 || labelBudget >= SIDE_TAB_LABEL_WIDTH
           const iconMode = !labelMode && labelBudget >= SIDE_TAB_ICON_WIDTH
           const overflow = !labelMode && !iconMode
@@ -12337,6 +12349,9 @@ window.__ModuleLoader__.load({
           const hiddenWarn = hidden.some((view) => view.countTone === 'warn' && view.count > 0)
           const hiddenCount = hidden.some((view) => view.count > 0)
           const iconOnly = !labelMode
+          // An open secondary view has no tab of its own, so the "more" tab
+          // carries its active state.
+          const moreActive = sideViewsOpen || secondaryViews.some((view) => view.active)
 
           function renderTab(view) {
             const title =
@@ -12396,61 +12411,67 @@ window.__ModuleLoader__.load({
                 'data-views-open': sideViewsOpen ? 'true' : undefined,
               },
               visible.map(renderTab),
-              hidden.length > 0
-                ? h(
-                    'button',
-                    {
-                      type: 'button',
-                      className: 'ds-side-tab ds-side-tab-more',
-                      'data-active': sideViewsOpen ? 'true' : undefined,
-                      title: t('side.more'),
-                      'aria-label': t('side.more'),
-                      'aria-haspopup': 'menu',
-                      'aria-expanded': sideViewsOpen,
-                      onClick: () => setSideViewsOpen((open) => !open),
-                    },
-                    h(MoreIcon),
-                    hiddenCount
-                      ? h('span', {
-                          className: 'ds-side-tab-alert',
-                          'data-tone': hiddenWarn ? 'warn' : undefined,
-                          'aria-hidden': true,
-                        })
-                      : null,
-                  )
-                : null,
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-side-tab ds-side-tab-more',
+                  'data-active': moreActive ? 'true' : undefined,
+                  title: t('side.more'),
+                  'aria-label': t('side.more'),
+                  'aria-haspopup': 'menu',
+                  'aria-expanded': sideViewsOpen,
+                  onClick: () => setSideViewsOpen((open) => !open),
+                },
+                h(MoreIcon),
+                hiddenCount
+                  ? h('span', {
+                      className: 'ds-side-tab-alert',
+                      'data-tone': hiddenWarn ? 'warn' : undefined,
+                      'aria-hidden': true,
+                    })
+                  : null,
+              ),
               sideViewsOpen
                 ? h(
                     'div',
                     { className: 'ds-side-views-menu', role: 'menu', 'aria-label': t('side.views') },
                     h('div', { className: 'ds-side-views-title' }, t('side.views')),
-                    views.map((view) =>
+                    menuViews.map((view, index) =>
                       h(
-                        'button',
-                        {
-                          key: view.id,
-                          type: 'button',
-                          role: 'menuitemradio',
-                          'aria-checked': view.active,
-                          className: 'ds-side-views-item',
-                          'data-active': view.active ? 'true' : undefined,
-                          onClick: () => {
-                            setSideViewsOpen(false)
-                            view.select()
-                          },
-                        },
-                        view.icon,
-                        h('span', { className: 'ds-side-views-name' }, view.label),
-                        view.count !== undefined && view.count > 0
-                          ? h(
-                              'span',
-                              {
-                                className: 'ds-side-views-count',
-                                'data-tone': view.countTone === undefined ? undefined : view.countTone,
-                              },
-                              formatBadgeCount(view.count),
-                            )
+                        React.Fragment,
+                        { key: view.id },
+                        // Separate the low-frequency secondary views from the
+                        // primary ones that already have their own tab.
+                        index === views.length
+                          ? h('div', { className: 'ds-menu-sep', role: 'separator' })
                           : null,
+                        h(
+                          'button',
+                          {
+                            type: 'button',
+                            role: 'menuitemradio',
+                            'aria-checked': view.active,
+                            className: 'ds-side-views-item',
+                            'data-active': view.active ? 'true' : undefined,
+                            onClick: () => {
+                              setSideViewsOpen(false)
+                              view.select()
+                            },
+                          },
+                          view.icon,
+                          h('span', { className: 'ds-side-views-name' }, view.label),
+                          view.count !== undefined && view.count > 0
+                            ? h(
+                                'span',
+                                {
+                                  className: 'ds-side-views-count',
+                                  'data-tone': view.countTone === undefined ? undefined : view.countTone,
+                                },
+                                formatBadgeCount(view.count),
+                              )
+                            : null,
+                        ),
                       ),
                     ),
                   )

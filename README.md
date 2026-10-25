@@ -122,9 +122,11 @@ it for you.
   a dirty tab offers **Reload** or **Keep my changes**.
 - **In-file find/replace**: `Ctrl/⌘ + F` opens the editor find bar with next/previous,
   case sensitivity, replace and replace all.
-- **Harness panel**: the Harness sidebar tab shows the active profile, plugin version,
-  bundles, dependencies and profile config files. It can preview `cordis.yml`,
-  `cordis.patch.yml` and `package.json`, and run the plugin's `npm run check`.
+- **Harness panel**: the Harness entry at the end of the sidebar's **More views**
+  menu shows the active profile, plugin version, bundles, dependencies and profile
+  config files. It can preview `cordis.yml`, `cordis.patch.yml` and `package.json`,
+  and run the plugin's `npm run check`. It keeps no permanent view tab; the command
+  palette opens it too.
 
 ### Cross-session workspace memory
 
@@ -215,10 +217,12 @@ it for you.
   then the editor with a back button in the breadcrumb.
 - English and Chinese UI; the client uses only Harness theme tokens (`--dsw-*`) and
   imports no Harness Client package.
-- Sidebar tabs include **Explorer / Search / Todo / Git / Memory / Harness**; the
+- Sidebar tabs include **Explorer / Search / Todo / Git / Memory**; the
   Todo tab shows the number of open tasks, and Git shows an amber changed-file
   count while the worktree is dirty. The strip collapses labels to icons and then
-  to a **More views** menu as it narrows, so adding views does not crowd it.
+  to a **More views** menu as it narrows, so adding views does not crowd it. The
+  rarely used **Harness** info panel sits at the end of that menu, behind a
+  separator, instead of taking a permanent tab.
 - **Mobile/tablet layout**: below a 900px panel width the explorer and editor switch to
   a single-column layout with a back button in the breadcrumb; the header wraps with a
   full-width address row; tree rows, sidebar tabs and action buttons get larger touch

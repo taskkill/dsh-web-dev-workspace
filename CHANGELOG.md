@@ -4,6 +4,17 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Harness panel moved into the More views menu
+
+- The low-frequency **Harness** info panel no longer takes a permanent slot in the
+  sidebar view strip. It now sits at the end of the **More views** menu (below a
+  separator) and stays reachable from the command palette, so File / Search / Todo
+  / Git / Memory keep the primary strip on narrow screens. Opening it from the
+  menu highlights the **More views** button as the active tab, and the pane title
+  still reads **Harness**. The **More views** button is always present now (it also
+  holds views that overflow a narrow strip) and keeps its badge dot when a hidden
+  view has a pending count.
+
 ### SSH terminals
 
 - A terminal opened in an `ssh://user@host:port/path` workspace now runs on the
