@@ -4,6 +4,25 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Requirement intake: from screenshots and text to a running delivery
+
+- The Workbench intake card now accepts a pasted requirement plus **screenshots
+  and requirement documents** (drag-and-drop or file picker, up to 8 files,
+  25 MB each). Submitting creates a local intake record under
+  `.dsh/intake/<timestamp>/` (text, attachment list and copied files), optionally
+  switches the pipeline to fast mode, and sends an orchestration prompt to the
+  conversation: the product manager turns the intake into
+  `docs/pipeline/requirements.md` + acceptance items, sets the pipeline
+  requirement and starts the product stage, then the Lead keeps dispatching
+  design/development/testing (auto-approved in fast mode) and stops at the
+  approval gate.
+- The intake UI is full-width (spanning the grid), with a dashed drop zone,
+  attachment chips with sizes and removal, an “auto-advance” checkbox (on by
+  default) and a submission notice pointing at the intake folder.
+- Workbench polish: card hover transitions, larger project actions, and clearer
+  primary/secondary button emphasis. The inline fast-mode toggle stays on the
+  project card once a project exists.
+
 ### Workbench moved to a full-width main-area page
 
 - The Workbench is no longer a sidebar pane: it now occupies the main content

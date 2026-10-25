@@ -391,6 +391,16 @@ window.__ModuleLoader__.load({
       'workbench.currentProject': '当前项目',
       'workbench.noProject': '还没有项目。写下需求，点开工，团队开始交付。',
       'workbench.kickoff': '开工',
+      'workbench.intake': '需求录入',
+      'workbench.intakePlaceholder': '把需求或需求文档贴进来；截图/文档可以直接拖到下面。',
+      'workbench.addFiles': '添加附件',
+      'workbench.removeFile': '移除',
+      'workbench.intakeMode': '自动推进（中间阶段自动通过，只在最终确认与发布找我）',
+      'workbench.submitIntake': '交给产品经理',
+      'workbench.intakeHint': '提交后：产品经理梳理可落地方案 → 设计/开发/测试自动推进 → 你只需在工作台确认与验收。',
+      'workbench.intakeDone': '已提交，正在交给产品经理梳理。',
+      'workbench.attachments': '附件',
+      'workbench.needInput': '先写需求或加一个附件。',
       'workbench.progress': '阶段 {done}/{total} · 当前：{stage}',
       'workbench.needsYou': '需要你处理',
       'workbench.nothingNeedsYou': '暂无待办，团队进行中。',
@@ -1154,6 +1164,16 @@ window.__ModuleLoader__.load({
       'workbench.currentProject': 'Current project',
       'workbench.noProject': 'No project yet. Write the requirement and kick off; the team starts delivering.',
       'workbench.kickoff': 'Kick off',
+      'workbench.intake': 'Requirement intake',
+      'workbench.intakePlaceholder': 'Paste the requirement or a requirement document; drop screenshots/docs below.',
+      'workbench.addFiles': 'Add files',
+      'workbench.removeFile': 'Remove',
+      'workbench.intakeMode': 'Auto-advance (intermediate stages pass automatically; only final sign-off and release need you)',
+      'workbench.submitIntake': 'Hand to the product manager',
+      'workbench.intakeHint': 'After submitting: the product manager turns it into a plan, design/dev/test advance automatically, and you only confirm and accept in the Workbench.',
+      'workbench.intakeDone': 'Submitted; handing it to the product manager.',
+      'workbench.attachments': 'Attachments',
+      'workbench.needInput': 'Write the requirement or add an attachment first.',
       'workbench.progress': 'Stage {done}/{total} · current: {stage}',
       'workbench.needsYou': 'Needs you',
       'workbench.nothingNeedsYou': 'Nothing needs you right now; the team is working.',
@@ -7405,6 +7425,9 @@ window.__ModuleLoader__.load({
         const [workbenchDraft, setWorkbenchDraft] = useState('')
         const [workbenchBusy, setWorkbenchBusy] = useState(false)
         const [workbenchKickoffBusy, setWorkbenchKickoffBusy] = useState(false)
+        const [intakeFiles, setIntakeFiles] = useState([])
+        const [intakeMode, setIntakeMode] = useState('fast')
+        const [intakeNotice, setIntakeNotice] = useState('')
         const [workbenchError, setWorkbenchError] = useState(null)
         const [pipelineDoc, setPipelineDoc] = useState(null)
         const [pipelineBusy, setPipelineBusy] = useState(false)
@@ -9125,6 +9148,118 @@ ${tail}
           } finally {
             setWorkbenchKickoffBusy(false)
           }
+        }
+
+        /** Add picked/dropped files to the intake draft. */
+        function addIntakeFiles(fileList) {
+          const incoming = Array.from(fileList ?? []).filter((file) => file instanceof File)
+          if (incoming.length === 0) return
+          setIntakeNotice('')
+          setIntakeFiles((current) => {
+            const merged = [...current]
+            for (const file of incoming) {
+              if (merged.length >= 8) break
+              if (file.size > 25 * 1024 * 1024) continue
+              if (merged.some((entry) => entry.name === file.name && entry.size === file.size)) continue
+              merged.push(file)
+            }
+            return merged
+          })
+        }
+
+        /** Remove one intake attachment. */
+        function removeIntakeFile(index) {
+          setIntakeFiles((current) => current.filter((_, position) => position !== index))
+        }
+
+        /** Keep a safe file name while preserving the extension. */
+        function safeIntakeName(name, index) {
+          const base = typeof name === 'string' && name.length > 0 ? name : 'file'
+          const extension = /.[a-z0-9]{1,8}$/iu.exec(base)?.[0] ?? ''
+          const stem = base.slice(0, base.length - extension.length).replace(/[^\w\u4e00-\u9fff.-]+/gu, '-').slice(0, 48)
+          return (stem.length === 0 ? 'file' : stem) + '-' + String(index) + extension.toLowerCase()
+        }
+
+        /** Turn the draft into an intake record and hand it to the product manager. */
+        async function submitIntake() {
+          const root = store.get().root
+          if (root === null) return
+          const text = workbenchDraft.trim()
+          if (text.length === 0 && intakeFiles.length === 0) {
+            setWorkbenchError(t('workbench.needInput'))
+            return
+          }
+          setWorkbenchKickoffBusy(true)
+          setWorkbenchError(null)
+          setIntakeNotice('')
+          try {
+            const stamp = new Date()
+            const two = (value) => String(value).padStart(2, '0')
+            const id = stamp.getFullYear() + two(stamp.getMonth() + 1) + two(stamp.getDate()) + '-' + two(stamp.getHours()) + two(stamp.getMinutes()) + '-' + Math.random().toString(36).slice(2, 6)
+            const directory = '.dsh/intake/' + id
+            for (const path of ['.dsh', '.dsh/intake', directory]) {
+              try {
+                await call('createDir', { root, path })
+              } catch {
+                /* already exists */
+              }
+            }
+            const uploaded = []
+            for (const [index, file] of intakeFiles.entries()) {
+              try {
+                const value = await uploadToWorkspace(root, directory + '/' + safeIntakeName(file.name, index), file)
+                uploaded.push({ name: file.name, path: typeof value?.path === 'string' ? value.path : directory + '/' + safeIntakeName(file.name, index), size: file.size })
+              } catch (error) {
+                throw new Error('附件「' + file.name + '」上传失败：' + errorText(error))
+              }
+            }
+            const lines = [
+              '# 需求收件箱',
+              '',
+              '- 提交时间：' + stamp.toISOString(),
+              '- 附件数量：' + String(uploaded.length),
+              '',
+              '## 原始需求',
+              '',
+              text.length === 0 ? '(仅附件，无文字描述)' : text,
+            ]
+            if (uploaded.length > 0) {
+              lines.push('', '## 附件清单', '')
+              for (const item of uploaded) lines.push('- ' + item.path + '（' + item.name + '）')
+            }
+            await call('write', { root, path: directory + '/intake.md', content: lines.join('\n') })
+            if (intakeMode === 'fast') {
+              try {
+                await call('pipelineSetMode', { root, mode: 'fast' })
+              } catch {
+                /* older Host without fast mode */
+              }
+            }
+            await sendPromptText(buildIntakePrompt(directory, intakeMode))
+            setWorkbenchDraft('')
+            setIntakeFiles([])
+            setIntakeNotice(t('workbench.intakeDone') + '（' + directory + '）')
+            await loadWorkbench({ silent: true })
+          } catch (error) {
+            setWorkbenchError(t('workbench.loadFailed', { message: errorText(error) }))
+          } finally {
+            setWorkbenchKickoffBusy(false)
+          }
+        }
+
+        /** Prompt that makes the Lead orchestrate a whole delivery from one intake. */
+        function buildIntakePrompt(directory, mode) {
+          return [
+            '需求收件箱已提交：\`' + directory + '/\`',
+            '',
+            '请按 OPC 一人公司流程处理这条需求（你是 Lead：负责编排、派发与提交，不能代替 Owner 审批）：',
+            '1) 让「产品经理」角色梳理需求：读取 \`' + directory + '/intake.md\` 与附件（截图用 read_image 查看），产出可落地的 \`docs/pipeline/requirements.md\`（目标用户/场景/范围 做什么不做什么/约束/验收标准/风险），并用 acceptance_add 建立验收项（结论式 title + 验证条件 + category 分组）；',
+            '2) 调用 pipeline_set_requirement 写入需求标题与详情，然后 pipeline_start_stage({stageId:"product"}) 并 pipeline_submit_stage 提交；',
+            '3) 之后继续编排 design / development / testing：按 pipeline_stage_prompt 派发给对应角色（可用 spawn_teammate 或直接执行），提交后快速模式会自动通过并继续；',
+            '4) 到 approval 闸门停下，提示 Owner 在工作台确认；release 阶段等 Owner 批准后再由运维执行。',
+            '',
+            mode === 'fast' ? '快速模式已开启：中间四阶段提交后自动通过，不要停下来等人工审批。' : '当前为逐阶段审批模式：每个阶段提交后停下等 Owner 审批。',
+          ].join('\n')
         }
 
         /* ------------------------------------------------------------------ *
@@ -14041,8 +14176,8 @@ ${tail}
           const attention = reviewStage !== null || failedItems.length > 0
           const requirementCard = h(
             'div',
-            { className: 'ds-wb-card' },
-            h('div', { className: 'ds-wb-card-title' }, t('workbench.currentProject')),
+            { className: 'ds-wb-card' + (requirementTitle.length > 0 ? '' : ' ds-wb-intake') },
+            h('div', { className: 'ds-wb-card-title' }, requirementTitle.length > 0 ? t('workbench.currentProject') : t('workbench.intake')),
             workbenchBusy ? h('div', { className: 'ds-hint ds-wb-hint' }, t('acceptance.saving')) : null,
             requirementTitle.length > 0
               ? h(
@@ -14099,30 +14234,88 @@ ${tail}
                 )
               : h(
                   'div',
-                  { className: 'ds-wb-kickoff' },
-                  h('input', {
-                    className: 'ds-pipe-input',
+                  { className: 'ds-wb-intake-body' },
+                  h('textarea', {
+                    className: 'ds-pipe-textarea ds-wb-intake-text',
+                    rows: 5,
                     value: workbenchDraft,
-                    placeholder: t('pipeline.requirementPlaceholder'),
+                    placeholder: t('workbench.intakePlaceholder'),
                     spellCheck: false,
                     onChange: (event) => setWorkbenchDraft(event.target.value),
-                    onKeyDown: (event) => {
-                      if (event.key !== 'Enter') return
-                      event.preventDefault()
-                      void kickoffFromWorkbench()
-                    },
                   }),
                   h(
-                    'button',
+                    'div',
                     {
-                      type: 'button',
-                      className: 'ds-btn ds-wb-kickoff-btn',
-                      disabled: workbenchKickoffBusy || workbenchDraft.trim().length === 0,
-                      onClick: () => void kickoffFromWorkbench(),
+                      className: 'ds-wb-drop',
+                      onDragOver: (event) => {
+                        event.preventDefault()
+                      },
+                      onDrop: (event) => {
+                        event.preventDefault()
+                        addIntakeFiles(event.dataTransfer?.files)
+                      },
                     },
-                    workbenchKickoffBusy ? t('acceptance.saving') : t('workbench.kickoff'),
+                    h(
+                      'label',
+                      { className: 'ds-btn ds-wb-btn ds-wb-file-btn' },
+                      h('input', {
+                        type: 'file',
+                        multiple: true,
+                        accept: 'image/*,.md,.txt,.pdf,.docx,.xlsx,.json,.csv',
+                        style: { display: 'none' },
+                        onChange: (event) => {
+                          addIntakeFiles(event.target.files)
+                          event.target.value = ''
+                        },
+                      }),
+                      t('workbench.addFiles'),
+                    ),
+                    intakeFiles.length === 0
+                      ? h('span', { className: 'ds-wb-drop-text' }, t('workbench.intakePlaceholder'))
+                      : h(
+                          'div',
+                          { className: 'ds-wb-chips' },
+                          intakeFiles.map((file, index) =>
+                            h(
+                              'span',
+                              { key: file.name + String(index), className: 'ds-wb-chip' },
+                              h('span', { className: 'ds-wb-chip-name', title: file.name }, file.name),
+                              h('span', { className: 'ds-wb-chip-size' }, String(Math.max(1, Math.round(file.size / 1024))) + ' KB'),
+                              h(
+                                'button',
+                                { type: 'button', className: 'ds-wb-chip-remove', title: t('workbench.removeFile'), onClick: () => removeIntakeFile(index) },
+                                h(CloseIcon),
+                              ),
+                            ),
+                          ),
+                        ),
                   ),
-                  h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.noProject')),
+                  h(
+                    'label',
+                    { className: 'ds-wb-mode' },
+                    h('input', {
+                      type: 'checkbox',
+                      checked: intakeMode === 'fast',
+                      onChange: (event) => setIntakeMode(event.target.checked ? 'fast' : 'normal'),
+                    }),
+                    h('span', null, t('workbench.intakeMode')),
+                  ),
+                  h(
+                    'div',
+                    { className: 'ds-wb-actions' },
+                    h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'ds-btn ds-btn-primary ds-wb-btn ds-wb-submit',
+                        disabled: workbenchKickoffBusy || (workbenchDraft.trim().length === 0 && intakeFiles.length === 0),
+                        onClick: () => void submitIntake(),
+                      },
+                      workbenchKickoffBusy ? t('acceptance.saving') : t('workbench.submitIntake'),
+                    ),
+                  ),
+                  h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.intakeHint')),
+                  intakeNotice.length === 0 ? null : h('div', { className: 'ds-wb-notice' }, intakeNotice),
                 ),
           )
           const attentionCard = !attention
@@ -19109,6 +19302,24 @@ ${tail}
 .ds-root[data-compact="true"] .ds-wb-page-scroll { padding: 10px; }
 .ds-root[data-compact="true"] .ds-wb-page-inner { grid-template-columns: 1fr; }
 .ds-root[data-compact="true"] .ds-wb-page .ds-wb-btn { height: 34px; font-size: 12.5px; }
+.ds-wb-intake { grid-column: 1 / -1; }
+.ds-wb-intake-text { width: 100%; box-sizing: border-box; min-height: 92px; resize: vertical; }
+.ds-wb-drop { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; padding: 10px; border: 1.5px dashed var(--dsw-alias-border-l2); border-radius: 9px; background: color-mix(in srgb, var(--dsw-alias-bg-layer-2) 55%, transparent); transition: border-color 0.15s, background 0.15s; }
+.ds-wb-drop:hover { border-color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 6%, transparent); }
+.ds-wb-drop-text { color: var(--dsw-alias-label-caption); font-size: 10.5px; }
+.ds-wb-file-btn { cursor: pointer; }
+.ds-wb-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ds-wb-chip { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 3px 6px; border-radius: 6px; background: var(--dsw-alias-bg-layer-1); border: 1px solid var(--dsw-alias-border-l1); font-size: 10px; }
+.ds-wb-chip-name { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-wb-chip-size { color: var(--dsw-alias-label-caption); }
+.ds-wb-chip-remove { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--dsw-alias-label-caption); cursor: pointer; }
+.ds-wb-chip-remove:hover { background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary); }
+.ds-wb-mode { display: flex; align-items: center; gap: 6px; margin-top: 9px; color: var(--dsw-alias-label-secondary); font-size: 11px; cursor: pointer; }
+.ds-wb-mode input { margin: 0; }
+.ds-wb-submit { margin-top: 2px; }
+.ds-wb-notice { margin-top: 8px; padding: 6px 8px; border-radius: 6px; background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 10%, transparent); color: var(--dsw-alias-state-success-primary); font-size: 10.5px; }
+.ds-wb-card { transition: border-color 0.15s; }
+.ds-wb-card:hover { border-color: color-mix(in srgb, var(--dsw-alias-label-caption) 32%, var(--dsw-alias-border-l1)); }
 .ds-wb-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 8px; padding: 8px; }
 .ds-wb-card { border: 1px solid var(--dsw-alias-border-l1); border-radius: 8px; padding: 8px; background: var(--dsw-alias-bg-layer-1); }
 .ds-wb-card.ds-wb-attention[data-kind="attention"] { border-color: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 55%, var(--dsw-alias-border-l1)); background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 6%, var(--dsw-alias-bg-layer-1)); }
