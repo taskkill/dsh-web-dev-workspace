@@ -55,7 +55,7 @@
 
 ### ③ UI 设计阶段
 
-- 启动 `design` → 设计师产出 `docs/pipeline/design.md`（信息架构、页面/组件、交互、视觉规范）+ 设计资源（图片/SVG/HTML 预览，放 `docs/pipeline/design/`）。
+- 启动 `design` → 设计师产出 `docs/pipeline/design.md`（信息架构、页面/组件、交互、视觉规范）+ 设计资源；**有 UI 界面时必须提交界面截图/高保真稿**（PNG/JPG/SVG 或 HTML 静态稿，放 `docs/pipeline/design/`），工作台「设计稿」卡片与流水线产物会显示缩略图，直接点开看图。
 - 提交 + artifacts（例如设计说明 + 关键页面截图路径）。
 - **闸门（你）**：通过 / 打回（打回备注写清要改什么）。
 

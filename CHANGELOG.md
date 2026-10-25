@@ -4,6 +4,20 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### UI design stage must deliver screenshots, and the Workbench shows them
+
+- The design stage prompt now requires **UI screenshots or high-fidelity mockups**
+  whenever the requirement contains a UI (PNG/JPG/SVG or an HTML mockup that the
+  built-in browser can open), saved under `docs/pipeline/design/` and listed one
+  by one in the stage artifacts; backend/config-only work may state “no UI change”
+  with a reason. The design role handbook, AGENT_TEAM deliverables table and
+  PLAYBOOK were updated to match.
+- The Workbench gained a **Design shots** card: image artifacts from the design
+  stage render as a clickable thumbnail grid (opens the image viewer) with design
+  documents listed below; when no screenshot exists it says so explicitly so the
+  gap is visible during review.
+- Pipeline stage cards render image artifacts as thumbnails instead of plain links.
+
 ### Deduplicate the requirement adjustment controls
 
 - The requirement card showed the mode buttons twice: three large entry buttons

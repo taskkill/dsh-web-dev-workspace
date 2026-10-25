@@ -68,7 +68,8 @@
 3. 查设计系统：先在 `client.js` 找可复用组件与 `--dsw-*` token，再决定是否新增。
 4. 用模板写 `docs/pipeline/design.md` + 落设计资源；正文附给开发/测试的交接段（见第 7 节）。
 5. 自查：图片预览/内置浏览器打开 HTML 资源，检查 360/768/1280px 三档与深浅主题。
-6. `pipeline_submit_stage({stageId:'design', summary, artifacts:[{path:'docs/pipeline/design.md',label:'设计说明'},{path:'docs/pipeline/design/…',label:'关键页面'}]})`。
+6. **若需求包含 UI 界面，必须产出界面截图或高保真稿**（PNG/JPG/SVG，或内置浏览器可打开的 HTML 静态稿），保存到 `docs/pipeline/design/`，每个关键页面/状态至少一张；纯后端/配置需求可写「无 UI 变更」并说明原因。
+7. `pipeline_submit_stage({stageId:'design', summary, artifacts:[{path:'docs/pipeline/design.md',label:'设计说明'},{path:'docs/pipeline/design/shot-home.png',label:'首页截图'},…]})`，截图必须逐张列入 artifacts——工作台与流水线会把它们显示成缩略图供 Owner 直接评审。
 7. **停下等 Owner 审批**，不进入 development。
 8. 被打回：按评审备注逐条改 → 版本号 +1 → 重新提交；连续两次打回交 Lead 缩范围/换方案。
 

@@ -424,6 +424,10 @@ window.__ModuleLoader__.load({
       'workbench.reqRevise': '修订需求',
       'workbench.adjust': '需求与调整',
       'workbench.issues': '问题与状态',
+      'workbench.design': '设计稿',
+      'workbench.designHint': '设计阶段产出的界面截图 / 高保真稿，点击可打开查看。',
+      'workbench.designEmpty': '本次设计阶段还没有界面截图；需求涉及 UI 时，UI 设计师需要提交截图或高保真稿。',
+      'workbench.designDocs': '设计文档',
       'workbench.allNormal': '运行正常，暂无需要处理的问题。',
       'workbench.clearIssues': '清除',
       'workbench.updatedAt': '更新于 {time}',
@@ -1324,6 +1328,10 @@ window.__ModuleLoader__.load({
       'workbench.reqRevise': 'Revise requirement',
       'workbench.adjust': 'Requirement & adjustments',
       'workbench.issues': 'Problems & status',
+      'workbench.design': 'Design shots',
+      'workbench.designHint': 'UI screenshots / high-fidelity mockups from the design stage; click to open.',
+      'workbench.designEmpty': 'No UI screenshots yet; when the requirement has a UI the designer must submit screenshots or mockups.',
+      'workbench.designDocs': 'Design docs',
       'workbench.allNormal': 'All good — nothing needs attention.',
       'workbench.clearIssues': 'Clear',
       'workbench.updatedAt': 'updated {time}',
@@ -12971,6 +12979,11 @@ ${tail}
           store.set((current) => ({ ...current, selected: relative }))
         }
 
+        /** True when a workspace path looks like a viewable image. */
+        function isImagePath(value) {
+          return typeof value === 'string' && /\.(?:png|jpe?g|webp|gif|svg)$/iu.test(value)
+        }
+
         /** Format a byte count for the properties dialog. */
         function formatBytes(value) {
           if (!Number.isFinite(value) || value < 0) return '—'
@@ -14825,6 +14838,11 @@ ${tail}
           const recentEvents = events.slice(0, 8)
           const failedStages = stages.filter((stage) => stage !== null && typeof stage === 'object' && stage.status === 'failed')
           const latestChange = doc !== null && Array.isArray(doc.changes) && doc.changes.length > 0 ? doc.changes[0] : null
+          const designStage = stages.find((stage) => stage !== null && typeof stage === 'object' && stage.id === 'design') ?? null
+          const designArtifacts = designStage !== null && Array.isArray(designStage.artifacts) ? designStage.artifacts : []
+          const designShots = designArtifacts.filter((artifact) => artifact !== null && typeof artifact === 'object' && isImagePath(artifact.path))
+          const designDocs = designArtifacts.filter((artifact) => !(artifact !== null && typeof artifact === 'object' && isImagePath(artifact.path)))
+          const workspaceRoot = store.get().root
           const issueRows = [
             ...failedStages.map((stage) => ({
               id: 'stage:' + stage.id,
@@ -15339,6 +15357,63 @@ ${tail}
                   ),
                 ),
           )
+          const designCard =
+            designArtifacts.length === 0
+              ? null
+              : h(
+                  'div',
+                  { className: 'ds-wb-card ds-wb-design' },
+                  h(
+                    'div',
+                    { className: 'ds-wb-card-head' },
+                    h('div', { className: 'ds-wb-card-title ds-wb-card-title-inline' }, t('workbench.design')),
+                    h('span', { className: 'ds-spacer' }),
+                    h('span', { className: 'ds-wb-issue-time' }, t('workbench.designHint')),
+                  ),
+                  designShots.length === 0
+                    ? h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.designEmpty'))
+                    : h(
+                        'div',
+                        { className: 'ds-wb-shots' },
+                        designShots.map((artifact, index) =>
+                          h(
+                            'button',
+                            {
+                              key: artifact.path + ':' + String(index),
+                              type: 'button',
+                              className: 'ds-wb-shot',
+                              title: isImagePath(artifact.path) && workspaceRoot !== null ? rawUrl(workspaceRoot, artifact.path) : artifact.path,
+                              onClick: () => void openFile(artifact.path),
+                            },
+                            h('img', {
+                              src: workspaceRoot === null ? '' : rawUrl(workspaceRoot, artifact.path),
+                              alt: typeof artifact.label === 'string' ? artifact.label : artifact.path,
+                              loading: 'lazy',
+                            }),
+                            h('span', { className: 'ds-wb-shot-label' }, typeof artifact.label === 'string' && artifact.label.length > 0 ? artifact.label : artifact.path),
+                          ),
+                        ),
+                      ),
+                  designDocs.length === 0
+                    ? null
+                    : h(
+                        'div',
+                        { className: 'ds-wb-design-docs' },
+                        h('div', { className: 'ds-wb-reqlog-title' }, t('workbench.designDocs')),
+                        designDocs.map((artifact, index) =>
+                          h(
+                            'button',
+                            {
+                              key: artifact.path + ':' + String(index),
+                              type: 'button',
+                              className: 'ds-linkbtn ds-wb-link',
+                              onClick: () => void openFile(artifact.path),
+                            },
+                            typeof artifact.label === 'string' && artifact.label.length > 0 ? artifact.label : artifact.path,
+                          ),
+                        ),
+                      ),
+                )
           const flowCard =
             requirementTitle.length === 0
               ? null
@@ -15521,6 +15596,7 @@ ${tail}
                 adjustCard,
                 requirementCard,
                 flowCard,
+                designCard,
                 acceptanceCard,
                 runningCard,
                 workbenchError !== null ? h('div', { className: 'ds-errorline' }, workbenchError) : null,
@@ -15593,6 +15669,25 @@ ${tail}
                   onClick: () => window.open(artifact.path, '_blank', 'noopener,noreferrer'),
                 },
                 `${label} ↗`,
+              )
+            }
+            if (isImagePath(artifact.path)) {
+              const panelRoot = store.get().root
+              return h(
+                'button',
+                {
+                  key: artifact.path,
+                  type: 'button',
+                  className: 'ds-pipe-shot',
+                  title: artifact.path,
+                  onClick: () => void openFile(artifact.path),
+                },
+                h('img', {
+                  src: panelRoot === null ? '' : rawUrl(panelRoot, artifact.path),
+                  alt: label,
+                  loading: 'lazy',
+                }),
+                h('span', { className: 'ds-pipe-shot-label' }, label),
               )
             }
             return h(
@@ -20425,6 +20520,17 @@ h(
 .ds-pipe-round { padding: 1px 7px; border-radius: 9px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-caption); font-size: 9px; }
 .ds-wb-flow-round { padding: 1px 7px; border-radius: 9px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-caption); font-size: 9px; }
 .ds-wb-change { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; padding-top: 9px; border-top: 1px dashed var(--dsw-alias-border-l1); }
+.ds-pipe-shot { display: flex; flex-direction: column; gap: 2px; width: 100%; padding: 0; margin: 2px 0; border: 1px solid var(--dsw-alias-border-l1); border-radius: 7px; background: var(--dsw-alias-bg-layer-1); overflow: hidden; cursor: pointer; text-align: left; }
+.ds-pipe-shot:hover { border-color: color-mix(in srgb, var(--dsw-alias-brand-primary) 50%, var(--dsw-alias-border-l1)); }
+.ds-pipe-shot img { display: block; width: 100%; height: 80px; object-fit: cover; background: var(--dsw-alias-bg-layer-2); }
+.ds-pipe-shot-label { padding: 3px 5px; color: var(--dsw-alias-label-caption); font-size: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-wb-design { grid-column: 1 / -1; }
+.ds-wb-shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 6px; }
+.ds-wb-shot { display: flex; flex-direction: column; gap: 0; padding: 0; border: 1px solid var(--dsw-alias-border-l1); border-radius: 8px; background: var(--dsw-alias-bg-layer-1); overflow: hidden; cursor: pointer; text-align: left; }
+.ds-wb-shot:hover { border-color: color-mix(in srgb, var(--dsw-alias-brand-primary) 50%, var(--dsw-alias-border-l1)); }
+.ds-wb-shot img { display: block; width: 100%; height: 104px; object-fit: cover; background: var(--dsw-alias-bg-layer-2); }
+.ds-wb-shot-label { padding: 4px 6px; color: var(--dsw-alias-label-caption); font-size: 9.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-wb-design-docs { margin-top: 8px; }
 .ds-wb-issues { grid-column: 1 / -1; }
 .ds-wb-issues[data-kind="warn"] { border-color: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 45%, var(--dsw-alias-border-l1)); background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 5%, var(--dsw-alias-bg-layer-1)); }
 .ds-wb-issue-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--dsw-alias-state-success-primary); }
