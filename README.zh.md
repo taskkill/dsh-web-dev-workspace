@@ -542,6 +542,10 @@ flowchart TB
 - **Host API 稳定性**：基于 `0.2.1-rc.2` 的 Harness 包 API 构建；未来版本可能需要适配
   slot/service 契约。
 
+## 路线图
+
+下一阶段的目标是「只用 Harness 对话 + 本插件完成一个完整项目」：运行与诊断闭环、Agent 变更审阅、编辑现场恢复、Git 补全、编辑器地基、LSP 与浏览器验证。优先级、落点、成本与验收标准见 [docs/ROADMAP.md](docs/ROADMAP.md)。
+
 ## 目录结构
 
 ```text

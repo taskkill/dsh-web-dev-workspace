@@ -765,6 +765,14 @@ issue for security-sensitive reports.
 - **Host API stability**: built against the `0.2.1-rc.2` Harness package APIs. A
   future Harness release may require updates to the slot/service contracts.
 
+## Roadmap
+
+The next stage aims at developing complete projects with the Harness chat plus
+this plugin only: a run-and-diagnose loop, agent change review, session recovery,
+Git completion, an editor foundation, LSP and browser verification. Priorities,
+integration points, costs and acceptance criteria live in
+[docs/ROADMAP.md](docs/ROADMAP.md).
+
 ## Repository layout
 
 ```text

@@ -4,6 +4,19 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Full-project development roadmap
+
+- Added **`docs/ROADMAP.md`**: a prioritized plan (P0–P3) for developing complete
+  projects with the Harness chat plus this workspace. It covers the run/diagnose/
+  test loop (task center, Problems panel, test runner, global status bar), agent
+  change review and rollback, session and terminal recovery, Git completion
+  (hunk staging, conflicts, clone), workspace-wide search/replace, a CodeMirror 6
+  editor foundation, a lightweight LSP bridge, agent-driven browser verification,
+  preview reverse proxying, and secrets/deploy work — with Harness integration
+  points (jobs, terminal, deliverables, settings, shortcuts, document actions),
+  costs, risks and an acceptance checklist. Both READMEs link the roadmap. No
+  runtime behaviour changed in this entry.
+
 ### Harness panel moved to a header icon
 
 - The low-frequency **Harness** info panel no longer takes a permanent slot in the
