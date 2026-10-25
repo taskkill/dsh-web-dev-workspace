@@ -44,6 +44,8 @@ window.__ModuleLoader__.load({
 
     /** Session restore: reopen tabs (and their unsaved buffers) after a reload. */
     const SESSION_KEY = 'dsh-web-filebrowser:session'
+    /** Last sidebar view per workspace. */
+    const VIEW_KEY = 'dsh-web-filebrowser:view'
     /** Per-workspace review marks keyed by file path + change signature. */
     const REVIEWED_KEY = 'dsh-web-filebrowser:reviewed'
     const SESSION_MAX_TABS = 24
@@ -381,6 +383,29 @@ window.__ModuleLoader__.load({
       'tasks.group.other': '其他',
       'tasks.sendToAgent': '把失败发给 agent',
       'side.acceptance': '验收',
+      'side.workbench': '工作台',
+      'side.group.project': '项目',
+      'side.group.develop': '开发',
+      'workbench.title': '工作台',
+      'workbench.currentProject': '当前项目',
+      'workbench.noProject': '还没有项目。写下需求，点开工，团队开始交付。',
+      'workbench.kickoff': '开工',
+      'workbench.progress': '阶段 {done}/{total} · 当前：{stage}',
+      'workbench.needsYou': '需要你处理',
+      'workbench.nothingNeedsYou': '暂无待办，团队进行中。',
+      'workbench.reviewGate': '第 {n} 关「{stage}」待审批',
+      'workbench.acceptance': '验收',
+      'workbench.failedItems': '未通过项',
+      'workbench.delivery': '交付物',
+      'workbench.report': '导出验收报告',
+      'workbench.pack': '打包交付',
+      'workbench.openPipeline': '查看流水线',
+      'workbench.openAcceptance': '打开验收',
+      'workbench.openTasks': '打开任务',
+      'workbench.running': '运行中',
+      'workbench.noRunning': '没有运行中的任务',
+      'workbench.checklist': '查看全部验收项',
+      'workbench.loadFailed': '读取工作台数据失败：{message}',
       'side.pipeline': '流水线',
       'pipeline.title': '交付流水线',
       'pipeline.hint': '需求由你下发；产品经理→UI 设计→开发→测试→你确认→运维发布。每个阶段的角色边界写在派发提示词里，评审由你在面板上把关。',
@@ -1119,6 +1144,29 @@ window.__ModuleLoader__.load({
       'tasks.group.other': 'Other',
       'tasks.sendToAgent': 'Send failure to agent',
       'side.acceptance': 'Acceptance',
+      'side.workbench': 'Workbench',
+      'side.group.project': 'Project',
+      'side.group.develop': 'Development',
+      'workbench.title': 'Workbench',
+      'workbench.currentProject': 'Current project',
+      'workbench.noProject': 'No project yet. Write the requirement and kick off; the team starts delivering.',
+      'workbench.kickoff': 'Kick off',
+      'workbench.progress': 'Stage {done}/{total} · current: {stage}',
+      'workbench.needsYou': 'Needs you',
+      'workbench.nothingNeedsYou': 'Nothing needs you right now; the team is working.',
+      'workbench.reviewGate': 'Stage {n} “{stage}” is waiting for your review',
+      'workbench.acceptance': 'Acceptance',
+      'workbench.failedItems': 'Failed items',
+      'workbench.delivery': 'Deliverables',
+      'workbench.report': 'Export report',
+      'workbench.pack': 'Pack delivery',
+      'workbench.openPipeline': 'Open pipeline',
+      'workbench.openAcceptance': 'Open acceptance',
+      'workbench.openTasks': 'Open tasks',
+      'workbench.running': 'Running',
+      'workbench.noRunning': 'Nothing is running',
+      'workbench.checklist': 'View all acceptance items',
+      'workbench.loadFailed': 'Could not read the workbench data: {message}',
       'side.pipeline': 'Pipeline',
       'pipeline.title': 'Delivery pipeline',
       'pipeline.hint': 'You issue the requirement; product → design → development → testing → your sign-off → ops release. Role boundaries live in the dispatched prompts; every gate is yours to approve.',
@@ -4088,6 +4136,14 @@ window.__ModuleLoader__.load({
       return icon(15,
         h('rect', { x: 2.6, y: 2.2, width: 9.8, height: 11.6, rx: 1.8 }),
         h('path', { d: 'm5.2 8.3 1.7 1.7 3.1-3.4' }),
+      )
+    }
+
+    function WorkbenchIcon() {
+      return icon(15,
+        h('rect', { x: 2.2, y: 2.4, width: 5, height: 4.4, rx: 1 }),
+        h('rect', { x: 8.8, y: 2.4, width: 5, height: 4.4, rx: 1 }),
+        h('rect', { x: 2.2, y: 8.2, width: 11.6, height: 4.4, rx: 1 }),
       )
     }
 
@@ -7341,6 +7397,10 @@ window.__ModuleLoader__.load({
         const [previewShares, setPreviewShares] = useState([])
         const [previewBusy, setPreviewBusy] = useState(false)
         const [previewError, setPreviewError] = useState(null)
+        const [workbenchDraft, setWorkbenchDraft] = useState('')
+        const [workbenchBusy, setWorkbenchBusy] = useState(false)
+        const [workbenchKickoffBusy, setWorkbenchKickoffBusy] = useState(false)
+        const [workbenchError, setWorkbenchError] = useState(null)
         const [pipelineDoc, setPipelineDoc] = useState(null)
         const [pipelineBusy, setPipelineBusy] = useState(false)
         const [pipelineError, setPipelineError] = useState(null)
@@ -7648,6 +7708,7 @@ window.__ModuleLoader__.load({
             void loadPreviewShares()
           }
           if (paneView === 'pipeline') void loadPipeline()
+          if (paneView === 'workbench') void loadWorkbench()
           return undefined
         }, [paneView, state.root])
 
@@ -7677,6 +7738,45 @@ window.__ModuleLoader__.load({
 
         // Leaving the panel (or the whole page) must not leave poll timers behind.
         useEffect(() => () => stopAllTaskPolling(), [])
+
+        // Land the owner where the work is: the workbench when a project exists,
+        // otherwise the last view used in this workspace (or the explorer).
+        const landingRef = useRef(null)
+        useEffect(() => {
+          if (!state.ready || state.root === null) return undefined
+          const root = state.root
+          if (landingRef.current === root) return undefined
+          landingRef.current = root
+          let alive = true
+          const ssh = isSshRootPath(root)
+          void (async () => {
+            const saved = readStorage(`${VIEW_KEY}:${root}`)
+            const valid = ['workbench', 'files', 'search', 'todo', 'tasks', 'acceptance', 'pipeline', 'git', 'memory']
+            if (typeof saved === 'string' && valid.includes(saved)) {
+              if (alive && !(ssh && (saved === 'git' || saved === 'memory'))) setPaneView(saved)
+              return
+            }
+            try {
+              const value = await call('pipelineList', { root })
+              const snapshot = value !== null && typeof value === 'object' && value.doc !== undefined ? value.doc : value
+              const requirement = snapshot !== null && typeof snapshot === 'object' && snapshot.requirement !== null && typeof snapshot.requirement === 'object' ? snapshot.requirement : {}
+              const hasProject = typeof requirement.title === 'string' && requirement.title.trim().length > 0
+              if (alive && hasProject) setPaneView('workbench')
+            } catch {
+              /* no pipeline route (older Host): keep the explorer */
+            }
+          })()
+          return () => {
+            alive = false
+          }
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [state.ready, state.root])
+
+        // Remember the last view per workspace so reopening feels continuous.
+        useEffect(() => {
+          if (state.root === null) return
+          writeStorage(`${VIEW_KEY}:${state.root}`, paneView)
+        }, [paneView, state.root])
 
         // The agent advances stages from the conversation; keep the panel in step
         // without the owner having to press refresh.
@@ -8027,6 +8127,7 @@ window.__ModuleLoader__.load({
         const compact = containerWidth > 0 && containerWidth < 900
         const splitStacked = containerWidth > 0 && containerWidth < 1000
         const gitAvailable = !isSshRootPath(state.root)
+        const showWorkbench = paneView === 'workbench'
         const showGit = paneView === 'git' && gitAvailable
         const showSearch = paneView === 'search'
         const showMemory = paneView === 'memory' && gitAvailable
@@ -8035,7 +8136,7 @@ window.__ModuleLoader__.load({
         const showTasks = paneView === 'tasks'
         const showAcceptance = paneView === 'acceptance'
         const showPipeline = paneView === 'pipeline'
-        const showFiles = !showGit && !showSearch && !showMemory && !showHarness && !showTodo && !showTasks && !showAcceptance && !showPipeline
+        const showFiles = !showWorkbench && !showGit && !showSearch && !showMemory && !showHarness && !showTodo && !showTasks && !showAcceptance && !showPipeline
         const todoOpenCount = todoTasks.reduce((count, task) => count + (task.status === 'open' ? 1 : 0), 0)
         const treeDisplayWidth = compact
           ? '100%'
@@ -8396,6 +8497,7 @@ window.__ModuleLoader__.load({
 
         function paletteCommands() {
           const commands = [
+            { id: 'workbench', label: t('workbench.title'), run: openWorkbench },
             { id: 'new-file', label: t('action.newFile'), run: () => startCreate('file') },
             { id: 'new-folder', label: t('action.newFolder'), run: () => startCreate('directory') },
             { id: 'search', label: t('side.search'), run: focusSearch },
@@ -8947,6 +9049,56 @@ ${tail}
           stopTaskPolling(id)
           setTaskRuns((current) => current.filter((run) => run.id !== id || run.running === true))
           if (taskActiveId === id) setTaskActiveId(null)
+        }
+
+        /* ------------------------------------------------------------------ *
+         * Owner workbench (landing view)
+         * ------------------------------------------------------------------ */
+
+        /** Open the owner workbench. */
+        function openWorkbench() {
+          setPaneView('workbench')
+          setCompactView('tree')
+        }
+
+        /** Read everything the workbench summarises (pipeline, acceptance, tasks, delivery). */
+        async function loadWorkbench(options = {}) {
+          if (store.get().root === null) return
+          if (options?.silent !== true) setWorkbenchBusy(true)
+          setWorkbenchError(null)
+          try {
+            await Promise.all([
+              loadPipeline({ silent: true }),
+              loadAcceptance({ silent: true }),
+              loadTasks({ silent: true }),
+              loadDeliveryHistory(),
+              loadPreviewShares(),
+            ])
+          } catch (error) {
+            setWorkbenchError(t('workbench.loadFailed', { message: errorText(error) }))
+          } finally {
+            setWorkbenchBusy(false)
+          }
+        }
+
+        /** One-click kickoff from the workbench input. */
+        async function kickoffFromWorkbench() {
+          const title = workbenchDraft.trim()
+          if (title.length === 0) return
+          setWorkbenchKickoffBusy(true)
+          setWorkbenchError(null)
+          try {
+            await call('pipelineSetRequirement', { root: store.get().root ?? '', title, detail: title })
+            setPipelineTitleDraft(title)
+            setPipelineDetailDraft(title)
+            setWorkbenchDraft('')
+            await startPipelineStage('product')
+            await loadWorkbench({ silent: true })
+          } catch (error) {
+            setWorkbenchError(t('workbench.loadFailed', { message: pipelineErrorText(error) }))
+          } finally {
+            setWorkbenchKickoffBusy(false)
+          }
         }
 
         /* ------------------------------------------------------------------ *
@@ -13815,6 +13967,225 @@ ${tail}
           )
         }
 
+        /** Render the owner workbench: project, gates, acceptance, delivery and running work. */
+        function renderWorkbenchPanel() {
+          const doc = pipelineDoc !== null && typeof pipelineDoc === 'object' ? pipelineDoc : null
+          const stages = doc !== null && Array.isArray(doc.stages) ? doc.stages : []
+          const requirement = doc !== null && doc.requirement !== null && typeof doc.requirement === 'object' ? doc.requirement : {}
+          const requirementTitle = typeof requirement.title === 'string' ? requirement.title.trim() : ''
+          const done = stages.filter((stage) => stage !== null && typeof stage === 'object' && stage.status === 'approved').length
+          const total = stages.length === 0 ? 6 : stages.length
+          const stageTitles = {
+            product: t('pipeline.stage.product'),
+            design: t('pipeline.stage.design'),
+            development: t('pipeline.stage.development'),
+            testing: t('pipeline.stage.testing'),
+            approval: t('pipeline.stage.approval'),
+            release: t('pipeline.stage.release'),
+          }
+          const stageTitle = (id) => stageTitles[id] ?? id
+          const current =
+            stages.find((stage) => stage !== null && typeof stage === 'object' && (stage.status === 'active' || stage.status === 'review')) ??
+            stages.find((stage) => stage !== null && typeof stage === 'object' && (stage.status === 'pending' || stage.status === 'failed')) ??
+            null
+          const reviewStage =
+            stages.find((stage) => stage !== null && typeof stage === 'object' && stage.status === 'review') ??
+            stages.find((stage) => stage !== null && typeof stage === 'object' && stage.id === 'approval' && stage.status === 'active') ??
+            null
+          const reviewIndex = reviewStage === null ? -1 : stages.findIndex((stage) => stage !== null && typeof stage === 'object' && stage.id === reviewStage.id)
+          const items = Array.isArray(acceptanceItems) ? acceptanceItems : []
+          const passCount = items.filter((item) => item.status === 'pass').length
+          const failCount = items.filter((item) => item.status === 'fail').length
+          const pendingCount = items.filter((item) => item.status === 'pending' || item.status === 'blocked').length
+          const failedItems = items.filter((item) => item.status === 'fail')
+          const running = taskRuns.filter((run) => run.running === true)
+          const lastRun = taskRuns.length === 0 ? null : taskRuns[taskRuns.length - 1]
+          const deliveryHint = deliveryBundle !== null && typeof deliveryBundle === 'object' ? String(deliveryBundle.relative ?? deliveryBundle.name ?? '') : ''
+          return h(
+            'div',
+            { className: 'ds-side-view ds-workbench-view', style: { display: showWorkbench ? 'flex' : 'none' } },
+            h(
+              'div',
+              { className: 'ds-wb-scroll' },
+              h(
+                'div',
+                { className: 'ds-wb-card' },
+                h('div', { className: 'ds-wb-card-title' }, t('workbench.currentProject')),
+                workbenchBusy ? h('div', { className: 'ds-hint' }, t('acceptance.saving')) : null,
+                requirementTitle.length > 0
+                  ? h(
+                      React.Fragment,
+                      null,
+                      h('div', { className: 'ds-wb-project-title' }, requirementTitle),
+                      h(
+                        'div',
+                        { className: 'ds-wb-progress' },
+                        t('workbench.progress', {
+                          done: String(done),
+                          total: String(total),
+                          stage: current === null ? t('pipeline.status.approved') : stageTitle(current.id),
+                        }),
+                      ),
+                      h(
+                        'div',
+                        { className: 'ds-wb-actions' },
+                        h('button', { type: 'button', className: 'ds-btn ds-wb-btn', onClick: openPipeline }, t('workbench.openPipeline')),
+                        current !== null && current.status !== 'review'
+                          ? h(
+                              'button',
+                              {
+                                type: 'button',
+                                className: 'ds-btn ds-wb-btn',
+                                disabled: pipelineBusy,
+                                onClick: () => void startPipelineStage(current.id),
+                              },
+                              t('pipeline.start'),
+                            )
+                          : null,
+                      ),
+                    )
+                  : h(
+                      'div',
+                      { className: 'ds-wb-kickoff' },
+                      h('input', {
+                        className: 'ds-pipe-input',
+                        value: workbenchDraft,
+                        placeholder: t('pipeline.requirementPlaceholder'),
+                        spellCheck: false,
+                        onChange: (event) => setWorkbenchDraft(event.target.value),
+                        onKeyDown: (event) => {
+                          if (event.key !== 'Enter') return
+                          event.preventDefault()
+                          void kickoffFromWorkbench()
+                        },
+                      }),
+                      h(
+                        'button',
+                        {
+                          type: 'button',
+                          className: 'ds-btn ds-wb-kickoff-btn',
+                          disabled: workbenchKickoffBusy || workbenchDraft.trim().length === 0,
+                          onClick: () => void kickoffFromWorkbench(),
+                        },
+                        workbenchKickoffBusy ? t('acceptance.saving') : t('workbench.kickoff'),
+                      ),
+                      h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.noProject')),
+                    ),
+              ),
+              h(
+                'div',
+                {
+                  className: 'ds-wb-card ds-wb-attention',
+                  'data-kind': reviewStage !== null || failedItems.length > 0 ? 'attention' : 'idle',
+                },
+                h('div', { className: 'ds-wb-card-title' }, t('workbench.needsYou')),
+                reviewStage === null
+                  ? null
+                  : h(
+                      'div',
+                      { className: 'ds-wb-need' },
+                      h('div', { className: 'ds-wb-need-text' }, t('workbench.reviewGate', { n: String(reviewIndex + 1), stage: stageTitle(reviewStage.id) })),
+                      h(
+                        'div',
+                        { className: 'ds-wb-actions' },
+                        h(
+                          'button',
+                          { type: 'button', className: 'ds-btn ds-wb-btn', disabled: pipelineBusy, onClick: () => void reviewPipelineStage(reviewStage.id, 'approve') },
+                          t('pipeline.approve'),
+                        ),
+                        h(
+                          'button',
+                          { type: 'button', className: 'ds-btn ds-wb-btn ds-pipe-reject', disabled: pipelineBusy, onClick: () => void reviewPipelineStage(reviewStage.id, 'reject') },
+                          t('pipeline.reject'),
+                        ),
+                      ),
+                      h('input', {
+                        className: 'ds-pipe-input ds-wb-note',
+                        value: pipelineReviewNote,
+                        placeholder: t('pipeline.reviewNotePlaceholder'),
+                        spellCheck: false,
+                        onChange: (event) => setPipelineReviewNote(event.target.value),
+                      }),
+                    ),
+                failedItems.length === 0
+                  ? null
+                  : h(
+                      'div',
+                      { className: 'ds-wb-need' },
+                      h('div', { className: 'ds-wb-need-text' }, `${t('workbench.failedItems')}: ${String(failedItems.length)}`),
+                      h(
+                        'div',
+                        { className: 'ds-wb-actions' },
+                        h('button', { type: 'button', className: 'ds-btn ds-wb-btn', onClick: () => void sendAcceptanceFailures() }, t('acceptance.sendFailures')),
+                        h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: openAcceptance }, t('workbench.openAcceptance')),
+                      ),
+                    ),
+                reviewStage === null && failedItems.length === 0
+                  ? h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.nothingNeedsYou'))
+                  : null,
+              ),
+              h(
+                'div',
+                { className: 'ds-wb-card' },
+                h('div', { className: 'ds-wb-card-title' }, t('workbench.acceptance')),
+                h(
+                  'div',
+                  { className: 'ds-wb-counts' },
+                  h('span', { className: 'ds-wb-count', 'data-status': 'pass' }, t('acceptance.passCount', { count: String(passCount) })),
+                  h('span', { className: 'ds-wb-count', 'data-status': 'fail' }, t('acceptance.failCount', { count: String(failCount) })),
+                  h('span', { className: 'ds-wb-count', 'data-status': 'pending' }, t('acceptance.pendingCount', { count: String(pendingCount) })),
+                ),
+                failedItems.slice(0, 3).map((item) =>
+                  h('div', { key: item.id, className: 'ds-wb-fail-item', title: String(item.title ?? '') }, `✗ ${String(item.title ?? '')}`),
+                ),
+                h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: openAcceptance }, t('workbench.checklist')),
+              ),
+              h(
+                'div',
+                { className: 'ds-wb-card' },
+                h('div', { className: 'ds-wb-card-title' }, t('workbench.delivery')),
+                h(
+                  'div',
+                  { className: 'ds-wb-actions' },
+                  h('button', { type: 'button', className: 'ds-btn ds-wb-btn', onClick: () => void exportAcceptanceReport() }, t('workbench.report')),
+                  h(
+                    'button',
+                    { type: 'button', className: 'ds-btn ds-wb-btn', disabled: deliveryBusy, onClick: () => void packDeliveryBundle() },
+                    deliveryBusy ? t('acceptance.saving') : t('workbench.pack'),
+                  ),
+                  previewShares.length > 0
+                    ? h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: () => copyPreviewLink(previewShares[0]) }, t('acceptance.previewCopy'))
+                    : null,
+                ),
+                deliveryHint.length === 0 ? null : h('div', { className: 'ds-hint ds-wb-hint' }, t('acceptance.bundleReady') + ': ' + deliveryHint),
+              ),
+              h(
+                'div',
+                { className: 'ds-wb-card' },
+                h('div', { className: 'ds-wb-card-title' }, t('workbench.running')),
+                running.length === 0
+                  ? h(
+                      'div',
+                      { className: 'ds-hint ds-wb-hint' },
+                      lastRun === null
+                        ? t('workbench.noRunning')
+                        : `${lastRun.name} · ${lastRun.status === 'passed' ? t('tasks.passed') : t('tasks.failed')}`,
+                    )
+                  : running.map((run) =>
+                      h(
+                        'div',
+                        { key: run.id, className: 'ds-wb-run' },
+                        h('span', { className: 'ds-task-run-dot', 'data-status': run.status }),
+                        h('span', { className: 'ds-wb-run-name' }, run.name.length > 0 ? run.name : run.command),
+                      ),
+                    ),
+                h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: openTasks }, t('workbench.openTasks')),
+              ),
+              workbenchError !== null ? h('div', { className: 'ds-errorline' }, workbenchError) : null,
+            ),
+          )
+        }
+
         /** Render the delivery pipeline: requirement, stage cards, gates and releases. */
         function renderPipelinePanel() {
           const doc = pipelineDoc !== null && typeof pipelineDoc === 'object' ? pipelineDoc : null
@@ -14935,7 +15306,17 @@ ${tail}
          * - icons plus a "more" menu, keeping the active view in the strip.
          */
         function renderSideViews() {
-          const views = [
+          // Owner-first information architecture: the strip keeps only three
+          // entries (workbench, files, search) plus "more"; project and
+          // development views live in that grouped menu.
+          const primaryViews = [
+            {
+              id: 'workbench',
+              label: t('side.workbench'),
+              icon: h(WorkbenchIcon),
+              active: showWorkbench,
+              select: openWorkbench,
+            },
             {
               id: 'files',
               label: t('explorer'),
@@ -14950,6 +15331,27 @@ ${tail}
               active: showSearch,
               select: focusSearch,
             },
+          ]
+          const projectViews = [
+            {
+              id: 'pipeline',
+              label: t('side.pipeline'),
+              icon: h(PipelineIcon),
+              active: showPipeline,
+              select: openPipeline,
+            },
+            {
+              id: 'acceptance',
+              label: t('side.acceptance'),
+              icon: h(AcceptanceIcon),
+              active: showAcceptance,
+              count: acceptanceItems.filter((item) => item.status === 'fail').length,
+              countTone: 'warn',
+              title: acceptanceItems.some((item) => item.status === 'fail')
+                ? t('acceptance.failCount', { count: String(acceptanceItems.filter((item) => item.status === 'fail').length) })
+                : t('acceptance.title'),
+              select: openAcceptance,
+            },
             {
               id: 'todo',
               label: t('side.todo'),
@@ -14958,6 +15360,8 @@ ${tail}
               count: todoOpenCount,
               select: openTodo,
             },
+          ]
+          const developViews = [
             {
               id: 'tasks',
               label: t('side.tasks'),
@@ -14967,26 +15371,9 @@ ${tail}
               title: taskRuns.some((run) => run.running === true) ? t('tasks.running') : t('tasks.title'),
               select: openTasks,
             },
-            {
-              id: 'acceptance',
-              label: t('side.acceptance'),
-              icon: h(AcceptanceIcon),
-              active: showAcceptance,
-              count: acceptanceItems.filter((item) => item.status === 'fail').length,
-              countTone: 'warn',
-              title: acceptanceItems.some((item) => item.status === 'fail') ? t('acceptance.failCount', { count: String(acceptanceItems.filter((item) => item.status === 'fail').length) }) : t('acceptance.title'),
-              select: openAcceptance,
-            },
-            {
-              id: 'pipeline',
-              label: t('side.pipeline'),
-              icon: h(PipelineIcon),
-              active: showPipeline,
-              select: openPipeline,
-            },
           ]
           if (gitAvailable) {
-            views.push({
+            developViews.push({
               id: 'git',
               label: t('git.title'),
               icon: h(GitIcon),
@@ -14996,7 +15383,7 @@ ${tail}
               title: gitChangeCount > 0 ? t('git.tabDirty', { count: String(gitChangeCount) }) : t('git.title'),
               select: () => setPaneView('git'),
             })
-            views.push({
+            developViews.push({
               id: 'memory',
               label: t('side.memory'),
               icon: h(MemoryIcon),
@@ -15004,37 +15391,18 @@ ${tail}
               select: openMemory,
             })
           }
-          // The low-frequency Harness info panel keeps no sidebar tab: the
-          // header icon (and the command palette) open it instead, so the strip
-          // stays File / Search / Todo / Git / Memory.
-
+          const groups = [
+            { id: 'project', title: t('side.group.project'), views: projectViews },
+            { id: 'develop', title: t('side.group.develop'), views: developViews },
+          ]
+          const groupedViews = groups.flatMap((group) => group.views)
+          const slots = primaryViews.length + 1
           const width = sideTabsWidth
-          const labelBudget = width > 0 ? width / views.length : 0
-          const labelMode = width <= 0 || labelBudget >= SIDE_TAB_LABEL_WIDTH
-          const iconMode = !labelMode && labelBudget >= SIDE_TAB_ICON_WIDTH
-          const overflow = !labelMode && !iconMode
-          let visible = views
-          if (overflow) {
-            const capacity = Math.max(1, Math.floor(width / SIDE_TAB_ICON_WIDTH) - 1)
-            // Keep the active view and a dirty Git tab visible so their badges do
-            // not disappear into the overflow menu. The original order is kept.
-            const required = []
-            const active = views.find((view) => view.active)
-            if (active !== undefined) required.push(active)
-            for (const view of views) {
-              if (view.countTone === 'warn' && view.count > 0 && !required.includes(view)) required.push(view)
-            }
-            const chosen = new Set(required.slice(0, capacity))
-            for (const view of views) {
-              if (chosen.size >= capacity) break
-              chosen.add(view)
-            }
-            visible = views.filter((view) => chosen.has(view))
-          }
-          const hidden = views.filter((view) => !visible.includes(view))
-          const hiddenWarn = hidden.some((view) => view.countTone === 'warn' && view.count > 0)
-          const hiddenCount = hidden.some((view) => view.count > 0)
-          const iconOnly = !labelMode
+          const labelBudget = width > 0 ? width / slots : 0
+          const iconOnly = !(width <= 0 || labelBudget >= SIDE_TAB_LABEL_WIDTH)
+          const groupedActive = groupedViews.some((view) => view.active)
+          const groupedCount = groupedViews.some((view) => typeof view.count === 'number' && view.count > 0)
+          const groupedWarn = groupedViews.some((view) => view.countTone === 'warn' && view.count > 0)
 
           function renderTab(view) {
             const title =
@@ -15075,6 +15443,36 @@ ${tail}
             )
           }
 
+          function renderMenuItem(view) {
+            return h(
+              'button',
+              {
+                key: view.id,
+                type: 'button',
+                role: 'menuitemradio',
+                'aria-checked': view.active,
+                className: 'ds-side-views-item',
+                'data-active': view.active ? 'true' : undefined,
+                onClick: () => {
+                  setSideViewsOpen(false)
+                  view.select()
+                },
+              },
+              view.icon,
+              h('span', { className: 'ds-side-views-name' }, view.label),
+              view.count !== undefined && view.count > 0
+                ? h(
+                    'span',
+                    {
+                      className: 'ds-side-views-count',
+                      'data-tone': view.countTone === undefined ? undefined : view.countTone,
+                    },
+                    formatBadgeCount(view.count),
+                  )
+                : null,
+            )
+          }
+
           return h(
             React.Fragment,
             null,
@@ -15093,62 +15491,38 @@ ${tail}
                 'aria-label': t('side.tabs'),
                 'data-views-open': sideViewsOpen ? 'true' : undefined,
               },
-              visible.map(renderTab),
-              hidden.length > 0
-                ? h(
-                    'button',
-                    {
-                      type: 'button',
-                      className: 'ds-side-tab ds-side-tab-more',
-                      'data-active': sideViewsOpen ? 'true' : undefined,
-                      title: t('side.more'),
-                      'aria-label': t('side.more'),
-                      'aria-haspopup': 'menu',
-                      'aria-expanded': sideViewsOpen,
-                      onClick: () => setSideViewsOpen((open) => !open),
-                    },
-                    h(MoreIcon),
-                    hiddenCount
-                      ? h('span', {
-                          className: 'ds-side-tab-alert',
-                          'data-tone': hiddenWarn ? 'warn' : undefined,
-                          'aria-hidden': true,
-                        })
-                      : null,
-                  )
-                : null,
+              primaryViews.map(renderTab),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-side-tab ds-side-tab-more',
+                  'data-active': sideViewsOpen || groupedActive ? 'true' : undefined,
+                  title: t('side.more'),
+                  'aria-label': t('side.more'),
+                  'aria-haspopup': 'menu',
+                  'aria-expanded': sideViewsOpen,
+                  onClick: () => setSideViewsOpen((open) => !open),
+                },
+                h(MoreIcon),
+                groupedCount
+                  ? h('span', {
+                      className: 'ds-side-tab-alert',
+                      'data-tone': groupedWarn ? 'warn' : undefined,
+                      'aria-hidden': true,
+                    })
+                  : null,
+              ),
               sideViewsOpen
                 ? h(
                     'div',
                     { className: 'ds-side-views-menu', role: 'menu', 'aria-label': t('side.views') },
-                    h('div', { className: 'ds-side-views-title' }, t('side.views')),
-                    views.map((view) =>
+                    groups.map((group) =>
                       h(
-                        'button',
-                        {
-                          key: view.id,
-                          type: 'button',
-                          role: 'menuitemradio',
-                          'aria-checked': view.active,
-                          className: 'ds-side-views-item',
-                          'data-active': view.active ? 'true' : undefined,
-                          onClick: () => {
-                            setSideViewsOpen(false)
-                            view.select()
-                          },
-                        },
-                        view.icon,
-                        h('span', { className: 'ds-side-views-name' }, view.label),
-                        view.count !== undefined && view.count > 0
-                          ? h(
-                              'span',
-                              {
-                                className: 'ds-side-views-count',
-                                'data-tone': view.countTone === undefined ? undefined : view.countTone,
-                              },
-                              formatBadgeCount(view.count),
-                            )
-                          : null,
+                        React.Fragment,
+                        { key: group.id },
+                        h('div', { className: 'ds-side-views-group' }, group.title),
+                        group.views.map(renderMenuItem),
                       ),
                     ),
                   )
@@ -15693,7 +16067,7 @@ ${tail}
               'aside',
               {
                 className: 'ds-side',
-                'data-view': showGit ? 'git' : showSearch ? 'search' : showMemory ? 'memory' : showHarness ? 'harness' : showTodo ? 'todo' : showTasks ? 'tasks' : showAcceptance ? 'acceptance' : showPipeline ? 'pipeline' : 'files',
+                'data-view': showWorkbench ? 'workbench' : showGit ? 'git' : showSearch ? 'search' : showMemory ? 'memory' : showHarness ? 'harness' : showTodo ? 'todo' : showTasks ? 'tasks' : showAcceptance ? 'acceptance' : showPipeline ? 'pipeline' : 'files',
                 style: { width: treeDisplayWidth, display: showSide ? undefined : 'none' },
               },
               h(
@@ -15705,7 +16079,7 @@ ${tail}
                   h(
                     'span',
                     { className: 'ds-pane-title-text' },
-                    showGit ? t('git.title') : showSearch ? t('side.search') : showMemory ? t('side.memory') : showHarness ? t('side.harness') : showTodo ? t('todo.title') : showTasks ? t('tasks.title') : showAcceptance ? t('acceptance.title') : showPipeline ? t('pipeline.title') : t('explorer'),
+                    showWorkbench ? t('workbench.title') : showGit ? t('git.title') : showSearch ? t('side.search') : showMemory ? t('side.memory') : showHarness ? t('side.harness') : showTodo ? t('todo.title') : showTasks ? t('tasks.title') : showAcceptance ? t('acceptance.title') : showPipeline ? t('pipeline.title') : t('explorer'),
                   ),
                   h(
                     'button',
@@ -15968,6 +16342,7 @@ ${tail}
               renderTodoPanel(),
               renderTasksPanel(),
               renderAcceptancePanel(),
+              renderWorkbenchPanel(),
               renderPipelinePanel(),
               gitAvailable
                 ? h(
@@ -17186,6 +17561,7 @@ ${tail}
 .ds-side[data-view="harness"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
 .ds-side[data-view="todo"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
 .ds-side[data-view="tasks"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
+.ds-side[data-view="workbench"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
 .ds-side[data-view="acceptance"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
 .ds-side[data-view="pipeline"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
 .ds-side[data-view="memory"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch) { display: none; }
@@ -18574,6 +18950,32 @@ ${tail}
 .ds-pipe-release-env { flex: 0 0 auto; color: var(--dsw-alias-label-secondary); font-family: var(--ds-mono); }
 .ds-pipe-release-note { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-caption); }
 .ds-pipe-hint { padding: 3px 0 0; font-size: 9.5px; }
+.ds-workbench-view { overflow: hidden; }
+.ds-wb-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 8px; padding: 8px; }
+.ds-wb-card { border: 1px solid var(--dsw-alias-border-l1); border-radius: 8px; padding: 8px; background: var(--dsw-alias-bg-layer-1); }
+.ds-wb-card.ds-wb-attention[data-kind="attention"] { border-color: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 55%, var(--dsw-alias-border-l1)); background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 6%, var(--dsw-alias-bg-layer-1)); }
+.ds-wb-card-title { margin-bottom: 5px; color: var(--dsw-alias-label-caption); font-size: 9.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+.ds-wb-project-title { font-size: 13px; font-weight: 600; color: var(--dsw-alias-label-primary); overflow-wrap: anywhere; }
+.ds-wb-progress { margin-top: 2px; color: var(--dsw-alias-label-secondary); font-size: 10px; }
+.ds-wb-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.ds-wb-btn { height: 24px; padding: 0 9px; font-size: 10.5px; }
+.ds-wb-kickoff { display: flex; flex-wrap: wrap; gap: 5px; }
+.ds-wb-kickoff .ds-pipe-input { flex: 1 1 140px; min-width: 0; }
+.ds-wb-kickoff-btn { height: 26px; padding: 0 10px; font-size: 11px; }
+.ds-wb-hint { margin-top: 4px; font-size: 9.5px; }
+.ds-wb-need { padding: 4px 0; border-top: 1px dashed var(--dsw-alias-border-l1); }
+.ds-wb-need:first-of-type { border-top: 0; }
+.ds-wb-need-text { font-size: 11px; color: var(--dsw-alias-label-primary); }
+.ds-wb-note { width: 100%; box-sizing: border-box; margin-top: 5px; }
+.ds-wb-counts { display: flex; flex-wrap: wrap; gap: 5px; }
+.ds-wb-count { padding: 1px 6px; border-radius: 8px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-secondary); font-size: 9.5px; }
+.ds-wb-count[data-status="pass"] { color: var(--dsw-alias-state-success-primary); }
+.ds-wb-count[data-status="fail"] { color: var(--dsw-alias-state-error-primary); }
+.ds-wb-fail-item { margin-top: 4px; color: var(--dsw-alias-state-error-primary); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-wb-link { margin-top: 6px; font-size: 9.5px; }
+.ds-wb-run { display: flex; align-items: center; gap: 5px; padding: 2px 0; font-size: 10.5px; color: var(--dsw-alias-label-primary); }
+.ds-wb-run-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-side-views-group { padding: 4px 7px 2px; color: var(--dsw-alias-label-caption); font-size: 9px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
 .ds-todo-edit { display: flex; flex-direction: column; gap: 5px; background: color-mix(in srgb, var(--dsw-alias-brand-primary) 5%, transparent); }
 .ds-todo-note-input {
   width: 100%;

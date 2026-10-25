@@ -4,6 +4,25 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Owner workbench and sidebar consolidation
+
+- New **Workbench** sidebar view and landing page: one screen shows the current
+  project (requirement, stage progress, continue/start/approve actions), what
+  needs the owner now (pending gates with pass/request-changes and an optional
+  note, failed acceptance items with a “send to agent” action), acceptance
+  counts and the top failed items, delivery actions (export report, pack
+  bundle, copy preview link) and running/finished tasks.
+- The sidebar top level is reduced to **Workbench / Files / Search / More**. The
+  “More” menu groups the other views into **Project** (pipeline, acceptance,
+  todo) and **Development** (tasks, Git, memory), keeps the running/failed
+  badges on the More button, and marks it active when a grouped view is open.
+- Landing rule: a workspace with an issued requirement opens on the Workbench;
+  otherwise the last view used in that workspace is restored (per-workspace
+  localStorage), and the explorer is the final fallback. The workbench refreshes
+  pipeline/acceptance/tasks/delivery data on open.
+- PLAYBOOK, the OPC README and the IA plan document are updated to match the new
+  navigation; the command palette still reaches every view directly.
+
 ### Planned: owner workbench and sidebar consolidation
 
 - Added `docs/UI_IA_PLAN.md`, a planning document (no behaviour change yet) for
