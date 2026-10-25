@@ -4,6 +4,15 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Fix: downloading large deliverables failed with “文件过大，无法预览”
+
+- The raw route capped every response at 128 MB, including `download=1` file
+  downloads, so a large release artefact (zip/binary) returned a JSON
+  `too-large` error instead of streaming. Downloads now always stream with
+  `content-disposition: attachment`; only inline previews keep the 128 MB cap
+  (SSH routes already behaved this way). This fixes the Workbench “download latest
+  bundle” button and the delivery-history download for big files.
+
 ### Fix: “Cannot read properties of undefined (reading 'status')” when approving the last stage
 
 - After a successful approval the client auto-advances to the next stage by

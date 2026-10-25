@@ -1833,7 +1833,12 @@ async function handleGet(ctx, request) {
     const target = await inspectTarget(root, absolute)
     if (!target.exists) return json({ ok: false, error: failure('not-found', '文件不存在') }, 404)
     if (!target.info.isFile()) return json({ ok: false, error: failure('not-file', '这不是普通文件') }, 400)
-    if (target.info.size > MAX_RAW_BYTES) return json({ ok: false, error: failure('too-large', '文件过大，无法预览') }, 413)
+    const download = url.searchParams.get('download') === '1'
+    // Downloads always stream; only inline previews are capped so a huge binary
+    // never gets loaded into the browser as a preview.
+    if (!download && target.info.size > MAX_RAW_BYTES) {
+      return json({ ok: false, error: failure('too-large', '文件过大，无法预览') }, 413)
+    }
     const name = path.basename(target.path)
     const type = CONTENT_TYPES.get(path.extname(target.path).toLowerCase()) ?? 'application/octet-stream'
     const stream = Readable.toWeb(createReadStream(target.path))
@@ -1842,7 +1847,7 @@ async function handleGet(ctx, request) {
       headers: {
         'content-type': type,
         'content-length': String(target.info.size),
-        'content-disposition': `inline; filename*=UTF-8''${encodeURIComponent(name)}`,
+        'content-disposition': `${download ? 'attachment' : 'inline'}; filename*=UTF-8''${encodeURIComponent(name)}`,
         'cache-control': 'no-store',
         'x-content-type-options': 'nosniff',
         'referrer-policy': 'no-referrer',
