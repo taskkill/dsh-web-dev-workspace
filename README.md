@@ -794,8 +794,10 @@ Git completion, an editor foundation, LSP and browser verification. Priorities,
 integration points, costs and acceptance criteria live in
 [docs/ROADMAP.md](docs/ROADMAP.md); the batch 0–3 retest steps live in
 [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) the team pipeline in
-[docs/AGENT_TEAM.md](docs/AGENT_TEAM.md), and the end-to-end
-requirement-to-delivery runbook in [docs/PLAYBOOK.md](docs/PLAYBOOK.md).
+[docs/AGENT_TEAM.md](docs/AGENT_TEAM.md), the end-to-end
+requirement-to-delivery runbook in [docs/PLAYBOOK.md](docs/PLAYBOOK.md), and the
+sidebar information-architecture plan (workbench + OPC/development split) in
+[docs/UI_IA_PLAN.md](docs/UI_IA_PLAN.md).
 
 ## Repository layout
 

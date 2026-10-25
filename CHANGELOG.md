@@ -4,6 +4,19 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Planned: owner workbench and sidebar consolidation
+
+- Added `docs/UI_IA_PLAN.md`, a planning document (no behaviour change yet) for
+  the sidebar: it inventories the current eight views, compares a two-mode
+  switch, a flat reorder and a workbench-plus-grouped-overflow approach, and
+  recommends a **Workbench** landing view plus a four-slot top level
+  (Workbench / Files / Search / More) with the overflow menu grouped into
+  **Project** (pipeline, acceptance, todo) and **Development** (tasks, Git,
+  memory). It includes a workbench wireframe with sections for the current
+  project, what needs the owner now, acceptance summary, deliverables and
+  running builds, plus default-landing rules, a six-phase cost estimate and
+  acceptance criteria. Three owner decisions are left open at the end.
+
 ### Fast mode: the owner only handles the two real gates
 
 - The pipeline gained an owner setting `.dsh/pipeline.json → settings.gateMode`
