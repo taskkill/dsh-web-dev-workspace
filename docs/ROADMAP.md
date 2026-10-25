@@ -184,3 +184,16 @@
 - 本地调研（不随仓库发布）：`.dsh/tmp/team/capability-audit.md`、`.dsh/tmp/team/harness-integration.md`、`.dsh/tmp/team/workflow-gaps.md`（含 11 条基准链接）。
 - Harness 包文档（本机 `0.2.1-rc.2`）：`dsh-client-ui-deliverables`、`dsh-client-ui-jobs`、`dsh-api-terminal-controller`、`dsh-client-ui-sidebar-right`、`dsh-client-ui-sidebar-documentpreview`、`dsh-client-ui-settings`、`dsh-client-shortcuts`、`dsh-client-ui-commands`、`dsh-client-ui-tool`、`dsh-api-workspace-files`、`dsh-client-ui-sidebar-browser`。
 - 外部基准：VS Code for the Web / code-server / GitHub Codespaces / Gitpod / StackBlitz WebContainers / Replit Agent / VS Code agents（review-code-edits、browser-tools、integrated-browser）/ Cursor 1.0 changelog（链接见 `workflow-gaps.md` §4）。
+
+---
+
+## 10. 实施进度（2026-10-25）
+
+按「项目经理验收 + 客户交付」口径推进，v1.2.25 时：
+
+| 批次 | 状态 | 已完成 | 剩余 |
+|---|---|---|---|
+| 0 稳定性 | 进行中（4/5） | 会话恢复（标签/草稿/光标行）、终端刷新恢复（Host roster + 空闲回收）、ErrorBoundary + 断网横幅/恢复刷新、快速打开截断提示 | 事件驱动同步（`fs.watch` 替代 5s 轮询） |
+| 1 复测闭环 | 完成 | 任务面板（检测/运行/流式输出/退出码/停止）、输出解析为可点击问题（tsc 两种格式/eslint/通用）、刷新后任务重连 | 失败自动摘要发回 agent 已在验收台提供入口 |
+| 2 验收台 | 完成（v1） | 验收清单（四状态 + 备注 + 增删改）、Markdown 报告导出、未通过项发回对话、Git 更改逐文件「已审」标记（随变更自动失效）、逐文件回滚复用 Git discard、交付打包入口 | 行内评论/逐 hunk 审阅（可后续增强） |
+| 3 视觉验收与交付 | 进行中（1/3） | 构建产物 ZIP 下载、验收报告 + 产物交付包（`.dsh/deliveries/`）、报告 Markdown 导出 | 截图证据、预览反代/分享链接、交付记录 |

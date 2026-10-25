@@ -4,6 +4,25 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Acceptance board, review marks and client delivery
+
+- New **Acceptance** sidebar view on top of `.dsh/acceptance.json`: items can be
+  pending / pass / fail / blocked, carry a note, be added inline, edited and
+  removed; the header shows live counts and the tab badge warns about failed
+  items. Mutations go through the Host and the same document is exposed to the
+  model through the `acceptance_*` tools, so the agent can write acceptance
+  criteria and back-fill results.
+- **Export and hand-off**: one button exports the checklist as a Markdown
+  acceptance report; another sends every failed item (with notes) back to the
+  current conversation; a third downloads the build output as a ZIP; a fourth
+  packs the report plus build output into `.dsh/deliveries/` and offers the
+  download. The panel shows the exact bundle path.
+- **Review marks**: every row in the Git changes list gains a **reviewed** toggle.
+  Marks are stored per workspace, survive reloads, and lapse automatically when
+  the file's status changes again; the section title shows `Reviewed n/total`.
+  Per-file rollback stays on the existing discard button, so an agent change can
+  be reviewed and reverted without leaving the panel.
+
 ### Tasks and retest panel
 
 - New **Tasks** sidebar view (between Todo and Git) on top of the Host task

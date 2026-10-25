@@ -44,6 +44,8 @@ window.__ModuleLoader__.load({
 
     /** Session restore: reopen tabs (and their unsaved buffers) after a reload. */
     const SESSION_KEY = 'dsh-web-filebrowser:session'
+    /** Per-workspace review marks keyed by file path + change signature. */
+    const REVIEWED_KEY = 'dsh-web-filebrowser:reviewed'
     const SESSION_MAX_TABS = 24
     const SESSION_MAX_BYTES = 512 * 1024
     const SESSION_SAVE_DELAY = 600
@@ -85,6 +87,8 @@ window.__ModuleLoader__.load({
 
     /** Host project-task runner route. */
     const TASKS_PATH = 'api/dsh-web-filebrowser-tasks'
+    /** Host delivery packaging route. */
+    const DELIVERY_PATH = 'api/dsh-web-filebrowser-delivery'
     /** Gap between task output polls (matches the terminal long-poll cadence). */
     const TASK_POLL_GAP_MS = 12
 
@@ -371,6 +375,42 @@ window.__ModuleLoader__.load({
       'tasks.group.test': '测试',
       'tasks.group.lint': '检查',
       'tasks.group.other': '其他',
+      'side.acceptance': '验收',
+      'acceptance.title': '验收台',
+      'acceptance.hint': 'agent 作为产品经理写验收项；你在这里勾选通过 / 不通过，驳回时可把未通过项发回对话。',
+      'acceptance.empty': '还没有验收项。可以让 agent 先列出验收标准，或在这里添加一条。',
+      'acceptance.placeholder': '添加一条验收项，按回车创建…',
+      'acceptance.add': '添加',
+      'acceptance.pending': '待验收',
+      'acceptance.pass': '通过',
+      'acceptance.fail': '不通过',
+      'acceptance.blocked': '阻塞',
+      'acceptance.pendingCount': '待验收 {count}',
+      'acceptance.passCount': '通过 {count}',
+      'acceptance.failCount': '未通过 {count}',
+      'acceptance.blockedCount': '阻塞 {count}',
+      'acceptance.note': '备注',
+      'acceptance.notePlaceholder': '补充验收说明、复测命令或失败原因…',
+      'acceptance.saveNote': '保存备注',
+      'acceptance.delete': '删除',
+      'acceptance.report': '导出验收报告',
+      'acceptance.pack': '打包交付（zip）',
+      'acceptance.buildZip': '下载构建产物',
+      'acceptance.bundleReady': '交付包已生成',
+      'acceptance.download': '下载',
+      'acceptance.sendFailures': '把未通过项发给 agent',
+      'acceptance.unavailable': '验收服务不可用：请重启 Harness 以加载新的 Host 路由',
+      'acceptance.restartRequired': '验收接口不可用：请重启 Harness 后再试',
+      'acceptance.needRoot': '请先选择工作区',
+      'acceptance.saving': '保存中…',
+      'acceptance.noFailures': '没有未通过的验收项',
+      'acceptance.reportFailed': '导出失败：{message}',
+      'acceptance.packFailed': '打包失败：{message}',
+      'acceptance.updatedAt': '更新于 {time}',
+      'acceptance.confirmDelete': '删除这条验收项？',
+      'acceptance.markReviewed': '标记已审',
+      'acceptance.unmarkReviewed': '取消已审',
+      'acceptance.reviewProgress': '已审 {done}/{total}',
       'todo.title': '待办清单',
       'todo.hint': '随工作区保存，面板、会话工具和 DeepSeek 共享同一份任务',
       'todo.loading': '正在读取待办…',
@@ -993,6 +1033,42 @@ window.__ModuleLoader__.load({
       'tasks.group.test': 'Test',
       'tasks.group.lint': 'Lint',
       'tasks.group.other': 'Other',
+      'side.acceptance': 'Acceptance',
+      'acceptance.title': 'Acceptance board',
+      'acceptance.hint': 'The agent writes acceptance items as the product manager; check pass / fail here and send failures back to the chat.',
+      'acceptance.empty': 'No acceptance items yet. Ask the agent for acceptance criteria, or add one here.',
+      'acceptance.placeholder': 'Add an acceptance item and press Enter…',
+      'acceptance.add': 'Add',
+      'acceptance.pending': 'Pending',
+      'acceptance.pass': 'Pass',
+      'acceptance.fail': 'Fail',
+      'acceptance.blocked': 'Blocked',
+      'acceptance.pendingCount': 'Pending {count}',
+      'acceptance.passCount': 'Passed {count}',
+      'acceptance.failCount': 'Failed {count}',
+      'acceptance.blockedCount': 'Blocked {count}',
+      'acceptance.note': 'Note',
+      'acceptance.notePlaceholder': 'Acceptance notes, retest command or the failure reason…',
+      'acceptance.saveNote': 'Save note',
+      'acceptance.delete': 'Delete',
+      'acceptance.report': 'Export acceptance report',
+      'acceptance.pack': 'Pack delivery (zip)',
+      'acceptance.buildZip': 'Download build output',
+      'acceptance.bundleReady': 'Delivery bundle written',
+      'acceptance.download': 'Download',
+      'acceptance.sendFailures': 'Send failures to the agent',
+      'acceptance.unavailable': 'Acceptance service unavailable: restart Harness to load the new Host route',
+      'acceptance.restartRequired': 'Acceptance API unavailable: restart Harness and retry',
+      'acceptance.needRoot': 'Select a workspace first',
+      'acceptance.saving': 'Saving…',
+      'acceptance.noFailures': 'No failed acceptance items',
+      'acceptance.reportFailed': 'Export failed: {message}',
+      'acceptance.packFailed': 'Packaging failed: {message}',
+      'acceptance.updatedAt': 'Updated {time}',
+      'acceptance.confirmDelete': 'Delete this acceptance item?',
+      'acceptance.markReviewed': 'Mark reviewed',
+      'acceptance.unmarkReviewed': 'Unmark reviewed',
+      'acceptance.reviewProgress': 'Reviewed {done}/{total}',
       'todo.title': 'Workspace todos',
       'todo.hint': 'Saved with the workspace; the panel, chat tools and DeepSeek share one task board',
       'todo.loading': 'Reading todos…',
@@ -2959,6 +3035,30 @@ window.__ModuleLoader__.load({
       return tab.mode === 'text' || tab.mode === 'markdown'
     }
 
+    /** Read one workspace's review marks (file path -> change signature). */
+    function readReviewMarks(root) {
+      if (typeof root !== 'string' || root.length === 0) return {}
+      try {
+        const raw = readStorage(`${REVIEWED_KEY}:${root}`)
+        if (raw === null) return {}
+        const parsed = JSON.parse(raw)
+        return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+      } catch {
+        return {}
+      }
+    }
+
+    /** Persist one workspace's review marks. */
+    function writeReviewMarks(root, marks) {
+      if (typeof root !== 'string' || root.length === 0) return
+      writeStorage(`${REVIEWED_KEY}:${root}`, JSON.stringify(marks))
+    }
+
+    /** Change signature so a review mark lapses when the file changes again. */
+    function reviewSignature(entry) {
+      return `${entry.status ?? ''}|${entry.staged === true ? '1' : '0'}|${entry.unstaged === true ? '1' : '0'}|${entry.untracked === true ? '1' : '0'}`
+    }
+
     /** Read locally hidden workspace paths. */
     function readHiddenRoots() {
       const raw = readStorage(HIDDEN_ROOTS_KEY)
@@ -3723,6 +3823,13 @@ window.__ModuleLoader__.load({
       )
     }
 
+    function ReviewedIcon() {
+      return icon(13,
+        h('circle', { cx: 8, cy: 8, r: 5.2 }),
+        h('path', { d: 'm5.7 8.1 1.6 1.6 3-3.2' }),
+      )
+    }
+
     function StashIcon() {
       return icon(16,
         h('path', { d: 'M2.5 5.25h11v8.5h-11Z' }),
@@ -3810,6 +3917,13 @@ window.__ModuleLoader__.load({
       return icon(15,
         h('path', { d: 'M5.2 3.2v9.6l7.2-4.8Z' }),
         h('path', { d: 'M12.6 3.4v9.2' }),
+      )
+    }
+
+    function AcceptanceIcon() {
+      return icon(15,
+        h('rect', { x: 2.6, y: 2.2, width: 9.8, height: 11.6, rx: 1.8 }),
+        h('path', { d: 'm5.2 8.3 1.7 1.7 3.1-3.4' }),
       )
     }
 
@@ -4162,6 +4276,8 @@ window.__ModuleLoader__.load({
       const [stashMessage, setStashMessage] = useState('')
       const [stashIncludeUntracked, setStashIncludeUntracked] = useState(false)
       const [confirmState, setConfirmState] = useState(null)
+      // Per-file review marks survive a reload; a changed signature clears them.
+      const [reviewed, setReviewed] = useState(() => readReviewMarks(root))
       const onStatusChangeRef = useRef(onStatusChange)
       onStatusChangeRef.current = onStatusChange
 
@@ -4264,6 +4380,7 @@ window.__ModuleLoader__.load({
         setStashMessage('')
         setStashIncludeUntracked(false)
         setConfirmState(null)
+        setReviewed(readReviewMarks(root))
         if (root !== null) void loadStatus()
         // eslint-disable-next-line react-hooks/exhaustive-deps
       }, [root])
@@ -4644,6 +4761,22 @@ window.__ModuleLoader__.load({
         onOpenDiff({ path: entry.path, staged, untracked: !staged && entry.untracked === true, tag })
       }
 
+      /** Whether this exact change has been marked reviewed (signature-stable). */
+      function isReviewed(entry) {
+        return reviewed[entry.path] === reviewSignature(entry)
+      }
+
+      /** Toggle the reviewed mark for one file; the mark lapses on further change. */
+      function toggleReviewed(entry) {
+        setReviewed((current) => {
+          const next = { ...current }
+          if (next[entry.path] === reviewSignature(entry)) delete next[entry.path]
+          else next[entry.path] = reviewSignature(entry)
+          writeReviewMarks(root, next)
+          return next
+        })
+      }
+
       async function openBranches() {
         setBranchOpen(true)
         setBranchBusy(true)
@@ -4744,6 +4877,21 @@ window.__ModuleLoader__.load({
           h(
             'span',
             { className: 'ds-git-row-actions' },
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'ds-iconbtn ds-iconbtn-sm ds-git-row-action ds-git-row-review',
+                title: isReviewed(entry) ? t('acceptance.unmarkReviewed') : t('acceptance.markReviewed'),
+                'aria-pressed': isReviewed(entry),
+                'data-active': isReviewed(entry) ? 'true' : undefined,
+                onClick: (event) => {
+                  event.stopPropagation()
+                  toggleReviewed(entry)
+                },
+              },
+              h(ReviewedIcon),
+            ),
             h(
               'button',
               {
@@ -5053,6 +5201,7 @@ window.__ModuleLoader__.load({
 
       const staged = Array.isArray(status.staged) ? status.staged : []
       const changes = Array.isArray(status.changes) ? status.changes : []
+      const reviewedCount = changes.filter((entry) => isReviewed(entry)).length
       const branchLabel = status.detached ? t('git.detached') : status.branch ?? t('git.branch')
       const hasRemote = Array.isArray(status.remotes) && status.remotes.length > 0
       const remoteBusy = remoteAction !== null
@@ -5616,7 +5765,13 @@ window.__ModuleLoader__.load({
             h(
               'div',
               { className: 'ds-git-section-head' },
-              h('span', { className: 'ds-git-section-title' }, `${t('git.changes')} (${String(changes.length)})`),
+              h(
+                'span',
+                { className: 'ds-git-section-title' },
+                changes.length > 0
+                  ? `${t('git.changes')} (${String(changes.length)}) · ${t('acceptance.reviewProgress', { done: String(reviewedCount), total: String(changes.length) })}`
+                  : `${t('git.changes')} (${String(changes.length)})`,
+              ),
               changes.length > 0
                 ? h(
                     'span',
@@ -6998,6 +7153,15 @@ window.__ModuleLoader__.load({
         const taskPollTimersRef = useRef(new Map())
         const taskOutputRef = useRef(null)
         taskRunsRef.current = taskRuns
+        const [acceptanceItems, setAcceptanceItems] = useState([])
+        const [acceptanceBusy, setAcceptanceBusy] = useState(false)
+        const [acceptanceSaving, setAcceptanceSaving] = useState(false)
+        const [acceptanceError, setAcceptanceError] = useState(null)
+        const [acceptanceDraft, setAcceptanceDraft] = useState('')
+        const [acceptanceSelected, setAcceptanceSelected] = useState(null)
+        const [acceptanceNoteDraft, setAcceptanceNoteDraft] = useState('')
+        const [deliveryBusy, setDeliveryBusy] = useState(false)
+        const [deliveryBundle, setDeliveryBundle] = useState(null)
         const [paneView, setPaneView] = useState('files')
         const [sideTabsWidth, setSideTabsWidth] = useState(0)
         const [sideViewsOpen, setSideViewsOpen] = useState(false)
@@ -7225,6 +7389,7 @@ window.__ModuleLoader__.load({
           if (paneView === 'memory') void loadMemory()
           if (paneView === 'todo') void loadTodo()
           if (paneView === 'tasks') void loadTasks()
+          if (paneView === 'acceptance') void loadAcceptance()
           return undefined
         }, [paneView, state.root])
 
@@ -7589,7 +7754,8 @@ window.__ModuleLoader__.load({
         const showHarness = paneView === 'harness'
         const showTodo = paneView === 'todo'
         const showTasks = paneView === 'tasks'
-        const showFiles = !showGit && !showSearch && !showMemory && !showHarness && !showTodo && !showTasks
+        const showAcceptance = paneView === 'acceptance'
+        const showFiles = !showGit && !showSearch && !showMemory && !showHarness && !showTodo && !showTasks && !showAcceptance
         const todoOpenCount = todoTasks.reduce((count, task) => count + (task.status === 'open' ? 1 : 0), 0)
         const treeDisplayWidth = compact
           ? '100%'
@@ -7959,6 +8125,7 @@ window.__ModuleLoader__.load({
             { id: 'memory', label: t('side.memory'), run: openMemory },
             { id: 'todo', label: t('todo.title'), run: openTodo },
             { id: 'tasks', label: t('tasks.title'), run: openTasks },
+            { id: 'acceptance', label: t('acceptance.title'), run: openAcceptance },
             { id: 'harness', label: t('harness.open'), run: () => void openHarness() },
           ]
           if (gitAvailable) commands.push({ id: 'git', label: t('git.title'), run: () => setPaneView('git') })
@@ -8451,6 +8618,264 @@ window.__ModuleLoader__.load({
           if (taskActiveId === id) setTaskActiveId(null)
         }
 
+        /* ------------------------------------------------------------------ *
+         * Acceptance board and client delivery
+         * ------------------------------------------------------------------ */
+
+        /** Open the Acceptance board for the current workspace. */
+        function openAcceptance() {
+          setPaneView('acceptance')
+          setCompactView('tree')
+        }
+
+        /** Call the Host delivery route (same envelope as the task route). */
+        async function callDelivery(op, params = {}) {
+          let response
+          try {
+            response = await fetch(new URL(DELIVERY_PATH, document.baseURI).href, {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ op, ...params }),
+            })
+          } catch {
+            throw new SideRequestError('delivery-offline', t('acceptance.unavailable'))
+          }
+          if (!response.ok) throw new SideRequestError(`http-${String(response.status)}`, t('acceptance.unavailable'))
+          let payload
+          try {
+            payload = await response.json()
+          } catch {
+            throw new SideRequestError('delivery-bad-response', t('acceptance.unavailable'))
+          }
+          if (payload === null || typeof payload !== 'object' || payload.ok !== true) {
+            const failure = payload?.error ?? {}
+            throw new SideRequestError(failure.code ?? 'delivery-error', failure.message ?? t('acceptance.unavailable'))
+          }
+          return payload.value
+        }
+
+        /** Explain a Host that was not restarted after the plugin update. */
+        function acceptanceErrorText(error) {
+          return errorCode(error) === 'bad-op' ? t('acceptance.restartRequired') : errorText(error)
+        }
+
+        /** Read the workspace acceptance checklist. */
+        async function loadAcceptance(options = {}) {
+          const targetRoot = store.get().root
+          if (targetRoot === null) {
+            setAcceptanceError(t('acceptance.needRoot'))
+            return
+          }
+          if (options?.silent !== true) setAcceptanceBusy(true)
+          try {
+            const value = await call('acceptanceList', { root: targetRoot })
+            if (store.get().root !== targetRoot) return
+            setAcceptanceItems(Array.isArray(value?.items) ? value.items : [])
+            setAcceptanceError(null)
+          } catch (error) {
+            setAcceptanceError(acceptanceErrorText(error))
+          } finally {
+            setAcceptanceBusy(false)
+          }
+        }
+
+        /** Run one acceptance mutation, then refresh the board. */
+        async function mutateAcceptance(op, params) {
+          const targetRoot = store.get().root
+          if (targetRoot === null) return false
+          setAcceptanceSaving(true)
+          setAcceptanceError(null)
+          try {
+            await call(op, { root: targetRoot, ...params })
+            await loadAcceptance({ silent: true })
+            return true
+          } catch (error) {
+            setAcceptanceError(acceptanceErrorText(error))
+            return false
+          } finally {
+            setAcceptanceSaving(false)
+          }
+        }
+
+        /** Add the draft title as a pending acceptance item. */
+        async function addAcceptanceItem() {
+          const title = acceptanceDraft.trim()
+          if (title.length === 0) return
+          const ok = await mutateAcceptance('acceptanceAdd', { title })
+          if (ok) setAcceptanceDraft('')
+        }
+
+        /** Move one item to a new acceptance status. */
+        function setAcceptanceStatus(item, status) {
+          if (item === null || typeof item !== 'object' || item.status === status) return
+          void mutateAcceptance('acceptanceUpdate', { id: item.id, status })
+        }
+
+        /** Select one item for note editing. */
+        function selectAcceptanceItem(item) {
+          if (item === null || typeof item !== 'object') {
+            setAcceptanceSelected(null)
+            setAcceptanceNoteDraft('')
+            return
+          }
+          setAcceptanceSelected(item.id)
+          setAcceptanceNoteDraft(typeof item.note === 'string' ? item.note : '')
+        }
+
+        /** Persist the note of the selected item. */
+        async function saveAcceptanceNote() {
+          if (acceptanceSelected === null) return
+          const ok = await mutateAcceptance('acceptanceUpdate', { id: acceptanceSelected, note: acceptanceNoteDraft })
+          if (ok) showToast(t('toast.saved'))
+        }
+
+        /** Delete one item after a confirmation dialog. */
+        function deleteAcceptanceItem(item) {
+          if (item === null || typeof item !== 'object') return
+          setModal({
+            title: t('acceptance.title'),
+            message: t('acceptance.confirmDelete'),
+            confirmLabel: t('acceptance.delete'),
+            danger: true,
+            onConfirm: () => {
+              setModal(null)
+              void mutateAcceptance('acceptanceDelete', { id: item.id }).then((ok) => {
+                if (ok && acceptanceSelected === item.id) selectAcceptanceItem(null)
+              })
+            },
+          })
+        }
+
+        /** Download one text payload as a file. */
+        function downloadTextFile(name, text, type = 'text/markdown;charset=utf-8') {
+          try {
+            const blob = new Blob([text], { type })
+            const url = window.URL.createObjectURL(blob)
+            const anchor = document.createElement('a')
+            anchor.href = url
+            anchor.download = name
+            document.body.appendChild(anchor)
+            anchor.click()
+            anchor.remove()
+            window.setTimeout(() => window.URL.revokeObjectURL(url), 1000)
+          } catch (error) {
+            setAcceptanceError(errorText(error))
+          }
+        }
+
+        /** Compact local timestamp slug for exported file names. */
+        function timestampSlug() {
+          const now = new Date()
+          const pad = (value) => String(value).padStart(2, '0')
+          return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`
+        }
+
+        /** Export the acceptance report as Markdown. */
+        async function exportAcceptanceReport() {
+          const targetRoot = store.get().root
+          if (targetRoot === null) return
+          setAcceptanceError(null)
+          try {
+            const value = await call('acceptanceReport', { root: targetRoot })
+            downloadTextFile(`acceptance-report-${timestampSlug()}.md`, typeof value?.markdown === 'string' ? value.markdown : '')
+          } catch (error) {
+            setAcceptanceError(t('acceptance.reportFailed', { message: acceptanceErrorText(error) }))
+          }
+        }
+
+        /** Write a delivery bundle (build output + acceptance report) to `.dsh/deliveries`. */
+        async function packDeliveryBundle() {
+          const targetRoot = store.get().root
+          if (targetRoot === null) return
+          setDeliveryBusy(true)
+          setAcceptanceError(null)
+          setDeliveryBundle(null)
+          try {
+            let reportMarkdown
+            try {
+              const report = await call('acceptanceReport', { root: targetRoot })
+              if (typeof report?.markdown === 'string' && report.markdown.length > 0) reportMarkdown = report.markdown
+            } catch {
+              /* a bundle without the report is still useful */
+            }
+            const value = await callDelivery('bundle', { root: targetRoot, reportMarkdown })
+            setDeliveryBundle(value === null || typeof value !== 'object' ? null : value)
+          } catch (error) {
+            setAcceptanceError(t('acceptance.packFailed', { message: errorText(error) }))
+          } finally {
+            setDeliveryBusy(false)
+          }
+        }
+
+        /** Download a previously written delivery bundle through the raw file route. */
+        function downloadDeliveryBundle() {
+          const targetRoot = store.get().root
+          if (targetRoot === null || deliveryBundle === null || typeof deliveryBundle.relative !== 'string') return
+          const url = new URL(
+            `${API_PATH}?op=raw&root=${encodeURIComponent(targetRoot)}&path=${encodeURIComponent(deliveryBundle.relative)}&download=1`,
+            document.baseURI,
+          )
+          window.open(url.href, '_blank', 'noopener,noreferrer')
+        }
+
+        /** Open the Host build-output ZIP stream in a new tab (browser download). */
+        function downloadBuildZip() {
+          const targetRoot = store.get().root
+          if (targetRoot === null) return
+          const url = new URL(`${DELIVERY_PATH}?root=${encodeURIComponent(targetRoot)}`, document.baseURI)
+          window.open(url.href, '_blank', 'noopener,noreferrer')
+        }
+
+        /** Send one plain prompt to the current conversation. */
+        async function sendPromptText(text) {
+          const sessions = ctx.get('sessions')
+          const sessionId = agentSessionId()
+          if (sessions === undefined || sessions === null || typeof sessions.retain !== 'function' || sessionId === null) {
+            showToast(t('chat.noSession'))
+            return false
+          }
+          let reference = chatSession
+          let owned = false
+          try {
+            if (reference === null) {
+              reference = sessions.retain(sessionId, { source: 'filebrowserAcceptance' })
+              owned = true
+            }
+            if (reference.ready !== undefined) await reference.ready
+            const binding = typeof sessions.binding === 'function' ? sessions.binding(reference.sessionId) : reference.binding
+            const session = binding?.session
+            if (session === undefined || typeof session.prompt !== 'function') throw new Error('当前会话不支持发送消息')
+            const result = await session.prompt([{ type: 'text', text }], 'queue')
+            if (result?.ok === false) throw new Error(result.error?.message ?? '发送被拒绝')
+            setChatOpen(true)
+            showToast(t('agent.sent'))
+            return true
+          } catch (error) {
+            showToast(t('agent.failed', { message: error instanceof Error ? error.message : String(error) }))
+            return false
+          } finally {
+            if (owned && reference !== null) reference.release()
+          }
+        }
+
+        /** Send every failed acceptance item (with notes) to the agent. */
+        async function sendAcceptanceFailures() {
+          const failed = acceptanceItems.filter((item) => item.status === 'fail')
+          if (failed.length === 0) {
+            showToast(t('acceptance.noFailures'))
+            return
+          }
+          const lines = failed.map((item, index) => {
+            const note = typeof item.note === 'string' && item.note.trim().length > 0 ? `\n  备注：${item.note.trim()}` : ''
+            return `${String(index + 1)}. ${item.title}${note}`
+          })
+          const root = store.get().root ?? ''
+          const prompt = `请修复下面这些未通过的验收项（工作区：\`${root}\`）。修好后请用 acceptance_update 把对应项回填为 pass 或保留 fail 并说明原因。\n\n${lines.join('\n')}`
+          const sent = await sendPromptText(prompt)
+          if (sent) setChatOpen(true)
+        }
+
         /** Open the Todo panel for the current workspace. */
         function openTodo() {
           setPaneView('todo')
@@ -8907,6 +9332,12 @@ window.__ModuleLoader__.load({
           setTaskActiveId(null)
           setTaskError(null)
           setTaskDetectError(null)
+          setAcceptanceItems([])
+          setAcceptanceSelected(null)
+          setAcceptanceNoteDraft('')
+          setAcceptanceDraft('')
+          setAcceptanceError(null)
+          setDeliveryBundle(null)
           paletteFilesRef.current = { root: null, files: [], at: 0 }
           void loadDir('', { root: nextRoot })
           if (options.silent !== true) showToast(t('toast.rootSwitched'))
@@ -12300,6 +12731,200 @@ window.__ModuleLoader__.load({
           )
         }
 
+        /** Render the acceptance board: checklist, notes, report and delivery. */
+        function renderAcceptancePanel() {
+          const items = Array.isArray(acceptanceItems) ? acceptanceItems : []
+          const counts = { pending: 0, pass: 0, fail: 0, blocked: 0 }
+          for (const item of items) {
+            if (counts[item.status] !== undefined) counts[item.status] += 1
+          }
+          const statusLabels = {
+            pending: t('acceptance.pending'),
+            pass: t('acceptance.pass'),
+            fail: t('acceptance.fail'),
+            blocked: t('acceptance.blocked'),
+          }
+          const statuses = ['pending', 'pass', 'fail', 'blocked']
+          const selected = items.find((item) => item.id === acceptanceSelected) ?? null
+          const renderStatusButton = (item, status) =>
+            h(
+              'button',
+              {
+                key: status,
+                type: 'button',
+                className: 'ds-acc-status',
+                'data-status': status,
+                'data-active': item.status === status ? 'true' : undefined,
+                title: statusLabels[status],
+                onClick: () => setAcceptanceStatus(item, status),
+              },
+              statusLabels[status],
+            )
+          return h(
+            'div',
+            { className: 'ds-side-view ds-acceptance-view', style: { display: showAcceptance ? 'flex' : 'none' } },
+            h(
+              'div',
+              { className: 'ds-acc-toolbar' },
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-btn ds-acc-refresh',
+                  disabled: acceptanceBusy || state.root === null,
+                  onClick: () => void loadAcceptance(),
+                },
+                t('action.refresh'),
+              ),
+              h('span', { className: 'ds-spacer' }),
+              acceptanceSaving ? h('span', { className: 'ds-acc-saving' }, t('acceptance.saving')) : null,
+            ),
+            h('div', { className: 'ds-hint ds-acc-hint' }, t('acceptance.hint')),
+            acceptanceError === null ? null : h('div', { className: 'ds-errorline' }, acceptanceError),
+            h(
+              'div',
+              { className: 'ds-acc-counts' },
+              statuses.map((status) =>
+                h(
+                  'span',
+                  { key: status, className: 'ds-acc-count', 'data-status': status },
+                  status === 'pending'
+                    ? t('acceptance.pendingCount', { count: String(counts[status]) })
+                    : status === 'pass'
+                      ? t('acceptance.passCount', { count: String(counts[status]) })
+                      : status === 'fail'
+                        ? t('acceptance.failCount', { count: String(counts[status]) })
+                        : t('acceptance.blockedCount', { count: String(counts[status]) }),
+                ),
+              ),
+            ),
+            h(
+              'div',
+              { className: 'ds-acc-add' },
+              h('input', {
+                className: 'ds-acc-add-input',
+                value: acceptanceDraft,
+                placeholder: t('acceptance.placeholder'),
+                spellCheck: false,
+                onChange: (event) => setAcceptanceDraft(event.target.value),
+                onKeyDown: (event) => {
+                  if (event.key !== 'Enter') return
+                  event.preventDefault()
+                  void addAcceptanceItem()
+                },
+              }),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-btn',
+                  disabled: acceptanceDraft.trim().length === 0 || acceptanceSaving,
+                  onClick: () => void addAcceptanceItem(),
+                },
+                t('acceptance.add'),
+              ),
+            ),
+            h(
+              'div',
+              { className: 'ds-acc-list' },
+              items.length === 0
+                ? h('div', { className: 'ds-hint' }, t('acceptance.empty'))
+                : items.map((item) =>
+                    h(
+                      'div',
+                      {
+                        key: item.id,
+                        className: 'ds-acc-row',
+                        'data-status': item.status,
+                        'data-selected': item.id === acceptanceSelected ? 'true' : undefined,
+                      },
+                      h(
+                        'button',
+                        { type: 'button', className: 'ds-acc-row-main', onClick: () => selectAcceptanceItem(item) },
+                        h('span', { className: 'ds-acc-title' }, String(item.title ?? '')),
+                        typeof item.note === 'string' && item.note.trim().length > 0
+                          ? h('span', { className: 'ds-acc-note-pre' }, item.note.trim())
+                          : null,
+                      ),
+                      h('div', { className: 'ds-acc-row-status' }, statuses.map((status) => renderStatusButton(item, status))),
+                      h(
+                        'button',
+                        {
+                          type: 'button',
+                          className: 'ds-acc-delete',
+                          title: t('acceptance.delete'),
+                          onClick: () => deleteAcceptanceItem(item),
+                        },
+                        h(TrashIcon),
+                      ),
+                    ),
+                  ),
+            ),
+            selected === null
+              ? null
+              : h(
+                  'div',
+                  { className: 'ds-acc-detail' },
+                  h('div', { className: 'ds-acc-detail-label' }, t('acceptance.note')),
+                  h('textarea', {
+                    className: 'ds-acc-note',
+                    value: acceptanceNoteDraft,
+                    rows: 3,
+                    placeholder: t('acceptance.notePlaceholder'),
+                    onChange: (event) => setAcceptanceNoteDraft(event.target.value),
+                  }),
+                  h(
+                    'div',
+                    { className: 'ds-acc-detail-actions' },
+                    h(
+                      'button',
+                      { type: 'button', className: 'ds-btn', disabled: acceptanceSaving, onClick: () => void saveAcceptanceNote() },
+                      t('acceptance.saveNote'),
+                    ),
+                    h('span', { className: 'ds-spacer' }),
+                    h('button', { type: 'button', className: 'ds-linkbtn', onClick: () => selectAcceptanceItem(null) }, t('action.cancel')),
+                  ),
+                ),
+            h(
+              'div',
+              { className: 'ds-acc-delivery' },
+              h(
+                'div',
+                { className: 'ds-acc-actions' },
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-btn',
+                    disabled: counts.fail === 0,
+                    onClick: () => void sendAcceptanceFailures(),
+                  },
+                  t('acceptance.sendFailures'),
+                ),
+                h('button', { type: 'button', className: 'ds-btn', onClick: () => void exportAcceptanceReport() }, t('acceptance.report')),
+                h(
+                  'button',
+                  { type: 'button', className: 'ds-btn', disabled: deliveryBusy, onClick: () => void packDeliveryBundle() },
+                  deliveryBusy ? t('acceptance.saving') : t('acceptance.pack'),
+                ),
+                h('button', { type: 'button', className: 'ds-btn', onClick: () => downloadBuildZip() }, t('acceptance.buildZip')),
+              ),
+              deliveryBundle === null
+                ? null
+                : h(
+                    'div',
+                    { className: 'ds-acc-bundle' },
+                    h(
+                      'span',
+                      { className: 'ds-acc-bundle-path', title: String(deliveryBundle.path ?? '') },
+                      `${t('acceptance.bundleReady')}: ${String(deliveryBundle.relative ?? deliveryBundle.name ?? '')}`,
+                    ),
+                    h('button', { type: 'button', className: 'ds-linkbtn', onClick: () => downloadDeliveryBundle() }, t('acceptance.download')),
+                  ),
+            ),
+          )
+        }
+
         function renderHarnessPanel() {
           if (harnessConfig !== null) {
             return h(
@@ -13068,6 +13693,16 @@ window.__ModuleLoader__.load({
               title: taskRuns.some((run) => run.running === true) ? t('tasks.running') : t('tasks.title'),
               select: openTasks,
             },
+            {
+              id: 'acceptance',
+              label: t('side.acceptance'),
+              icon: h(AcceptanceIcon),
+              active: showAcceptance,
+              count: acceptanceItems.filter((item) => item.status === 'fail').length,
+              countTone: 'warn',
+              title: acceptanceItems.some((item) => item.status === 'fail') ? t('acceptance.failCount', { count: String(acceptanceItems.filter((item) => item.status === 'fail').length) }) : t('acceptance.title'),
+              select: openAcceptance,
+            },
           ]
           if (gitAvailable) {
             views.push({
@@ -13777,7 +14412,7 @@ window.__ModuleLoader__.load({
               'aside',
               {
                 className: 'ds-side',
-                'data-view': showGit ? 'git' : showSearch ? 'search' : showMemory ? 'memory' : showHarness ? 'harness' : showTodo ? 'todo' : showTasks ? 'tasks' : 'files',
+                'data-view': showGit ? 'git' : showSearch ? 'search' : showMemory ? 'memory' : showHarness ? 'harness' : showTodo ? 'todo' : showTasks ? 'tasks' : showAcceptance ? 'acceptance' : 'files',
                 style: { width: treeDisplayWidth, display: showSide ? undefined : 'none' },
               },
               h(
@@ -13789,7 +14424,7 @@ window.__ModuleLoader__.load({
                   h(
                     'span',
                     { className: 'ds-pane-title-text' },
-                    showGit ? t('git.title') : showSearch ? t('side.search') : showMemory ? t('side.memory') : showHarness ? t('side.harness') : showTodo ? t('todo.title') : showTasks ? t('tasks.title') : t('explorer'),
+                    showGit ? t('git.title') : showSearch ? t('side.search') : showMemory ? t('side.memory') : showHarness ? t('side.harness') : showTodo ? t('todo.title') : showTasks ? t('tasks.title') : showAcceptance ? t('acceptance.title') : t('explorer'),
                   ),
                   h(
                     'button',
@@ -14051,6 +14686,7 @@ window.__ModuleLoader__.load({
               renderMemoryPanel(),
               renderTodoPanel(),
               renderTasksPanel(),
+              renderAcceptancePanel(),
               gitAvailable
                 ? h(
                     'div',
@@ -15268,6 +15904,7 @@ window.__ModuleLoader__.load({
 .ds-side[data-view="harness"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
 .ds-side[data-view="todo"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
 .ds-side[data-view="tasks"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
+.ds-side[data-view="acceptance"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
 .ds-side[data-view="memory"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch) { display: none; }
 .ds-git-toggle[data-active="true"] {
   color: var(--dsw-alias-brand-primary);
@@ -15583,6 +16220,7 @@ window.__ModuleLoader__.load({
 .ds-git-row-action { width: 20px; height: 20px; opacity: 0.55; }
 .ds-git-row:hover .ds-git-row-action, .ds-git-row:focus-within .ds-git-row-action { opacity: 1; }
 .ds-git-row-action:disabled { opacity: 0.2; }
+.ds-git-row-review[data-active="true"] { color: var(--dsw-alias-state-success-primary); opacity: 1; }
 .ds-git-row-discard:hover:not(:disabled) { color: var(--dsw-alias-state-error-primary); }
 .ds-git-section-actions { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; }
 .ds-git-discard-all { color: var(--dsw-alias-state-error-primary); }
@@ -16534,6 +17172,46 @@ window.__ModuleLoader__.load({
 .ds-task-problem-loc { flex: 0 0 auto; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-secondary); font-family: var(--ds-mono); font-size: 9.5px; }
 .ds-task-problem-msg { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-primary); }
 .ds-task-output { flex: 1 1 auto; min-height: 0; margin: 0; padding: 6px 8px; overflow: auto; background: var(--dsw-alias-bg-base); color: var(--dsw-alias-label-primary); font-family: var(--ds-mono); font-size: 10px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ds-acceptance-view { overflow: hidden; }
+.ds-acc-toolbar { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
+.ds-acc-refresh { height: 26px; padding: 0 10px; font-size: 11px; }
+.ds-acc-saving { color: var(--dsw-alias-label-caption); font-size: 9.5px; }
+.ds-acc-hint { padding: 6px 10px 2px; font-size: 10px; }
+.ds-acc-counts { display: flex; flex-wrap: wrap; gap: 5px; padding: 2px 8px 6px; }
+.ds-acc-count { padding: 1px 6px; border-radius: 8px; font-size: 9.5px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-secondary); }
+.ds-acc-count[data-status="pass"] { color: var(--dsw-alias-state-success-primary); }
+.ds-acc-count[data-status="fail"] { color: var(--dsw-alias-state-error-primary); }
+.ds-acc-count[data-status="blocked"] { color: var(--dsw-alias-state-warn-primary); }
+.ds-acc-add { display: flex; gap: 5px; padding: 0 8px 6px; }
+.ds-acc-add-input { flex: 1 1 auto; min-width: 0; height: 26px; padding: 0 8px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 6px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary); font: inherit; font-size: 11px; }
+.ds-acc-add-input:focus { outline: none; border-color: var(--dsw-alias-brand-primary); }
+.ds-acc-list { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 2px 6px 6px; }
+.ds-acc-row { display: flex; align-items: center; gap: 4px; padding: 3px; border-radius: 6px; }
+.ds-acc-row:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent); }
+.ds-acc-row[data-selected="true"] { background: color-mix(in srgb, var(--dsw-alias-brand-primary) 8%, transparent); }
+.ds-acc-row[data-status="pass"] .ds-acc-title { color: var(--dsw-alias-state-success-primary); }
+.ds-acc-row[data-status="fail"] .ds-acc-title { color: var(--dsw-alias-state-error-primary); }
+.ds-acc-row-main { display: flex; flex-direction: column; gap: 1px; flex: 1 1 auto; min-width: 0; padding: 2px 3px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ds-acc-title { font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
+.ds-acc-note-pre { color: var(--dsw-alias-label-caption); font-size: 9.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-acc-row-status { display: flex; gap: 2px; flex: 0 0 auto; }
+.ds-acc-status { height: 20px; padding: 0 5px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 4px; background: transparent; color: var(--dsw-alias-label-caption); font: inherit; font-size: 9px; cursor: pointer; }
+.ds-acc-status[data-active="true"][data-status="pass"] { color: var(--dsw-alias-state-success-primary); border-color: currentColor; }
+.ds-acc-status[data-active="true"][data-status="fail"] { color: var(--dsw-alias-state-error-primary); border-color: currentColor; }
+.ds-acc-status[data-active="true"][data-status="blocked"] { color: var(--dsw-alias-state-warn-primary); border-color: currentColor; }
+.ds-acc-status[data-active="true"][data-status="pending"] { color: var(--dsw-alias-brand-primary); border-color: currentColor; }
+.ds-acc-delete { flex: 0 0 auto; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--dsw-alias-label-caption); cursor: pointer; }
+.ds-acc-delete:hover { color: var(--dsw-alias-state-error-primary); }
+.ds-acc-detail { flex: 0 0 auto; border-top: 1px solid var(--dsw-alias-border-l1); padding: 6px 8px; }
+.ds-acc-detail-label { color: var(--dsw-alias-label-caption); font-size: 9.5px; margin-bottom: 3px; }
+.ds-acc-note { width: 100%; box-sizing: border-box; resize: vertical; min-height: 52px; padding: 5px 7px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 6px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary); font: inherit; font-size: 11px; }
+.ds-acc-note:focus { outline: none; border-color: var(--dsw-alias-brand-primary); }
+.ds-acc-detail-actions { display: flex; align-items: center; gap: 5px; margin-top: 5px; }
+.ds-acc-delivery { flex: 0 0 auto; border-top: 1px solid var(--dsw-alias-border-l1); padding: 6px 8px 8px; }
+.ds-acc-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.ds-acc-actions .ds-btn { height: 24px; padding: 0 7px; font-size: 10px; }
+.ds-acc-bundle { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.ds-acc-bundle-path { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-caption); font-family: var(--ds-mono); font-size: 9.5px; }
 .ds-todo-edit { display: flex; flex-direction: column; gap: 5px; background: color-mix(in srgb, var(--dsw-alias-brand-primary) 5%, transparent); }
 .ds-todo-note-input {
   width: 100%;

@@ -72,6 +72,12 @@ it for you.
   commands, runs them with streamed output and exit codes, and turns errors in
   the output into clickable file:line links that jump into the editor. Tasks that
   were still running when the page reloaded are re-attached.
+- **Acceptance board and delivery** — the Acceptance sidebar view keeps a
+  `.dsh/acceptance.json` checklist (pending / pass / fail / blocked plus notes),
+  exports a Markdown acceptance report, and sends failed items back to the agent;
+  the Git changes list gains per-file **reviewed** marks; for delivery you can
+  download a build-output ZIP or pack the report plus build output into
+  `.dsh/deliveries/`.
 - **Fits the host** — theme-token styling, English/Chinese copy, a compact
   single-column layout in narrow sidebars, a right-sidebar Start card, and a
   mobile/tablet layout.
