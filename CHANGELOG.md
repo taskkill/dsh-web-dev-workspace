@@ -4,6 +4,23 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Workbench direct actions and touch polish (P3/P4)
+
+- The Workbench now carries the actions the owner needs most: a **fast-mode**
+  toggle, a **rerun failed task** button, export report / pack delivery / download
+  the latest bundle, and copy/open the first preview link — no need to hop to
+  Pipeline, Acceptance or Tasks for routine work.
+- Workbench layout prioritises what needs the owner: the attention card (pending
+  gate, failed acceptance items) moves to the top when non-empty; the project
+  card gains a six-segment progress strip, and acceptance/delivery are merged
+  into one compact card. The panel refreshes itself every five seconds and only
+  loads the task run list (no project scan) while open.
+- Mobile polish: the grouped "more" menu becomes a bottom sheet with a dimmed
+  backdrop, taller 42 px rows, larger group headings and a 38 px bottom bar;
+  workbench buttons and links grow to touch-sized targets on compact layouts.
+- Loading the workbench no longer triggers task detection scans; the Tasks view
+  still detects on demand.
+
 ### Owner workbench and sidebar consolidation
 
 - New **Workbench** sidebar view and landing page: one screen shows the current

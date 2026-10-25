@@ -403,6 +403,7 @@ window.__ModuleLoader__.load({
       'workbench.openAcceptance': '打开验收',
       'workbench.openTasks': '打开任务',
       'workbench.running': '运行中',
+      'workbench.rerun': '重跑失败任务',
       'workbench.noRunning': '没有运行中的任务',
       'workbench.checklist': '查看全部验收项',
       'workbench.loadFailed': '读取工作台数据失败：{message}',
@@ -1164,6 +1165,7 @@ window.__ModuleLoader__.load({
       'workbench.openAcceptance': 'Open acceptance',
       'workbench.openTasks': 'Open tasks',
       'workbench.running': 'Running',
+      'workbench.rerun': 'Rerun failed task',
       'workbench.noRunning': 'Nothing is running',
       'workbench.checklist': 'View all acceptance items',
       'workbench.loadFailed': 'Could not read the workbench data: {message}',
@@ -7778,6 +7780,16 @@ window.__ModuleLoader__.load({
           writeStorage(`${VIEW_KEY}:${state.root}`, paneView)
         }, [paneView, state.root])
 
+        // The workbench aggregates agent-driven state; refresh it while visible.
+        useEffect(() => {
+          if (paneView !== 'workbench') return undefined
+          const timer = window.setInterval(() => {
+            if (!document.hidden && !pipelineBusy && !deliveryBusy) void loadWorkbench({ silent: true })
+          }, 5000)
+          return () => window.clearInterval(timer)
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [paneView, pipelineBusy, deliveryBusy])
+
         // The agent advances stages from the conversation; keep the panel in step
         // without the owner having to press refresh.
         useEffect(() => {
@@ -8960,13 +8972,14 @@ window.__ModuleLoader__.load({
           }
           if (options?.silent !== true) setTaskDetectBusy(true)
           setTaskDetectError(null)
+          const detect = options?.detect !== false
           try {
             const [suggestions, live] = await Promise.all([
-              callTasks('detect', { root: targetRoot }),
+              detect ? callTasks('detect', { root: targetRoot }) : Promise.resolve(null),
               callTasks('list', { root: targetRoot }),
             ])
             if (store.get().root !== targetRoot) return
-            setTaskSuggestions(Array.isArray(suggestions) ? suggestions : [])
+            if (detect) setTaskSuggestions(Array.isArray(suggestions) ? suggestions : [])
             const known = new Set(taskRunsRef.current.map((run) => run.id))
             const restored = (Array.isArray(live) ? live : [])
               .filter((task) => task !== null && typeof task === 'object' && task.running === true && typeof task.id === 'string' && !known.has(task.id))
@@ -9070,7 +9083,7 @@ ${tail}
             await Promise.all([
               loadPipeline({ silent: true }),
               loadAcceptance({ silent: true }),
-              loadTasks({ silent: true }),
+              loadTasks({ silent: true, detect: false }),
               loadDeliveryHistory(),
               loadPreviewShares(),
             ])
@@ -13967,12 +13980,13 @@ ${tail}
           )
         }
 
-        /** Render the owner workbench: project, gates, acceptance, delivery and running work. */
+        /** Render the owner workbench: gates first, then project, acceptance/delivery and work in flight. */
         function renderWorkbenchPanel() {
           const doc = pipelineDoc !== null && typeof pipelineDoc === 'object' ? pipelineDoc : null
           const stages = doc !== null && Array.isArray(doc.stages) ? doc.stages : []
           const requirement = doc !== null && doc.requirement !== null && typeof doc.requirement === 'object' ? doc.requirement : {}
           const requirementTitle = typeof requirement.title === 'string' ? requirement.title.trim() : ''
+          const fastMode = doc !== null && doc.settings !== null && typeof doc.settings === 'object' && doc.settings.gateMode === 'fast'
           const done = stages.filter((stage) => stage !== null && typeof stage === 'object' && stage.status === 'approved').length
           const total = stages.length === 0 ? 6 : stages.length
           const stageTitles = {
@@ -13984,6 +13998,13 @@ ${tail}
             release: t('pipeline.stage.release'),
           }
           const stageTitle = (id) => stageTitles[id] ?? id
+          const statusText = {
+            pending: t('pipeline.status.pending'),
+            active: t('pipeline.status.active'),
+            review: t('pipeline.status.review'),
+            approved: t('pipeline.status.approved'),
+            failed: t('pipeline.status.failed'),
+          }
           const current =
             stages.find((stage) => stage !== null && typeof stage === 'object' && (stage.status === 'active' || stage.status === 'review')) ??
             stages.find((stage) => stage !== null && typeof stage === 'object' && (stage.status === 'pending' || stage.status === 'failed')) ??
@@ -14000,84 +14021,101 @@ ${tail}
           const failedItems = items.filter((item) => item.status === 'fail')
           const running = taskRuns.filter((run) => run.running === true)
           const lastRun = taskRuns.length === 0 ? null : taskRuns[taskRuns.length - 1]
-          const deliveryHint = deliveryBundle !== null && typeof deliveryBundle === 'object' ? String(deliveryBundle.relative ?? deliveryBundle.name ?? '') : ''
-          return h(
+          const lastFailed = [...taskRuns].reverse().find((run) => run.status === 'failed' && typeof run.command === 'string' && run.command.length > 0) ?? null
+          const previewShare = previewShares.length > 0 ? previewShares[0] : null
+          const latestDelivery = deliveryHistory.length > 0 ? deliveryHistory[0] : null
+          const attention = reviewStage !== null || failedItems.length > 0
+          const requirementCard = h(
             'div',
-            { className: 'ds-side-view ds-workbench-view', style: { display: showWorkbench ? 'flex' : 'none' } },
-            h(
-              'div',
-              { className: 'ds-wb-scroll' },
-              h(
-                'div',
-                { className: 'ds-wb-card' },
-                h('div', { className: 'ds-wb-card-title' }, t('workbench.currentProject')),
-                workbenchBusy ? h('div', { className: 'ds-hint' }, t('acceptance.saving')) : null,
-                requirementTitle.length > 0
-                  ? h(
-                      React.Fragment,
-                      null,
-                      h('div', { className: 'ds-wb-project-title' }, requirementTitle),
-                      h(
+            { className: 'ds-wb-card' },
+            h('div', { className: 'ds-wb-card-title' }, t('workbench.currentProject')),
+            workbenchBusy ? h('div', { className: 'ds-hint ds-wb-hint' }, t('acceptance.saving')) : null,
+            requirementTitle.length > 0
+              ? h(
+                  React.Fragment,
+                  null,
+                  h('div', { className: 'ds-wb-project-title' }, requirementTitle),
+                  stages.length === 0
+                    ? null
+                    : h(
                         'div',
-                        { className: 'ds-wb-progress' },
-                        t('workbench.progress', {
-                          done: String(done),
-                          total: String(total),
-                          stage: current === null ? t('pipeline.status.approved') : stageTitle(current.id),
-                        }),
+                        { className: 'ds-wb-dots' },
+                        stages.map((stage) =>
+                          h('span', {
+                            key: stage.id,
+                            className: 'ds-wb-dot',
+                            'data-status': stage.status,
+                            title: stageTitle(stage.id) + ' · ' + (statusText[stage.status] ?? String(stage.status)),
+                          }),
+                        ),
                       ),
-                      h(
-                        'div',
-                        { className: 'ds-wb-actions' },
-                        h('button', { type: 'button', className: 'ds-btn ds-wb-btn', onClick: openPipeline }, t('workbench.openPipeline')),
-                        current !== null && current.status !== 'review'
-                          ? h(
-                              'button',
-                              {
-                                type: 'button',
-                                className: 'ds-btn ds-wb-btn',
-                                disabled: pipelineBusy,
-                                onClick: () => void startPipelineStage(current.id),
-                              },
-                              t('pipeline.start'),
-                            )
-                          : null,
-                      ),
-                    )
-                  : h(
-                      'div',
-                      { className: 'ds-wb-kickoff' },
+                  h(
+                    'div',
+                    { className: 'ds-wb-progress' },
+                    t('workbench.progress', {
+                      done: String(done),
+                      total: String(total),
+                      stage: current === null ? t('pipeline.status.approved') : stageTitle(current.id),
+                    }),
+                  ),
+                  h(
+                    'div',
+                    { className: 'ds-wb-actions' },
+                    h(
+                      'label',
+                      { className: 'ds-pipe-fast ds-wb-fast', title: t('pipeline.fastHint') },
                       h('input', {
-                        className: 'ds-pipe-input',
-                        value: workbenchDraft,
-                        placeholder: t('pipeline.requirementPlaceholder'),
-                        spellCheck: false,
-                        onChange: (event) => setWorkbenchDraft(event.target.value),
-                        onKeyDown: (event) => {
-                          if (event.key !== 'Enter') return
-                          event.preventDefault()
-                          void kickoffFromWorkbench()
-                        },
+                        type: 'checkbox',
+                        checked: fastMode,
+                        disabled: pipelineBusy,
+                        onChange: (event) => void setPipelineGateMode(event.target.checked ? 'fast' : 'normal'),
                       }),
-                      h(
-                        'button',
-                        {
-                          type: 'button',
-                          className: 'ds-btn ds-wb-kickoff-btn',
-                          disabled: workbenchKickoffBusy || workbenchDraft.trim().length === 0,
-                          onClick: () => void kickoffFromWorkbench(),
-                        },
-                        workbenchKickoffBusy ? t('acceptance.saving') : t('workbench.kickoff'),
-                      ),
-                      h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.noProject')),
+                      h('span', null, t('pipeline.fastMode')),
                     ),
-              ),
-              h(
+                    h('span', { className: 'ds-spacer' }),
+                    current !== null && current.status !== 'review'
+                      ? h(
+                          'button',
+                          { type: 'button', className: 'ds-btn ds-wb-btn', disabled: pipelineBusy, onClick: () => void startPipelineStage(current.id) },
+                          t('pipeline.start'),
+                        )
+                      : null,
+                    h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: openPipeline }, t('workbench.openPipeline')),
+                  ),
+                )
+              : h(
+                  'div',
+                  { className: 'ds-wb-kickoff' },
+                  h('input', {
+                    className: 'ds-pipe-input',
+                    value: workbenchDraft,
+                    placeholder: t('pipeline.requirementPlaceholder'),
+                    spellCheck: false,
+                    onChange: (event) => setWorkbenchDraft(event.target.value),
+                    onKeyDown: (event) => {
+                      if (event.key !== 'Enter') return
+                      event.preventDefault()
+                      void kickoffFromWorkbench()
+                    },
+                  }),
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-btn ds-wb-kickoff-btn',
+                      disabled: workbenchKickoffBusy || workbenchDraft.trim().length === 0,
+                      onClick: () => void kickoffFromWorkbench(),
+                    },
+                    workbenchKickoffBusy ? t('acceptance.saving') : t('workbench.kickoff'),
+                  ),
+                  h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.noProject')),
+                ),
+          )
+          const attentionCard = !attention
+            ? null
+            : h(
                 'div',
-                {
-                  className: 'ds-wb-card ds-wb-attention',
-                  'data-kind': reviewStage !== null || failedItems.length > 0 ? 'attention' : 'idle',
-                },
+                { className: 'ds-wb-card ds-wb-attention', 'data-kind': 'attention' },
                 h('div', { className: 'ds-wb-card-title' }, t('workbench.needsYou')),
                 reviewStage === null
                   ? null
@@ -14098,6 +14136,7 @@ ${tail}
                           { type: 'button', className: 'ds-btn ds-wb-btn ds-pipe-reject', disabled: pipelineBusy, onClick: () => void reviewPipelineStage(reviewStage.id, 'reject') },
                           t('pipeline.reject'),
                         ),
+                        h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: openPipeline }, t('workbench.openPipeline')),
                       ),
                       h('input', {
                         className: 'ds-pipe-input ds-wb-note',
@@ -14112,7 +14151,10 @@ ${tail}
                   : h(
                       'div',
                       { className: 'ds-wb-need' },
-                      h('div', { className: 'ds-wb-need-text' }, `${t('workbench.failedItems')}: ${String(failedItems.length)}`),
+                      h('div', { className: 'ds-wb-need-text' }, `${t('workbench.failedItems')} · ${String(failedItems.length)}`),
+                      failedItems.slice(0, 2).map((item) =>
+                        h('div', { key: item.id, className: 'ds-wb-fail-item', title: String(item.title ?? '') }, `✗ ${String(item.title ?? '')}`),
+                      ),
                       h(
                         'div',
                         { className: 'ds-wb-actions' },
@@ -14120,67 +14162,119 @@ ${tail}
                         h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: openAcceptance }, t('workbench.openAcceptance')),
                       ),
                     ),
-                reviewStage === null && failedItems.length === 0
-                  ? h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.nothingNeedsYou'))
-                  : null,
-              ),
+              )
+          const acceptanceCard = h(
+            'div',
+            { className: 'ds-wb-card' },
+            h('div', { className: 'ds-wb-card-title' }, t('workbench.acceptance')),
+            h(
+              'div',
+              { className: 'ds-wb-counts' },
+              h('span', { className: 'ds-wb-count', 'data-status': 'pass' }, t('acceptance.passCount', { count: String(passCount) })),
+              h('span', { className: 'ds-wb-count', 'data-status': 'fail' }, t('acceptance.failCount', { count: String(failCount) })),
+              h('span', { className: 'ds-wb-count', 'data-status': 'pending' }, t('acceptance.pendingCount', { count: String(pendingCount) })),
+            ),
+            h(
+              'div',
+              { className: 'ds-wb-card-title ds-wb-subtitle' },
+              t('workbench.delivery'),
+            ),
+            h(
+              'div',
+              { className: 'ds-wb-actions' },
+              h('button', { type: 'button', className: 'ds-btn ds-wb-btn', onClick: () => void exportAcceptanceReport() }, t('workbench.report')),
               h(
-                'div',
-                { className: 'ds-wb-card' },
-                h('div', { className: 'ds-wb-card-title' }, t('workbench.acceptance')),
-                h(
-                  'div',
-                  { className: 'ds-wb-counts' },
-                  h('span', { className: 'ds-wb-count', 'data-status': 'pass' }, t('acceptance.passCount', { count: String(passCount) })),
-                  h('span', { className: 'ds-wb-count', 'data-status': 'fail' }, t('acceptance.failCount', { count: String(failCount) })),
-                  h('span', { className: 'ds-wb-count', 'data-status': 'pending' }, t('acceptance.pendingCount', { count: String(pendingCount) })),
-                ),
-                failedItems.slice(0, 3).map((item) =>
-                  h('div', { key: item.id, className: 'ds-wb-fail-item', title: String(item.title ?? '') }, `✗ ${String(item.title ?? '')}`),
-                ),
-                h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: openAcceptance }, t('workbench.checklist')),
+                'button',
+                { type: 'button', className: 'ds-btn ds-wb-btn', disabled: deliveryBusy, onClick: () => void packDeliveryBundle() },
+                deliveryBusy ? t('acceptance.saving') : t('workbench.pack'),
               ),
-              h(
-                'div',
-                { className: 'ds-wb-card' },
-                h('div', { className: 'ds-wb-card-title' }, t('workbench.delivery')),
-                h(
-                  'div',
-                  { className: 'ds-wb-actions' },
-                  h('button', { type: 'button', className: 'ds-btn ds-wb-btn', onClick: () => void exportAcceptanceReport() }, t('workbench.report')),
-                  h(
+              latestDelivery === null
+                ? null
+                : h(
                     'button',
-                    { type: 'button', className: 'ds-btn ds-wb-btn', disabled: deliveryBusy, onClick: () => void packDeliveryBundle() },
-                    deliveryBusy ? t('acceptance.saving') : t('workbench.pack'),
+                    {
+                      type: 'button',
+                      className: 'ds-linkbtn ds-wb-link',
+                      title: String(latestDelivery.relative ?? ''),
+                      onClick: () => {
+                        const root = store.get().root
+                        if (root === null || typeof latestDelivery.relative !== 'string') return
+                        const url = new URL(
+                          `${API_PATH}?op=raw&root=${encodeURIComponent(root)}&path=${encodeURIComponent(latestDelivery.relative)}&download=1`,
+                          document.baseURI,
+                        )
+                        window.open(url.href, '_blank', 'noopener,noreferrer')
+                      },
+                    },
+                    t('acceptance.download') + ' ' + String(latestDelivery.name ?? ''),
                   ),
-                  previewShares.length > 0
-                    ? h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: () => copyPreviewLink(previewShares[0]) }, t('acceptance.previewCopy'))
-                    : null,
-                ),
-                deliveryHint.length === 0 ? null : h('div', { className: 'ds-hint ds-wb-hint' }, t('acceptance.bundleReady') + ': ' + deliveryHint),
-              ),
-              h(
-                'div',
-                { className: 'ds-wb-card' },
-                h('div', { className: 'ds-wb-card-title' }, t('workbench.running')),
-                running.length === 0
-                  ? h(
-                      'div',
-                      { className: 'ds-hint ds-wb-hint' },
-                      lastRun === null
-                        ? t('workbench.noRunning')
-                        : `${lastRun.name} · ${lastRun.status === 'passed' ? t('tasks.passed') : t('tasks.failed')}`,
-                    )
-                  : running.map((run) =>
-                      h(
-                        'div',
-                        { key: run.id, className: 'ds-wb-run' },
-                        h('span', { className: 'ds-task-run-dot', 'data-status': run.status }),
-                        h('span', { className: 'ds-wb-run-name' }, run.name.length > 0 ? run.name : run.command),
-                      ),
+              previewShare === null
+                ? null
+                : h(
+                    React.Fragment,
+                    null,
+                    h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: () => copyPreviewLink(previewShare) }, t('acceptance.previewCopy')),
+                    h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'ds-linkbtn ds-wb-link',
+                        onClick: () => window.open(previewShareUrl(previewShare), '_blank', 'noopener,noreferrer'),
+                      },
+                      t('acceptance.previewOpen'),
                     ),
-                h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: openTasks }, t('workbench.openTasks')),
-              ),
+                  ),
+            ),
+            h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: openAcceptance }, t('workbench.checklist')),
+          )
+          const runningCard = h(
+            'div',
+            { className: 'ds-wb-card' },
+            h('div', { className: 'ds-wb-card-title' }, t('workbench.running')),
+            running.length === 0
+              ? h(
+                  'div',
+                  { className: 'ds-hint ds-wb-hint' },
+                  lastRun === null
+                    ? t('workbench.noRunning')
+                    : `${lastRun.name} · ${lastRun.status === 'passed' ? t('tasks.passed') : t('tasks.failed')}`,
+                )
+              : running.map((run) =>
+                  h(
+                    'div',
+                    { key: run.id, className: 'ds-wb-run' },
+                    h('span', { className: 'ds-task-run-dot', 'data-status': run.status }),
+                    h('span', { className: 'ds-wb-run-name' }, run.name.length > 0 ? run.name : run.command),
+                  ),
+                ),
+            h(
+              'div',
+              { className: 'ds-wb-actions' },
+              lastFailed === null
+                ? null
+                : h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-btn ds-wb-btn',
+                      disabled: taskDetectBusy,
+                      onClick: () => void runTaskCommand(lastFailed.command, lastFailed.name),
+                    },
+                    t('workbench.rerun'),
+                  ),
+              h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: openTasks }, t('workbench.openTasks')),
+            ),
+          )
+          return h(
+            'div',
+            { className: 'ds-side-view ds-workbench-view', style: { display: showWorkbench ? 'flex' : 'none' } },
+            h(
+              'div',
+              { className: 'ds-wb-scroll' },
+              attention ? attentionCard : null,
+              requirementCard,
+              acceptanceCard,
+              runningCard,
               workbenchError !== null ? h('div', { className: 'ds-errorline' }, workbenchError) : null,
             ),
           )
@@ -18976,6 +19070,36 @@ ${tail}
 .ds-wb-run { display: flex; align-items: center; gap: 5px; padding: 2px 0; font-size: 10.5px; color: var(--dsw-alias-label-primary); }
 .ds-wb-run-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ds-side-views-group { padding: 4px 7px 2px; color: var(--dsw-alias-label-caption); font-size: 9px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+.ds-wb-dots { display: flex; gap: 3px; margin-top: 6px; }
+.ds-wb-dot { flex: 1 1 0; height: 4px; border-radius: 2px; background: var(--dsw-alias-bg-layer-2); }
+.ds-wb-dot[data-status="active"] { background: var(--dsw-alias-brand-primary); }
+.ds-wb-dot[data-status="review"] { background: var(--dsw-alias-state-warn-primary); }
+.ds-wb-dot[data-status="approved"] { background: var(--dsw-alias-state-success-primary); }
+.ds-wb-dot[data-status="failed"] { background: var(--dsw-alias-state-error-primary); }
+.ds-wb-fast { margin-right: 0; }
+.ds-wb-subtitle { margin-top: 9px; }
+.ds-wb-attention { order: -1; }
+.ds-wb-scroll { gap: 6px; padding: 8px 8px 14px; }
+.ds-wb-card { padding: 9px; }
+.ds-wb-card-title { margin-bottom: 4px; }
+.ds-wb-actions { margin-top: 5px; }
+.ds-wb-counts { gap: 4px; }
+.ds-root[data-compact="true"] .ds-side-tab { height: 38px; }
+.ds-root[data-compact="true"] .ds-side-views-backdrop { background: color-mix(in srgb, var(--dsw-alias-label-primary) 24%, transparent); }
+.ds-root[data-compact="true"] .ds-side-views-menu {
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 4px);
+  max-height: min(64vh, 460px);
+  padding: 6px 8px 10px;
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 -8px 28px color-mix(in srgb, var(--dsw-alias-label-primary) 18%, transparent);
+}
+.ds-root[data-compact="true"] .ds-side-views-group { padding: 8px 10px 4px; font-size: 10px; }
+.ds-root[data-compact="true"] .ds-side-views-item { min-height: 42px; padding: 8px 10px; font-size: 12.5px; border-radius: 8px; }
+.ds-root[data-compact="true"] .ds-wb-card { padding: 10px; }
+.ds-root[data-compact="true"] .ds-wb-btn { height: 32px; padding: 0 12px; font-size: 12px; }
+.ds-root[data-compact="true"] .ds-wb-link { font-size: 11px; }
 .ds-todo-edit { display: flex; flex-direction: column; gap: 5px; background: color-mix(in srgb, var(--dsw-alias-brand-primary) 5%, transparent); }
 .ds-todo-note-input {
   width: 100%;
