@@ -8070,8 +8070,9 @@ window.__ModuleLoader__.load({
         // Navigating from the dashboard to a sidebar view must reveal the sidebar:
         // the workbench hides it, so close the dashboard when the pane changes.
         useEffect(() => {
-          if (workbenchOpen && activeTab === null && paneView !== 'files') setWorkbenchOpen(false)
-        }, [workbenchOpen, activeTab, paneView])
+          // Use the store value here: this effect sits before the activeTab const.
+          if (workbenchOpen && store.get().active === null && paneView !== 'files') setWorkbenchOpen(false)
+        }, [workbenchOpen, paneView])
 
         // Surface panel errors on the dashboard instead of hiding them in their panels.
         useEffect(() => {

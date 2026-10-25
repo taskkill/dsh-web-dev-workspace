@@ -4,6 +4,15 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Fix: “Cannot access 'activeTab' before initialization” on load
+
+- The workbench-tab navigation effect referenced the `activeTab` const from its
+  dependency array, but the effect is defined earlier in the component than that
+  const (temporal dead zone), crashing the whole workspace on first render. The
+  effect now reads `store.get().active` instead and no longer depends on the
+  const. A static scan confirms no source line before `const activeTab` still
+  references it.
+
 ### Workbench as an editor tab, and no more misleading “Start” on finished projects
 
 - The Workbench is now a proper **editor tab**: opening a file keeps the tab in the
