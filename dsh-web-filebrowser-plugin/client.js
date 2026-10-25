@@ -83,6 +83,11 @@ window.__ModuleLoader__.load({
     /** Local terminal session/asset route. */
     const TERMINAL_PATH = 'api/dsh-web-filebrowser-terminal'
 
+    /** Host project-task runner route. */
+    const TASKS_PATH = 'api/dsh-web-filebrowser-tasks'
+    /** Gap between task output polls (matches the terminal long-poll cadence). */
+    const TASK_POLL_GAP_MS = 12
+
     /** Session-scoped child seats that render the current DeepSeek conversation. */
     const CHAT_INLINE_SLOT = 'dsh-web-filebrowser.chat.inline'
     const CHAT_SIDEBAR_INLINE_SLOT = 'dsh-web-filebrowser.chat.inline.sidebar'
@@ -342,6 +347,30 @@ window.__ModuleLoader__.load({
       'memory.justNow': '刚刚',
       'memory.updatedAt': '更新于 {time}',
       'side.todo': '待办',
+      'side.tasks': '任务',
+      'tasks.title': '任务与复测',
+      'tasks.detect': '重新检测',
+      'tasks.detecting': '检测中…',
+      'tasks.empty': '没有检测到可运行的任务。可先在终端里初始化项目。',
+      'tasks.run': '运行',
+      'tasks.stop': '停止',
+      'tasks.clear': '移除',
+      'tasks.running': '运行中',
+      'tasks.passed': '通过',
+      'tasks.failed': '失败',
+      'tasks.exit': '退出码 {code}',
+      'tasks.output': '输出',
+      'tasks.waiting': '等待输出…',
+      'tasks.problems': '问题 ({count})',
+      'tasks.noProblems': '没有解析到可点击的问题',
+      'tasks.unavailable': '任务服务不可用：请重启 Harness 以加载新的 Host 路由',
+      'tasks.needRoot': '请先选择工作区',
+      'tasks.hint': '运行 build / test / lint 等命令；输出里的错误可直接跳到文件和行号。',
+      'tasks.group.dev': '开发',
+      'tasks.group.build': '构建',
+      'tasks.group.test': '测试',
+      'tasks.group.lint': '检查',
+      'tasks.group.other': '其他',
       'todo.title': '待办清单',
       'todo.hint': '随工作区保存，面板、会话工具和 DeepSeek 共享同一份任务',
       'todo.loading': '正在读取待办…',
@@ -940,6 +969,30 @@ window.__ModuleLoader__.load({
       'memory.justNow': 'just now',
       'memory.updatedAt': 'Updated {time}',
       'side.todo': 'Todo',
+      'side.tasks': 'Tasks',
+      'tasks.title': 'Tasks and retest',
+      'tasks.detect': 'Detect again',
+      'tasks.detecting': 'Detecting…',
+      'tasks.empty': 'No runnable project tasks detected. Set the project up in the terminal first.',
+      'tasks.run': 'Run',
+      'tasks.stop': 'Stop',
+      'tasks.clear': 'Remove',
+      'tasks.running': 'Running',
+      'tasks.passed': 'Passed',
+      'tasks.failed': 'Failed',
+      'tasks.exit': 'Exit code {code}',
+      'tasks.output': 'Output',
+      'tasks.waiting': 'Waiting for output…',
+      'tasks.problems': 'Problems ({count})',
+      'tasks.noProblems': 'No clickable problems parsed from the output',
+      'tasks.unavailable': 'Task service unavailable: restart Harness to load the new Host route',
+      'tasks.needRoot': 'Select a workspace first',
+      'tasks.hint': 'Run build / test / lint; errors in the output jump straight to file and line.',
+      'tasks.group.dev': 'Dev',
+      'tasks.group.build': 'Build',
+      'tasks.group.test': 'Test',
+      'tasks.group.lint': 'Lint',
+      'tasks.group.other': 'Other',
       'todo.title': 'Workspace todos',
       'todo.hint': 'Saved with the workspace; the panel, chat tools and DeepSeek share one task board',
       'todo.loading': 'Reading todos…',
@@ -3750,6 +3803,13 @@ window.__ModuleLoader__.load({
         h('rect', { x: 2.1, y: 2.6, width: 11.8, height: 10.8, rx: 2.1 }),
         h('path', { d: 'm4.8 5.7 1 1 1.8-1.9M8.9 6.1h2.6' }),
         h('path', { d: 'm4.8 9.7 1 1 1.8-1.9M8.9 10.1h2.6' }),
+      )
+    }
+
+    function TaskIcon() {
+      return icon(15,
+        h('path', { d: 'M5.2 3.2v9.6l7.2-4.8Z' }),
+        h('path', { d: 'M12.6 3.4v9.2' }),
       )
     }
 
@@ -6928,6 +6988,16 @@ window.__ModuleLoader__.load({
         const [todoQuery, setTodoQuery] = useState('')
         const [todoEditing, setTodoEditing] = useState(null)
         const [todoSaving, setTodoSaving] = useState(false)
+        const [taskSuggestions, setTaskSuggestions] = useState([])
+        const [taskDetectBusy, setTaskDetectBusy] = useState(false)
+        const [taskDetectError, setTaskDetectError] = useState(null)
+        const [taskRuns, setTaskRuns] = useState([])
+        const [taskActiveId, setTaskActiveId] = useState(null)
+        const [taskError, setTaskError] = useState(null)
+        const taskRunsRef = useRef([])
+        const taskPollTimersRef = useRef(new Map())
+        const taskOutputRef = useRef(null)
+        taskRunsRef.current = taskRuns
         const [paneView, setPaneView] = useState('files')
         const [sideTabsWidth, setSideTabsWidth] = useState(0)
         const [sideViewsOpen, setSideViewsOpen] = useState(false)
@@ -7154,6 +7224,7 @@ window.__ModuleLoader__.load({
           if (paneView === 'harness') void loadHarness()
           if (paneView === 'memory') void loadMemory()
           if (paneView === 'todo') void loadTodo()
+          if (paneView === 'tasks') void loadTasks()
           return undefined
         }, [paneView, state.root])
 
@@ -7171,6 +7242,18 @@ window.__ModuleLoader__.load({
             window.removeEventListener('focus', refresh)
           }
         }, [paneView])
+
+        // Keep the newest task output visible while it streams.
+        useEffect(() => {
+          if (paneView !== 'tasks') return undefined
+          const node = taskOutputRef.current
+          if (node === null) return undefined
+          node.scrollTop = node.scrollHeight
+          return undefined
+        }, [paneView, taskActiveId, taskRuns])
+
+        // Leaving the panel (or the whole page) must not leave poll timers behind.
+        useEffect(() => () => stopAllTaskPolling(), [])
 
         // Keep the sidebar's open-task badge accurate without opening the panel.
         useEffect(() => {
@@ -7505,7 +7588,8 @@ window.__ModuleLoader__.load({
         const showMemory = paneView === 'memory' && gitAvailable
         const showHarness = paneView === 'harness'
         const showTodo = paneView === 'todo'
-        const showFiles = !showGit && !showSearch && !showMemory && !showHarness && !showTodo
+        const showTasks = paneView === 'tasks'
+        const showFiles = !showGit && !showSearch && !showMemory && !showHarness && !showTodo && !showTasks
         const todoOpenCount = todoTasks.reduce((count, task) => count + (task.status === 'open' ? 1 : 0), 0)
         const treeDisplayWidth = compact
           ? '100%'
@@ -7874,6 +7958,7 @@ window.__ModuleLoader__.load({
             { id: 'browser', label: t('browser.open'), run: () => openBrowser() },
             { id: 'memory', label: t('side.memory'), run: openMemory },
             { id: 'todo', label: t('todo.title'), run: openTodo },
+            { id: 'tasks', label: t('tasks.title'), run: openTasks },
             { id: 'harness', label: t('harness.open'), run: () => void openHarness() },
           ]
           if (gitAvailable) commands.push({ id: 'git', label: t('git.title'), run: () => setPaneView('git') })
@@ -8098,6 +8183,272 @@ window.__ModuleLoader__.load({
               void deleteMemoryEntry(entry.id)
             },
           })
+        }
+
+        /* ------------------------------------------------------------------ *
+         * Project tasks (build / test / lint / dev) and parsed problems
+         * ------------------------------------------------------------------ */
+
+        /** Open the Tasks panel for the current workspace. */
+        function openTasks() {
+          setPaneView('tasks')
+          setCompactView('tree')
+        }
+
+        /** Call the Host task runner (same envelope shape as the terminal route). */
+        async function callTasks(op, params = {}) {
+          let response
+          try {
+            response = await fetch(new URL(TASKS_PATH, document.baseURI).href, {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ op, ...params }),
+            })
+          } catch {
+            throw new SideRequestError('tasks-offline', t('tasks.unavailable'))
+          }
+          if (!response.ok) throw new SideRequestError(`http-${String(response.status)}`, t('tasks.unavailable'))
+          let payload
+          try {
+            payload = await response.json()
+          } catch {
+            throw new SideRequestError('tasks-bad-response', t('tasks.unavailable'))
+          }
+          if (payload === null || typeof payload !== 'object' || payload.ok !== true) {
+            const failure = payload?.error ?? {}
+            throw new SideRequestError(failure.code ?? 'tasks-error', failure.message ?? t('tasks.unavailable'))
+          }
+          return payload.value
+        }
+
+        /** Apply one full run snapshot returned by every mutation. */
+        function applyTaskSnapshot(value) {
+          if (value === null || typeof value !== 'object' || typeof value.id !== 'string') return
+          setTaskRuns((current) => {
+            const existing = current.find((run) => run.id === value.id)
+            if (existing !== undefined) return current
+            return [
+              ...current,
+              {
+                id: value.id,
+                name: typeof value.name === 'string' && value.name.length > 0 ? value.name : value.command,
+                command: String(value.command ?? ''),
+                output: '',
+                since: 0,
+                running: true,
+                exitCode: null,
+                signal: null,
+                status: 'running',
+                problems: [],
+                startedAt: Number.isFinite(value.startedAt) ? value.startedAt : Date.now(),
+              },
+            ]
+          })
+        }
+
+        /** Stop following a task; the Host process itself is left alone. */
+        function stopTaskPolling(id) {
+          const timer = taskPollTimersRef.current.get(id)
+          if (timer !== undefined) window.clearTimeout(timer)
+          taskPollTimersRef.current.delete(id)
+        }
+
+        /** Stop following every task (root switch / unmount). */
+        function stopAllTaskPolling() {
+          for (const timer of taskPollTimersRef.current.values()) window.clearTimeout(timer)
+          taskPollTimersRef.current.clear()
+        }
+
+        /** Extract clickable problems from raw task output (tsc / eslint / generic). */
+        function extractTaskProblems(text) {
+          const problems = []
+          const root = store.get().root ?? ''
+          const normalize = (value) => {
+            let candidate = String(value ?? '').trim()
+            if (root.length > 0 && candidate.startsWith(root)) candidate = candidate.slice(root.length)
+            candidate = candidate.replace(/^[\\/]+/u, '')
+            if (candidate.startsWith('./')) candidate = candidate.slice(2)
+            return candidate
+          }
+          let currentFile = null
+          for (const line of String(text ?? '').split(/\r?\n/u)) {
+            if (problems.length >= 200) break
+            const tsc = /^(\S.*?):(\d+):(\d+)\s*[-–—]?\s*(error|warning)\s+(?:TS\d+:\s*)?(.+)$/iu.exec(line)
+            if (tsc !== null) {
+              problems.push({
+                path: normalize(tsc[1]),
+                line: Number(tsc[2]),
+                column: Number(tsc[3]),
+                severity: tsc[4].toLowerCase(),
+                message: tsc[5].trim(),
+              })
+              continue
+            }
+            const pretty = /^(\S.*?)\((\d+),(\d+)\):\s*(error|warning)\s+(?:TS\d+:\s*)?(.+)$/iu.exec(line)
+            if (pretty !== null) {
+              problems.push({
+                path: normalize(pretty[1]),
+                line: Number(pretty[2]),
+                column: Number(pretty[3]),
+                severity: pretty[4].toLowerCase(),
+                message: pretty[5].trim(),
+              })
+              continue
+            }
+            const header = /^\s*(\S.*\.(?:[cm]?[jt]sx?|css|scss|less|json|vue|svelte|py|go|rs|java|kt|kts|rb|php|ya?ml|html))$/u.exec(line)
+            if (header !== null && !/^\s+\d+:/u.test(line)) {
+              currentFile = normalize(header[1])
+              continue
+            }
+            const stylish = /^\s+(\d+):(\d+)\s+(error|warning)\s+(.+)$/u.exec(line)
+            if (stylish !== null && currentFile !== null) {
+              problems.push({
+                path: currentFile,
+                line: Number(stylish[1]),
+                column: Number(stylish[2]),
+                severity: stylish[3].toLowerCase(),
+                message: stylish[4].trim(),
+              })
+              continue
+            }
+            const generic = /^(\S.*?\.[A-Za-z0-9]+):(\d+)(?::(\d+))?\s*[-–—:]?\s*(error|warning)\s*:?\s*(.+)$/iu.exec(line)
+            if (generic !== null) {
+              problems.push({
+                path: normalize(generic[1]),
+                line: Number(generic[2]),
+                column: generic[3] === undefined ? 1 : Number(generic[3]),
+                severity: generic[4].toLowerCase(),
+                message: generic[5].trim(),
+              })
+            }
+          }
+          return problems
+        }
+
+        /** Merge one long-polled output chunk into a run. */
+        function applyTaskChunk(id, chunk) {
+          setTaskRuns((current) =>
+            current.map((run) => {
+              if (run.id !== id) return run
+              const output = `${run.output}${typeof chunk.data === 'string' ? chunk.data : ''}`.slice(-200_000)
+              const closed = chunk.closed === true
+              const exitCode = Number.isInteger(chunk.exitCode) ? chunk.exitCode : run.exitCode
+              return {
+                ...run,
+                output,
+                since: Number.isFinite(chunk.next) ? chunk.next : run.since,
+                running: !closed,
+                exitCode,
+                signal: typeof chunk.signal === 'string' ? chunk.signal : run.signal,
+                status: closed ? (exitCode === 0 ? 'passed' : 'failed') : 'running',
+                problems: closed ? extractTaskProblems(output) : run.problems,
+              }
+            }),
+          )
+        }
+
+        /** Follow one Host task until it exits, then keep the output for review. */
+        function followTask(id) {
+          stopTaskPolling(id)
+          const step = async () => {
+            const run = taskRunsRef.current.find((entry) => entry.id === id)
+            if (run === undefined) {
+              stopTaskPolling(id)
+              return
+            }
+            try {
+              const chunk = await callTasks('poll', { id, since: run.since ?? 0, wait: 1000 })
+              applyTaskChunk(id, chunk === null || typeof chunk !== 'object' ? {} : chunk)
+              const latest = taskRunsRef.current.find((entry) => entry.id === id)
+              if (latest === undefined || latest.running !== true) {
+                stopTaskPolling(id)
+                return
+              }
+              taskPollTimersRef.current.set(id, window.setTimeout(() => void step(), TASK_POLL_GAP_MS))
+            } catch (error) {
+              setTaskError(errorText(error))
+              stopTaskPolling(id)
+            }
+          }
+          taskPollTimersRef.current.set(id, window.setTimeout(() => void step(), 0))
+        }
+
+        /** Detect project tasks and re-attach live Host tasks after a reload. */
+        async function loadTasks(options = {}) {
+          const targetRoot = store.get().root
+          if (targetRoot === null) {
+            setTaskDetectError(t('tasks.needRoot'))
+            return
+          }
+          if (options?.silent !== true) setTaskDetectBusy(true)
+          setTaskDetectError(null)
+          try {
+            const [suggestions, live] = await Promise.all([
+              callTasks('detect', { root: targetRoot }),
+              callTasks('list', { root: targetRoot }),
+            ])
+            if (store.get().root !== targetRoot) return
+            setTaskSuggestions(Array.isArray(suggestions) ? suggestions : [])
+            const known = new Set(taskRunsRef.current.map((run) => run.id))
+            const restored = (Array.isArray(live) ? live : [])
+              .filter((task) => task !== null && typeof task === 'object' && task.running === true && typeof task.id === 'string' && !known.has(task.id))
+              .map((task) => ({
+                id: task.id,
+                name: typeof task.name === 'string' && task.name.length > 0 ? task.name : String(task.command ?? ''),
+                command: String(task.command ?? ''),
+                output: '',
+                since: 0,
+                running: true,
+                exitCode: null,
+                signal: null,
+                status: 'running',
+                problems: [],
+                startedAt: Number.isFinite(task.startedAt) ? task.startedAt : Date.now(),
+              }))
+            if (restored.length > 0) {
+              setTaskRuns((current) => [...current, ...restored])
+              setTaskActiveId((current) => (current === null ? restored[0].id : current))
+              for (const run of restored) followTask(run.id)
+            }
+          } catch (error) {
+            setTaskDetectError(errorText(error))
+          } finally {
+            setTaskDetectBusy(false)
+          }
+        }
+
+        /** Start a task command in the workspace root. */
+        async function runTaskCommand(command, name) {
+          const targetRoot = store.get().root
+          if (targetRoot === null || typeof command !== 'string' || command.trim().length === 0) return
+          setTaskError(null)
+          try {
+            const value = await callTasks('start', { root: targetRoot, command, name })
+            applyTaskSnapshot(value)
+            if (value !== null && typeof value === 'object' && typeof value.id === 'string') {
+              setTaskActiveId(value.id)
+              followTask(value.id)
+            }
+          } catch (error) {
+            setTaskError(errorText(error))
+          }
+        }
+
+        /** Ask the Host to stop one task. */
+        async function stopTask(id) {
+          try {
+            await callTasks('kill', { id })
+          } catch (error) {
+            setTaskError(errorText(error))
+          }
+        }
+
+        /** Drop a finished run from the list. */
+        function removeTaskRun(id) {
+          stopTaskPolling(id)
+          setTaskRuns((current) => current.filter((run) => run.id !== id || run.running === true))
+          if (taskActiveId === id) setTaskActiveId(null)
         }
 
         /** Open the Todo panel for the current workspace. */
@@ -8550,6 +8901,12 @@ window.__ModuleLoader__.load({
           setMemoryDraft('')
           setMemoryTagsDraft('')
           setMemoryEditing(null)
+          stopAllTaskPolling()
+          setTaskRuns([])
+          setTaskSuggestions([])
+          setTaskActiveId(null)
+          setTaskError(null)
+          setTaskDetectError(null)
           paletteFilesRef.current = { root: null, files: [], at: 0 }
           void loadDir('', { root: nextRoot })
           if (options.silent !== true) showToast(t('toast.rootSwitched'))
@@ -11782,6 +12139,167 @@ window.__ModuleLoader__.load({
           )
         }
 
+        /** Render the task runner: detected commands, runs, output and problems. */
+        function renderTasksPanel() {
+          const activeRun = taskRuns.find((run) => run.id === taskActiveId) ?? null
+          const problems = activeRun === null || !Array.isArray(activeRun.problems) ? [] : activeRun.problems
+          const groupLabels = {
+            dev: t('tasks.group.dev'),
+            build: t('tasks.group.build'),
+            test: t('tasks.group.test'),
+            lint: t('tasks.group.lint'),
+            other: t('tasks.group.other'),
+          }
+          const groups = []
+          for (const suggestion of Array.isArray(taskSuggestions) ? taskSuggestions : []) {
+            if (suggestion === null || typeof suggestion !== 'object') continue
+            const group = typeof suggestion.group === 'string' && groupLabels[suggestion.group] !== undefined ? suggestion.group : 'other'
+            let bucket = groups.find((entry) => entry.group === group)
+            if (bucket === undefined) {
+              bucket = { group, items: [] }
+              groups.push(bucket)
+            }
+            bucket.items.push(suggestion)
+          }
+          return h(
+            'div',
+            { className: 'ds-side-view ds-tasks-view', style: { display: showTasks ? 'flex' : 'none' } },
+            h(
+              'div',
+              { className: 'ds-task-toolbar' },
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-btn ds-task-detect',
+                  disabled: taskDetectBusy || state.root === null,
+                  onClick: () => void loadTasks(),
+                },
+                taskDetectBusy ? t('tasks.detecting') : t('tasks.detect'),
+              ),
+              h('span', { className: 'ds-spacer' }),
+              taskRuns.filter((run) => run.running === true).length > 0
+                ? h('span', { className: 'ds-task-running' }, t('tasks.running'))
+                : null,
+            ),
+            h('div', { className: 'ds-hint ds-task-hint' }, t('tasks.hint')),
+            taskDetectError === null ? null : h('div', { className: 'ds-errorline' }, taskDetectError),
+            taskError === null ? null : h('div', { className: 'ds-errorline' }, taskError),
+            h(
+              'div',
+              { className: 'ds-task-scroll' },
+              groups.length === 0
+                ? h('div', { className: 'ds-hint' }, taskDetectBusy ? t('tasks.detecting') : t('tasks.empty'))
+                : groups.map((bucket) =>
+                    h(
+                      'div',
+                      { key: bucket.group, className: 'ds-task-group' },
+                      h('div', { className: 'ds-task-group-title' }, groupLabels[bucket.group] ?? groupLabels.other),
+                      bucket.items.map((item, index) =>
+                        h(
+                          'div',
+                          { key: `${bucket.group}:${String(index)}`, className: 'ds-task-item' },
+                          h(
+                            'button',
+                            {
+                              type: 'button',
+                              className: 'ds-task-run-btn',
+                              title: item.command,
+                              disabled: state.root === null,
+                              onClick: () => void runTaskCommand(String(item.command ?? ''), typeof item.label === 'string' ? item.label : undefined),
+                            },
+                            t('tasks.run'),
+                          ),
+                          h(
+                            'div',
+                            { className: 'ds-task-item-body' },
+                            h('div', { className: 'ds-task-item-label' }, String(item.label ?? item.command ?? '')),
+                            h('div', { className: 'ds-task-item-command' }, String(item.command ?? '')),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              taskRuns.length === 0
+                ? null
+                : h(
+                    'div',
+                    { className: 'ds-task-runs' },
+                    h('div', { className: 'ds-task-group-title' }, t('tasks.output')),
+                    taskRuns.map((run) =>
+                      h(
+                        'div',
+                        {
+                          key: run.id,
+                          className: 'ds-task-run-row',
+                          'data-active': run.id === taskActiveId ? 'true' : undefined,
+                        },
+                        h(
+                          'button',
+                          { type: 'button', className: 'ds-task-run-main', onClick: () => setTaskActiveId(run.id) },
+                          h('span', { className: 'ds-task-run-dot', 'data-status': run.status }),
+                          h('span', { className: 'ds-task-run-name' }, run.name.length > 0 ? run.name : run.command),
+                          run.status === 'running'
+                            ? null
+                            : h(
+                                'span',
+                                { className: 'ds-task-run-exit', 'data-ok': run.exitCode === 0 ? 'true' : undefined },
+                                run.exitCode === null ? t('tasks.failed') : t('tasks.exit', { code: String(run.exitCode) }),
+                              ),
+                        ),
+                        run.running === true
+                          ? h(
+                              'button',
+                              { type: 'button', className: 'ds-linkbtn ds-task-run-stop', onClick: () => void stopTask(run.id) },
+                              t('tasks.stop'),
+                            )
+                          : h(
+                              'button',
+                              { type: 'button', className: 'ds-linkbtn ds-task-run-stop', onClick: () => removeTaskRun(run.id) },
+                              t('tasks.clear'),
+                            ),
+                      ),
+                    ),
+                  ),
+            ),
+            activeRun === null
+              ? null
+              : h(
+                  'div',
+                  { className: 'ds-task-detail' },
+                  problems.length > 0
+                    ? h(
+                        'div',
+                        { className: 'ds-task-problems' },
+                        h('div', { className: 'ds-task-group-title' }, t('tasks.problems', { count: String(problems.length) })),
+                        problems.map((problem, index) =>
+                          h(
+                            'button',
+                            {
+                              key: `${problem.path}:${String(problem.line)}:${String(index)}`,
+                              type: 'button',
+                              className: 'ds-task-problem',
+                              title: problem.message,
+                              onClick: () => void openFileAt(problem.path, problem.line, problem.column),
+                            },
+                            h('span', { className: 'ds-task-problem-sev', 'data-sev': problem.severity }),
+                            h('span', { className: 'ds-task-problem-loc' }, `${problem.path}:${String(problem.line)}`),
+                            h('span', { className: 'ds-task-problem-msg' }, problem.message),
+                          ),
+                        ),
+                      )
+                    : activeRun.status === 'failed'
+                      ? h('div', { className: 'ds-hint' }, t('tasks.noProblems'))
+                      : null,
+                  h(
+                    'pre',
+                    { ref: taskOutputRef, className: 'ds-task-output' },
+                    activeRun.output.length === 0 ? t('tasks.waiting') : activeRun.output,
+                  ),
+                ),
+          )
+        }
+
         function renderHarnessPanel() {
           if (harnessConfig !== null) {
             return h(
@@ -12541,6 +13059,15 @@ window.__ModuleLoader__.load({
               count: todoOpenCount,
               select: openTodo,
             },
+            {
+              id: 'tasks',
+              label: t('side.tasks'),
+              icon: h(TaskIcon),
+              active: showTasks,
+              count: taskRuns.filter((run) => run.running === true).length,
+              title: taskRuns.some((run) => run.running === true) ? t('tasks.running') : t('tasks.title'),
+              select: openTasks,
+            },
           ]
           if (gitAvailable) {
             views.push({
@@ -13250,7 +13777,7 @@ window.__ModuleLoader__.load({
               'aside',
               {
                 className: 'ds-side',
-                'data-view': showGit ? 'git' : showSearch ? 'search' : showMemory ? 'memory' : showHarness ? 'harness' : showTodo ? 'todo' : 'files',
+                'data-view': showGit ? 'git' : showSearch ? 'search' : showMemory ? 'memory' : showHarness ? 'harness' : showTodo ? 'todo' : showTasks ? 'tasks' : 'files',
                 style: { width: treeDisplayWidth, display: showSide ? undefined : 'none' },
               },
               h(
@@ -13262,7 +13789,7 @@ window.__ModuleLoader__.load({
                   h(
                     'span',
                     { className: 'ds-pane-title-text' },
-                    showGit ? t('git.title') : showSearch ? t('side.search') : showMemory ? t('side.memory') : showHarness ? t('side.harness') : showTodo ? t('todo.title') : t('explorer'),
+                    showGit ? t('git.title') : showSearch ? t('side.search') : showMemory ? t('side.memory') : showHarness ? t('side.harness') : showTodo ? t('todo.title') : showTasks ? t('tasks.title') : t('explorer'),
                   ),
                   h(
                     'button',
@@ -13523,6 +14050,7 @@ window.__ModuleLoader__.load({
               renderHarnessPanel(),
               renderMemoryPanel(),
               renderTodoPanel(),
+              renderTasksPanel(),
               gitAvailable
                 ? h(
                     'div',
@@ -14739,6 +15267,7 @@ window.__ModuleLoader__.load({
 .ds-side[data-view="search"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
 .ds-side[data-view="harness"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
 .ds-side[data-view="todo"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
+.ds-side[data-view="tasks"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
 .ds-side[data-view="memory"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch) { display: none; }
 .ds-git-toggle[data-active="true"] {
   color: var(--dsw-alias-brand-primary);
@@ -15969,6 +16498,42 @@ window.__ModuleLoader__.load({
 .ds-todo-time { margin-left: auto; color: var(--dsw-alias-label-caption); font-size: 9px; }
 .ds-todo-empty { padding: 18px 12px; color: var(--dsw-alias-label-secondary); font-size: 11.5px; line-height: 1.6; }
 .ds-todo-help { padding: 8px 10px 12px; color: var(--dsw-alias-label-caption); font-size: 9.5px; line-height: 1.5; }
+.ds-tasks-view { overflow: hidden; }
+.ds-task-toolbar { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
+.ds-task-detect { height: 26px; padding: 0 10px; font-size: 11px; }
+.ds-task-running { padding: 0 6px; border-radius: 8px; background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent); color: var(--dsw-alias-brand-primary); font-size: 9.5px; }
+.ds-task-hint { padding: 6px 10px 2px; font-size: 10px; }
+.ds-task-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 2px 0 8px; }
+.ds-task-group { padding: 4px 8px; }
+.ds-task-group-title { padding: 2px 2px 4px; color: var(--dsw-alias-label-caption); font-size: 9.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+.ds-task-item { display: flex; align-items: center; gap: 6px; padding: 3px 2px; }
+.ds-task-run-btn { flex: 0 0 auto; height: 22px; padding: 0 8px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 5px; background: transparent; color: var(--dsw-alias-brand-primary); font: inherit; font-size: 10px; cursor: pointer; }
+.ds-task-run-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--dsw-alias-brand-primary) 10%, transparent); }
+.ds-task-run-btn:disabled { opacity: 0.4; cursor: default; }
+.ds-task-item-body { min-width: 0; flex: 1 1 auto; }
+.ds-task-item-label { color: var(--dsw-alias-label-primary); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-task-item-command { color: var(--dsw-alias-label-caption); font-family: var(--ds-mono); font-size: 9.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-task-runs { border-top: 1px solid var(--dsw-alias-border-l1); padding: 4px 8px; }
+.ds-task-run-row { display: flex; align-items: center; gap: 4px; border-radius: 5px; padding: 2px; }
+.ds-task-run-row[data-active="true"] { background: color-mix(in srgb, var(--dsw-alias-brand-primary) 8%, transparent); }
+.ds-task-run-main { display: flex; align-items: center; gap: 5px; flex: 1 1 auto; min-width: 0; padding: 2px 3px; border: 0; border-radius: 4px; background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 10.5px; text-align: left; cursor: pointer; }
+.ds-task-run-dot { flex: 0 0 auto; width: 6px; height: 6px; border-radius: 50%; background: var(--dsw-alias-label-caption); }
+.ds-task-run-dot[data-status="running"] { background: var(--dsw-alias-state-warn-primary); }
+.ds-task-run-dot[data-status="passed"] { background: var(--dsw-alias-state-success-primary); }
+.ds-task-run-dot[data-status="failed"] { background: var(--dsw-alias-state-error-primary); }
+.ds-task-run-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-task-run-exit { margin-left: auto; flex: 0 0 auto; color: var(--dsw-alias-state-error-primary); font-size: 9.5px; }
+.ds-task-run-exit[data-ok="true"] { color: var(--dsw-alias-state-success-primary); }
+.ds-task-run-stop { flex: 0 0 auto; font-size: 9.5px; }
+.ds-task-detail { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; border-top: 1px solid var(--dsw-alias-border-l1); }
+.ds-task-problems { flex: 0 0 auto; max-height: 40%; overflow: auto; border-bottom: 1px solid var(--dsw-alias-border-l1); padding: 4px; }
+.ds-task-problem { display: flex; align-items: center; gap: 5px; width: 100%; padding: 2px 4px; border: 0; border-radius: 4px; background: transparent; color: inherit; font: inherit; font-size: 10px; text-align: left; cursor: pointer; }
+.ds-task-problem:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent); }
+.ds-task-problem-sev { flex: 0 0 auto; width: 5px; height: 5px; border-radius: 50%; background: var(--dsw-alias-state-error-primary); }
+.ds-task-problem-sev[data-sev="warning"] { background: var(--dsw-alias-state-warn-primary); }
+.ds-task-problem-loc { flex: 0 0 auto; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-secondary); font-family: var(--ds-mono); font-size: 9.5px; }
+.ds-task-problem-msg { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-primary); }
+.ds-task-output { flex: 1 1 auto; min-height: 0; margin: 0; padding: 6px 8px; overflow: auto; background: var(--dsw-alias-bg-base); color: var(--dsw-alias-label-primary); font-family: var(--ds-mono); font-size: 10px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
 .ds-todo-edit { display: flex; flex-direction: column; gap: 5px; background: color-mix(in srgb, var(--dsw-alias-brand-primary) 5%, transparent); }
 .ds-todo-note-input {
   width: 100%;

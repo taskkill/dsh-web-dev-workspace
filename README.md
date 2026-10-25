@@ -68,6 +68,10 @@ it for you.
   by every chat session in that workspace and injected automatically.
 - **Workspace todo list** — per-workspace tasks with priority, due dates, tags,
   notes, filters and sorting, also available to the model.
+- **Tasks and retest** — the Tasks sidebar view detects build/test/lint/dev
+  commands, runs them with streamed output and exit codes, and turns errors in
+  the output into clickable file:line links that jump into the editor. Tasks that
+  were still running when the page reloaded are re-attached.
 - **Fits the host** — theme-token styling, English/Chinese copy, a compact
   single-column layout in narrow sidebars, a right-sidebar Start card, and a
   mobile/tablet layout.

@@ -4,6 +4,21 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Tasks and retest panel
+
+- New **Tasks** sidebar view (between Todo and Git) on top of the Host task
+  runner: it detects project commands (package.json scripts, Makefile targets,
+  Cargo, Go, pytest/Django, docker compose), runs them, streams the output with a
+  long poll, shows running/finished state and the exit code, and can stop a task.
+- Output from `tsc` (both `file(line,col): error TSxxxx:` and
+  `file:line:col - error` styles), eslint stylish output and generic
+  `file:line:col: error:` lines is parsed into clickable problems; clicking one
+  opens the file at that line/column. The tab shows the number of running tasks,
+  and tasks still running when the page reloads are re-attached to their output.
+- The panel reuses the task runner's project detection cache and hides the
+  explorer-only pane actions; the view is also reachable from the command
+  palette.
+
 ### Stability pass and Host groundwork for the acceptance workflow
 
 - **Session restore**: open text tabs, their unsaved buffers (up to 24 tabs /
