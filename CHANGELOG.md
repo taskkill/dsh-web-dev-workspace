@@ -4,6 +4,24 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Workbench: one “Problems & status” card for every panel
+
+- The Workbench now starts with a full-width **Problems & status** card. Panel
+  errors from the pipeline, acceptance, preview, tasks, file operations and the
+  connection banner are collected into one list (source chip, message, timestamp,
+  “Open” jump button, per-item restart for rejected stages, clear-all) instead of
+  staying hidden inside their own panels. The card also shows when the dashboard
+  last refreshed.
+- **Rejected stages** appear at the top of that card with their review note and a
+  **Restart stage** button (which uses the graceful start path and reconciles
+  stale state).
+- The requirement card shows the **current change round** line (round, title and
+  scope) so a change that cannot proceed is visible on the dashboard; starting a
+  change or requirement update now surfaces its failure as an issue rather than
+  only in the pipeline panel.
+- Errors remain session-local: they disappear on reload; the durable record stays
+  in the pipeline history and revision logs.
+
 ### Stage start reconciles stale status instead of failing
 
 - Clicking “Start and dispatch” on a stage that had already moved on (for example

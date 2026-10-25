@@ -423,6 +423,21 @@ window.__ModuleLoader__.load({
       'workbench.change': '发起变更',
       'workbench.reqRevise': '修订需求',
       'workbench.adjust': '需求与调整',
+      'workbench.issues': '问题与状态',
+      'workbench.allNormal': '运行正常，暂无需要处理的问题。',
+      'workbench.clearIssues': '清除',
+      'workbench.updatedAt': '更新于 {time}',
+      'workbench.restartStage': '重新启动',
+      'workbench.openSource': '查看',
+      'workbench.source.pipeline': '流水线',
+      'workbench.source.acceptance': '验收',
+      'workbench.source.preview': '预览',
+      'workbench.source.tasks': '任务',
+      'workbench.source.files': '文件',
+      'workbench.source.banner': '连接',
+      'workbench.source.workbench': '工作台',
+      'workbench.source.stage': '阶段',
+      'workbench.changeLine': '第 {round} 轮变更 · {title}',
       'workbench.status': '项目状态',
       'workbench.reqScope': '适用范围',
       'workbench.reqScope.full': '完整六关',
@@ -1302,6 +1317,21 @@ window.__ModuleLoader__.load({
       'workbench.change': 'Start a change',
       'workbench.reqRevise': 'Revise requirement',
       'workbench.adjust': 'Requirement & adjustments',
+      'workbench.issues': 'Problems & status',
+      'workbench.allNormal': 'All good — nothing needs attention.',
+      'workbench.clearIssues': 'Clear',
+      'workbench.updatedAt': 'updated {time}',
+      'workbench.restartStage': 'Restart stage',
+      'workbench.openSource': 'Open',
+      'workbench.source.pipeline': 'Pipeline',
+      'workbench.source.acceptance': 'Acceptance',
+      'workbench.source.preview': 'Preview',
+      'workbench.source.tasks': 'Tasks',
+      'workbench.source.files': 'Files',
+      'workbench.source.banner': 'Connection',
+      'workbench.source.workbench': 'Workbench',
+      'workbench.source.stage': 'Stage',
+      'workbench.changeLine': 'Round {round} change · {title}',
       'workbench.status': 'Project status',
       'workbench.reqScope': 'Scope',
       'workbench.reqScope.full': 'Full six stages',
@@ -7656,6 +7686,8 @@ window.__ModuleLoader__.load({
         const [requirementBusy, setRequirementBusy] = useState(false)
         const [requirementScope, setRequirementScope] = useState('full')
         const [workbenchError, setWorkbenchError] = useState(null)
+        const [workbenchUpdatedAt, setWorkbenchUpdatedAt] = useState(0)
+        const [issues, setIssues] = useState([])
         const [pipelineDoc, setPipelineDoc] = useState(null)
         const [pipelineBusy, setPipelineBusy] = useState(false)
         const [pipelineError, setPipelineError] = useState(null)
@@ -8036,6 +8068,25 @@ window.__ModuleLoader__.load({
         useEffect(() => {
           if (workbenchOpen && paneView !== 'files') setWorkbenchOpen(false)
         }, [workbenchOpen, paneView])
+
+        // Surface panel errors on the dashboard instead of hiding them in their panels.
+        useEffect(() => {
+          const entries = [
+            ['pipeline', pipelineError],
+            ['workbench', workbenchError],
+            ['acceptance', acceptanceError],
+            ['preview', previewError],
+            ['tasks', taskError],
+            ['tasks', taskDetectError],
+            ['files', error],
+            ['banner', banner !== null && banner.kind === 'error' ? banner.message : null],
+          ]
+          for (const [source, value] of entries) {
+            const message = typeof value === 'string' ? value : value !== null && typeof value === 'object' && typeof value.message === 'string' ? value.message : null
+            if (message !== null) reportIssue(source, message)
+          }
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [pipelineError, workbenchError, acceptanceError, previewError, taskError, taskDetectError, error, banner])
 
         // Remember the last view per workspace so reopening feels continuous.
         useEffect(() => {
@@ -9361,6 +9412,15 @@ ${tail}
           } finally {
             setWorkbenchBusy(false)
           }
+        }
+
+        /** Record one problem surfaced by any panel so the Workbench can show it. */
+        function reportIssue(source, message) {
+          if (typeof message !== 'string' || message.length === 0) return
+          setIssues((current) => {
+            if (current.some((entry) => entry.source === source && entry.message === message)) return current
+            return [{ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), source, message, at: Date.now() }, ...current].slice(0, 12)
+          })
         }
 
         /** One-click kickoff from the workbench input. */
@@ -14686,6 +14746,17 @@ ${tail}
           }
           events.sort((left, right) => right.at - left.at)
           const recentEvents = events.slice(0, 8)
+          const failedStages = stages.filter((stage) => stage !== null && typeof stage === 'object' && stage.status === 'failed')
+          const latestChange = doc !== null && Array.isArray(doc.changes) && doc.changes.length > 0 ? doc.changes[0] : null
+          const issueRows = [
+            ...failedStages.map((stage) => ({
+              id: 'stage:' + stage.id,
+              source: 'stage',
+              message: stageTitle(stage.id) + (typeof stage.note === 'string' && stage.note.length > 0 ? '：' + stage.note : ''),
+              stageId: stage.id,
+            })),
+            ...issues,
+          ]
           const running = taskRuns.filter((run) => run.running === true)
           const lastRun = taskRuns.length === 0 ? null : taskRuns[taskRuns.length - 1]
           const lastFailed = [...taskRuns].reverse().find((run) => run.status === 'failed' && typeof run.command === 'string' && run.command.length > 0) ?? null
@@ -14801,6 +14872,16 @@ ${tail}
                   typeof requirement.detail === 'string' && requirement.detail.length > 0
                     ? h('div', { className: 'ds-wb-adjust-detail', title: requirement.detail }, requirement.detail)
                     : null,
+                  latestChange === null || latestChange.round !== round
+                    ? null
+                    : h(
+                        'div',
+                        { className: 'ds-wb-change-line' },
+                        t('workbench.changeLine', { round: String(latestChange.round), title: String(latestChange.title ?? '') }) +
+                          (typeof latestChange.scope === 'string' && latestChange.scope !== 'full'
+                            ? ' · ' + t('workbench.reqScope.' + latestChange.scope)
+                            : ''),
+                      ),
                   h(
                     'div',
                     { className: 'ds-wb-actions' },
@@ -15107,6 +15188,57 @@ ${tail}
             ),
             h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: openAcceptance }, t('workbench.checklist')),
           )
+          const issuesCard = h(
+            'div',
+            { className: 'ds-wb-card ds-wb-issues', 'data-kind': issueRows.length === 0 ? 'ok' : 'warn' },
+            h(
+              'div',
+              { className: 'ds-wb-card-head' },
+              h('div', { className: 'ds-wb-card-title ds-wb-card-title-inline' }, t('workbench.issues')),
+              h('span', { className: 'ds-wb-issue-dot', 'data-kind': issueRows.length === 0 ? 'ok' : 'warn', 'aria-hidden': true }),
+              h('span', { className: 'ds-spacer' }),
+              workbenchUpdatedAt === 0
+                ? null
+                : h(
+                    'span',
+                    { className: 'ds-wb-issue-time' },
+                    t('workbench.updatedAt', {
+                      time: new Date(workbenchUpdatedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+                    }),
+                  ),
+              issues.length === 0
+                ? null
+                : h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: () => setIssues([]) }, t('workbench.clearIssues')),
+            ),
+            issueRows.length === 0
+              ? h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.allNormal'))
+              : issueRows.slice(0, 6).map((issue, index) =>
+                  h(
+                    'div',
+                    { key: issue.id ?? String(index), className: 'ds-wb-issue' },
+                    h('span', { className: 'ds-wb-issue-source' }, t('workbench.source.' + String(issue.source ?? 'workbench'))),
+                    h('span', { className: 'ds-wb-issue-text', title: String(issue.message ?? '') }, String(issue.message ?? '')),
+                    issue.source === 'stage' && issue.stageId
+                      ? h(
+                          'button',
+                          { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: () => void startPipelineStage(issue.stageId) },
+                          t('workbench.restartStage'),
+                        )
+                      : null,
+                    ['pipeline', 'acceptance', 'tasks', 'preview'].includes(issue.source)
+                      ? h(
+                          'button',
+                          {
+                            type: 'button',
+                            className: 'ds-linkbtn ds-wb-link',
+                            onClick: issue.source === 'pipeline' ? openPipeline : issue.source === 'tasks' ? openTasks : openAcceptance,
+                          },
+                          t('workbench.openSource'),
+                        )
+                      : null,
+                  ),
+                ),
+          )
           const flowCard =
             requirementTitle.length === 0
               ? null
@@ -15278,6 +15410,7 @@ ${tail}
               h(
                 'div',
                 { className: 'ds-wb-page-inner' },
+                issuesCard,
                 attention ? attentionCard : null,
                 adjustCard,
                 requirementCard,
@@ -20169,6 +20302,16 @@ ${tail}
 .ds-pipe-round { padding: 1px 7px; border-radius: 9px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-caption); font-size: 9px; }
 .ds-wb-flow-round { padding: 1px 7px; border-radius: 9px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-caption); font-size: 9px; }
 .ds-wb-change { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; padding-top: 9px; border-top: 1px dashed var(--dsw-alias-border-l1); }
+.ds-wb-issues { grid-column: 1 / -1; }
+.ds-wb-issues[data-kind="warn"] { border-color: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 45%, var(--dsw-alias-border-l1)); background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 5%, var(--dsw-alias-bg-layer-1)); }
+.ds-wb-issue-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--dsw-alias-state-success-primary); }
+.ds-wb-issue-dot[data-kind="warn"] { background: var(--dsw-alias-state-warn-primary); }
+.ds-wb-issue-time { color: var(--dsw-alias-label-caption); font-size: 9.5px; }
+.ds-wb-issue { display: flex; align-items: center; gap: 7px; padding: 3px 0; border-top: 1px dashed var(--dsw-alias-border-l1); }
+.ds-wb-issue:first-of-type { border-top: 0; }
+.ds-wb-issue-source { flex: 0 0 auto; padding: 0 6px; border-radius: 8px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-caption); font-size: 9px; }
+.ds-wb-issue-text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-primary); font-size: 10.5px; }
+.ds-wb-change-line { margin-top: 6px; color: var(--dsw-alias-label-caption); font-size: 10px; }
 .ds-wb-reqpanel { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; padding-top: 9px; border-top: 1px dashed var(--dsw-alias-border-l1); }
 .ds-wb-adjust { grid-column: 1 / -1; }
 .ds-wb-adjust-title { font-size: 15px; font-weight: 600; color: var(--dsw-alias-label-primary); overflow-wrap: anywhere; }
