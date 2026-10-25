@@ -72,6 +72,7 @@ it for you.
   commands, runs them with streamed output and exit codes, and turns errors in
   the output into clickable file:line links that jump into the editor. Tasks that
   were still running when the page reloaded are re-attached.
+- **Delivery pipeline and agent team** — the Pipeline sidebar view moves a requirement through product manager → UI designer → full-stack development → testing → project-manager sign-off → ops release. Each stage dispatches a role-bounded prompt; the Lead builds the actual team with the native `spawn_teammate` / `team_task_*` tools, and every submitted stage waits for your approve / request-changes gate in the panel — **release cannot start before your sign-off**. See [docs/AGENT_TEAM.md](docs/AGENT_TEAM.md) for boundaries and the runbook.
 - **Acceptance board and delivery** — the Acceptance sidebar view keeps a
   `.dsh/acceptance.json` checklist (pending / pass / fail / blocked plus notes),
   exports a Markdown acceptance report, and sends failed items back to the agent;
@@ -791,7 +792,8 @@ this plugin only: a run-and-diagnose loop, agent change review, session recovery
 Git completion, an editor foundation, LSP and browser verification. Priorities,
 integration points, costs and acceptance criteria live in
 [docs/ROADMAP.md](docs/ROADMAP.md); the batch 0–3 retest steps live in
-[docs/ACCEPTANCE.md](docs/ACCEPTANCE.md).
+[docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) and the team pipeline in
+[docs/AGENT_TEAM.md](docs/AGENT_TEAM.md).
 
 ## Repository layout
 

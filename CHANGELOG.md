@@ -4,6 +4,34 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Delivery pipeline with role-bounded agent team
+
+- New **Pipeline** sidebar view on top of `.dsh/pipeline.json`: a requirement moves
+  through six stages — product manager (requirements), UI designer (design),
+  full-stack development, QA testing, project-manager sign-off, ops release. Each
+  stage has a fixed role and can only start after the previous stage is approved;
+  the product stage needs a saved requirement (title + detail).
+- Dispatching a stage marks it active and sends that role's prompt to the
+  conversation: requirement, upstream summaries/artefacts, what the role does and
+  does not do, the deliverables to produce, and the rule that the model must call
+  `pipeline_submit_stage` and must never approve its own work. The Lead is expected
+  to organize the real multi-role execution with the native Harness team tools
+  (`spawn_teammate`, `team_task_*`, `send_message`), which the plugin neither
+  duplicates nor replaces.
+- Owner gates: every submitted stage waits in **review** for the project manager
+  to approve or send back with a note; a rejection becomes `failed` and can be
+  reopened. The human approval stage is the only way to unlock release, and the
+  ops stage records releases (environment, URL, notes) in the pipeline document
+  and the panel.
+- Host side: new `pipeline.js` store with per-root locking, atomic writes, symlink
+  guards and the same safety limits as the acceptance board; five model tools
+  (`pipeline_status`, `pipeline_stage_prompt`, `pipeline_set_requirement`,
+  `pipeline_start_stage`, `pipeline_submit_stage`) plus
+  `pipeline_record_release` for ops, and a system-prompt guide. Approval has no
+  model tool on purpose.
+- `docs/AGENT_TEAM.md` documents the six roles, boundaries, gates, the end-to-end
+  runbook and how the pipeline composes with Harness Agent Teams.
+
 ### Acceptance runbook and task-failure hand-off
 
 - `docs/ACCEPTANCE.md` now walks a project manager through retesting batches

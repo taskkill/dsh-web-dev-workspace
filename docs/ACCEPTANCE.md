@@ -37,6 +37,20 @@
 - [ ] **构建产物 zip**：点「下载构建产物」→ 下载 `dist`/`build`/`out` 打包 zip；没有产物目录时应报错提示。
 - [ ] **交付包 + 记录**：点「打包交付（zip）」→ 生成 `.dsh/deliveries/…zip`（含 `ACCEPTANCE.md`），面板出现交付记录并可再次下载；`.dsh/deliveries.json` 中有记录。
 
+
+## 批次 4 · 交付流水线（智能体团队）
+
+> 需要重启 Harness 以加载 `pipeline.js` 的 Host 路由与工具；完成后刷新页面，侧栏应出现 **流水线** 标签。
+
+- [ ] **需求下发**：流水线视图填「需求标题 + 需求描述」→ 保存；清空标题时产品经理阶段应无法启动。
+- [ ] **顺序校验**：未通过产品经理阶段时，「UI 设计」的启动按钮不可用；用 agent 调 `pipeline_start_stage({stageId:'design'})` 应失败。
+- [ ] **角色提示派发**：点产品经理阶段「启动并派发」→ 阶段变「进行中」，对话收到含需求、角色边界（只做什么/不做什么）、交付物和 `pipeline_submit_stage` 要求的提示词。
+- [ ] **提交与人工闸门**：让 agent 用 `pipeline_submit_stage` 提交 → 阶段变「待评审」；你在面板「通过」→ 下一阶段解锁；「打回」→ 变「已打回」并可重新派发（模型没有审批工具）。
+- [ ] **发布闸门**：approval 阶段未通过前，发布阶段无法启动；通过后才能启动发布。
+- [ ] **发布记录**：发布阶段填环境/URL/说明并保存，或让运维 agent 调 `pipeline_record_release` → 面板显示发布记录，`.dsh/pipeline.json` 中 `releases` 有记录。
+- [ ] **持久化**：刷新页面后六阶段状态、摘要、产物与发布记录仍在；`.dsh/pipeline.json` 原子写、SSH 工作区提示不支持。
+- [ ] **团队编排**：按 [docs/AGENT_TEAM.md](AGENT_TEAM.md) 用 `spawn_teammate` / `team_task_*` 让角色各司其职；插件只负责状态与闸门。
+
 ## 已知限制（不是缺陷）
 
 - **预览分享**：只改写 HTML；前端在 JS 里拼接的绝对路径需要 dev server 配置 `base`；公网访问要求预览端口可达（否则用隧道）。

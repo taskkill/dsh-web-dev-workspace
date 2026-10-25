@@ -26,6 +26,7 @@ import * as bookmarks from './bookmarks.js'
 import * as acceptance from './acceptance.js'
 import * as delivery from './delivery.js'
 import * as memory from './memory.js'
+import * as pipeline from './pipeline.js'
 import * as ssh from './ssh.js'
 import { createTaskManager } from './tasks.js'
 import { createPreviewManager } from './preview.js'
@@ -168,6 +169,8 @@ export function apply(ctx) {
     toolsCtx.effect(() => todo.registerTodoPrompt(toolsCtx), 'dsh-web-filebrowser: workspace todo prompt')
     toolsCtx.effect(() => acceptance.registerAcceptanceTools(toolsCtx), 'dsh-web-filebrowser: workspace acceptance tools')
     toolsCtx.effect(() => acceptance.registerAcceptancePrompt(toolsCtx), 'dsh-web-filebrowser: workspace acceptance prompt')
+    toolsCtx.effect(() => pipeline.registerPipelineTools(toolsCtx), 'dsh-web-filebrowser: delivery pipeline tools')
+    toolsCtx.effect(() => pipeline.registerPipelinePrompt(toolsCtx), 'dsh-web-filebrowser: delivery pipeline prompt')
   })
   ctx.effect(() => {
     let disposed = false
@@ -332,6 +335,20 @@ async function dispatch(ctx, op, body) {
       return clearPassedAcceptance(ctx, body)
     case 'acceptanceReport':
       return acceptanceReport(ctx, body)
+    case 'pipelineList':
+      return pipelineList(ctx, body)
+    case 'pipelineSetRequirement':
+      return pipelineSetRequirement(ctx, body)
+    case 'pipelineStart':
+      return pipelineStart(ctx, body)
+    case 'pipelineSubmit':
+      return pipelineSubmit(ctx, body)
+    case 'pipelineReview':
+      return pipelineReview(ctx, body)
+    case 'pipelinePrompt':
+      return pipelinePrompt(ctx, body)
+    case 'pipelineRecordRelease':
+      return pipelineRecordRelease(ctx, body)
     case 'browserBookmarks':
       return listBrowserBookmarks(ctx, body)
     case 'browserBookmarkAdd':
@@ -1012,6 +1029,75 @@ async function clearPassedAcceptance(ctx, body) {
 async function acceptanceReport(ctx, body) {
   const root = await acceptanceRoot(ctx, body.root)
   return { markdown: await acceptance.buildAcceptanceMarkdown(root) }
+}
+
+/**
+ * Resolve a local workspace root for a delivery-pipeline operation.
+ * @param ctx - Host context.
+ * @param requested - root path sent by the browser.
+ * @returns canonical local root.
+ */
+async function pipelineRoot(ctx, requested) {
+  const root = await resolveRoot(ctx, requested)
+  if (ssh.isSshRoot(root)) throw new SideError('ssh-unsupported', 'SSH 远程工作区暂不支持交付流水线')
+  return root
+}
+
+/** Read the delivery pipeline snapshot for the panel. */
+async function pipelineList(ctx, body) {
+  return pipeline.listPipeline(await pipelineRoot(ctx, body.root))
+}
+
+/** Save the requirement header (owner or product-manager agent). */
+async function pipelineSetRequirement(ctx, body) {
+  const root = await pipelineRoot(ctx, body.root)
+  return pipeline.setRequirement(root, {
+    title: typeof body.title === 'string' ? body.title : undefined,
+    detail: typeof body.detail === 'string' ? body.detail : undefined,
+  })
+}
+
+/** Mark one stage as started. */
+async function pipelineStart(ctx, body) {
+  const root = await pipelineRoot(ctx, body.root)
+  return pipeline.startStage(root, typeof body.stageId === 'string' ? body.stageId : '')
+}
+
+/** Submit one stage for owner review. */
+async function pipelineSubmit(ctx, body) {
+  const root = await pipelineRoot(ctx, body.root)
+  return pipeline.submitStage(root, {
+    stageId: typeof body.stageId === 'string' ? body.stageId : '',
+    summary: typeof body.summary === 'string' ? body.summary : '',
+    artifacts: Array.isArray(body.artifacts) ? body.artifacts : undefined,
+  })
+}
+
+/** Owner gate: approve or send a stage back. */
+async function pipelineReview(ctx, body) {
+  const root = await pipelineRoot(ctx, body.root)
+  return pipeline.reviewStage(root, {
+    stageId: typeof body.stageId === 'string' ? body.stageId : '',
+    decision: body.decision === 'approve' ? 'approve' : 'reject',
+    note: typeof body.note === 'string' ? body.note : undefined,
+  })
+}
+
+/** Build the role prompt of one stage so the panel can dispatch it. */
+async function pipelinePrompt(ctx, body) {
+  const root = await pipelineRoot(ctx, body.root)
+  const doc = await pipeline.readPipeline(root)
+  return { prompt: pipeline.buildStagePrompt(doc, typeof body.stageId === 'string' ? body.stageId : '') }
+}
+
+/** Record a release performed by the ops agent or the owner. */
+async function pipelineRecordRelease(ctx, body) {
+  const root = await pipelineRoot(ctx, body.root)
+  return pipeline.recordRelease(root, {
+    environment: typeof body.environment === 'string' ? body.environment : '',
+    url: typeof body.url === 'string' ? body.url : '',
+    notes: typeof body.notes === 'string' ? body.notes : '',
+  })
 }
 
 /**

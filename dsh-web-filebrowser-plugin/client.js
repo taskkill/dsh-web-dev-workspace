@@ -381,6 +381,57 @@ window.__ModuleLoader__.load({
       'tasks.group.other': '其他',
       'tasks.sendToAgent': '把失败发给 agent',
       'side.acceptance': '验收',
+      'side.pipeline': '流水线',
+      'pipeline.title': '交付流水线',
+      'pipeline.hint': '需求由你下发；产品经理→UI 设计→开发→测试→你确认→运维发布。每个阶段的角色边界写在派发提示词里，评审由你在面板上把关。',
+      'pipeline.roleHint': '真正的多角色执行由 Lead 用 spawn_teammate / team_task_* 组织；本面板只维护阶段状态、产物与人工闸门。',
+      'pipeline.requirementTitle': '需求标题',
+      'pipeline.requirementDetail': '需求描述',
+      'pipeline.requirementEmpty': '还没有需求。先写清目标、范围和验收标准，再启动产品经理阶段。',
+      'pipeline.saveRequirement': '保存需求',
+      'pipeline.editRequirement': '编辑需求',
+      'pipeline.cancelEdit': '取消',
+      'pipeline.requirementPlaceholder': '一句话目标…',
+      'pipeline.requirementDetailPlaceholder': '背景、范围、关键验收标准…',
+      'pipeline.stage.product': '需求分析',
+      'pipeline.stage.design': 'UI 设计',
+      'pipeline.stage.development': '开发实现',
+      'pipeline.stage.testing': '测试验收',
+      'pipeline.stage.approval': 'PM / 客户确认',
+      'pipeline.stage.release': '发布上线',
+      'pipeline.role.product': '产品经理',
+      'pipeline.role.design': 'UI 设计师',
+      'pipeline.role.development': '全栈开发',
+      'pipeline.role.testing': '测试工程师',
+      'pipeline.role.approval': '项目经理',
+      'pipeline.role.release': '运维',
+      'pipeline.status.pending': '待开始',
+      'pipeline.status.active': '进行中',
+      'pipeline.status.review': '待评审',
+      'pipeline.status.approved': '已通过',
+      'pipeline.status.failed': '已打回',
+      'pipeline.start': '启动并派发',
+      'pipeline.prompt': '发送角色提示',
+      'pipeline.approve': '通过',
+      'pipeline.reject': '打回',
+      'pipeline.rework': '重新派发',
+      'pipeline.summary': '阶段摘要',
+      'pipeline.artifacts': '产物',
+      'pipeline.releases': '发布记录',
+      'pipeline.reviewNote': '评审备注（打回时可选）',
+      'pipeline.reviewNotePlaceholder': '写清打回原因或补充要求…',
+      'pipeline.waitingAgent': '等待 agent 提交评审…',
+      'pipeline.requirementNeeded': '先保存需求再启动产品经理阶段。',
+      'pipeline.sequenceHint': '需上一阶段通过后才能启动。',
+      'pipeline.startFailed': '启动阶段失败：{message}',
+      'pipeline.reviewFailed': '评审失败：{message}',
+      'pipeline.loadFailed': '读取流水线失败：{message}',
+      'pipeline.saveFailed': '保存需求失败：{message}',
+      'pipeline.promptFailed': '获取角色提示失败：{message}',
+      'pipeline.unavailable': '流水线服务不可用：请重启 Harness 以加载新的 Host 路由',
+      'pipeline.needRoot': '请先选择工作区',
+      'pipeline.approvalReady': '测试已完成；确认通过后才会解锁发布阶段。',
+      'pipeline.releaseDone': '已发布',
       'acceptance.title': '验收台',
       'acceptance.hint': 'agent 作为产品经理写验收项；你在这里勾选通过 / 不通过，驳回时可把未通过项发回对话。',
       'acceptance.empty': '还没有验收项。可以让 agent 先列出验收标准，或在这里添加一条。',
@@ -1059,6 +1110,57 @@ window.__ModuleLoader__.load({
       'tasks.group.other': 'Other',
       'tasks.sendToAgent': 'Send failure to agent',
       'side.acceptance': 'Acceptance',
+      'side.pipeline': 'Pipeline',
+      'pipeline.title': 'Delivery pipeline',
+      'pipeline.hint': 'You issue the requirement; product → design → development → testing → your sign-off → ops release. Role boundaries live in the dispatched prompts; every gate is yours to approve.',
+      'pipeline.roleHint': 'The Lead runs the actual multi-role work with spawn_teammate / team_task_*; this board only tracks stages, artefacts and the human gate.',
+      'pipeline.requirementTitle': 'Requirement title',
+      'pipeline.requirementDetail': 'Requirement detail',
+      'pipeline.requirementEmpty': 'No requirement yet. Write the goal, scope and acceptance criteria, then start the product stage.',
+      'pipeline.saveRequirement': 'Save requirement',
+      'pipeline.editRequirement': 'Edit requirement',
+      'pipeline.cancelEdit': 'Cancel',
+      'pipeline.requirementPlaceholder': 'One-line goal…',
+      'pipeline.requirementDetailPlaceholder': 'Background, scope, key acceptance criteria…',
+      'pipeline.stage.product': 'Requirements',
+      'pipeline.stage.design': 'UI design',
+      'pipeline.stage.development': 'Development',
+      'pipeline.stage.testing': 'Testing',
+      'pipeline.stage.approval': 'PM / client sign-off',
+      'pipeline.stage.release': 'Release',
+      'pipeline.role.product': 'Product manager',
+      'pipeline.role.design': 'UI designer',
+      'pipeline.role.development': 'Full-stack engineer',
+      'pipeline.role.testing': 'QA engineer',
+      'pipeline.role.approval': 'Project manager',
+      'pipeline.role.release': 'Ops',
+      'pipeline.status.pending': 'Pending',
+      'pipeline.status.active': 'In progress',
+      'pipeline.status.review': 'In review',
+      'pipeline.status.approved': 'Approved',
+      'pipeline.status.failed': 'Changes requested',
+      'pipeline.start': 'Start and dispatch',
+      'pipeline.prompt': 'Send role prompt',
+      'pipeline.approve': 'Approve',
+      'pipeline.reject': 'Request changes',
+      'pipeline.rework': 'Dispatch again',
+      'pipeline.summary': 'Stage summary',
+      'pipeline.artifacts': 'Artefacts',
+      'pipeline.releases': 'Releases',
+      'pipeline.reviewNote': 'Review note (optional on reject)',
+      'pipeline.reviewNotePlaceholder': 'Why it goes back, or what still needs to change…',
+      'pipeline.waitingAgent': 'Waiting for the agent to submit for review…',
+      'pipeline.requirementNeeded': 'Save the requirement before starting the product stage.',
+      'pipeline.sequenceHint': 'The previous stage must be approved first.',
+      'pipeline.startFailed': 'Could not start the stage: {message}',
+      'pipeline.reviewFailed': 'Review failed: {message}',
+      'pipeline.loadFailed': 'Could not read the pipeline: {message}',
+      'pipeline.saveFailed': 'Could not save the requirement: {message}',
+      'pipeline.promptFailed': 'Could not build the role prompt: {message}',
+      'pipeline.unavailable': 'Pipeline service unavailable: restart Harness to load the new Host route',
+      'pipeline.needRoot': 'Select a workspace first',
+      'pipeline.approvalReady': 'Testing is done; release unlocks only after your sign-off.',
+      'pipeline.releaseDone': 'Released',
       'acceptance.title': 'Acceptance board',
       'acceptance.hint': 'The agent writes acceptance items as the product manager; check pass / fail here and send failures back to the chat.',
       'acceptance.empty': 'No acceptance items yet. Ask the agent for acceptance criteria, or add one here.',
@@ -3968,6 +4070,15 @@ window.__ModuleLoader__.load({
       return icon(15,
         h('rect', { x: 2.6, y: 2.2, width: 9.8, height: 11.6, rx: 1.8 }),
         h('path', { d: 'm5.2 8.3 1.7 1.7 3.1-3.4' }),
+      )
+    }
+
+    function PipelineIcon() {
+      return icon(15,
+        h('circle', { cx: 3.2, cy: 8, r: 1.5 }),
+        h('circle', { cx: 8, cy: 8, r: 1.5 }),
+        h('circle', { cx: 12.8, cy: 8, r: 1.5 }),
+        h('path', { d: 'M4.7 8h1.8M9.5 8h1.8' }),
       )
     }
 
@@ -7212,6 +7323,16 @@ window.__ModuleLoader__.load({
         const [previewShares, setPreviewShares] = useState([])
         const [previewBusy, setPreviewBusy] = useState(false)
         const [previewError, setPreviewError] = useState(null)
+        const [pipelineDoc, setPipelineDoc] = useState(null)
+        const [pipelineBusy, setPipelineBusy] = useState(false)
+        const [pipelineError, setPipelineError] = useState(null)
+        const [pipelineEditing, setPipelineEditing] = useState(false)
+        const [pipelineTitleDraft, setPipelineTitleDraft] = useState('')
+        const [pipelineDetailDraft, setPipelineDetailDraft] = useState('')
+        const [pipelineReviewNote, setPipelineReviewNote] = useState('')
+        const [releaseEnvDraft, setReleaseEnvDraft] = useState('production')
+        const [releaseUrlDraft, setReleaseUrlDraft] = useState('')
+        const [releaseNotesDraft, setReleaseNotesDraft] = useState('')
         const evidenceInputRef = useRef(null)
         const [deliveryBundle, setDeliveryBundle] = useState(null)
         const [paneView, setPaneView] = useState('files')
@@ -7508,6 +7629,7 @@ window.__ModuleLoader__.load({
             void loadDeliveryHistory()
             void loadPreviewShares()
           }
+          if (paneView === 'pipeline') void loadPipeline()
           return undefined
         }, [paneView, state.root])
 
@@ -7537,6 +7659,16 @@ window.__ModuleLoader__.load({
 
         // Leaving the panel (or the whole page) must not leave poll timers behind.
         useEffect(() => () => stopAllTaskPolling(), [])
+
+        // Keep the requirement form in sync with the Host document unless the
+        // owner is editing it.
+        useEffect(() => {
+          if (pipelineEditing) return
+          if (pipelineDoc === null || typeof pipelineDoc !== 'object') return
+          const requirement = pipelineDoc.requirement ?? {}
+          setPipelineTitleDraft(typeof requirement.title === 'string' ? requirement.title : '')
+          setPipelineDetailDraft(typeof requirement.detail === 'string' ? requirement.detail : '')
+        }, [pipelineDoc, pipelineEditing])
 
         // Keep the sidebar's open-task badge accurate without opening the panel.
         useEffect(() => {
@@ -7873,7 +8005,8 @@ window.__ModuleLoader__.load({
         const showTodo = paneView === 'todo'
         const showTasks = paneView === 'tasks'
         const showAcceptance = paneView === 'acceptance'
-        const showFiles = !showGit && !showSearch && !showMemory && !showHarness && !showTodo && !showTasks && !showAcceptance
+        const showPipeline = paneView === 'pipeline'
+        const showFiles = !showGit && !showSearch && !showMemory && !showHarness && !showTodo && !showTasks && !showAcceptance && !showPipeline
         const todoOpenCount = todoTasks.reduce((count, task) => count + (task.status === 'open' ? 1 : 0), 0)
         const treeDisplayWidth = compact
           ? '100%'
@@ -8244,6 +8377,7 @@ window.__ModuleLoader__.load({
             { id: 'todo', label: t('todo.title'), run: openTodo },
             { id: 'tasks', label: t('tasks.title'), run: openTasks },
             { id: 'acceptance', label: t('acceptance.title'), run: openAcceptance },
+            { id: 'pipeline', label: t('pipeline.title'), run: openPipeline },
             { id: 'harness', label: t('harness.open'), run: () => void openHarness() },
           ]
           if (gitAvailable) commands.push({ id: 'git', label: t('git.title'), run: () => setPaneView('git') })
@@ -8787,6 +8921,142 @@ ${tail}
         }
 
         /* ------------------------------------------------------------------ *
+         * Delivery pipeline (product → design → dev → test → sign-off → ops)
+         * ------------------------------------------------------------------ */
+
+        /** Open the delivery pipeline for the current workspace. */
+        function openPipeline() {
+          setPaneView('pipeline')
+          setCompactView('tree')
+        }
+
+        /** Explain a Host that was not restarted after the plugin update. */
+        function pipelineErrorText(error) {
+          return errorCode(error) === 'bad-op' ? t('pipeline.unavailable') : errorText(error)
+        }
+
+        /** Record one release (ops agent or owner) on the release stage. */
+        async function recordPipelineRelease() {
+          const targetRoot = store.get().root
+          if (targetRoot === null) return
+          setPipelineBusy(true)
+          setPipelineError(null)
+          try {
+            await call('pipelineRecordRelease', {
+              root: targetRoot,
+              environment: releaseEnvDraft.trim(),
+              url: releaseUrlDraft.trim(),
+              notes: releaseNotesDraft.trim(),
+            })
+            await loadPipeline({ silent: true })
+          } catch (error) {
+            setPipelineError(t('pipeline.saveFailed', { message: pipelineErrorText(error) }))
+          } finally {
+            setPipelineBusy(false)
+          }
+        }
+
+        /** Read the workspace pipeline document. */
+        async function loadPipeline(options = {}) {
+          const targetRoot = store.get().root
+          if (targetRoot === null) {
+            setPipelineError(t('pipeline.needRoot'))
+            return
+          }
+          if (options?.silent !== true) setPipelineBusy(true)
+          try {
+            const value = await call('pipelineList', { root: targetRoot })
+            if (store.get().root !== targetRoot) return
+            const snapshot = value !== null && typeof value === 'object' && value.doc !== undefined ? value.doc : value
+            setPipelineDoc(snapshot === null || typeof snapshot !== 'object' ? null : snapshot)
+            setPipelineError(null)
+          } catch (error) {
+            setPipelineError(pipelineErrorText(error))
+          } finally {
+            setPipelineBusy(false)
+          }
+        }
+
+        /** Save the requirement header and open the product stage later. */
+        async function savePipelineRequirement() {
+          const targetRoot = store.get().root
+          if (targetRoot === null) return
+          setPipelineBusy(true)
+          setPipelineError(null)
+          try {
+            await call('pipelineSetRequirement', {
+              root: targetRoot,
+              title: pipelineTitleDraft.trim(),
+              detail: pipelineDetailDraft.trim(),
+            })
+            await loadPipeline({ silent: true })
+            setPipelineEditing(false)
+          } catch (error) {
+            setPipelineError(t('pipeline.saveFailed', { message: pipelineErrorText(error) }))
+          } finally {
+            setPipelineBusy(false)
+          }
+        }
+
+        /** Start one stage and dispatch its role prompt to the conversation. */
+        async function startPipelineStage(stageId) {
+          const targetRoot = store.get().root
+          if (targetRoot === null) return
+          setPipelineBusy(true)
+          setPipelineError(null)
+          try {
+            await call('pipelineStart', { root: targetRoot, stageId })
+            const value = await call('pipelinePrompt', { root: targetRoot, stageId })
+            await loadPipeline({ silent: true })
+            const prompt = typeof value?.prompt === 'string' ? value.prompt : ''
+            if (prompt.length > 0) await sendPromptText(prompt)
+          } catch (error) {
+            setPipelineError(t('pipeline.startFailed', { message: pipelineErrorText(error) }))
+          } finally {
+            setPipelineBusy(false)
+          }
+        }
+
+        /** Re-send the role prompt of a stage that is already active. */
+        async function resendPipelinePrompt(stageId) {
+          const targetRoot = store.get().root
+          if (targetRoot === null) return
+          setPipelineBusy(true)
+          setPipelineError(null)
+          try {
+            const value = await call('pipelinePrompt', { root: targetRoot, stageId })
+            const prompt = typeof value?.prompt === 'string' ? value.prompt : ''
+            if (prompt.length > 0) await sendPromptText(prompt)
+          } catch (error) {
+            setPipelineError(t('pipeline.promptFailed', { message: pipelineErrorText(error) }))
+          } finally {
+            setPipelineBusy(false)
+          }
+        }
+
+        /** Owner gate: approve or send a stage back with an optional note. */
+        async function reviewPipelineStage(stageId, decision) {
+          const targetRoot = store.get().root
+          if (targetRoot === null) return
+          setPipelineBusy(true)
+          setPipelineError(null)
+          try {
+            await call('pipelineReview', {
+              root: targetRoot,
+              stageId,
+              decision,
+              note: pipelineReviewNote.trim().length > 0 ? pipelineReviewNote.trim() : undefined,
+            })
+            setPipelineReviewNote('')
+            await loadPipeline({ silent: true })
+          } catch (error) {
+            setPipelineError(t('pipeline.reviewFailed', { message: pipelineErrorText(error) }))
+          } finally {
+            setPipelineBusy(false)
+          }
+        }
+
+        /* ------------------------------------------------------------------ *
          * Acceptance board and client delivery
          * ------------------------------------------------------------------ */
 
@@ -8959,6 +9229,10 @@ ${tail}
           setDeliveryBusy(true)
           setAcceptanceError(null)
           setDeliveryBundle(null)
+          setPipelineDoc(null)
+          setPipelineError(null)
+          setPipelineEditing(false)
+          setPipelineReviewNote('')
           try {
             let reportMarkdown
             try {
@@ -13456,6 +13730,305 @@ ${tail}
           )
         }
 
+        /** Render the delivery pipeline: requirement, stage cards, gates and releases. */
+        function renderPipelinePanel() {
+          const doc = pipelineDoc !== null && typeof pipelineDoc === 'object' ? pipelineDoc : null
+          const stages = doc !== null && Array.isArray(doc.stages) ? doc.stages : []
+          const requirement = doc !== null && doc.requirement !== null && typeof doc.requirement === 'object' ? doc.requirement : {}
+          const requirementTitle = typeof requirement.title === 'string' ? requirement.title : ''
+          const requirementDetail = typeof requirement.detail === 'string' ? requirement.detail : ''
+          const requirementReady = requirementTitle.trim().length > 0 && requirementDetail.trim().length > 0
+          const releases = doc !== null && Array.isArray(doc.releases) ? doc.releases : []
+          const roleLabels = {
+            product: t('pipeline.role.product'),
+            design: t('pipeline.role.design'),
+            development: t('pipeline.role.development'),
+            testing: t('pipeline.role.testing'),
+            approval: t('pipeline.role.approval'),
+            release: t('pipeline.role.release'),
+          }
+          const stageTitles = {
+            product: t('pipeline.stage.product'),
+            design: t('pipeline.stage.design'),
+            development: t('pipeline.stage.development'),
+            testing: t('pipeline.stage.testing'),
+            approval: t('pipeline.stage.approval'),
+            release: t('pipeline.stage.release'),
+          }
+          const statusLabels = {
+            pending: t('pipeline.status.pending'),
+            active: t('pipeline.status.active'),
+            review: t('pipeline.status.review'),
+            approved: t('pipeline.status.approved'),
+            failed: t('pipeline.status.failed'),
+          }
+          const renderArtifact = (artifact) => {
+            if (artifact === null || typeof artifact !== 'object' || typeof artifact.path !== 'string') return null
+            const label = typeof artifact.label === 'string' && artifact.label.length > 0 ? artifact.label : artifact.path
+            if (artifact.path.startsWith('http://') || artifact.path.startsWith('https://')) {
+              return h(
+                'button',
+                {
+                  key: artifact.path,
+                  type: 'button',
+                  className: 'ds-linkbtn ds-pipe-artifact',
+                  title: artifact.path,
+                  onClick: () => window.open(artifact.path, '_blank', 'noopener,noreferrer'),
+                },
+                `${label} ↗`,
+              )
+            }
+            return h(
+              'button',
+              {
+                key: artifact.path,
+                type: 'button',
+                className: 'ds-linkbtn ds-pipe-artifact',
+                title: artifact.path,
+                onClick: () => void openFileAt(artifact.path, 1, 1),
+              },
+              label,
+            )
+          }
+          const stageNode = (stage, index) => {
+            if (stage === null || typeof stage !== 'object' || typeof stage.id !== 'string') return null
+            const status = typeof stage.status === 'string' && statusLabels[stage.status] !== undefined ? stage.status : 'pending'
+            const previous = index === 0 ? null : stages[index - 1]
+            const previousApproved = index === 0 ? requirementReady : previous?.status === 'approved'
+            const artifacts = Array.isArray(stage.artifacts) ? stage.artifacts : []
+            const summary = typeof stage.summary === 'string' ? stage.summary.trim() : ''
+            const note = typeof stage.note === 'string' ? stage.note.trim() : ''
+            const actions = []
+            if (status === 'review') {
+              actions.push(
+                h(
+                  'button',
+                  { key: 'approve', type: 'button', className: 'ds-btn', disabled: pipelineBusy, onClick: () => void reviewPipelineStage(stage.id, 'approve') },
+                  t('pipeline.approve'),
+                ),
+                h(
+                  'button',
+                  { key: 'reject', type: 'button', className: 'ds-btn ds-pipe-reject', disabled: pipelineBusy, onClick: () => void reviewPipelineStage(stage.id, 'reject') },
+                  t('pipeline.reject'),
+                ),
+              )
+            } else if (status === 'active') {
+              actions.push(
+                h(
+                  'button',
+                  { key: 'prompt', type: 'button', className: 'ds-btn', disabled: pipelineBusy, onClick: () => void resendPipelinePrompt(stage.id) },
+                  t('pipeline.prompt'),
+                ),
+              )
+            } else if (status !== 'approved') {
+              actions.push(
+                h(
+                  'button',
+                  {
+                    key: 'start',
+                    type: 'button',
+                    className: 'ds-btn',
+                    disabled: pipelineBusy || !previousApproved,
+                    title: previousApproved ? undefined : t('pipeline.sequenceHint'),
+                    onClick: () => void startPipelineStage(stage.id),
+                  },
+                  status === 'failed' ? t('pipeline.rework') : t('pipeline.start'),
+                ),
+              )
+            }
+            return h(
+              'div',
+              { key: stage.id, className: 'ds-pipe-stage', 'data-status': status },
+              h(
+                'div',
+                { className: 'ds-pipe-stage-head' },
+                h('span', { className: 'ds-pipe-index' }, String(index + 1)),
+                h(
+                  'span',
+                  { className: 'ds-pipe-titles' },
+                  h('span', { className: 'ds-pipe-stage-title' }, stageTitles[stage.id] ?? stage.id),
+                  h('span', { className: 'ds-pipe-stage-role' }, roleLabels[stage.id] ?? stage.id),
+                ),
+                h('span', { className: 'ds-pipe-status', 'data-status': status }, statusLabels[status]),
+              ),
+              summary.length > 0 ? h('div', { className: 'ds-pipe-summary' }, summary) : null,
+              note.length > 0 ? h('div', { className: 'ds-pipe-note' }, note) : null,
+              artifacts.length > 0
+                ? h('div', { className: 'ds-pipe-artifacts' }, artifacts.slice(0, 20).map((artifact) => renderArtifact(artifact)))
+                : null,
+              h(
+                'div',
+                { className: 'ds-pipe-actions' },
+                actions,
+                status === 'active' ? h('span', { className: 'ds-pipe-waiting' }, t('pipeline.waitingAgent')) : null,
+                status === 'approved' ? h('span', { className: 'ds-pipe-approved' }, '✓ ' + statusLabels.approved) : null,
+              ),
+              !previousApproved && (status === 'pending' || status === 'failed')
+                ? h('div', { className: 'ds-hint ds-pipe-seq-hint' }, t('pipeline.sequenceHint'))
+                : null,
+              stage.id === 'approval' && stages[index - 1]?.status === 'approved'
+                ? h('div', { className: 'ds-hint ds-pipe-seq-hint' }, t('pipeline.approvalReady'))
+                : null,
+              stage.id === 'release' && (status === 'active' || status === 'review' || status === 'approved')
+                ? h(
+                    'div',
+                    { className: 'ds-pipe-release-form' },
+                    h('div', { className: 'ds-pipe-group-title' }, t('pipeline.releases')),
+                    h('div', { className: 'ds-pipe-release-inputs' },
+                      h('input', {
+                        className: 'ds-pipe-input',
+                        value: releaseEnvDraft,
+                        placeholder: 'production / staging',
+                        spellCheck: false,
+                        onChange: (event) => setReleaseEnvDraft(event.target.value),
+                      }),
+                      h('input', {
+                        className: 'ds-pipe-input',
+                        value: releaseUrlDraft,
+                        placeholder: 'https://…',
+                        spellCheck: false,
+                        onChange: (event) => setReleaseUrlDraft(event.target.value),
+                      }),
+                    ),
+                    h('input', {
+                      className: 'ds-pipe-input',
+                      value: releaseNotesDraft,
+                      placeholder: t('pipeline.reviewNotePlaceholder'),
+                      spellCheck: false,
+                      onChange: (event) => setReleaseNotesDraft(event.target.value),
+                    }),
+                    h('div', { className: 'ds-pipe-actions' },
+                      h(
+                        'button',
+                        { type: 'button', className: 'ds-btn', disabled: pipelineBusy, onClick: () => void recordPipelineRelease() },
+                        t('pipeline.saveRequirement'),
+                      ),
+                    ),
+                  )
+                : null,
+              stage.id === 'release' && status === 'approved' && releases.length > 0
+                ? h(
+                    'div',
+                    { className: 'ds-pipe-releases' },
+                    h('div', { className: 'ds-pipe-group-title' }, t('pipeline.releases')),
+                    releases.slice(0, 5).map((release, releaseIndex) =>
+                      h(
+                        'div',
+                        { key: `${String(releaseIndex)}:${String(release.url ?? '')}`, className: 'ds-pipe-release-row' },
+                        h('span', { className: 'ds-pipe-release-env' }, String(release.environment ?? 'production')),
+                        typeof release.url === 'string' && release.url.length > 0
+                          ? h(
+                              'button',
+                              {
+                                type: 'button',
+                                className: 'ds-linkbtn',
+                                onClick: () => window.open(release.url, '_blank', 'noopener,noreferrer'),
+                              },
+                              t('pipeline.releaseDone'),
+                            )
+                          : null,
+                        h('span', { className: 'ds-pipe-release-note' }, String(release.notes ?? '')),
+                      ),
+                    ),
+                  )
+                : null,
+            )
+          }
+          return h(
+            'div',
+            { className: 'ds-side-view ds-pipeline-view', style: { display: showPipeline ? 'flex' : 'none' } },
+            h(
+              'div',
+              { className: 'ds-pipe-toolbar' },
+              h('span', { className: 'ds-pipe-heading' }, t('pipeline.title')),
+              h('span', { className: 'ds-spacer' }),
+              pipelineBusy ? h('span', { className: 'ds-pipe-waiting' }, t('acceptance.saving')) : null,
+              h(
+                'button',
+                { type: 'button', className: 'ds-linkbtn', onClick: () => void loadPipeline() },
+                t('action.refresh'),
+              ),
+            ),
+            pipelineError === null ? null : h('div', { className: 'ds-errorline' }, pipelineError),
+            h('div', { className: 'ds-pipe-scroll' },
+              h(
+                'div',
+                { className: 'ds-pipe-requirement' },
+                h('div', { className: 'ds-pipe-group-title' }, t('pipeline.requirementTitle')),
+                pipelineEditing || !requirementReady
+                  ? h(
+                      'div',
+                      { className: 'ds-pipe-requirement-form' },
+                      h('input', {
+                        className: 'ds-pipe-input',
+                        value: pipelineTitleDraft,
+                        placeholder: t('pipeline.requirementPlaceholder'),
+                        spellCheck: false,
+                        onChange: (event) => setPipelineTitleDraft(event.target.value),
+                      }),
+                      h('textarea', {
+                        className: 'ds-pipe-textarea',
+                        rows: 4,
+                        value: pipelineDetailDraft,
+                        placeholder: t('pipeline.requirementDetailPlaceholder'),
+                        onChange: (event) => setPipelineDetailDraft(event.target.value),
+                      }),
+                      h(
+                        'div',
+                        { className: 'ds-pipe-actions' },
+                        h(
+                          'button',
+                          {
+                            type: 'button',
+                            className: 'ds-btn',
+                            disabled: pipelineBusy || pipelineTitleDraft.trim().length === 0,
+                            onClick: () => void savePipelineRequirement(),
+                          },
+                          t('pipeline.saveRequirement'),
+                        ),
+                        pipelineEditing
+                          ? h(
+                              'button',
+                              { type: 'button', className: 'ds-linkbtn', onClick: () => setPipelineEditing(false) },
+                              t('pipeline.cancelEdit'),
+                            )
+                          : null,
+                      ),
+                    )
+                  : h(
+                      'div',
+                      { className: 'ds-pipe-requirement-view' },
+                      h('div', { className: 'ds-pipe-req-title' }, requirementTitle),
+                      h('div', { className: 'ds-pipe-req-detail' }, requirementDetail),
+                      h(
+                        'button',
+                        { type: 'button', className: 'ds-linkbtn', onClick: () => setPipelineEditing(true) },
+                        t('pipeline.editRequirement'),
+                      ),
+                    ),
+                requirementReady ? null : h('div', { className: 'ds-hint' }, t('pipeline.requirementEmpty')),
+              ),
+              requirementReady ? null : h('div', { className: 'ds-hint ds-pipe-seq-hint' }, t('pipeline.requirementNeeded')),
+              h(
+                'div',
+                { className: 'ds-pipe-review-note' },
+                h('input', {
+                  className: 'ds-pipe-input',
+                  value: pipelineReviewNote,
+                  placeholder: t('pipeline.reviewNotePlaceholder'),
+                  spellCheck: false,
+                  onChange: (event) => setPipelineReviewNote(event.target.value),
+                }),
+              ),
+              stages.length === 0
+                ? h('div', { className: 'ds-hint' }, t('pipeline.loadFailed', { message: '—' }))
+                : stages.map((stage, index) => stageNode(stage, index)),
+              h('div', { className: 'ds-hint ds-pipe-hint' }, t('pipeline.hint')),
+              h('div', { className: 'ds-hint ds-pipe-hint' }, t('pipeline.roleHint')),
+            ),
+          )
+        }
+
         function renderHarnessPanel() {
           if (harnessConfig !== null) {
             return h(
@@ -14234,6 +14807,13 @@ ${tail}
               title: acceptanceItems.some((item) => item.status === 'fail') ? t('acceptance.failCount', { count: String(acceptanceItems.filter((item) => item.status === 'fail').length) }) : t('acceptance.title'),
               select: openAcceptance,
             },
+            {
+              id: 'pipeline',
+              label: t('side.pipeline'),
+              icon: h(PipelineIcon),
+              active: showPipeline,
+              select: openPipeline,
+            },
           ]
           if (gitAvailable) {
             views.push({
@@ -14943,7 +15523,7 @@ ${tail}
               'aside',
               {
                 className: 'ds-side',
-                'data-view': showGit ? 'git' : showSearch ? 'search' : showMemory ? 'memory' : showHarness ? 'harness' : showTodo ? 'todo' : showTasks ? 'tasks' : showAcceptance ? 'acceptance' : 'files',
+                'data-view': showGit ? 'git' : showSearch ? 'search' : showMemory ? 'memory' : showHarness ? 'harness' : showTodo ? 'todo' : showTasks ? 'tasks' : showAcceptance ? 'acceptance' : showPipeline ? 'pipeline' : 'files',
                 style: { width: treeDisplayWidth, display: showSide ? undefined : 'none' },
               },
               h(
@@ -14955,7 +15535,7 @@ ${tail}
                   h(
                     'span',
                     { className: 'ds-pane-title-text' },
-                    showGit ? t('git.title') : showSearch ? t('side.search') : showMemory ? t('side.memory') : showHarness ? t('side.harness') : showTodo ? t('todo.title') : showTasks ? t('tasks.title') : showAcceptance ? t('acceptance.title') : t('explorer'),
+                    showGit ? t('git.title') : showSearch ? t('side.search') : showMemory ? t('side.memory') : showHarness ? t('side.harness') : showTodo ? t('todo.title') : showTasks ? t('tasks.title') : showAcceptance ? t('acceptance.title') : showPipeline ? t('pipeline.title') : t('explorer'),
                   ),
                   h(
                     'button',
@@ -15218,6 +15798,7 @@ ${tail}
               renderTodoPanel(),
               renderTasksPanel(),
               renderAcceptancePanel(),
+              renderPipelinePanel(),
               gitAvailable
                 ? h(
                     'div',
@@ -16436,6 +17017,7 @@ ${tail}
 .ds-side[data-view="todo"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
 .ds-side[data-view="tasks"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
 .ds-side[data-view="acceptance"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
+.ds-side[data-view="pipeline"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
 .ds-side[data-view="memory"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch) { display: none; }
 .ds-git-toggle[data-active="true"] {
   color: var(--dsw-alias-brand-primary);
@@ -17764,6 +18346,53 @@ ${tail}
 .ds-acc-history-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; font-size: 9.5px; }
 .ds-acc-history-name { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-secondary); font-family: var(--ds-mono); }
 .ds-acc-history-meta { flex: 0 0 auto; color: var(--dsw-alias-label-caption); }
+.ds-pipeline-view { overflow: hidden; }
+.ds-pipe-toolbar { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
+.ds-pipe-heading { font-weight: 600; font-size: 11px; color: var(--dsw-alias-label-primary); }
+.ds-pipe-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 6px 8px 12px; }
+.ds-pipe-group-title { color: var(--dsw-alias-label-caption); font-size: 9.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 3px; }
+.ds-pipe-requirement { border: 1px solid var(--dsw-alias-border-l1); border-radius: 7px; padding: 7px; margin-bottom: 8px; background: var(--dsw-alias-bg-layer-2); }
+.ds-pipe-requirement-form { display: flex; flex-direction: column; gap: 4px; }
+.ds-pipe-input { height: 26px; padding: 0 8px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 5px; background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-primary); font: inherit; font-size: 11px; }
+.ds-pipe-textarea { padding: 5px 8px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 5px; background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-primary); font: inherit; font-size: 11px; resize: vertical; }
+.ds-pipe-input:focus, .ds-pipe-textarea:focus { outline: none; border-color: var(--dsw-alias-brand-primary); }
+.ds-pipe-req-title { font-size: 12px; font-weight: 600; color: var(--dsw-alias-label-primary); overflow-wrap: anywhere; }
+.ds-pipe-req-detail { margin: 2px 0 4px; color: var(--dsw-alias-label-secondary); font-size: 10.5px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ds-pipe-stage { border: 1px solid var(--dsw-alias-border-l1); border-radius: 7px; padding: 6px 7px; margin-bottom: 6px; background: var(--dsw-alias-bg-layer-1); }
+.ds-pipe-stage[data-status="active"] { border-color: var(--dsw-alias-brand-primary); }
+.ds-pipe-stage[data-status="review"] { border-color: var(--dsw-alias-state-warn-primary); }
+.ds-pipe-stage[data-status="approved"] { opacity: 0.92; }
+.ds-pipe-stage[data-status="failed"] { border-color: var(--dsw-alias-state-error-primary); }
+.ds-pipe-stage-head { display: flex; align-items: center; gap: 6px; }
+.ds-pipe-index { flex: 0 0 auto; width: 16px; height: 16px; border-radius: 50%; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-caption); font-size: 9px; display: inline-flex; align-items: center; justify-content: center; }
+.ds-pipe-titles { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.ds-pipe-stage-title { font-size: 11px; font-weight: 600; color: var(--dsw-alias-label-primary); }
+.ds-pipe-stage-role { font-size: 9px; color: var(--dsw-alias-label-caption); }
+.ds-pipe-status { flex: 0 0 auto; padding: 1px 6px; border-radius: 8px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-caption); font-size: 9px; }
+.ds-pipe-status[data-status="active"] { color: var(--dsw-alias-brand-primary); }
+.ds-pipe-status[data-status="review"] { color: var(--dsw-alias-state-warn-primary); }
+.ds-pipe-status[data-status="approved"] { color: var(--dsw-alias-state-success-primary); }
+.ds-pipe-status[data-status="failed"] { color: var(--dsw-alias-state-error-primary); }
+.ds-pipe-summary { margin-top: 4px; color: var(--dsw-alias-label-secondary); font-size: 10px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ds-pipe-note { margin-top: 3px; color: var(--dsw-alias-state-error-primary); font-size: 9.5px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ds-pipe-artifacts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.ds-pipe-artifact { font-size: 9.5px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-pipe-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.ds-pipe-actions .ds-btn { height: 22px; padding: 0 8px; font-size: 10px; }
+.ds-pipe-reject:hover { color: var(--dsw-alias-state-error-primary); }
+.ds-pipe-waiting { color: var(--dsw-alias-label-caption); font-size: 9.5px; }
+.ds-pipe-approved { color: var(--dsw-alias-state-success-primary); font-size: 9.5px; }
+.ds-pipe-seq-hint { padding: 2px 0 0; font-size: 9.5px; }
+.ds-pipe-review-note { margin: 4px 0 8px; }
+.ds-pipe-review-note .ds-pipe-input { width: 100%; box-sizing: border-box; }
+.ds-pipe-release-form { display: flex; flex-direction: column; gap: 4px; margin-top: 5px; padding-top: 4px; border-top: 1px dashed var(--dsw-alias-border-l1); }
+.ds-pipe-release-inputs { display: flex; gap: 4px; }
+.ds-pipe-release-inputs .ds-pipe-input { flex: 1 1 0; min-width: 0; }
+.ds-pipe-releases { margin-top: 4px; }
+.ds-pipe-release-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; font-size: 9.5px; }
+.ds-pipe-release-env { flex: 0 0 auto; color: var(--dsw-alias-label-secondary); font-family: var(--ds-mono); }
+.ds-pipe-release-note { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-caption); }
+.ds-pipe-hint { padding: 3px 0 0; font-size: 9.5px; }
 .ds-todo-edit { display: flex; flex-direction: column; gap: 5px; background: color-mix(in srgb, var(--dsw-alias-brand-primary) 5%, transparent); }
 .ds-todo-note-input {
   width: 100%;
