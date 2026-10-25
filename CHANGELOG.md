@@ -4,6 +4,23 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Workbench moved to a full-width main-area page
+
+- The Workbench is no longer a sidebar pane: it now occupies the main content
+  area as a full-width dashboard (max 980 px, responsive card grid, single
+  column on narrow screens) with a compact header and a close button. Opening a
+  workspace with an issued requirement lands there by default; the sidebar keeps
+  Files / Search / More (with a Home group containing Workbench in the overflow
+  menu, plus a Welcome button and the command palette entry).
+- Opening any file from the explorer leaves the Workbench for the editor; closing
+  the Workbench (×) returns to the open tabs or the welcome page. On compact
+  layouts the page takes the whole width and the back button returns to the file
+  tree.
+- The page keeps the direct actions added earlier (fast-mode toggle, rerun failed
+  task, export report, pack delivery, download latest bundle, preview copy/open)
+  and the five-second auto refresh; cards are larger and the attention card spans
+  the full grid row when something needs the owner.
+
 ### Workbench direct actions and touch polish (P3/P4)
 
 - The Workbench now carries the actions the owner needs most: a **fast-mode**

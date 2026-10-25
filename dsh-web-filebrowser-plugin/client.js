@@ -384,6 +384,7 @@ window.__ModuleLoader__.load({
       'tasks.sendToAgent': '把失败发给 agent',
       'side.acceptance': '验收',
       'side.workbench': '工作台',
+      'side.group.home': '首页',
       'side.group.project': '项目',
       'side.group.develop': '开发',
       'workbench.title': '工作台',
@@ -1146,6 +1147,7 @@ window.__ModuleLoader__.load({
       'tasks.sendToAgent': 'Send failure to agent',
       'side.acceptance': 'Acceptance',
       'side.workbench': 'Workbench',
+      'side.group.home': 'Home',
       'side.group.project': 'Project',
       'side.group.develop': 'Development',
       'workbench.title': 'Workbench',
@@ -7399,6 +7401,7 @@ window.__ModuleLoader__.load({
         const [previewShares, setPreviewShares] = useState([])
         const [previewBusy, setPreviewBusy] = useState(false)
         const [previewError, setPreviewError] = useState(null)
+        const [workbenchOpen, setWorkbenchOpen] = useState(false)
         const [workbenchDraft, setWorkbenchDraft] = useState('')
         const [workbenchBusy, setWorkbenchBusy] = useState(false)
         const [workbenchKickoffBusy, setWorkbenchKickoffBusy] = useState(false)
@@ -7710,9 +7713,9 @@ window.__ModuleLoader__.load({
             void loadPreviewShares()
           }
           if (paneView === 'pipeline') void loadPipeline()
-          if (paneView === 'workbench') void loadWorkbench()
+          if (workbenchOpen) void loadWorkbench()
           return undefined
-        }, [paneView, state.root])
+        }, [paneView, state.root, workbenchOpen])
 
         useEffect(() => {
           if (paneView !== 'todo') return undefined
@@ -7753,7 +7756,11 @@ window.__ModuleLoader__.load({
           const ssh = isSshRootPath(root)
           void (async () => {
             const saved = readStorage(`${VIEW_KEY}:${root}`)
-            const valid = ['workbench', 'files', 'search', 'todo', 'tasks', 'acceptance', 'pipeline', 'git', 'memory']
+            const valid = ['files', 'search', 'todo', 'tasks', 'acceptance', 'pipeline', 'git', 'memory']
+            if (saved === 'workbench') {
+              if (alive) setWorkbenchOpen(true)
+              return
+            }
             if (typeof saved === 'string' && valid.includes(saved)) {
               if (alive && !(ssh && (saved === 'git' || saved === 'memory'))) setPaneView(saved)
               return
@@ -7763,7 +7770,7 @@ window.__ModuleLoader__.load({
               const snapshot = value !== null && typeof value === 'object' && value.doc !== undefined ? value.doc : value
               const requirement = snapshot !== null && typeof snapshot === 'object' && snapshot.requirement !== null && typeof snapshot.requirement === 'object' ? snapshot.requirement : {}
               const hasProject = typeof requirement.title === 'string' && requirement.title.trim().length > 0
-              if (alive && hasProject) setPaneView('workbench')
+              if (alive && hasProject) setWorkbenchOpen(true)
             } catch {
               /* no pipeline route (older Host): keep the explorer */
             }
@@ -7777,18 +7784,18 @@ window.__ModuleLoader__.load({
         // Remember the last view per workspace so reopening feels continuous.
         useEffect(() => {
           if (state.root === null) return
-          writeStorage(`${VIEW_KEY}:${state.root}`, paneView)
-        }, [paneView, state.root])
+          writeStorage(`${VIEW_KEY}:${state.root}`, workbenchOpen ? 'workbench' : paneView)
+        }, [paneView, state.root, workbenchOpen])
 
         // The workbench aggregates agent-driven state; refresh it while visible.
         useEffect(() => {
-          if (paneView !== 'workbench') return undefined
+          if (!workbenchOpen) return undefined
           const timer = window.setInterval(() => {
             if (!document.hidden && !pipelineBusy && !deliveryBusy) void loadWorkbench({ silent: true })
           }, 5000)
           return () => window.clearInterval(timer)
           // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [paneView, pipelineBusy, deliveryBusy])
+        }, [workbenchOpen, pipelineBusy, deliveryBusy])
 
         // The agent advances stages from the conversation; keep the panel in step
         // without the owner having to press refresh.
@@ -8139,7 +8146,6 @@ window.__ModuleLoader__.load({
         const compact = containerWidth > 0 && containerWidth < 900
         const splitStacked = containerWidth > 0 && containerWidth < 1000
         const gitAvailable = !isSshRootPath(state.root)
-        const showWorkbench = paneView === 'workbench'
         const showGit = paneView === 'git' && gitAvailable
         const showSearch = paneView === 'search'
         const showMemory = paneView === 'memory' && gitAvailable
@@ -8148,13 +8154,13 @@ window.__ModuleLoader__.load({
         const showTasks = paneView === 'tasks'
         const showAcceptance = paneView === 'acceptance'
         const showPipeline = paneView === 'pipeline'
-        const showFiles = !showWorkbench && !showGit && !showSearch && !showMemory && !showHarness && !showTodo && !showTasks && !showAcceptance && !showPipeline
+        const showFiles = !showGit && !showSearch && !showMemory && !showHarness && !showTodo && !showTasks && !showAcceptance && !showPipeline
         const todoOpenCount = todoTasks.reduce((count, task) => count + (task.status === 'open' ? 1 : 0), 0)
         const treeDisplayWidth = compact
           ? '100%'
           : `${String(containerWidth > 0 ? Math.min(state.treeWidth, Math.max(220, Math.floor(containerWidth * 0.42))) : state.treeWidth)}px`
-        const showSide = !maximized && (!compact || compactView === 'tree' || activeTab === null)
-        const showMain = maximized || !compact || (activeTab !== null && compactView === 'editor')
+        const showSide = !workbenchOpen && !maximized && (!compact || compactView === 'tree' || activeTab === null)
+        const showMain = workbenchOpen ? !maximized : maximized || !compact || (activeTab !== null && compactView === 'editor')
         const canCollapse = Object.keys(state.expanded).some((entry) => entry !== '')
         const rootFavorites = state.root === null ? [] : state.favorites[state.root] ?? []
         const favoritePaths = new Set(rootFavorites.map((item) => item.path))
@@ -9068,9 +9074,16 @@ ${tail}
          * Owner workbench (landing view)
          * ------------------------------------------------------------------ */
 
-        /** Open the owner workbench. */
+        /** Open the full-width owner workbench page. */
         function openWorkbench() {
-          setPaneView('workbench')
+          setWorkbenchOpen(true)
+          if (paneView !== 'files') setPaneView('files')
+          setCompactView('editor')
+        }
+
+        /** Leave the workbench page. */
+        function closeWorkbench() {
+          setWorkbenchOpen(false)
           setCompactView('tree')
         }
 
@@ -10961,6 +10974,7 @@ ${tail}
         async function openFile(relative) {
           const root = store.get().root
           if (root === null) return
+          setWorkbenchOpen(false)
           setCompactView('editor')
           const existing = store.get().tabs.find((tab) => tab.path === relative)
           if (existing !== undefined) {
@@ -13981,7 +13995,7 @@ ${tail}
         }
 
         /** Render the owner workbench: gates first, then project, acceptance/delivery and work in flight. */
-        function renderWorkbenchPanel() {
+        function renderWorkbenchPage() {
           const doc = pipelineDoc !== null && typeof pipelineDoc === 'object' ? pipelineDoc : null
           const stages = doc !== null && Array.isArray(doc.stages) ? doc.stages : []
           const requirement = doc !== null && doc.requirement !== null && typeof doc.requirement === 'object' ? doc.requirement : {}
@@ -14267,15 +14281,37 @@ ${tail}
           )
           return h(
             'div',
-            { className: 'ds-side-view ds-workbench-view', style: { display: showWorkbench ? 'flex' : 'none' } },
+            { className: 'ds-wb-page' },
             h(
               'div',
-              { className: 'ds-wb-scroll' },
-              attention ? attentionCard : null,
-              requirementCard,
-              acceptanceCard,
-              runningCard,
-              workbenchError !== null ? h('div', { className: 'ds-errorline' }, workbenchError) : null,
+              { className: 'ds-wb-page-head' },
+              h('span', { className: 'ds-wb-page-title' }, t('workbench.title')),
+              h('span', { className: 'ds-spacer' }),
+              compact
+                ? h(
+                    'button',
+                    { type: 'button', className: 'ds-iconbtn', title: t('compact.back'), onClick: () => closeWorkbench() },
+                    h(ChevronLeftIcon),
+                  )
+                : null,
+              h(
+                'button',
+                { type: 'button', className: 'ds-iconbtn', title: t('action.cancel'), onClick: () => closeWorkbench() },
+                h(CloseIcon),
+              ),
+            ),
+            h(
+              'div',
+              { className: 'ds-wb-page-scroll' },
+              h(
+                'div',
+                { className: 'ds-wb-page-inner' },
+                attention ? attentionCard : null,
+                requirementCard,
+                acceptanceCard,
+                runningCard,
+                workbenchError !== null ? h('div', { className: 'ds-errorline' }, workbenchError) : null,
+              ),
             ),
           )
         }
@@ -15405,13 +15441,6 @@ ${tail}
           // development views live in that grouped menu.
           const primaryViews = [
             {
-              id: 'workbench',
-              label: t('side.workbench'),
-              icon: h(WorkbenchIcon),
-              active: showWorkbench,
-              select: openWorkbench,
-            },
-            {
               id: 'files',
               label: t('explorer'),
               icon: h(FolderIcon, { open: showFiles }),
@@ -15485,7 +15514,15 @@ ${tail}
               select: openMemory,
             })
           }
+          const homeView = {
+            id: 'workbench',
+            label: t('workbench.title'),
+            icon: h(WorkbenchIcon),
+            active: workbenchOpen,
+            select: openWorkbench,
+          }
           const groups = [
+            { id: 'home', title: t('side.group.home'), views: [homeView] },
             { id: 'project', title: t('side.group.project'), views: projectViews },
             { id: 'develop', title: t('side.group.develop'), views: developViews },
           ]
@@ -16161,7 +16198,7 @@ ${tail}
               'aside',
               {
                 className: 'ds-side',
-                'data-view': showWorkbench ? 'workbench' : showGit ? 'git' : showSearch ? 'search' : showMemory ? 'memory' : showHarness ? 'harness' : showTodo ? 'todo' : showTasks ? 'tasks' : showAcceptance ? 'acceptance' : showPipeline ? 'pipeline' : 'files',
+                'data-view': showGit ? 'git' : showSearch ? 'search' : showMemory ? 'memory' : showHarness ? 'harness' : showTodo ? 'todo' : showTasks ? 'tasks' : showAcceptance ? 'acceptance' : showPipeline ? 'pipeline' : 'files',
                 style: { width: treeDisplayWidth, display: showSide ? undefined : 'none' },
               },
               h(
@@ -16173,7 +16210,7 @@ ${tail}
                   h(
                     'span',
                     { className: 'ds-pane-title-text' },
-                    showWorkbench ? t('workbench.title') : showGit ? t('git.title') : showSearch ? t('side.search') : showMemory ? t('side.memory') : showHarness ? t('side.harness') : showTodo ? t('todo.title') : showTasks ? t('tasks.title') : showAcceptance ? t('acceptance.title') : showPipeline ? t('pipeline.title') : t('explorer'),
+                    showGit ? t('git.title') : showSearch ? t('side.search') : showMemory ? t('side.memory') : showHarness ? t('side.harness') : showTodo ? t('todo.title') : showTasks ? t('tasks.title') : showAcceptance ? t('acceptance.title') : showPipeline ? t('pipeline.title') : t('explorer'),
                   ),
                   h(
                     'button',
@@ -16436,7 +16473,6 @@ ${tail}
               renderTodoPanel(),
               renderTasksPanel(),
               renderAcceptancePanel(),
-              renderWorkbenchPanel(),
               renderPipelinePanel(),
               gitAvailable
                 ? h(
@@ -16463,13 +16499,15 @@ ${tail}
               className: 'ds-splitter',
               role: 'separator',
               'aria-orientation': 'vertical',
-              style: compact || maximized ? { display: 'none' } : undefined,
+              style: compact || maximized || workbenchOpen ? { display: 'none' } : undefined,
               onPointerDown: beginSplitDrag,
             }),
             h(
               'section',
               { className: 'ds-main', style: showMain ? undefined : { display: 'none' } },
-              state.tabs.length === 0
+              workbenchOpen
+                ? renderWorkbenchPage()
+                : state.tabs.length === 0
                 ? h(
                     'div',
                     { className: 'ds-welcome' },
@@ -16491,6 +16529,12 @@ ${tail}
                               h(NewFileIcon),
                               t('welcomeNewFile'),
                             ),
+                        h(
+                          'button',
+                          { type: 'button', className: 'ds-btn', onClick: () => openWorkbench() },
+                          h(WorkbenchIcon),
+                          t('workbench.title'),
+                        ),
                         h(
                           'button',
                           { type: 'button', className: 'ds-btn', onClick: () => openBrowser() },
@@ -19044,7 +19088,27 @@ ${tail}
 .ds-pipe-release-env { flex: 0 0 auto; color: var(--dsw-alias-label-secondary); font-family: var(--ds-mono); }
 .ds-pipe-release-note { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-caption); }
 .ds-pipe-hint { padding: 3px 0 0; font-size: 9.5px; }
-.ds-workbench-view { overflow: hidden; }
+.ds-wb-page { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow: hidden; background: var(--dsw-alias-bg-base); }
+.ds-wb-page-head { display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
+.ds-wb-page-title { font-size: 12.5px; font-weight: 600; color: var(--dsw-alias-label-primary); }
+.ds-wb-page-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 14px; }
+.ds-wb-page-inner { max-width: 980px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; align-items: start; }
+.ds-wb-page-inner > .ds-wb-attention { grid-column: 1 / -1; }
+.ds-wb-page .ds-wb-card { padding: 12px 14px; border-radius: 10px; }
+.ds-wb-page .ds-wb-card-title { margin-bottom: 7px; font-size: 10.5px; }
+.ds-wb-page .ds-wb-project-title { font-size: 15px; }
+.ds-wb-page .ds-wb-progress { margin-top: 4px; font-size: 11px; }
+.ds-wb-page .ds-wb-actions { gap: 7px; margin-top: 9px; }
+.ds-wb-page .ds-wb-btn { height: 28px; padding: 0 12px; font-size: 11.5px; }
+.ds-wb-page .ds-wb-link { font-size: 10.5px; }
+.ds-wb-page .ds-wb-hint { font-size: 10.5px; }
+.ds-wb-page .ds-wb-dot { height: 5px; }
+.ds-wb-page .ds-wb-need-text { font-size: 12px; }
+.ds-wb-page .ds-wb-count { font-size: 10.5px; padding: 2px 8px; }
+@media (max-width: 700px) { .ds-wb-page-inner { grid-template-columns: 1fr; } }
+.ds-root[data-compact="true"] .ds-wb-page-scroll { padding: 10px; }
+.ds-root[data-compact="true"] .ds-wb-page-inner { grid-template-columns: 1fr; }
+.ds-root[data-compact="true"] .ds-wb-page .ds-wb-btn { height: 34px; font-size: 12.5px; }
 .ds-wb-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 8px; padding: 8px; }
 .ds-wb-card { border: 1px solid var(--dsw-alias-border-l1); border-radius: 8px; padding: 8px; background: var(--dsw-alias-bg-layer-1); }
 .ds-wb-card.ds-wb-attention[data-kind="attention"] { border-color: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 55%, var(--dsw-alias-border-l1)); background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 6%, var(--dsw-alias-bg-layer-1)); }
