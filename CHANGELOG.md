@@ -4,6 +4,19 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Make the team actually redo the flow after a requirement change
+
+- After an append/edit the Workbench now asks **which stage should be redone with
+  the new requirement** instead of only offering the current stage. Choosing a
+  stage resets that stage and every later stage (earlier approved stages stay) and
+  immediately dispatches the stage's role prompt — so picking “Requirement” makes
+  the product manager re-run the whole flow against the new requirement, while
+  “Development” redoes development onward.
+- `pipeline.restartStage` now supports this cascade (any stage, guard: all earlier
+  stages must be approved) and returns the list of reset stage ids. The mode hints
+  state that append/edit alone only update documents and do not run the team.
+- Pipeline selftest updated to 29/29 for the cascade and the bad-order guard.
+
 ### Requirement adjustments: visible feedback and an explicit “redo this stage”
 
 - Appending or editing a requirement now shows its result **inside the requirement

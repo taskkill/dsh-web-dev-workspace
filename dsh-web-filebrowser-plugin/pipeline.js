@@ -1123,13 +1123,13 @@ export async function startChangeRound(root, input) {
 }
 
 /**
- * Reset one running or submitted stage back to pending so it can be redone
- * against an updated requirement. The owner triggers this from the workbench;
- * the note records why the stage was reset.
+ * Reset a stage and every later stage back to pending so the team can redo the
+ * remaining flow against an updated requirement. Earlier approved stages stay
+ * intact; the target stage (and everything after it) must be redone.
  *
  * @param root - absolute workspace root.
  * @param input - `{ stageId, note? }`.
- * @returns the reset stage.
+ * @returns `{ stage, resetStages }` with the ids that were reset.
  */
 export async function restartStage(root, input) {
   const workspace = assertRoot(root)
@@ -1137,25 +1137,32 @@ export async function restartStage(root, input) {
   const note = validateNote(input?.note) || '需求更新后重做'
   return withMutationLock(workspace, async () => {
     const doc = await readPipeline(workspace)
-    const stage = documentStage(doc, definition)
-    if (stage.status !== 'active' && stage.status !== 'review') {
-      throw new PipelineError('bad-status', `阶段「${definition.title}」当前状态是 ${stage.status}，只有进行中或待评审的阶段可以重做`)
+    const index = PIPELINE_STAGES.findIndex((stage) => stage.id === definition.id)
+    for (let before = 0; before < index; before += 1) {
+      if (doc.stages[before].status !== 'approved') {
+        throw new PipelineError('bad-order', `前面的阶段「${PIPELINE_STAGES[before].title}」尚未通过，不能从这里重做`)
+      }
     }
+    const resetStages = []
     const now = Date.now()
-    stage.status = 'pending'
-    stage.startedAt = 0
-    stage.submittedAt = 0
-    stage.reviewedAt = 0
-    stage.summary = ''
-    stage.artifacts = []
-    stage.note = note
+    for (let position = index; position < PIPELINE_STAGES.length; position += 1) {
+      const stage = doc.stages[position]
+      stage.status = 'pending'
+      stage.startedAt = 0
+      stage.submittedAt = 0
+      stage.reviewedAt = 0
+      stage.summary = ''
+      stage.artifacts = []
+      stage.note = position === index ? note : ''
+      resetStages.push(stage.id)
+    }
     doc.updatedAt = now
     await writePipeline(workspace, doc)
-    return publicStage(stage, definition)
+    return { stage: publicStage(doc.stages[index], definition), resetStages }
   })
 }
 
-/**
+45213/**
  * Append one release record (newest first, newest 100 kept).
  *
  * The caller decides how the record relates to the release stage: it can be
