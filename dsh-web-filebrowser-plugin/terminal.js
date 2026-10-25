@@ -42,6 +42,12 @@ const COMMAND_SCAN_DEPTH = 4
 const COMMAND_SCAN_FILES = 2000
 /** Reuse a detected command list for this long unless the client forces a refresh. */
 const COMMAND_CACHE_MS = 30_000
+/**
+ * Close a terminal no browser has touched for this long. Sessions now survive a
+ * page reload so a running dev server keeps living; this only reaps abandoned
+ * ones instead of leaking all MAX_SESSIONS slots.
+ */
+const IDLE_TERMINAL_MS = 12 * 60 * 60 * 1000
 
 const ASSETS = new Map([
   ['xterm.js', 'text/javascript; charset=utf-8'],
@@ -68,6 +74,16 @@ export function createTerminalManager({ resolveRoot, vendorDir, openSshShell }) 
   const sessions = new Map()
   const commandCache = new Map()
   let counter = 0
+  // Reap sessions a reload never re-attached to; unref keeps the Host free to exit.
+  const sweeper = setInterval(() => {
+    const now = Date.now()
+    for (const [id, session] of sessions) {
+      if (now - session.lastTouch <= IDLE_TERMINAL_MS) continue
+      sessions.delete(id)
+      terminate(session)
+    }
+  }, 60_000)
+  sweeper.unref?.()
 
   async function handle(request) {
     try {
@@ -95,6 +111,8 @@ export function createTerminalManager({ resolveRoot, vendorDir, openSshShell }) 
           return success(close(body))
         case 'commands':
           return success(await listCommands(body))
+        case 'list':
+          return success(list(body))
         default:
           return failure(400, 'bad-op', `未知的终端操作：${body.op}`)
       }
@@ -174,6 +192,9 @@ export function createTerminalManager({ resolveRoot, vendorDir, openSshShell }) 
       cols,
       rows,
       pty: sshRoot || !IS_WINDOWS,
+      root,
+      startedAt: Date.now(),
+      lastTouch: Date.now(),
       buffer: '',
       base: 0,
       closed: false,
@@ -402,6 +423,7 @@ export function createTerminalManager({ resolveRoot, vendorDir, openSshShell }) 
 
   async function write(body) {
     const session = requireSession(body.id)
+    touch(session)
     if (session.closed) throw new TerminalError('closed', '终端进程已退出')
     const data = typeof body.data === 'string' ? body.data : ''
     if (data.length === 0) return { ok: true }
@@ -444,6 +466,7 @@ export function createTerminalManager({ resolveRoot, vendorDir, openSshShell }) 
    */
   async function poll(body) {
     const session = requireSession(body.id)
+    touch(session)
     const since = Number.isFinite(Number(body.since)) ? Math.max(0, Math.floor(Number(body.since))) : 0
     const snapshot = pollSnapshot(session, since)
     if (snapshot.data.length > 0 || snapshot.reset || snapshot.closed) return snapshot
@@ -466,6 +489,42 @@ export function createTerminalManager({ resolveRoot, vendorDir, openSshShell }) 
     return pollSnapshot(session, since)
   }
 
+  /** Record that a browser is still attached to this session. */
+  function touch(session) {
+    session.lastTouch = Date.now()
+  }
+
+  /**
+   * Summarize the live sessions for one workspace root.
+   *
+   * A browser reload re-creates its terminal tabs from this list and then polls
+   * each session from offset zero, so the Host replays the buffered output and
+   * a dev server that was started before the reload keeps running.
+   */
+  function list(body) {
+    const root = typeof body.root === 'string' ? body.root : ''
+    const entries = []
+    for (const session of sessions.values()) {
+      if (session.closed) continue
+      if (root.length > 0 && session.root !== root) continue
+      touch(session)
+      entries.push({
+        id: session.id,
+        title: session.title,
+        cwd: session.cwd,
+        root: session.root,
+        cols: session.cols,
+        rows: session.rows,
+        ssh: session.ssh,
+        pty: session.pty,
+        startedAt: session.startedAt,
+        bytes: session.buffer.length,
+      })
+    }
+    entries.sort((left, right) => left.startedAt - right.startedAt)
+    return { root, sessions: entries }
+  }
+
   /** Release every poll waiting on this session (new output or a close). */
   function wake(session) {
     if (session.waiters.size === 0) return
@@ -474,6 +533,7 @@ export function createTerminalManager({ resolveRoot, vendorDir, openSshShell }) 
 
   async function resize(body) {
     const session = requireSession(body.id)
+    touch(session)
     const cols = clampDimension(body.cols, 20, 300, session.cols)
     const rows = clampDimension(body.rows, 10, 100, session.rows)
     session.cols = cols
@@ -588,6 +648,7 @@ export function createTerminalManager({ resolveRoot, vendorDir, openSshShell }) 
   }
 
   function closeAll() {
+    clearInterval(sweeper)
     for (const session of sessions.values()) terminate(session)
     sessions.clear()
   }

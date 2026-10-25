@@ -42,6 +42,12 @@ window.__ModuleLoader__.load({
     const SSH_ROOTS_KEY = 'dsh-web-filebrowser:ssh-roots'
     const SSH_UPLOAD_PATH = 'api/dsh-web-filebrowser-ssh'
 
+    /** Session restore: reopen tabs (and their unsaved buffers) after a reload. */
+    const SESSION_KEY = 'dsh-web-filebrowser:session'
+    const SESSION_MAX_TABS = 24
+    const SESSION_MAX_BYTES = 512 * 1024
+    const SESSION_SAVE_DELAY = 600
+
     /** Todo panel preferences and enumerations. */
     const TODO_FILTER_KEY = 'dsh-web-filebrowser:todo-filter'
     const TODO_SORT_KEY = 'dsh-web-filebrowser:todo-sort'
@@ -233,6 +239,10 @@ window.__ModuleLoader__.load({
       'terminal.toggle': '终端',
       'terminal.open': '打开终端',
       'terminal.title': '终端 {n}',
+      'terminal.restored': '已恢复 {count} 个终端会话',
+      'connection.offline': '与 Harness 的连接已断开，恢复后会自动刷新',
+      'panel.crashedTitle': '开发工作区遇到错误',
+      'palette.truncated': '文件索引达到上限（{count} 个），部分文件未收录',
       'terminal.label': '终端',
       'terminal.loading': '正在启动终端…',
       'terminal.exited': '进程已退出；关闭标签可结束会话',
@@ -827,6 +837,10 @@ window.__ModuleLoader__.load({
       'terminal.toggle': 'Terminal',
       'terminal.open': 'Open terminal',
       'terminal.title': 'Terminal {n}',
+      'terminal.restored': 'Restored {count} terminal session(s)',
+      'connection.offline': 'Lost the Harness connection; the workspace refreshes when it returns',
+      'panel.crashedTitle': 'The Dev Workspace hit an error',
+      'palette.truncated': 'File index reached its limit ({count} files); some files are missing',
       'terminal.label': 'Terminal',
       'terminal.loading': 'Starting terminal…',
       'terminal.exited': 'Process exited; close the tab to end the session',
@@ -2868,6 +2882,28 @@ window.__ModuleLoader__.load({
       } catch {
         /* storage may be unavailable; the UI still works for this mount */
       }
+    }
+
+    /** Read the stored editor session, tolerating cleared or corrupt storage. */
+    function readStoredSession() {
+      try {
+        const raw = window.localStorage.getItem(SESSION_KEY)
+        if (raw === null) return null
+        const parsed = JSON.parse(raw)
+        if (parsed === null || typeof parsed !== 'object') return null
+        if (typeof parsed.root !== 'string' || !Array.isArray(parsed.tabs)) return null
+        return parsed
+      } catch {
+        return null
+      }
+    }
+
+    /** Only text-file tabs are restored; diffs, terminals and browsers are rebuilt. */
+    function isPersistableTab(tab) {
+      if (tab === null || typeof tab !== 'object') return false
+      if (typeof tab.path !== 'string' || tab.path.length === 0) return false
+      if (tab.path.startsWith('diff:') || tab.path.startsWith('terminal:') || tab.path.startsWith('browser:')) return false
+      return tab.mode === 'text' || tab.mode === 'markdown'
     }
 
     /** Read locally hidden workspace paths. */
@@ -6741,6 +6777,44 @@ window.__ModuleLoader__.load({
      * Page
      * ------------------------------------------------------------------ */
 
+    /**
+     * Render-error fence for the workspace panel.
+     *
+     * One broken sub-panel (a failed read mapped into render, an unexpected
+     * Host payload) must not blank the whole Harness page: the fence keeps the
+     * rest of the page usable and the retry remounts the workspace.
+     */
+    class WorkspaceErrorBoundary extends React.Component {
+      constructor(props) {
+        super(props)
+        this.state = { error: null }
+      }
+
+      static getDerivedStateFromError(error) {
+        return { error }
+      }
+
+      componentDidCatch(error, info) {
+        console.error('dsh-web-filebrowser: workspace render failed', error, info)
+      }
+
+      render() {
+        if (this.state.error === null) return this.props.children
+        const message = this.state.error instanceof Error ? this.state.error.message : String(this.state.error)
+        return h(
+          'div',
+          { className: 'ds-fatal' },
+          h('div', { className: 'ds-fatal-title' }, this.props.title),
+          h('div', { className: 'ds-fatal-message' }, message),
+          h(
+            'button',
+            { type: 'button', className: 'ds-btn', onClick: () => this.setState({ error: null }) },
+            this.props.retryLabel,
+          ),
+        )
+      }
+    }
+
     function makeIdePage(ctx, t, store) {
       return function IdePage(props) {
         const state = useStore(store)
@@ -6821,6 +6895,9 @@ window.__ModuleLoader__.load({
         const [paletteIndex, setPaletteIndex] = useState(0)
         const [paletteBusy, setPaletteBusy] = useState(false)
         const [paletteError, setPaletteError] = useState(null)
+        // The Host caps its file index; without this flag a large repository
+        // silently misses files in Quick Open.
+        const [paletteTruncated, setPaletteTruncated] = useState(false)
         const [harnessInfo, setHarnessInfo] = useState(null)
         const [harnessBusy, setHarnessBusy] = useState(false)
         const [harnessError, setHarnessError] = useState(null)
@@ -7176,17 +7253,173 @@ window.__ModuleLoader__.load({
           }
         }, [])
 
+        // A reload used to close every Host PTY. Keep them alive instead and
+        // re-attach from the Host roster, so a dev server started before a
+        // refresh (or a tab crash) is still there afterwards. The Host reaps
+        // sessions no browser touched for a long time by itself.
+        const terminalRestoreRef = useRef(null)
+
         useEffect(() => {
-          const onUnload = () => {
-            if (typeof navigator.sendBeacon !== 'function') return
-            for (const session of terminalsRef.current) {
-              const payload = JSON.stringify({ op: 'close', id: session.hostId })
-              navigator.sendBeacon(new URL(TERMINAL_PATH, document.baseURI).href, new Blob([payload], { type: 'application/json' }))
+          if (!state.ready || state.root === null) return undefined
+          const root = state.root
+          if (terminalRestoreRef.current === root) return undefined
+          terminalRestoreRef.current = root
+          let alive = true
+          void (async () => {
+            try {
+              const value = await callTerminal('list', { root })
+              if (!alive) return
+              const sessions = (Array.isArray(value?.sessions) ? value.sessions : []).filter(
+                (entry) => entry !== null && typeof entry === 'object' && typeof entry.id === 'string',
+              )
+              const known = new Set(terminalsRef.current.map((entry) => entry.hostId))
+              const restored = sessions
+                .filter((entry) => !known.has(entry.id))
+                .map((entry, index) => ({
+                  id: entry.id,
+                  hostId: entry.id,
+                  title:
+                    typeof entry.title === 'string' && entry.title.length > 0
+                      ? entry.title
+                      : t('terminal.title', { n: String(index + 1) }),
+                  root,
+                  placement: 'panel',
+                  status: 'running',
+                  exitCode: null,
+                  pty: entry.pty !== false,
+                  ssh: entry.ssh === true,
+                }))
+              if (restored.length === 0) return
+              setTerminals((current) => {
+                const present = new Set(current.map((entry) => entry.hostId))
+                return [...current, ...restored.filter((entry) => !present.has(entry.hostId))]
+              })
+              setTerminalPanelOpen(true)
+              setTerminalPanelActive(restored[0].id)
+              showToast(t('terminal.restored', { count: String(restored.length) }))
+            } catch {
+              /* recovery is best-effort; the terminal button still opens a new one */
             }
+          })()
+          return () => {
+            alive = false
           }
-          window.addEventListener('beforeunload', onUnload)
-          return () => window.removeEventListener('beforeunload', onUnload)
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [state.ready, state.root])
+
+        // Network flapping shows up as opaque fetch failures. Tell the user and
+        // refresh the workspace once the browser is back online.
+        useEffect(() => {
+          const onOnline = () => {
+            setBanner(null)
+            if (store.get().ready && store.get().root !== null) void refreshAll()
+          }
+          const onOffline = () => {
+            setBanner({ kind: 'warn', message: t('connection.offline') })
+          }
+          window.addEventListener('online', onOnline)
+          window.addEventListener('offline', onOffline)
+          return () => {
+            window.removeEventListener('online', onOnline)
+            window.removeEventListener('offline', onOffline)
+          }
+          // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [])
+
+        // The editor session lives only in memory today, so a refresh silently
+        // loses every open tab and unsaved buffer. Store a bounded snapshot and
+        // reopen it once the same workspace is ready again.
+        const sessionHydratedRef = useRef(null)
+        const sessionRestoreRef = useRef(null)
+
+        /** Persist the open text tabs (and unsaved buffers) for this browser. */
+        function saveSession() {
+          const current = store.get()
+          if (current.root === null) return
+          const tabs = []
+          let budget = SESSION_MAX_BYTES
+          for (const tab of current.tabs) {
+            if (tabs.length >= SESSION_MAX_TABS) break
+            if (!isPersistableTab(tab)) continue
+            const entry = { path: tab.path }
+            if (
+              tab.dirty === true &&
+              typeof tab.content === 'string' &&
+              tab.content.length > 0 &&
+              tab.content.length <= budget
+            ) {
+              budget -= tab.content.length
+              entry.dirty = true
+              entry.content = tab.content
+            }
+            tabs.push(entry)
+          }
+          try {
+            window.localStorage.setItem(
+              SESSION_KEY,
+              JSON.stringify({ version: 1, root: current.root, active: current.active, line: cursor.line, tabs }),
+            )
+          } catch {
+            /* quota exceeded: keep the previous snapshot */
+          }
+        }
+
+        useEffect(() => {
+          if (!state.ready || state.root === null) return undefined
+          const root = state.root
+          if (sessionRestoreRef.current === root) return undefined
+          sessionRestoreRef.current = root
+          const stored = readStoredSession()
+          if (stored === null || stored.root !== root) {
+            sessionHydratedRef.current = root
+            return undefined
+          }
+          const entries = stored.tabs
+            .filter((entry) => entry !== null && typeof entry === 'object' && typeof entry.path === 'string')
+            .slice(0, SESSION_MAX_TABS)
+          if (entries.length === 0) {
+            sessionHydratedRef.current = root
+            return undefined
+          }
+          let alive = true
+          void (async () => {
+            for (const entry of entries) {
+              if (!alive) return
+              if (store.get().root !== root) return
+              if (store.get().tabs.some((tab) => tab.path === entry.path)) continue
+              await openFile(entry.path)
+            }
+            if (!alive || store.get().root !== root) return
+            for (const entry of entries) {
+              if (typeof entry.content !== 'string' || entry.content.length === 0) continue
+              const tab = store.get().tabs.find((item) => item.path === entry.path)
+              if (tab === undefined || tab.dirty === true) continue
+              patchTab(entry.path, { content: entry.content, dirty: entry.content !== tab.saved })
+            }
+            const active =
+              typeof stored.active === 'string' && store.get().tabs.some((tab) => tab.path === stored.active)
+                ? stored.active
+                : entries[entries.length - 1].path
+            store.set((current) => ({ ...current, active, selected: active }))
+            if (Number.isFinite(Number(stored.line))) {
+              patchTab(active, { reveal: { line: Math.max(1, Math.floor(Number(stored.line))), column: 1, nonce: Date.now() } })
+            }
+            sessionHydratedRef.current = root
+            saveSession()
+          })()
+          return () => {
+            alive = false
+          }
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [state.ready, state.root])
+
+        useEffect(() => {
+          if (!state.ready || state.root === null) return undefined
+          if (sessionHydratedRef.current !== state.root) return undefined
+          const timer = window.setTimeout(saveSession, SESSION_SAVE_DELAY)
+          return () => window.clearTimeout(timer)
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [state.ready, state.root, state.tabs, state.active, cursor.line])
 
         useEffect(() => {
           const element = rootRef.current
@@ -7609,6 +7842,7 @@ window.__ModuleLoader__.load({
             const files = Array.isArray(value?.files) ? value.files : []
             paletteFilesRef.current = { root, files, at: Date.now() }
             setPaletteFiles(files)
+            setPaletteTruncated(value?.truncated === true)
           } catch (error) {
             setPaletteError(errorText(error))
           } finally {
@@ -12537,6 +12771,13 @@ window.__ModuleLoader__.load({
                   }
                 },
               }),
+              paletteMode === 'files' && paletteTruncated
+                ? h(
+                    'div',
+                    { className: 'ds-palette-note' },
+                    t('palette.truncated', { count: String(paletteFiles.length) }),
+                  )
+                : null,
               paletteError !== null
                 ? h('div', { className: 'ds-errorline' }, paletteError)
                 : paletteBusy
@@ -13992,6 +14233,19 @@ window.__ModuleLoader__.load({
 }
 .ds-root[data-maximized="true"] .ds-side,
 .ds-root[data-maximized="true"] .ds-splitter { display: none; }
+.ds-fatal {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+}
+.ds-fatal-title { font-size: 14px; font-weight: 600; }
+.ds-fatal-message { max-width: 620px; color: var(--dsw-alias-label-secondary); font-family: var(--ds-mono); font-size: 11px; overflow-wrap: anywhere; }
 .ds-root[data-workspace-fullscreen="true"] {
   position: fixed;
   inset: 0;
@@ -15872,6 +16126,7 @@ window.__ModuleLoader__.load({
   box-shadow: 0 18px 60px color-mix(in srgb, #000 28%, transparent);
 }
 .ds-palette-title { padding: 7px 12px; border-bottom: 1px solid var(--dsw-alias-border-l1); color: var(--dsw-alias-label-caption); font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.ds-palette-note { flex: 0 0 auto; padding: 5px 12px; border-bottom: 1px solid var(--dsw-alias-border-l1); color: var(--dsw-alias-state-warn-primary); font-size: 10.5px; }
 .ds-palette-input {
   height: 40px;
   padding: 0 12px;
@@ -17087,6 +17342,14 @@ window.__ModuleLoader__.load({
         const store = createStore(initialState())
         ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-web-filebrowser: dictionaries')
         const IdePage = makeIdePage(ctx, t, store)
+        // Register the fenced page everywhere the workspace mounts, so a render
+        // error inside one panel cannot take the Harness page down with it.
+        const SafeIdePage = (props) =>
+          h(
+            WorkspaceErrorBoundary,
+            { title: t('panel.crashedTitle'), retryLabel: t('action.retry') },
+            h(IdePage, props),
+          )
         const IdeTitle = makeIdeTitle(t)
         ctx.effect(
           () =>
@@ -17098,7 +17361,7 @@ window.__ModuleLoader__.load({
                   locale: NS,
                   children: { [CHAT_INLINE_SLOT]: { kind: 'single', scope: 'session-maybe' } },
                 },
-                IdePage,
+                SafeIdePage,
               ),
             ),
           'dsh-web-filebrowser: main panel',
@@ -17166,7 +17429,7 @@ window.__ModuleLoader__.load({
                     locale: NS,
                     children: { [CHAT_SIDEBAR_INLINE_SLOT]: { kind: 'single', scope: 'session-maybe' } },
                   },
-                  IdePage,
+                  SafeIdePage,
                 ),
               ),
             'dsh-web-filebrowser: right-sidebar body',

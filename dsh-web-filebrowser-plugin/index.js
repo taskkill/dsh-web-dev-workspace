@@ -23,8 +23,11 @@ import path from 'node:path'
 import { Readable } from 'node:stream'
 import { fileURLToPath } from 'node:url'
 import * as bookmarks from './bookmarks.js'
+import * as acceptance from './acceptance.js'
+import * as delivery from './delivery.js'
 import * as memory from './memory.js'
 import * as ssh from './ssh.js'
+import { createTaskManager } from './tasks.js'
 import { createTerminalManager } from './terminal.js'
 import * as todo from './todo.js'
 
@@ -39,6 +42,12 @@ const PROXY_ROUTE = '/api/dsh-web-filebrowser-proxy'
 
 /** Local terminal session/asset route. */
 const TERMINAL_ROUTE = '/api/dsh-web-filebrowser-terminal'
+
+/** Project task runner route (build/test/lint/dev output streams). */
+const TASKS_ROUTE = '/api/dsh-web-filebrowser-tasks'
+
+/** Delivery packaging route: build-output ZIP and report bundle. */
+const DELIVERY_ROUTE = '/api/dsh-web-filebrowser-delivery'
 
 const VENDOR_DIR = fileURLToPath(new URL('./vendor/', import.meta.url))
 
@@ -149,6 +158,8 @@ export function apply(ctx) {
     toolsCtx.effect(() => memory.registerMemoryPrompt(toolsCtx), 'dsh-web-filebrowser: workspace memory prompt')
     toolsCtx.effect(() => todo.registerTodoTools(toolsCtx), 'dsh-web-filebrowser: workspace todo tools')
     toolsCtx.effect(() => todo.registerTodoPrompt(toolsCtx), 'dsh-web-filebrowser: workspace todo prompt')
+    toolsCtx.effect(() => acceptance.registerAcceptanceTools(toolsCtx), 'dsh-web-filebrowser: workspace acceptance tools')
+    toolsCtx.effect(() => acceptance.registerAcceptancePrompt(toolsCtx), 'dsh-web-filebrowser: workspace acceptance prompt')
   })
   ctx.effect(() => {
     let disposed = false
@@ -158,6 +169,7 @@ export function apply(ctx) {
       vendorDir: VENDOR_DIR,
       openSshShell: (spec, options) => ssh.openShell(spec, options),
     })
+    const tasks = createTaskManager({ resolveRoot: (requested) => resolveRoot(ctx, requested) })
     const register = (route, methods, handler, label) => {
       const registration = ctx.connection.fetch.register({
         path: route,
@@ -181,10 +193,13 @@ export function apply(ctx) {
     register(LEGACY_ROUTE_SSH_UPLOAD, ['POST'], (request) => handleSshUpload(request), 'the legacy SSH upload route')
     register(PROXY_ROUTE, ['GET'], (request) => handleProxy(request), 'the external preview proxy')
     register(TERMINAL_ROUTE, ['GET', 'POST'], (request) => terminals.handle(request), 'the terminal route')
+    register(TASKS_ROUTE, ['POST'], (request) => tasks.handle(request), 'the task runner route')
+    register(DELIVERY_ROUTE, ['GET', 'POST'], (request) => handleDelivery(ctx, request), 'the delivery route')
     return () => {
       disposed = true
       for (const dispose of disposers) dispose()
       terminals.closeAll()
+      tasks.closeAll()
       void ssh.closeAll()
     }
   }, 'dsh-web-filebrowser: authenticated file API')
@@ -291,6 +306,18 @@ async function dispatch(ctx, op, body) {
       return deleteTodo(ctx, body)
     case 'todoClearCompleted':
       return clearCompletedTodos(ctx, body)
+    case 'acceptanceList':
+      return listAcceptance(ctx, body)
+    case 'acceptanceAdd':
+      return addAcceptance(ctx, body)
+    case 'acceptanceUpdate':
+      return updateAcceptance(ctx, body)
+    case 'acceptanceDelete':
+      return deleteAcceptance(ctx, body)
+    case 'acceptanceClearPassed':
+      return clearPassedAcceptance(ctx, body)
+    case 'acceptanceReport':
+      return acceptanceReport(ctx, body)
     case 'browserBookmarks':
       return listBrowserBookmarks(ctx, body)
     case 'browserBookmarkAdd':
@@ -884,6 +911,94 @@ async function clearCompletedTodos(ctx, body) {
 }
 
 /**
+ * Resolve a local workspace root for an acceptance-board operation. The board
+ * lives in the workspace's `.dsh` directory, so SSH remote roots have none.
+ * @param ctx - Host context.
+ * @param requested - root path sent by the browser.
+ * @returns canonical local root.
+ */
+async function acceptanceRoot(ctx, requested) {
+  const root = await resolveRoot(ctx, requested)
+  if (ssh.isSshRoot(root)) throw new SideError('ssh-unsupported', 'SSH 远程工作区暂不支持本地验收清单')
+  return root
+}
+
+/**
+ * Read one workspace's acceptance checklist for the Acceptance panel.
+ * @param ctx - Host context.
+ * @param body - `{ root }`.
+ * @returns items plus document metadata.
+ */
+async function listAcceptance(ctx, body) {
+  const root = await acceptanceRoot(ctx, body.root)
+  return acceptance.listAcceptance(root)
+}
+
+/**
+ * Add one acceptance item from the Acceptance panel.
+ * @param ctx - Host context.
+ * @param body - `{ root, title, note?, category?, requirement? }`.
+ * @returns the new item.
+ */
+async function addAcceptance(ctx, body) {
+  const root = await acceptanceRoot(ctx, body.root)
+  return acceptance.addAcceptance(root, {
+    title: body.title,
+    note: body.note,
+    category: body.category,
+    requirement: body.requirement,
+  })
+}
+
+/**
+ * Update one acceptance item from the Acceptance panel.
+ * @param ctx - Host context.
+ * @param body - `{ root, id, title?, note?, status?, category?, requirement? }`.
+ * @returns the updated item.
+ */
+async function updateAcceptance(ctx, body) {
+  const root = await acceptanceRoot(ctx, body.root)
+  const patch = { id: body.id }
+  for (const key of ['title', 'note', 'status', 'category', 'requirement']) {
+    if (Object.prototype.hasOwnProperty.call(body, key)) patch[key] = body[key]
+  }
+  return acceptance.updateAcceptance(root, patch)
+}
+
+/**
+ * Delete one acceptance item from the Acceptance panel.
+ * @param ctx - Host context.
+ * @param body - `{ root, id }`.
+ * @returns `{ removed }`.
+ */
+async function deleteAcceptance(ctx, body) {
+  const root = await acceptanceRoot(ctx, body.root)
+  return acceptance.deleteAcceptance(root, body.id)
+}
+
+/**
+ * Drop every passed acceptance item.
+ * @param ctx - Host context.
+ * @param body - `{ root }`.
+ * @returns `{ removed }`.
+ */
+async function clearPassedAcceptance(ctx, body) {
+  const root = await acceptanceRoot(ctx, body.root)
+  return acceptance.clearPassedAcceptance(root)
+}
+
+/**
+ * Render the workspace acceptance report as Markdown for export.
+ * @param ctx - Host context.
+ * @param body - `{ root }`.
+ * @returns `{ markdown }`.
+ */
+async function acceptanceReport(ctx, body) {
+  const root = await acceptanceRoot(ctx, body.root)
+  return { markdown: await acceptance.buildAcceptanceMarkdown(root) }
+}
+
+/**
  * Resolve a local workspace root for a browser-bookmark operation. Bookmarks
  * live in the workspace's `.dsh` directory, so SSH remote roots have none.
  * @param ctx - Host context.
@@ -1299,6 +1414,83 @@ async function ensureParentInside(root, absolute) {
 async function destinationPath(root, absolute) {
   const realParent = await ensureParentInside(root, absolute)
   return path.join(realParent, path.basename(absolute))
+}
+
+/**
+ * Package the workspace build output for client delivery.
+ *
+ * GET streams `dist` / `build` / `out` / `.output` / `public` (or the `targets`
+ * query) as a ZIP attachment. POST op `bundle` writes the same archive plus an
+ * acceptance report into `<root>/.dsh/deliveries` and returns its path, so the
+ * normal raw download can fetch it afterwards.
+ *
+ * @param ctx - Host context.
+ * @param request - incoming delivery request.
+ * @returns a ZIP stream, a JSON answer, or an error response.
+ */
+async function handleDelivery(ctx, request) {
+  try {
+    if (request.method === 'POST') {
+      let body
+      try {
+        body = await request.json()
+      } catch {
+        return json({ ok: false, error: failure('bad-request', '请求体不是有效的 JSON') }, 400)
+      }
+      if (body === null || typeof body !== 'object' || typeof body.op !== 'string') {
+        return json({ ok: false, error: failure('bad-request', '缺少操作名 op') }, 400)
+      }
+      if (body.op !== 'bundle') throw new SideError('bad-op', `未知的交付操作：${body.op}`)
+      const root = await resolveRoot(ctx, body.root)
+      if (ssh.isSshRoot(root)) throw new SideError('ssh-unsupported', 'SSH 远程工作区暂不支持交付打包')
+      const result = await delivery.writeDeliveryBundle(root, {
+        reportMarkdown: typeof body.reportMarkdown === 'string' ? body.reportMarkdown : undefined,
+        targets: Array.isArray(body.targets) ? body.targets : undefined,
+        include: typeof body.include === 'string' ? body.include : undefined,
+        exclude: typeof body.exclude === 'string' ? body.exclude : undefined,
+      })
+      return json({
+        ok: true,
+        value: {
+          ...result,
+          name: path.basename(result.path),
+          relative: path.relative(root, result.path).split(path.sep).join('/'),
+        },
+      })
+    }
+    const url = new URL(request.url)
+    const root = await resolveRoot(ctx, url.searchParams.get('root') ?? '')
+    if (ssh.isSshRoot(root)) {
+      return json({ ok: false, error: failure('ssh-unsupported', 'SSH 远程工作区暂不支持交付打包') }, 400)
+    }
+    const targets = (url.searchParams.get('targets') ?? '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0)
+    const built = await delivery.buildDeliveryZip(root, {
+      targets: targets.length > 0 ? targets : undefined,
+      include: url.searchParams.get('include') ?? undefined,
+      exclude: url.searchParams.get('exclude') ?? undefined,
+    })
+    return new Response(Readable.toWeb(built.readStream), {
+      status: 200,
+      headers: {
+        'content-type': 'application/zip',
+        'content-disposition': `attachment; filename*=UTF-8''${encodeURIComponent(built.filename)}`,
+        'cache-control': 'no-store',
+        'x-content-type-options': 'nosniff',
+      },
+    })
+  } catch (error) {
+    if (error instanceof SideError) {
+      return json({ ok: false, error: { code: error.code, message: error.message } }, 200)
+    }
+    if (error !== null && typeof error === 'object' && typeof error.sideCode === 'string') {
+      return json({ ok: false, error: { code: error.sideCode, message: error.message } }, 200)
+    }
+    console.error('dsh-web-filebrowser: delivery request failed', error)
+    return json({ ok: false, error: failure('internal', error instanceof Error ? error.message : String(error)) }, 200)
+  }
 }
 
 /** Serve one file's bytes for PDF/image preview and browser handoff. */

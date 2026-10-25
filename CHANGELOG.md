@@ -4,6 +4,36 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Stability pass and Host groundwork for the acceptance workflow
+
+- **Session restore**: open text tabs, their unsaved buffers (up to 24 tabs /
+  512 KiB, active tab's line) are snapshotted to localStorage and reopened after
+  a reload in the same workspace, so a refresh no longer loses the editor state.
+- **Terminals survive reloads**: the browser no longer closes every Host PTY on
+  `beforeunload`. A new `list` terminal op lets the client re-attach to the live
+  sessions of the current workspace after a reload (buffered output is replayed),
+  a dev server started before the refresh keeps running, and the Host reaps
+  sessions no browser touched for 12 hours instead of leaking all 8 slots.
+- **Render safety**: the workspace panel is wrapped in an error boundary, so a
+  failing sub-panel cannot blank the Harness page; a retry remounts it. Losing
+  the network now shows a banner and refreshes the workspace automatically once
+  the browser is back online.
+- **Quick Open honesty**: when the Host file index hits its 5000-file cap, the
+  palette now says so instead of silently hiding files.
+- **Host modules for the next batches** (routes registered, UI follows):
+  `tasks.js` — project task runner (`start` / `poll` / `kill` / `list` /
+  `detect`) with a 1 MB output ring and long-poll delivery, per-root concurrency
+  and process-group kill; `acceptance.js` — the workspace acceptance checklist
+  (`.dsh/acceptance.json`, four states, checked timestamps, Markdown report) with
+  five model tools and a prompt section, so the agent can write acceptance items
+  and the owner can check them; `delivery.js` — a zero-dependency streaming ZIP
+  writer that packages `dist`/`build`/`out`/`.output`/`public` (or explicit
+  targets) for client hand-off and can bundle the acceptance report.
+- New Host routes: `/api/dsh-web-filebrowser-tasks` and
+  `/api/dsh-web-filebrowser-delivery`, plus `acceptance*` operations on the main
+  route. **These are Host-side changes: restart Harness once to load them**
+  (browser refresh covers the client half).
+
 ### Full-project development roadmap
 
 - Added **`docs/ROADMAP.md`**: a prioritized plan (P0–P3) for developing complete
