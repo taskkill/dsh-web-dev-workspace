@@ -8471,7 +8471,7 @@ window.__ModuleLoader__.load({
           ? '100%'
           : `${String(containerWidth > 0 ? Math.min(state.treeWidth, Math.max(220, Math.floor(containerWidth * 0.42))) : state.treeWidth)}px`
         const workbenchActive = workbenchOpen && activeTab === null
-        const showSide = !workbenchActive && !maximized && (!compact || compactView === 'tree' || activeTab === null)
+        const showSide = !maximized && (compact ? !workbenchActive && (compactView === 'tree' || activeTab === null) : true)
         const showMain = workbenchActive ? !maximized : maximized || !compact || (activeTab !== null && compactView === 'editor')
         const canCollapse = Object.keys(state.expanded).some((entry) => entry !== '')
         const rootFavorites = state.root === null ? [] : state.favorites[state.root] ?? []
@@ -15404,18 +15404,30 @@ ${tail}
           return h(
             'div',
             { className: 'ds-wb-page' },
-            compact
-              ? h(
-                  'div',
-                  { className: 'ds-wb-page-head' },
-                  h(
+            h(
+              'div',
+              { className: 'ds-wb-page-head' },
+              compact
+                ? h(
                     'button',
                     { type: 'button', className: 'ds-iconbtn', title: t('compact.back'), onClick: () => closeWorkbench() },
                     h(ChevronLeftIcon),
-                  ),
-                  h('span', { className: 'ds-wb-page-title' }, t('workbench.title')),
-                )
-              : null,
+                  )
+                : null,
+              compact ? null : h('span', { className: 'ds-wb-page-title' }, t('workbench.title')),
+              h('span', { className: 'ds-spacer' }),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-iconbtn',
+                  title: t('action.close'),
+                  'aria-label': t('action.close'),
+                  onClick: () => closeWorkbench(),
+                },
+                h(CloseIcon),
+              ),
+            ),
             h(
               'div',
               { className: 'ds-wb-page-scroll' },
@@ -17790,7 +17802,7 @@ h(
               className: 'ds-splitter',
               role: 'separator',
               'aria-orientation': 'vertical',
-              style: compact || maximized || workbenchActive ? { display: 'none' } : undefined,
+              style: compact || maximized ? { display: 'none' } : undefined,
               onPointerDown: beginSplitDrag,
             }),
             h(

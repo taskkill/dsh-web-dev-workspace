@@ -4,6 +4,17 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Workbench behaves like a normal editor tab
+
+- The dashboard no longer takes over the window: on desktop the file sidebar
+  stays visible while the Workbench tab is active, the splitter works, and the
+  page has a header with its title and an explicit **close (×)** button. The tab
+  itself still has a close button, so both routes work.
+- Compact layouts keep the back button (return to the file tree) plus the close
+  button; the sidebar-only full-width behaviour is limited to phones.
+- Opening a file from the tree swaps the editor content while keeping the
+  Workbench tab in the strip; clicking the tab returns to the dashboard.
+
 ### Fix: “Cannot access 'activeTab' before initialization” on load
 
 - The workbench-tab navigation effect referenced the `activeTab` const from its
