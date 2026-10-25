@@ -4,6 +4,16 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Welcome screen redesign
+
+- The empty-workspace screen was rebuilt as a small landing page: framed hero
+  icon, title, one-line hint, keyboard keycaps (⌘/Ctrl+S · F2 · Delete), a
+  full-width primary “new file” action and a 2×2 grid of action cards with icons
+  and one-line descriptions — Workbench (project progress / intake /
+  acceptance), built-in browser, quick open (⌘/Ctrl+P) and terminal. Cards have
+  hover and press feedback; the grid collapses to one column on narrow layouts.
+  The old vertical button stack and its shortcut line are gone.
+
 ### Sidebar: Git is a first-class tab again
 
 - The visible sidebar strip is now **Files / Search / Git / More** on local

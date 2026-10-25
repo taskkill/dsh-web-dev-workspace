@@ -72,6 +72,7 @@ it for you.
   commands, runs them with streamed output and exit codes, and turns errors in
   the output into clickable file:line links that jump into the editor. Tasks that
   were still running when the page reloaded are re-attached.
+- **Redesigned welcome screen** — an empty workspace now shows a hero icon, shortcut keycaps, a primary action and a 2×2 quick-action grid (Workbench / browser / quick open / terminal) instead of a vertical button column.
 - **One-click requirement intake** — paste a requirement, drop screenshots or requirement documents, and one click hands it to the product manager: the workbench turns it into a landable plan, starts the pipeline, auto-advances the intermediate stages, and only asks the owner at final sign-off and release.
 - **Workbench landing page** — a workspace opens on a full-width Workbench in the main content area (not the narrow sidebar) showing the current project stage, the approvals that need the owner, acceptance results, deliverables and running tasks with direct actions; the sidebar keeps Files / Search / Git / More, with project and development views grouped in the overflow menu.
 - **OPC team** — five standing role agents (product manager, UI designer, full-stack engineer, QA, ops) plus the Lead deliver through the six-stage pipeline, each with a boundary-bound role handbook and artefact templates; the company charter and roster live in [docs/opc/](docs/opc/README.md).

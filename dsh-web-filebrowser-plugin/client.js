@@ -16709,48 +16709,88 @@ ${tail}
                     h(
                       'div',
                       { className: 'ds-welcome-card' },
-                      h('span', { className: 'ds-welcome-logo' }, h(PanelGlyph, { size: 44, active: true })),
+                      h('span', { className: 'ds-welcome-logo' }, h(PanelGlyph, { size: 52, active: true })),
                       h('div', { className: 'ds-welcome-title' }, t('welcomeTitle')),
                       h('div', { className: 'ds-welcome-text' }, t('welcomeHint')),
-                      h('div', { className: 'ds-kbdline' }, t('welcomeShortcuts')),
                       h(
-                        React.Fragment,
-                        null,
+                        'div',
+                        { className: 'ds-welcome-keys' },
+                        h('span', { className: 'ds-welcome-key' }, h('kbd', null, '⌘/Ctrl + S'), t('welcome.save')),
+                        h('span', { className: 'ds-welcome-key' }, h('kbd', null, 'F2'), t('welcome.rename')),
+                        h('span', { className: 'ds-welcome-key' }, h('kbd', null, 'Delete'), t('welcome.delete')),
+                      ),
+                      h(
+                        'div',
+                        { className: 'ds-welcome-actions' },
                         state.root === null
-                          ? null
-                          : h(
-                              'button',
-                              { type: 'button', className: 'ds-btn ds-btn-primary', onClick: () => startCreate('file') },
-                              h(NewFileIcon),
-                              t('welcomeNewFile'),
-                            ),
-                        h(
-                          'button',
-                          { type: 'button', className: 'ds-btn', onClick: () => openWorkbench() },
-                          h(WorkbenchIcon),
-                          t('workbench.title'),
-                        ),
-                        h(
-                          'button',
-                          { type: 'button', className: 'ds-btn', onClick: () => openBrowser() },
-                          h(GlobeIcon),
-                          t('browser.open'),
-                        ),
-                        state.root === null || isSshRootPath(state.root)
                           ? null
                           : h(
                               'button',
                               {
                                 type: 'button',
-                                className: 'ds-btn',
-                                onClick: () => {
-                                  if (terminals.some((entry) => entry.placement === 'panel')) setTerminalPanelOpen(true)
-                                  else void openTerminal('panel')
-                                },
+                                className: 'ds-btn ds-btn-primary ds-welcome-primary',
+                                onClick: () => startCreate('file'),
                               },
-                              h(TerminalIcon),
-                              t('terminal.open'),
+                              h(NewFileIcon),
+                              t('welcomeNewFile'),
                             ),
+                        h(
+                          'div',
+                          { className: 'ds-welcome-grid' },
+                          h(
+                            'button',
+                            { type: 'button', className: 'ds-welcome-action', onClick: () => openWorkbench() },
+                            h('span', { className: 'ds-welcome-action-icon' }, h(WorkbenchIcon)),
+                            h(
+                              'span',
+                              { className: 'ds-welcome-action-body' },
+                              h('span', { className: 'ds-welcome-action-title' }, t('workbench.title')),
+                              h('span', { className: 'ds-welcome-action-desc' }, t('welcome.workbenchDesc')),
+                            ),
+                          ),
+                          h(
+                            'button',
+                            { type: 'button', className: 'ds-welcome-action', onClick: () => openBrowser() },
+                            h('span', { className: 'ds-welcome-action-icon' }, h(GlobeIcon)),
+                            h(
+                              'span',
+                              { className: 'ds-welcome-action-body' },
+                              h('span', { className: 'ds-welcome-action-title' }, t('browser.open')),
+                              h('span', { className: 'ds-welcome-action-desc' }, t('welcome.browserDesc')),
+                            ),
+                          ),
+                          h(
+                            'button',
+                            { type: 'button', className: 'ds-welcome-action', onClick: () => void openQuickOpen() },
+                            h('span', { className: 'ds-welcome-action-icon' }, h(SearchIcon)),
+                            h(
+                              'span',
+                              { className: 'ds-welcome-action-body' },
+                              h('span', { className: 'ds-welcome-action-title' }, t('welcome.quickOpen')),
+                              h('span', { className: 'ds-welcome-action-desc' }, t('welcome.quickOpenDesc')),
+                            ),
+                          ),
+                          state.root === null || isSshRootPath(state.root)
+                            ? null
+                            : h(
+                                'button',
+                                {
+                                  type: 'button',
+                                  className: 'ds-welcome-action',
+                                  onClick: () => {
+                                    if (terminals.some((entry) => entry.placement === 'panel')) setTerminalPanelOpen(true)
+                                    else void openTerminal('panel')
+                                  },
+                                },
+                                h('span', { className: 'ds-welcome-action-icon' }, h(TerminalIcon)),
+                                h(
+                                  'span',
+                                  { className: 'ds-welcome-action-body' },
+                                  h('span', { className: 'ds-welcome-action-title' }, t('terminal.open')),
+                                  h('span', { className: 'ds-welcome-action-desc' }, t('welcome.terminalDesc')),
+                                ),
+                              ),
+                        ),
                       ),
                     ),
                   )
@@ -20045,12 +20085,26 @@ ${tail}
   font-size: 10.5px;
 }
 .ds-status-item { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ds-welcome { display: flex; flex: 1 1 auto; align-items: center; justify-content: center; padding: 32px; }
-.ds-welcome-card { display: flex; flex-direction: column; align-items: center; gap: 12px; max-width: 460px; text-align: center; }
-.ds-welcome-logo { display: inline-flex; color: var(--dsw-alias-brand-primary); margin-bottom: 2px; }
-.ds-welcome-title { font-size: 19px; font-weight: 600; color: var(--dsw-alias-label-primary); }
-.ds-welcome-text { color: var(--dsw-alias-label-secondary); line-height: 1.7; }
+.ds-welcome { display: flex; flex: 1 1 auto; align-items: center; justify-content: center; padding: 40px 24px; background: radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--dsw-alias-brand-primary) 5%, transparent), transparent 60%); }
+.ds-welcome-card { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; max-width: 520px; text-align: center; }
+.ds-welcome-logo { display: inline-flex; margin-bottom: 4px; padding: 11px; border-radius: 15px; color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 9%, transparent); }
+.ds-welcome-title { font-size: 21px; font-weight: 600; letter-spacing: 0.01em; color: var(--dsw-alias-label-primary); }
+.ds-welcome-text { max-width: 430px; color: var(--dsw-alias-label-secondary); line-height: 1.7; font-size: 12.5px; }
+.ds-welcome-keys { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 12px; margin: 2px 0 10px; }
+.ds-welcome-key { display: inline-flex; align-items: center; gap: 5px; color: var(--dsw-alias-label-caption); font-size: 10.5px; }
+.ds-welcome-key kbd { padding: 1px 5px; border: 1px solid var(--dsw-alias-border-l1); border-bottom-width: 2px; border-radius: 4px; background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-secondary); font-family: inherit; font-size: 9.5px; }
+.ds-welcome-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; margin-top: 4px; }
+.ds-welcome-primary { height: 36px; justify-content: center; font-size: 12.5px; border-radius: 9px; }
+.ds-welcome-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.ds-welcome-action { display: flex; align-items: flex-start; gap: 8px; padding: 10px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 9px; background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-primary); text-align: left; cursor: pointer; transition: border-color 0.15s, background 0.15s, transform 0.1s; }
+.ds-welcome-action:hover { border-color: color-mix(in srgb, var(--dsw-alias-brand-primary) 45%, var(--dsw-alias-border-l1)); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 4%, var(--dsw-alias-bg-layer-1)); }
+.ds-welcome-action:active { transform: translateY(1px); }
+.ds-welcome-action-icon { display: inline-flex; flex: 0 0 auto; margin-top: 1px; color: var(--dsw-alias-brand-primary); }
+.ds-welcome-action-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ds-welcome-action-title { font-size: 11.5px; font-weight: 600; }
+.ds-welcome-action-desc { color: var(--dsw-alias-label-caption); font-size: 9.5px; line-height: 1.35; }
 .ds-kbdline { color: var(--dsw-alias-label-secondary); font-size: 11.5px; }
+@media (max-width: 520px) { .ds-welcome-grid { grid-template-columns: 1fr; } }
 .ds-empty {
   display: flex;
   flex: 1 1 auto;
