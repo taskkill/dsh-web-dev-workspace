@@ -4,6 +4,24 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Workbench clarity: working navigation and honest stage actions
+
+- **“Open pipeline / acceptance / tasks” from the dashboard now works.** The
+  workbench hides the sidebar to use the full width, but those buttons only
+  switched the sidebar view — so nothing visible happened. Navigating to any
+  sidebar view (pipeline, acceptance, tasks, todo, Git, search, memory) now
+  closes the dashboard first so the sidebar appears.
+- **“Start and dispatch” is only offered for a pending or failed stage.** It
+  starts the stage and sends the role prompt to the team; a stage that is
+  already running now shows an **In progress** pill and a **resend role prompt**
+  link instead (clicking start on a running stage used to fail silently because
+  the error was only rendered in the pipeline view). An awaiting-review stage
+  shows **Awaiting review**. A short hint explains what the action does.
+- The stage progress strip is now **labelled chips** (✓ requirement, ✓ design,
+  ● development, ○ testing, ○ sign-off, ○ release) instead of anonymous bars,
+  clickable to open the pipeline; the caption reads **“Completed 2/6 ·
+  current: development”**. Fast mode stays on the project card.
+
 ### Tasks panel: run history and results instead of a bare detector list
 
 - The Tasks / retest panel was rebuilt around outcomes: the toolbar now shows the

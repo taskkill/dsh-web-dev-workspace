@@ -404,6 +404,14 @@ window.__ModuleLoader__.load({
       'workbench.attachments': '附件',
       'workbench.needInput': '先写需求或加一个附件。',
       'workbench.progress': '阶段 {done}/{total} · 当前：{stage}',
+      'workbench.done': '已完成 {done}/{total}',
+      'workbench.current': '当前：{stage}',
+      'workbench.allDone': '全部阶段已完成',
+      'workbench.startStage': '启动并派发',
+      'workbench.startHint': '启动该阶段，并把角色提示发给团队开始工作；阶段进行中无需再点。',
+      'workbench.resend': '重发角色提示',
+      'workbench.runningStage': '进行中',
+      'workbench.waitingReview': '待审批',
       'workbench.needsYou': '需要你处理',
       'workbench.nothingNeedsYou': '暂无待办，团队进行中。',
       'workbench.reviewGate': '第 {n} 关「{stage}」待审批',
@@ -1187,6 +1195,14 @@ window.__ModuleLoader__.load({
       'workbench.attachments': 'Attachments',
       'workbench.needInput': 'Write the requirement or add an attachment first.',
       'workbench.progress': 'Stage {done}/{total} · current: {stage}',
+      'workbench.done': 'Completed {done}/{total}',
+      'workbench.current': 'current: {stage}',
+      'workbench.allDone': 'all stages complete',
+      'workbench.startStage': 'Start and dispatch',
+      'workbench.startHint': 'Starts the stage and sends the role prompt to the team; a running stage does not need this.',
+      'workbench.resend': 'Resend role prompt',
+      'workbench.runningStage': 'In progress',
+      'workbench.waitingReview': 'Awaiting review',
       'workbench.needsYou': 'Needs you',
       'workbench.nothingNeedsYou': 'Nothing needs you right now; the team is working.',
       'workbench.reviewGate': 'Stage {n} “{stage}” is waiting for your review',
@@ -7824,6 +7840,12 @@ window.__ModuleLoader__.load({
           // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [state.ready, state.root])
 
+        // Navigating from the dashboard to a sidebar view must reveal the sidebar:
+        // the workbench hides it, so close the dashboard when the pane changes.
+        useEffect(() => {
+          if (workbenchOpen && paneView !== 'files') setWorkbenchOpen(false)
+        }, [workbenchOpen, paneView])
+
         // Remember the last view per workspace so reopening feels continuous.
         useEffect(() => {
           if (state.root === null) return
@@ -14235,24 +14257,40 @@ ${tail}
                     ? null
                     : h(
                         'div',
-                        { className: 'ds-wb-dots' },
+                        { className: 'ds-wb-stages' },
                         stages.map((stage) =>
-                          h('span', {
-                            key: stage.id,
-                            className: 'ds-wb-dot',
-                            'data-status': stage.status,
-                            title: stageTitle(stage.id) + ' · ' + (statusText[stage.status] ?? String(stage.status)),
-                          }),
+                          h(
+                            'button',
+                            {
+                              key: stage.id,
+                              type: 'button',
+                              className: 'ds-wb-stage',
+                              'data-status': stage.status,
+                              title: stageTitle(stage.id) + ' · ' + (statusText[stage.status] ?? String(stage.status)),
+                              onClick: openPipeline,
+                            },
+                            h(
+                              'span',
+                              { className: 'ds-wb-stage-glyph', 'aria-hidden': true },
+                              stage.status === 'approved'
+                                ? '✓'
+                                : stage.status === 'active'
+                                  ? '●'
+                                  : stage.status === 'review'
+                                    ? '◆'
+                                    : stage.status === 'failed'
+                                      ? '✗'
+                                      : '○',
+                            ),
+                            h('span', { className: 'ds-wb-stage-name' }, stageTitle(stage.id)),
+                          ),
                         ),
                       ),
                   h(
                     'div',
                     { className: 'ds-wb-progress' },
-                    t('workbench.progress', {
-                      done: String(done),
-                      total: String(total),
-                      stage: current === null ? t('pipeline.status.approved') : stageTitle(current.id),
-                    }),
+                    t('workbench.done', { done: String(done), total: String(total) }) +
+                      (current === null ? ' · ' + t('workbench.allDone') : ' · ' + t('workbench.current', { stage: stageTitle(current.id) })),
                   ),
                   h(
                     'div',
@@ -14269,15 +14307,35 @@ ${tail}
                       h('span', null, t('pipeline.fastMode')),
                     ),
                     h('span', { className: 'ds-spacer' }),
-                    current !== null && current.status !== 'review'
+                    current === null
+                      ? h('span', { className: 'ds-wb-status-pill', 'data-status': 'approved' }, t('pipeline.status.approved'))
+                      : current.status === 'active'
+                        ? h('span', { className: 'ds-wb-status-pill', 'data-status': 'active' }, t('workbench.runningStage'))
+                        : current.status === 'review'
+                          ? h('span', { className: 'ds-wb-status-pill', 'data-status': 'review' }, t('workbench.waitingReview'))
+                          : h(
+                              'button',
+                              {
+                                type: 'button',
+                                className: 'ds-btn ds-wb-btn ds-wb-start',
+                                title: t('workbench.startHint'),
+                                disabled: pipelineBusy,
+                                onClick: () => void startPipelineStage(current.id),
+                              },
+                              t('workbench.startStage'),
+                            ),
+                    current !== null && current.status === 'active'
                       ? h(
                           'button',
-                          { type: 'button', className: 'ds-btn ds-wb-btn', disabled: pipelineBusy, onClick: () => void startPipelineStage(current.id) },
-                          t('pipeline.start'),
+                          { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: () => void resendPipelinePrompt(current.id) },
+                          t('workbench.resend'),
                         )
                       : null,
                     h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: openPipeline }, t('workbench.openPipeline')),
                   ),
+                  current !== null && (current.status === 'pending' || current.status === 'failed')
+                    ? h('div', { className: 'ds-wb-start-hint' }, t('workbench.startHint'))
+                    : null,
                 )
               : h(
                   'div',
@@ -19461,6 +19519,19 @@ ${tail}
 .ds-wb-dot[data-status="approved"] { background: var(--dsw-alias-state-success-primary); }
 .ds-wb-dot[data-status="failed"] { background: var(--dsw-alias-state-error-primary); }
 .ds-wb-fast { margin-right: 0; }
+.ds-wb-stages { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.ds-wb-stage { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 10px; background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-caption); font-size: 9.5px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.ds-wb-stage:hover { border-color: color-mix(in srgb, var(--dsw-alias-brand-primary) 40%, var(--dsw-alias-border-l1)); }
+.ds-wb-stage[data-status="approved"] { color: var(--dsw-alias-state-success-primary); border-color: color-mix(in srgb, var(--dsw-alias-state-success-primary) 35%, var(--dsw-alias-border-l1)); background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 7%, var(--dsw-alias-bg-layer-1)); }
+.ds-wb-stage[data-status="active"] { color: var(--dsw-alias-label-primary); border-color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 9%, var(--dsw-alias-bg-layer-1)); font-weight: 600; }
+.ds-wb-stage[data-status="review"] { color: var(--dsw-alias-state-warn-primary); border-color: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 40%, var(--dsw-alias-border-l1)); background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 8%, var(--dsw-alias-bg-layer-1)); }
+.ds-wb-stage[data-status="failed"] { color: var(--dsw-alias-state-error-primary); border-color: color-mix(in srgb, var(--dsw-alias-state-error-primary) 40%, var(--dsw-alias-border-l1)); background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 7%, var(--dsw-alias-bg-layer-1)); }
+.ds-wb-stage-glyph { font-size: 8.5px; }
+.ds-wb-status-pill { padding: 2px 8px; border-radius: 10px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-secondary); font-size: 10px; }
+.ds-wb-status-pill[data-status="active"] { color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 10%, transparent); }
+.ds-wb-status-pill[data-status="review"] { color: var(--dsw-alias-state-warn-primary); background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 12%, transparent); }
+.ds-wb-status-pill[data-status="approved"] { color: var(--dsw-alias-state-success-primary); background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 12%, transparent); }
+.ds-wb-start-hint { margin-top: 5px; color: var(--dsw-alias-label-caption); font-size: 9.5px; }
 .ds-wb-subtitle { margin-top: 9px; }
 .ds-wb-attention { order: -1; }
 .ds-wb-scroll { gap: 6px; padding: 8px 8px 14px; }
