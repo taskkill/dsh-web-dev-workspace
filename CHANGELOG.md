@@ -4,6 +4,15 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Acceptance runbook and task-failure hand-off
+
+- `docs/ACCEPTANCE.md` now walks a project manager through retesting batches
+  0–3 (stability, tasks/retest, acceptance/review, evidence/delivery/share links),
+  including the one-time Harness restart, known limits and rollback notes. Both
+  READMEs link it.
+- A failed task in the Tasks panel can send its parsed problems plus the output
+  tail straight to the conversation, closing the retest loop without copying logs.
+
 ### Preview sharing for client hand-off
 
 - The Acceptance panel can **share a running dev server**: enter the local port,

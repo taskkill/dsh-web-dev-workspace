@@ -790,7 +790,8 @@ The next stage aims at developing complete projects with the Harness chat plus
 this plugin only: a run-and-diagnose loop, agent change review, session recovery,
 Git completion, an editor foundation, LSP and browser verification. Priorities,
 integration points, costs and acceptance criteria live in
-[docs/ROADMAP.md](docs/ROADMAP.md).
+[docs/ROADMAP.md](docs/ROADMAP.md); the batch 0–3 retest steps live in
+[docs/ACCEPTANCE.md](docs/ACCEPTANCE.md).
 
 ## Repository layout
 

@@ -379,6 +379,7 @@ window.__ModuleLoader__.load({
       'tasks.group.test': '测试',
       'tasks.group.lint': '检查',
       'tasks.group.other': '其他',
+      'tasks.sendToAgent': '把失败发给 agent',
       'side.acceptance': '验收',
       'acceptance.title': '验收台',
       'acceptance.hint': 'agent 作为产品经理写验收项；你在这里勾选通过 / 不通过，驳回时可把未通过项发回对话。',
@@ -1056,6 +1057,7 @@ window.__ModuleLoader__.load({
       'tasks.group.test': 'Test',
       'tasks.group.lint': 'Lint',
       'tasks.group.other': 'Other',
+      'tasks.sendToAgent': 'Send failure to agent',
       'side.acceptance': 'Acceptance',
       'acceptance.title': 'Acceptance board',
       'acceptance.hint': 'The agent writes acceptance items as the product manager; check pass / fail here and send failures back to the chat.',
@@ -8754,6 +8756,29 @@ window.__ModuleLoader__.load({
           }
         }
 
+        /** Send a failed task's parsed problems and output tail to the conversation. */
+        async function sendTaskToAgent(run) {
+          if (run === null || typeof run !== 'object') return
+          const problems = Array.isArray(run.problems) ? run.problems.slice(0, 20) : []
+          const tail = run.output.length > 6000 ? run.output.slice(-6000) : run.output
+          const problemLines = problems.map(
+            (problem, index) => `${String(index + 1)}. ${problem.path}:${String(problem.line)}:${String(problem.column)} ${problem.severity}: ${problem.message}`,
+          )
+          const status = run.exitCode === null ? '失败' : `退出码 ${String(run.exitCode)}`
+          const prompt = `任务「${run.name}」${status}（命令：\`${run.command}\`）。请修复后重跑。
+
+${
+            problemLines.length > 0 ? `解析到的问题：
+${problemLines.join('\n')}
+
+` : ''
+          }输出末尾：
+\`\`\`
+${tail}
+\`\`\``
+          await sendPromptText(prompt)
+        }
+
         /** Drop a finished run from the list. */
         function removeTaskRun(id) {
           stopTaskPolling(id)
@@ -13066,6 +13091,17 @@ window.__ModuleLoader__.load({
                     : activeRun.status === 'failed'
                       ? h('div', { className: 'ds-hint' }, t('tasks.noProblems'))
                       : null,
+                  activeRun.status === 'failed'
+                    ? h(
+                        'div',
+                        { className: 'ds-task-detail-actions' },
+                        h(
+                          'button',
+                          { type: 'button', className: 'ds-linkbtn', onClick: () => void sendTaskToAgent(activeRun) },
+                          t('tasks.sendToAgent'),
+                        ),
+                      )
+                    : null,
                   h(
                     'pre',
                     { ref: taskOutputRef, className: 'ds-task-output' },
@@ -17659,6 +17695,7 @@ window.__ModuleLoader__.load({
 .ds-task-run-exit[data-ok="true"] { color: var(--dsw-alias-state-success-primary); }
 .ds-task-run-stop { flex: 0 0 auto; font-size: 9.5px; }
 .ds-task-detail { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; border-top: 1px solid var(--dsw-alias-border-l1); }
+.ds-task-detail-actions { flex: 0 0 auto; display: flex; justify-content: flex-end; gap: 6px; padding: 2px 8px; }
 .ds-task-problems { flex: 0 0 auto; max-height: 40%; overflow: auto; border-bottom: 1px solid var(--dsw-alias-border-l1); padding: 4px; }
 .ds-task-problem { display: flex; align-items: center; gap: 5px; width: 100%; padding: 2px 4px; border: 0; border-radius: 4px; background: transparent; color: inherit; font: inherit; font-size: 10px; text-align: left; cursor: pointer; }
 .ds-task-problem:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent); }
