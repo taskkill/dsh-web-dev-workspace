@@ -4,6 +4,21 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Workbench as an editor tab, and no more misleading “Start” on finished projects
+
+- The Workbench is now a proper **editor tab**: opening a file keeps the tab in the
+  strip (inactive) and clicking it returns to the dashboard; the tab can be closed
+  with ×. When only the Workbench tab exists the strip still shows it, and the
+  dashboard no longer hides the tab strip. Opening a file no longer closes the
+  Workbench tab; navigating from the dashboard to a sidebar view still closes it so
+  the pipeline/acceptance panels are visible. Compact layouts keep a back button
+  in the page header.
+- The pipeline requirement form no longer offers “Start and dispatch” on a
+  **completed** project (which produced the confusing “该阶段已完成” toast): it
+  shows **Open the Workbench to adjust** instead, and `kickoffPipeline` guards
+  completed rounds by routing the owner to the requirement/adjustment card. The
+  “already done” message now points at the change flow.
+
 ### Fix: “round is not defined” when appending a requirement
 
 - `submitRequirementChange` referenced the render-scoped `round` variable, which

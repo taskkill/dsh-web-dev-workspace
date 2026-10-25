@@ -557,7 +557,9 @@ window.__ModuleLoader__.load({
       'pipeline.startFailed': '启动阶段失败：{message}',
       'pipeline.alreadyRunning': '该阶段已在运行，已重新发送角色提示。',
       'pipeline.advanced': '阶段已完成，已自动推进到「{stage}」。',
-      'pipeline.alreadyDone': '该阶段已完成，无需重复启动。',
+      'pipeline.alreadyDone': '该阶段已完成；如需调整，请在工作台「需求与调整」发起变更。',
+      'pipeline.completedUseChange': '项目已完成：请在工作台「需求与调整」里追加/修改需求，或发起新一轮变更。',
+      'pipeline.openWorkbenchAdjust': '打开工作台调整需求',
       'pipeline.reviewFailed': '评审失败：{message}',
       'pipeline.loadFailed': '读取流水线失败：{message}',
       'pipeline.saveFailed': '保存需求失败：{message}',
@@ -1451,7 +1453,9 @@ window.__ModuleLoader__.load({
       'pipeline.startFailed': 'Could not start the stage: {message}',
       'pipeline.alreadyRunning': 'That stage is already running; the role prompt was resent.',
       'pipeline.advanced': 'The stage is already done; advanced to “{stage}”.',
-      'pipeline.alreadyDone': 'That stage is already done; no need to start it again.',
+      'pipeline.alreadyDone': 'That stage is already done; to adjust it, start a change from the Workbench.',
+      'pipeline.completedUseChange': 'The project is complete: append/edit the requirement or start a new change round from the Workbench.',
+      'pipeline.openWorkbenchAdjust': 'Open the Workbench to adjust',
       'pipeline.reviewFailed': 'Review failed: {message}',
       'pipeline.loadFailed': 'Could not read the pipeline: {message}',
       'pipeline.saveFailed': 'Could not save the requirement: {message}',
@@ -8066,8 +8070,8 @@ window.__ModuleLoader__.load({
         // Navigating from the dashboard to a sidebar view must reveal the sidebar:
         // the workbench hides it, so close the dashboard when the pane changes.
         useEffect(() => {
-          if (workbenchOpen && paneView !== 'files') setWorkbenchOpen(false)
-        }, [workbenchOpen, paneView])
+          if (workbenchOpen && activeTab === null && paneView !== 'files') setWorkbenchOpen(false)
+        }, [workbenchOpen, activeTab, paneView])
 
         // Surface panel errors on the dashboard instead of hiding them in their panels.
         useEffect(() => {
@@ -8465,8 +8469,9 @@ window.__ModuleLoader__.load({
         const treeDisplayWidth = compact
           ? '100%'
           : `${String(containerWidth > 0 ? Math.min(state.treeWidth, Math.max(220, Math.floor(containerWidth * 0.42))) : state.treeWidth)}px`
-        const showSide = !workbenchOpen && !maximized && (!compact || compactView === 'tree' || activeTab === null)
-        const showMain = workbenchOpen ? !maximized : maximized || !compact || (activeTab !== null && compactView === 'editor')
+        const workbenchActive = workbenchOpen && activeTab === null
+        const showSide = !workbenchActive && !maximized && (!compact || compactView === 'tree' || activeTab === null)
+        const showMain = workbenchActive ? !maximized : maximized || !compact || (activeTab !== null && compactView === 'editor')
         const canCollapse = Object.keys(state.expanded).some((entry) => entry !== '')
         const rootFavorites = state.root === null ? [] : state.favorites[state.root] ?? []
         const favoritePaths = new Set(rootFavorites.map((item) => item.path))
@@ -9384,6 +9389,7 @@ ${tail}
         function openWorkbench() {
           setWorkbenchOpen(true)
           if (paneView !== 'files') setPaneView('files')
+          store.set((current) => ({ ...current, active: null }))
           setCompactView('editor')
         }
 
@@ -9744,6 +9750,17 @@ ${tail}
           setPipelineBusy(true)
           setPipelineError(null)
           try {
+            // A completed round cannot start product again: send the owner to the
+            // requirement/adjustment flow instead of a confusing status error.
+            const snapshot = await call('pipelineList', { root: targetRoot })
+            const stages = Array.isArray(snapshot?.stages) ? snapshot.stages : []
+            const complete = stages.length > 0 && stages.every((stage) => stage !== null && typeof stage === 'object' && stage.status === 'approved')
+            if (complete) {
+              setPipelineError(t('pipeline.completedUseChange'))
+              showToast(t('pipeline.completedUseChange'))
+              openWorkbench()
+              return
+            }
             await call('pipelineSetRequirement', { root: targetRoot, title, detail })
             setPipelineEditing(false)
             await startPipelineStage('product')
@@ -11521,7 +11538,6 @@ ${tail}
         async function openFile(relative) {
           const root = store.get().root
           if (root === null) return
-          setWorkbenchOpen(false)
           setCompactView('editor')
           const existing = store.get().tabs.find((tab) => tab.path === relative)
           if (existing !== undefined) {
@@ -15387,24 +15403,18 @@ ${tail}
           return h(
             'div',
             { className: 'ds-wb-page' },
-            h(
-              'div',
-              { className: 'ds-wb-page-head' },
-              h('span', { className: 'ds-wb-page-title' }, t('workbench.title')),
-              h('span', { className: 'ds-spacer' }),
-              compact
-                ? h(
+            compact
+              ? h(
+                  'div',
+                  { className: 'ds-wb-page-head' },
+                  h(
                     'button',
                     { type: 'button', className: 'ds-iconbtn', title: t('compact.back'), onClick: () => closeWorkbench() },
                     h(ChevronLeftIcon),
-                  )
-                : null,
-              h(
-                'button',
-                { type: 'button', className: 'ds-iconbtn', title: t('action.cancel'), onClick: () => closeWorkbench() },
-                h(CloseIcon),
-              ),
-            ),
+                  ),
+                  h('span', { className: 'ds-wb-page-title' }, t('workbench.title')),
+                )
+              : null,
             h(
               'div',
               { className: 'ds-wb-page-scroll' },
@@ -15757,19 +15767,29 @@ ${tail}
                       h(
                         'div',
                         { className: 'ds-pipe-actions' },
-                        h(
-                          'button',
-                          {
-                            type: 'button',
-                            className: 'ds-btn ds-pipe-kickoff',
-                            disabled:
-                              pipelineBusy ||
-                              pipelineTitleDraft.trim().length === 0 ||
-                              pipelineDetailDraft.trim().length === 0,
-                            onClick: () => void kickoffPipeline(),
-                          },
-                          t('pipeline.kickoff'),
-                        ),
+                        stages.length > 0 && stages.every((stage) => stage !== null && typeof stage === 'object' && stage.status === 'approved')
+                          ? h(
+                              'button',
+                              {
+                                type: 'button',
+                                className: 'ds-btn',
+                                onClick: () => openWorkbench(),
+                              },
+                              t('pipeline.openWorkbenchAdjust'),
+                            )
+                          : h(
+                              'button',
+                              {
+                                type: 'button',
+                                className: 'ds-btn ds-pipe-kickoff',
+                                disabled:
+                                  pipelineBusy ||
+                                  pipelineTitleDraft.trim().length === 0 ||
+                                  pipelineDetailDraft.trim().length === 0,
+                                onClick: () => void kickoffPipeline(),
+                              },
+                              t('pipeline.kickoff'),
+                            ),
                         h(
                           'button',
                           {
@@ -16597,6 +16617,112 @@ ${tail}
          * - labels collapse to icons;
          * - icons plus a "more" menu, keeping the active view in the strip.
          */
+        /** Editor tab for an opened file/page. */
+        function renderFileTab(tab) {
+          return (
+h(
+          'div',
+          {
+            key: tab.path,
+            className: 'ds-tab',
+            role: 'tab',
+            'data-active': tab.path === state.active ? 'true' : 'false',
+            'aria-selected': tab.path === state.active,
+            title:
+              tab.mode === 'browser'
+                ? tab.url.length > 0
+                  ? tab.url
+                  : t('browser.newTab')
+                : tab.mode === 'terminal'
+                  ? tab.name
+                : tab.mode === 'diff'
+                  ? `${tab.diff?.path ?? ''} · ${tab.diff?.tag ?? ''}`
+                  : tab.path,
+            onClick: () => {
+              store.set((current) => ({
+                ...current,
+                active: tab.path,
+                selected: tab.mode === 'browser' ? current.selected : (tab.diff?.path ?? tab.path),
+              }))
+              setCursor({ line: 1, column: 1 })
+              setCompactView('editor')
+            },
+            onAuxClick: (event) => {
+              if (event.button === 1) {
+                event.preventDefault()
+                requestClose(tab.path)
+              }
+            },
+          },
+          tab.mode === 'terminal'
+            ? h('span', { className: 'ds-glyph ds-glyph-terminal' }, h(TerminalIcon))
+            : tab.mode === 'browser'
+            ? h('span', { className: 'ds-glyph ds-glyph-browser' }, h(GlobeIcon))
+            : tab.mode === 'diff'
+            ? h('span', { className: 'ds-glyph ds-glyph-diff' }, h(CompareIcon))
+            : isTextMode(tab.mode)
+              ? h(FileGlyph, { name: tab.name, size: 14 })
+              : h(
+                'span',
+                { className: `ds-glyph ds-glyph-${tab.mode === 'pdf' ? 'pdf' : tab.mode === 'image' ? 'image' : 'plain'}` },
+                tab.mode === 'pdf' ? h(PageIcon) : h(PageIcon),
+              ),
+          h('span', { className: 'ds-tab-name' }, tab.name),
+          tab.mode === 'diff' && tab.diff?.tag
+            ? h('span', { className: 'ds-tab-tag', title: tab.diff.tag }, tab.diff.tag)
+            : null,
+          tab.dirty ? h('span', { className: 'ds-dot', title: t('hint.unsaved') }) : null,
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'ds-tabclose',
+              title: t('action.cancel'),
+              onClick: (event) => {
+                event.stopPropagation()
+                requestClose(tab.path)
+              },
+            },
+            h(CloseIcon),
+          ),
+        )
+          )
+        }
+
+        /** The Workbench tab in the editor tab strip. */
+        function renderWorkbenchTab() {
+          return h(
+            'div',
+            {
+              key: '__workbench__',
+              className: 'ds-tab ds-wb-tab',
+              role: 'tab',
+              'data-active': activeTab === null ? 'true' : 'false',
+              'aria-selected': activeTab === null,
+              title: t('workbench.title'),
+              onClick: () => {
+                store.set((current) => ({ ...current, active: null }))
+                setCompactView('editor')
+              },
+            },
+            h('span', { className: 'ds-glyph' }, h(WorkbenchIcon)),
+            h('span', { className: 'ds-tab-name' }, t('workbench.title')),
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'ds-tabclose',
+                title: t('action.cancel'),
+                onClick: (event) => {
+                  event.stopPropagation()
+                  closeWorkbench()
+                },
+              },
+              h(CloseIcon),
+            ),
+          )
+        }
+
         function renderSideViews() {
           // Owner-first information architecture: the strip keeps only three
           // entries (workbench, files, search) plus "more"; project and
@@ -17663,7 +17789,7 @@ ${tail}
               className: 'ds-splitter',
               role: 'separator',
               'aria-orientation': 'vertical',
-              style: compact || maximized || workbenchOpen ? { display: 'none' } : undefined,
+              style: compact || maximized || workbenchActive ? { display: 'none' } : undefined,
               onPointerDown: beginSplitDrag,
             }),
             h(
@@ -17769,76 +17895,12 @@ ${tail}
                     h(
                       'div',
                       { className: 'ds-tabs', role: 'tablist' },
-                      state.tabs.map((tab) =>
-                        h(
-                          'div',
-                          {
-                            key: tab.path,
-                            className: 'ds-tab',
-                            role: 'tab',
-                            'data-active': tab.path === state.active ? 'true' : 'false',
-                            'aria-selected': tab.path === state.active,
-                            title:
-                              tab.mode === 'browser'
-                                ? tab.url.length > 0
-                                  ? tab.url
-                                  : t('browser.newTab')
-                                : tab.mode === 'terminal'
-                                  ? tab.name
-                                : tab.mode === 'diff'
-                                  ? `${tab.diff?.path ?? ''} · ${tab.diff?.tag ?? ''}`
-                                  : tab.path,
-                            onClick: () => {
-                              store.set((current) => ({
-                                ...current,
-                                active: tab.path,
-                                selected: tab.mode === 'browser' ? current.selected : (tab.diff?.path ?? tab.path),
-                              }))
-                              setCursor({ line: 1, column: 1 })
-                              setCompactView('editor')
-                            },
-                            onAuxClick: (event) => {
-                              if (event.button === 1) {
-                                event.preventDefault()
-                                requestClose(tab.path)
-                              }
-                            },
-                          },
-                          tab.mode === 'terminal'
-                            ? h('span', { className: 'ds-glyph ds-glyph-terminal' }, h(TerminalIcon))
-                            : tab.mode === 'browser'
-                            ? h('span', { className: 'ds-glyph ds-glyph-browser' }, h(GlobeIcon))
-                            : tab.mode === 'diff'
-                            ? h('span', { className: 'ds-glyph ds-glyph-diff' }, h(CompareIcon))
-                            : isTextMode(tab.mode)
-                              ? h(FileGlyph, { name: tab.name, size: 14 })
-                              : h(
-                                'span',
-                                { className: `ds-glyph ds-glyph-${tab.mode === 'pdf' ? 'pdf' : tab.mode === 'image' ? 'image' : 'plain'}` },
-                                tab.mode === 'pdf' ? h(PageIcon) : h(PageIcon),
-                              ),
-                          h('span', { className: 'ds-tab-name' }, tab.name),
-                          tab.mode === 'diff' && tab.diff?.tag
-                            ? h('span', { className: 'ds-tab-tag', title: tab.diff.tag }, tab.diff.tag)
-                            : null,
-                          tab.dirty ? h('span', { className: 'ds-dot', title: t('hint.unsaved') }) : null,
-                          h(
-                            'button',
-                            {
-                              type: 'button',
-                              className: 'ds-tabclose',
-                              title: t('action.cancel'),
-                              onClick: (event) => {
-                                event.stopPropagation()
-                                requestClose(tab.path)
-                              },
-                            },
-                            h(CloseIcon),
-                          ),
-                        ),
-                      ),
+                      workbenchOpen ? renderWorkbenchTab() : null,
+                      state.tabs.map(renderFileTab),
                     ),
-                    activeTab === null
+                    workbenchOpen && activeTab === null
+                      ? renderWorkbenchPage()
+                      : activeTab === null
                       ? h('div', { className: 'ds-empty' }, t('hint.noFile'))
                       : h(
                           React.Fragment,
@@ -20384,6 +20446,7 @@ ${tail}
 .ds-pipe-release-env { flex: 0 0 auto; color: var(--dsw-alias-label-secondary); font-family: var(--ds-mono); }
 .ds-pipe-release-note { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-caption); }
 .ds-pipe-hint { padding: 3px 0 0; font-size: 9.5px; }
+.ds-wb-tab .ds-glyph { display: inline-flex; color: var(--dsw-alias-brand-primary); }
 .ds-wb-page { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow: hidden; background: var(--dsw-alias-bg-base); }
 .ds-wb-page-head { display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
 .ds-wb-page-title { font-size: 12.5px; font-weight: 600; color: var(--dsw-alias-label-primary); }
