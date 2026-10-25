@@ -4,6 +4,14 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Follow-up fix: complete the real-tab workbench refactor
+
+- The previous build removed the synthetic `workbenchOpen` state but left the old
+  open/close helpers referencing `setWorkbenchOpen`, which would crash at runtime.
+  The helpers were replaced by `ensureWorkbenchTab` / tab close via `closeNow`,
+  the tab icon branch for `mode: 'workbench'` was added, and a grep for the old
+  identifier comes back empty.
+
 ### Workbench is now a real editor tab (like the browser tab)
 
 - The Workbench stopped being a synthetic overlay: it is created as a normal tab

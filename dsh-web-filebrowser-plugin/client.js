@@ -9386,16 +9386,55 @@ ${tail}
          * ------------------------------------------------------------------ */
 
         /** Open the full-width owner workbench page. */
-        function openWorkbench() {
-          setWorkbenchOpen(true)
-          if (paneView !== 'files') setPaneView('files')
-          store.set((current) => ({ ...current, active: null }))
-          setCompactView('editor')
+        /** Create the Workbench tab if needed; optionally focus it. */
+        function ensureWorkbenchTab(activate) {
+          const current = store.get()
+          const existing = current.tabs.find((tab) => tab !== null && typeof tab === 'object' && tab.mode === 'workbench')
+          if (existing !== undefined) {
+            if (activate) store.set((value) => ({ ...value, active: existing.path }))
+            return existing.path
+          }
+          const path = 'workbench:home'
+          const tab = {
+            path,
+            name: t('workbench.title'),
+            mode: 'workbench',
+            language: { id: 'workbench', label: 'Workbench' },
+            content: '',
+            saved: '',
+            version: null,
+            dirty: false,
+            loading: false,
+            error: null,
+            code: null,
+            view: 'edit',
+            url: '',
+            input: '',
+            proxy: false,
+            device: 'desktop',
+            mobilePreset: '',
+            orientation: 'landscape',
+            history: [],
+            historyIndex: -1,
+            reloadKey: 0,
+          }
+          store.set((value) => ({ ...value, tabs: [...value.tabs, tab], active: activate ? path : value.active }))
+          return path
         }
 
-        /** Leave the workbench page. */
+        /** Open the Workbench tab and focus it (same behaviour as a browser tab). */
+        function openWorkbench() {
+          ensureWorkbenchTab(true)
+          if (paneView !== 'files') setPaneView('files')
+          setCompactView('editor')
+          setCursor({ line: 1, column: 1 })
+        }
+
+        /** Close the Workbench tab through the normal close path. */
         function closeWorkbench() {
-          setWorkbenchOpen(false)
+          const current = store.get()
+          const tab = current.tabs.find((entry) => entry !== null && typeof entry === 'object' && entry.mode === 'workbench')
+          if (tab !== undefined) closeNow(tab.path)
           setCompactView('tree')
         }
 
@@ -16722,7 +16761,9 @@ h(
               }
             },
           },
-          tab.mode === 'terminal'
+          tab.mode === 'workbench'
+            ? h('span', { className: 'ds-glyph ds-glyph-workbench' }, h(WorkbenchIcon))
+            : tab.mode === 'terminal'
             ? h('span', { className: 'ds-glyph ds-glyph-terminal' }, h(TerminalIcon))
             : tab.mode === 'browser'
             ? h('span', { className: 'ds-glyph ds-glyph-browser' }, h(GlobeIcon))
