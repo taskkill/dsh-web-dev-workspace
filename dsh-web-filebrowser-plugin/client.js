@@ -14847,22 +14847,8 @@ ${tail}
                 { className: 'ds-wb-reqpanel' },
                 h(
                   'div',
-                  { className: 'ds-wb-reqmodes' },
-                  ['append', 'replace']
-                    .concat(current === null ? ['change'] : [])
-                    .map((mode) =>
-                      h(
-                        'button',
-                        {
-                          key: mode,
-                          type: 'button',
-                          className: 'ds-wb-reqmode',
-                          'data-active': requirementMode === mode ? 'true' : undefined,
-                          onClick: () => setRequirementMode(mode),
-                        },
-                        t('workbench.reqMode.' + mode),
-                      ),
-                    ),
+                  { className: 'ds-wb-reqpanel-mode' },
+                  t('workbench.reqMode.' + requirementMode),
                 ),
                 h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.reqMode.' + requirementMode + 'Hint')),
                 requirementMode === 'change'
@@ -14959,31 +14945,33 @@ ${tail}
                             ? ' · ' + t('workbench.reqScope.' + latestChange.scope)
                             : ''),
                       ),
-                  h(
-                    'div',
-                    { className: 'ds-wb-actions' },
-                    h(
-                      'button',
-                      { type: 'button', className: 'ds-btn ds-wb-btn', onClick: () => openRequirementPanel(false, 'append') },
-                      t('workbench.reqMode.append'),
-                    ),
+                  requirementPanelOpen
+                    ? null
+                    : h(
+                        'div',
+                        { className: 'ds-wb-actions' },
+                        h(
+                          'button',
+                          { type: 'button', className: 'ds-btn ds-wb-btn', onClick: () => openRequirementPanel(false, 'append') },
+                          t('workbench.reqMode.append'),
+                        ),
                     h(
                       'button',
                       { type: 'button', className: 'ds-btn ds-wb-btn', onClick: () => openRequirementPanel(false, 'replace') },
                       t('workbench.reqMode.replace'),
                     ),
-                    h(
-                      'button',
-                      {
-                        type: 'button',
-                        className: 'ds-btn ds-wb-btn ds-wb-change-btn',
-                        disabled: current !== null,
-                        title: current !== null ? t('workbench.changeHintIncomplete') : t('workbench.reqMode.changeHint'),
-                        onClick: () => openRequirementPanel(true, 'change'),
-                      },
-                      t('workbench.reqMode.change'),
-                    ),
-                  ),
+                        h(
+                          'button',
+                          {
+                            type: 'button',
+                            className: 'ds-btn ds-wb-btn ds-wb-change-btn',
+                            disabled: current !== null,
+                            title: current !== null ? t('workbench.changeHintIncomplete') : t('workbench.reqMode.changeHint'),
+                            onClick: () => openRequirementPanel(true, 'change'),
+                          },
+                          t('workbench.reqMode.change'),
+                        ),
+                      ),
                   adjustPanel,
                   intakeNotice.length === 0 ? null : h('div', { className: 'ds-wb-notice' }, intakeNotice),
                   redoOpen
@@ -20461,6 +20449,7 @@ h(
 .ds-wb-step-state[data-skipped="true"] { color: var(--dsw-alias-label-caption); font-style: italic; }
 .ds-wb-reqmodes { display: flex; flex-wrap: wrap; gap: 5px; }
 .ds-wb-reqmode { height: 24px; padding: 0 10px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 12px; background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-secondary); font-size: 10px; cursor: pointer; }
+.ds-wb-reqpanel-mode { color: var(--dsw-alias-label-primary); font-size: 11px; font-weight: 600; }
 .ds-wb-reqmode[data-active="true"] { border-color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 8%, var(--dsw-alias-bg-layer-1)); color: var(--dsw-alias-label-primary); font-weight: 600; }
 .ds-wb-reqtext { width: 100%; box-sizing: border-box; min-height: 64px; resize: vertical; }
 .ds-wb-reqlog { margin-top: 9px; padding-top: 8px; border-top: 1px dashed var(--dsw-alias-border-l1); }

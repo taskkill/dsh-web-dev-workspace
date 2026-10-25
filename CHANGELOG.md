@@ -4,6 +4,15 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Deduplicate the requirement adjustment controls
+
+- The requirement card showed the mode buttons twice: three large entry buttons
+  (append / edit / new change round) and, once the form opened, the same switcher
+  rendered again inside the panel. Now the three buttons are the single mode
+  selector and they hide while the form is open; the panel shows the chosen mode
+  as a small label plus its explanation and the content fields/submit action.
+  Cancel returns to the three buttons.
+
 ### Follow-up fix: complete the real-tab workbench refactor
 
 - The previous build removed the synthetic `workbenchOpen` state but left the old
