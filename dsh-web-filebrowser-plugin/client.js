@@ -89,6 +89,8 @@ window.__ModuleLoader__.load({
     const TASKS_PATH = 'api/dsh-web-filebrowser-tasks'
     /** Host delivery packaging route. */
     const DELIVERY_PATH = 'api/dsh-web-filebrowser-delivery'
+    /** Host workspace change watcher (long poll). */
+    const WATCH_PATH = 'api/dsh-web-filebrowser-watch'
     /** Gap between task output polls (matches the terminal long-poll cadence). */
     const TASK_POLL_GAP_MS = 12
 
@@ -7231,37 +7233,98 @@ window.__ModuleLoader__.load({
           autoRootRef.current = activeWorkspace
         }, [activeWorkspace, state.ready, state.root, state.roots])
 
+        // Watch the expanded directories through the Host watcher: the request
+        // parks until something changes instead of re-listing on a five-second
+        // timer, so agent edits show up almost immediately. A Host without the
+        // watcher route falls back to the old polling pass.
         useEffect(() => {
-          const poll = async () => {
-            if (document.hidden || autoRefreshRef.current) return
+          let alive = true
+          let timer = null
+          let busy = false
+
+          /** Re-list one directory level if it is still expanded. */
+          async function refreshLevel(levelPath, root) {
+            if (levelPath !== '' && store.get().expanded[levelPath] === undefined) return
+            const level = store.get().levels[levelPath]
+            if (level?.status === 'loading') return
+            let value
+            try {
+              value = await call('list', { root, path: levelPath })
+            } catch {
+              return
+            }
+            if (store.get().root !== root) return
+            const entries = Array.isArray(value?.entries) ? value.entries : []
+            if (JSON.stringify(level?.entries ?? []) !== JSON.stringify(entries)) {
+              patchLevel(levelPath, { status: 'ready', error: null, code: null, entries })
+              paletteFilesRef.current = { root: null, files: [], at: 0 }
+            }
+          }
+
+          /** Legacy full pass used when the Host has no watcher route. */
+          async function refreshAllLevels() {
             const root = store.get().root
             if (root === null || isSshRootPath(root)) return
+            if (autoRefreshRef.current) return
             const paths = ['', ...Object.keys(store.get().expanded)].slice(0, 32)
             autoRefreshRef.current = true
             try {
               for (const levelPath of paths) {
                 if (store.get().root !== root) return
-                const level = store.get().levels[levelPath]
-                if (level?.status === 'loading') continue
-                let value
-                try {
-                  value = await call('list', { root, path: levelPath })
-                } catch {
-                  continue
-                }
-                if (store.get().root !== root) return
-                const entries = Array.isArray(value?.entries) ? value.entries : []
-                if (JSON.stringify(level?.entries ?? []) !== JSON.stringify(entries)) {
-                  patchLevel(levelPath, { status: 'ready', error: null, code: null, entries })
-                  paletteFilesRef.current = { root: null, files: [], at: 0 }
-                }
+                await refreshLevel(levelPath, root)
               }
             } finally {
               autoRefreshRef.current = false
             }
           }
-          const timer = window.setInterval(() => void poll(), 5000)
-          return () => window.clearInterval(timer)
+
+          async function loop() {
+            if (!alive) return
+            if (document.hidden) {
+              timer = window.setTimeout(() => void loop(), 1200)
+              return
+            }
+            const root = store.get().root
+            if (root === null || isSshRootPath(root)) {
+              timer = window.setTimeout(() => void loop(), 3000)
+              return
+            }
+            const dirs = ['', ...Object.keys(store.get().expanded)].slice(0, 32)
+            busy = true
+            let watched = true
+            try {
+              const value = await callWatch('wait', { root, dirs, wait: 8000 })
+              const paths = Array.isArray(value?.paths) ? value.paths.filter((entry) => typeof entry === 'string') : []
+              for (const levelPath of paths) {
+                if (store.get().root !== root) break
+                await refreshLevel(levelPath, root)
+              }
+            } catch {
+              watched = false
+            } finally {
+              busy = false
+            }
+            if (!alive) return
+            if (watched) {
+              timer = window.setTimeout(() => void loop(), 0)
+              return
+            }
+            await refreshAllLevels()
+            if (alive) timer = window.setTimeout(() => void loop(), 5000)
+          }
+
+          const onVisible = () => {
+            if (document.hidden || busy || !alive) return
+            if (timer !== null) window.clearTimeout(timer)
+            timer = window.setTimeout(() => void loop(), 0)
+          }
+          document.addEventListener('visibilitychange', onVisible)
+          void loop()
+          return () => {
+            alive = false
+            if (timer !== null) window.clearTimeout(timer)
+            document.removeEventListener('visibilitychange', onVisible)
+          }
         }, [])
 
         useEffect(() => {
@@ -8385,6 +8448,33 @@ window.__ModuleLoader__.load({
           if (payload === null || typeof payload !== 'object' || payload.ok !== true) {
             const failure = payload?.error ?? {}
             throw new SideRequestError(failure.code ?? 'tasks-error', failure.message ?? t('tasks.unavailable'))
+          }
+          return payload.value
+        }
+
+        /** Call the Host workspace watcher (long poll for changed directories). */
+        async function callWatch(op, params = {}) {
+          let response
+          try {
+            response = await fetch(new URL(WATCH_PATH, document.baseURI).href, {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ op, ...params }),
+            })
+          } catch {
+            throw new SideRequestError('watch-offline', 'watch unavailable')
+          }
+          if (!response.ok) throw new SideRequestError(`http-${String(response.status)}`, 'watch unavailable')
+          let payload
+          try {
+            payload = await response.json()
+          } catch {
+            throw new SideRequestError('watch-bad-response', 'watch unavailable')
+          }
+          if (payload === null || typeof payload !== 'object' || payload.ok !== true) {
+            const failure = payload?.error ?? {}
+            throw new SideRequestError(failure.code ?? 'watch-error', failure.message ?? 'watch unavailable')
           }
           return payload.value
         }

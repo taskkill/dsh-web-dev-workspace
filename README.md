@@ -126,10 +126,11 @@ it for you.
 - **Quick Open**: `Ctrl/⌘ + P` filters workspace files by name. `Ctrl/⌘ + Shift + P`
   opens the command palette for new file/folder, search, refresh, terminal, browser,
   memory, todo and Harness actions.
-- **Auto refresh**: local workspaces re-check expanded directories every five seconds,
-  so external creates, deletes and renames update the tree. Open text tabs are
-  checked too: a clean tab reloads automatically when its file changes on disk, and
-  a dirty tab offers **Reload** or **Keep my changes**.
+- **Auto refresh**: local workspaces watch their expanded directories through a Host
+  long poll (falling back to a five-second pass when the Host lacks the route), so
+  external creates, deletes and renames show up almost immediately. Open text tabs
+  are checked every five seconds too: a clean tab reloads automatically when its
+  file changes on disk, and a dirty tab offers **Reload** or **Keep my changes**.
 - **In-file find/replace**: `Ctrl/⌘ + F` opens the editor find bar with next/previous,
   case sensitivity, replace and replace all.
 - **Harness panel**: a small icon in the header action cluster (between the

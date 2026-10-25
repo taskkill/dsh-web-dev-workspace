@@ -4,6 +4,18 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Event-driven workspace sync
+
+- The file tree no longer re-lists every expanded directory on a five-second timer.
+  A new Host watcher (`/api/dsh-web-filebrowser-watch`) keeps non-recursive
+  `fs.watch` handles for the workspace root and the expanded directories the
+  browser names, coalesces bursts and parks the request until something changes
+  (up to 10 s per poll), so changes made by the agent or the terminal show up
+  almost immediately. It is bounded (96 directories, 128 queued paths), idle
+  roots are reaped after five minutes, SSH roots are not watched, and a Host
+  without the route makes the client fall back to the old five-second pass. Open
+  file contents keep their own five-second check.
+
 ### Acceptance board, review marks and client delivery
 
 - New **Acceptance** sidebar view on top of `.dsh/acceptance.json`: items can be
