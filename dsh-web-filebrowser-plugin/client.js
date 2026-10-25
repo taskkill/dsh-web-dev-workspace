@@ -540,6 +540,9 @@ window.__ModuleLoader__.load({
       'pipeline.requirementNeeded': '先保存需求再启动产品经理阶段。',
       'pipeline.sequenceHint': '需上一阶段通过后才能启动。',
       'pipeline.startFailed': '启动阶段失败：{message}',
+      'pipeline.alreadyRunning': '该阶段已在运行，已重新发送角色提示。',
+      'pipeline.advanced': '阶段已完成，已自动推进到「{stage}」。',
+      'pipeline.alreadyDone': '该阶段已完成，无需重复启动。',
       'pipeline.reviewFailed': '评审失败：{message}',
       'pipeline.loadFailed': '读取流水线失败：{message}',
       'pipeline.saveFailed': '保存需求失败：{message}',
@@ -1416,6 +1419,9 @@ window.__ModuleLoader__.load({
       'pipeline.requirementNeeded': 'Save the requirement before starting the product stage.',
       'pipeline.sequenceHint': 'The previous stage must be approved first.',
       'pipeline.startFailed': 'Could not start the stage: {message}',
+      'pipeline.alreadyRunning': 'That stage is already running; the role prompt was resent.',
+      'pipeline.advanced': 'The stage is already done; advanced to “{stage}”.',
+      'pipeline.alreadyDone': 'That stage is already done; no need to start it again.',
       'pipeline.reviewFailed': 'Review failed: {message}',
       'pipeline.loadFailed': 'Could not read the pipeline: {message}',
       'pipeline.saveFailed': 'Could not save the requirement: {message}',
@@ -8042,7 +8048,7 @@ window.__ModuleLoader__.load({
           if (!workbenchOpen) return undefined
           const timer = window.setInterval(() => {
             if (!document.hidden && !pipelineBusy && !deliveryBusy) void loadWorkbench({ silent: true })
-          }, 5000)
+          }, 3000)
           return () => window.clearInterval(timer)
           // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [workbenchOpen, pipelineBusy, deliveryBusy])
@@ -9700,7 +9706,44 @@ ${tail}
             const prompt = typeof value?.prompt === 'string' ? value.prompt : ''
             if (prompt.length > 0) await sendPromptText(prompt)
           } catch (error) {
-            setPipelineError(t('pipeline.startFailed', { message: pipelineErrorText(error) }))
+            if (errorCode(error) === 'bad-status') {
+              // The stage moved on between the last refresh and this click (for
+              // example fast mode auto-approved it). Reconcile and advance.
+              try {
+                const snapshot = await call('pipelineList', { root: targetRoot })
+                const stages = Array.isArray(snapshot?.stages) ? snapshot.stages : []
+                const stage = stages.find((entry) => entry !== null && typeof entry === 'object' && entry.id === stageId) ?? null
+                await loadPipeline({ silent: true })
+                const nextIndex = stages.findIndex(
+                  (entry, index) =>
+                    entry !== null &&
+                    typeof entry === 'object' &&
+                    (entry.status === 'pending' || entry.status === 'failed') &&
+                    (index === 0 || stages[index - 1]?.status === 'approved'),
+                )
+                const next = nextIndex >= 0 ? stages[nextIndex] : null
+                if (stage !== null && stage.status === 'active') {
+                  setPipelineError(null)
+                  showToast(t('pipeline.alreadyRunning'))
+                  await resendPipelinePrompt(stageId)
+                } else if (next !== null) {
+                  setPipelineError(null)
+                  await startPipelineStage(next.id)
+                  showToast(t('pipeline.advanced', { stage: next.title ?? next.id }))
+                } else {
+                  setPipelineError(null)
+                  showToast(t('pipeline.alreadyDone'))
+                }
+              } catch {
+                const message = t('pipeline.startFailed', { message: pipelineErrorText(error) })
+                setPipelineError(message)
+                showToast(message)
+              }
+            } else {
+              const message = t('pipeline.startFailed', { message: pipelineErrorText(error) })
+              setPipelineError(message)
+              if (paneView !== 'pipeline') showToast(message)
+            }
           } finally {
             setPipelineBusy(false)
           }

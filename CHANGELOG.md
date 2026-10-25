@@ -4,6 +4,21 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Stage start reconciles stale status instead of failing
+
+- Clicking “Start and dispatch” on a stage that had already moved on (for example
+  auto-approved by fast mode between two refreshes) used to fail with a raw
+  “only pending or failed stages can start” error. The client now reconciles on
+  `bad-status`: it reloads the pipeline and either **resends the role prompt**
+  when the stage is already active, **advances to the next startable stage** when
+  the clicked stage is done, or reports “already completed, nothing to start”.
+  The reconciliation is recursive, so a chain of already-approved stages lands on
+  the real next step.
+- Start errors are now surfaced as toasts whenever the pipeline panel is not the
+  visible view, so a failure on the Workbench is no longer silent. The Workbench
+  refresh interval dropped from five to three seconds to narrow the stale window.
+- New strings: already-running, auto-advanced and already-done messages (zh/en).
+
 ### File and folder properties from the explorer context menu
 
 - The explorer context menu (files, folders and the workspace root) gained
