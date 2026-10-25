@@ -4,6 +4,24 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Change rounds: adjust a delivered project without losing history
+
+- `.dsh/pipeline.json` now tracks a **round counter**, a **change log** and up to
+  ten **round snapshots**. `pipeline.startChangeRound` (exposed as
+  `pipelineStartChange`) is only allowed once all six stages are approved: it
+  archives the completed round (requirement title/detail, stage summaries and
+  review times), increments the round, replaces the requirement with the change
+  request, resets the six stages to pending and keeps acceptance items, fast-mode
+  settings and the release history.
+- The Workbench project card shows the round, and once the project is complete it
+  offers **Start a change** with title/detail fields; submitting archives the old
+  round, starts the new one and dispatches the product manager automatically. The
+  flow card labels the round and the flow log gains round-start events. The
+  Pipeline view shows the round badge plus a change log and previous rounds.
+- Pipeline selftest extended (26/26): a full six-stage project, the change round,
+  reset stages, archived history, change list, new requirement and the guard that
+  incomplete projects cannot start a change.
+
 ### Workbench: full project flow view
 
 - The Workbench gained a **Project flow** card (full grid width, shown whenever a

@@ -149,6 +149,9 @@ export function emptyPipeline() {
     })),
     releases: [],
     settings: { gateMode: 'normal' },
+    round: 1,
+    changes: [],
+    history: [],
   }
 }
 
@@ -350,6 +353,44 @@ function normalizeStoredState(value) {
   const settings = {
     gateMode: PIPELINE_GATE_MODES.includes(settingsSource.gateMode) ? settingsSource.gateMode : 'normal',
   }
+  const round = Number.isInteger(value.round) && value.round > 0 ? value.round : 1
+  const changes = []
+  for (const candidate of Array.isArray(value.changes) ? value.changes : []) {
+    if (candidate === null || typeof candidate !== 'object' || Array.isArray(candidate)) continue
+    const title = typeof candidate.title === 'string' ? candidate.title.trim().slice(0, PIPELINE_MAX_TITLE) : ''
+    if (title.length === 0) continue
+    changes.push({
+      round: Number.isInteger(candidate.round) && candidate.round > 0 ? candidate.round : round,
+      title,
+      detail: typeof candidate.detail === 'string' ? candidate.detail.trim().slice(0, PIPELINE_MAX_DETAIL) : '',
+      createdAt: timestampValue(candidate.createdAt),
+    })
+  }
+  const history = []
+  for (const candidate of Array.isArray(value.history) ? value.history : []) {
+    if (candidate === null || typeof candidate !== 'object' || Array.isArray(candidate)) continue
+    const snapshotRequirement =
+      candidate.requirement !== null && typeof candidate.requirement === 'object' && !Array.isArray(candidate.requirement)
+        ? candidate.requirement
+        : {}
+    const snapshotTitle =
+      typeof snapshotRequirement.title === 'string' ? snapshotRequirement.title.trim().slice(0, PIPELINE_MAX_TITLE) : ''
+    if (snapshotTitle.length === 0) continue
+    history.push({
+      round: Number.isInteger(candidate.round) && candidate.round > 0 ? candidate.round : round,
+      title: snapshotTitle,
+      detail: typeof snapshotRequirement.detail === 'string' ? snapshotRequirement.detail.trim().slice(0, PIPELINE_MAX_DETAIL) : '',
+      completedAt: timestampValue(candidate.completedAt),
+      stages: (Array.isArray(candidate.stages) ? candidate.stages : [])
+        .filter((stage) => stage !== null && typeof stage === 'object' && STAGE_INDEX.has(stage.id))
+        .map((stage) => ({
+          id: stage.id,
+          status: typeof stage.status === 'string' ? stage.status : 'approved',
+          summary: typeof stage.summary === 'string' ? stage.summary.slice(0, PIPELINE_MAX_SUMMARY) : '',
+          reviewedAt: timestampValue(stage.reviewedAt),
+        })),
+    })
+  }
   return {
     version: PIPELINE_VERSION,
     updatedAt: timestampValue(value.updatedAt),
@@ -357,6 +398,9 @@ function normalizeStoredState(value) {
     stages,
     releases: releases.slice(0, PIPELINE_MAX_RELEASES),
     settings,
+    round,
+    changes: changes.slice(0, 50),
+    history: history.slice(0, 10),
   }
 }
 
@@ -381,6 +425,9 @@ function serializePipeline(doc) {
       stages: doc.stages,
       releases: doc.releases,
       settings: doc.settings,
+      round: doc.round ?? 1,
+      changes: doc.changes ?? [],
+      history: doc.history ?? [],
     },
     null,
     2,
@@ -663,6 +710,19 @@ function snapshotPipeline(workspace, doc) {
     approved: counts.approved,
     complete: currentId === null,
     releases: doc.releases.map(publicRelease),
+    round: doc.round ?? 1,
+    changes: (doc.changes ?? []).map((change) => ({
+      round: change.round,
+      title: change.title,
+      detail: change.detail,
+      createdAt: change.createdAt,
+    })),
+    history: (doc.history ?? []).map((entry) => ({
+      round: entry.round,
+      title: entry.title,
+      completedAt: entry.completedAt,
+      stageCount: Array.isArray(entry.stages) ? entry.stages.length : 0,
+    })),
     updatedAt: doc.updatedAt,
     path: pipelineFile(workspace),
   }
@@ -875,6 +935,73 @@ export async function reviewStage(root, input) {
     doc.updatedAt = now
     await writePipeline(workspace, doc)
     return publicStage(stage, definition)
+  })
+}
+
+/**
+ * Start a new change round on a completed project. Only allowed once every
+ * stage is approved: the current round is archived into `history` (last ten
+ * kept), the round counter increments, the requirement is replaced with the
+ * change request, and all six stages return to pending so the team can run the
+ * change through requirement → design → development → testing → sign-off →
+ * release. Acceptance items and the release history are kept for traceability.
+ *
+ * @param root - absolute workspace root.
+ * @param input - `{ title, detail, note? }`.
+ * @returns the new round snapshot.
+ */
+export async function startChangeRound(root, input) {
+  const workspace = assertRoot(root)
+  const title = validateRequirementTitle(input?.title)
+  const detail = validateRequirementDetail(input?.detail)
+  const note = validateNote(input?.note)
+  return withMutationLock(workspace, async () => {
+    const doc = await readPipeline(workspace)
+    const complete = doc.stages.every((stage) => stage.status === 'approved')
+    if (!complete) {
+      throw new PipelineError('bad-status', '只有全部六个阶段都通过后才能发起变更；请先完成当前项目')
+    }
+    const now = Date.now()
+    const snapshot = {
+      round: doc.round ?? 1,
+      requirement: { ...doc.requirement },
+      completedAt: now,
+      stages: doc.stages.map((stage) => ({
+        id: stage.id,
+        status: stage.status,
+        summary: stage.summary,
+        note: stage.note,
+        reviewedAt: stage.reviewedAt,
+      })),
+    }
+    doc.history = [snapshot, ...(doc.history ?? [])].slice(0, 10)
+    doc.round = (doc.round ?? 1) + 1
+    doc.requirement = { title, detail, updatedAt: now }
+    const change = {
+      round: doc.round,
+      title,
+      detail,
+      note,
+      createdAt: now,
+    }
+    doc.changes = [change, ...(doc.changes ?? [])].slice(0, 50)
+    doc.stages = doc.stages.map((stage) => ({
+      id: stage.id,
+      status: 'pending',
+      startedAt: 0,
+      submittedAt: 0,
+      reviewedAt: 0,
+      summary: '',
+      note: '',
+      artifacts: [],
+    }))
+    doc.updatedAt = now
+    await writePipeline(workspace, doc)
+    return {
+      round: doc.round,
+      requirement: publicRequirement(doc.requirement),
+      change: { round: change.round, title: change.title, detail: change.detail, createdAt: change.createdAt },
+    }
   })
 }
 

@@ -351,6 +351,8 @@ async function dispatch(ctx, op, body) {
       return pipelineRecordRelease(ctx, body)
     case 'pipelineSetMode':
       return pipelineSetMode(ctx, body)
+    case 'pipelineStartChange':
+      return pipelineStartChange(ctx, body)
     case 'browserBookmarks':
       return listBrowserBookmarks(ctx, body)
     case 'browserBookmarkAdd':
@@ -1090,6 +1092,16 @@ async function pipelinePrompt(ctx, body) {
   const root = await pipelineRoot(ctx, body.root)
   const doc = await pipeline.readPipeline(root)
   return { prompt: pipeline.buildStagePrompt(doc, typeof body.stageId === 'string' ? body.stageId : '') }
+}
+
+/** Start a new change round on a completed project (owner action). */
+async function pipelineStartChange(ctx, body) {
+  const root = await pipelineRoot(ctx, body.root)
+  return pipeline.startChangeRound(root, {
+    title: body.title,
+    detail: body.detail,
+    note: body.note,
+  })
 }
 
 /** Set the owner's gate mode for the delivery pipeline. */

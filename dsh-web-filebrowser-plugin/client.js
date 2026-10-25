@@ -418,6 +418,19 @@ window.__ModuleLoader__.load({
       'workbench.flowOwner': '负责：{role}',
       'workbench.flowEvents': '流程记录',
       'workbench.flowEmpty': '还没有流程记录',
+      'workbench.round': '第 {round} 轮',
+      'workbench.completed': '已完成',
+      'workbench.change': '发起变更',
+      'workbench.changeTitle': '变更标题',
+      'workbench.changeDetail': '变更内容：要调整什么、验收标准是什么',
+      'workbench.changeSubmit': '发起第 {round} 轮变更',
+      'workbench.changeCancel': '取消',
+      'workbench.changeDone': '已发起第 {round} 轮变更，已派发产品经理梳理。',
+      'workbench.changeFailed': '发起变更失败：{message}',
+      'workbench.eventChanged': '发起第 {round} 轮变更：{title}',
+      'pipeline.round': '第 {round} 轮',
+      'pipeline.changes': '变更记录',
+      'pipeline.history': '历史轮次',
       'workbench.eventStarted': '开始「{stage}」',
       'workbench.eventSubmitted': '「{stage}」提交待审',
       'workbench.eventApproved': '「{stage}」通过',
@@ -1223,6 +1236,19 @@ window.__ModuleLoader__.load({
       'workbench.flowOwner': 'owner: {role}',
       'workbench.flowEvents': 'Flow log',
       'workbench.flowEmpty': 'No flow events yet',
+      'workbench.round': 'Round {round}',
+      'workbench.completed': 'Completed',
+      'workbench.change': 'Start a change',
+      'workbench.changeTitle': 'Change title',
+      'workbench.changeDetail': 'What should change and how it will be accepted',
+      'workbench.changeSubmit': 'Start round {round}',
+      'workbench.changeCancel': 'Cancel',
+      'workbench.changeDone': 'Round {round} started; the product manager has been dispatched.',
+      'workbench.changeFailed': 'Could not start the change: {message}',
+      'workbench.eventChanged': 'Round {round} started: {title}',
+      'pipeline.round': 'Round {round}',
+      'pipeline.changes': 'Change log',
+      'pipeline.history': 'Previous rounds',
       'workbench.eventStarted': 'Started “{stage}”',
       'workbench.eventSubmitted': '“{stage}” submitted for review',
       'workbench.eventApproved': '“{stage}” approved',
@@ -7492,6 +7518,10 @@ window.__ModuleLoader__.load({
         const [intakeFiles, setIntakeFiles] = useState([])
         const [intakeMode, setIntakeMode] = useState('fast')
         const [intakeNotice, setIntakeNotice] = useState('')
+        const [changeOpen, setChangeOpen] = useState(false)
+        const [changeTitle, setChangeTitle] = useState('')
+        const [changeDetail, setChangeDetail] = useState('')
+        const [changeBusy, setChangeBusy] = useState(false)
         const [workbenchError, setWorkbenchError] = useState(null)
         const [pipelineDoc, setPipelineDoc] = useState(null)
         const [pipelineBusy, setPipelineBusy] = useState(false)
@@ -9330,6 +9360,34 @@ ${tail}
             '',
             mode === 'fast' ? '快速模式已开启：中间四阶段提交后自动通过，不要停下来等人工审批。' : '当前为逐阶段审批模式：每个阶段提交后停下等 Owner 审批。',
           ].join('\n')
+        }
+
+        /** Start the next change round on a completed project and dispatch the PM. */
+        async function startChangeRound() {
+          const root = store.get().root
+          if (root === null) return
+          const title = changeTitle.trim()
+          const detail = changeDetail.trim()
+          if (title.length === 0 || detail.length === 0) return
+          setChangeBusy(true)
+          setWorkbenchError(null)
+          try {
+            const value = await call('pipelineStartChange', { root, title, detail })
+            const round = value !== null && typeof value === 'object' && Number.isInteger(value.round) ? value.round : 2
+            setChangeOpen(false)
+            setChangeTitle('')
+            setChangeDetail('')
+            setPipelineTitleDraft(title)
+            setPipelineDetailDraft(detail)
+            await loadPipeline({ silent: true })
+            await startPipelineStage('product')
+            setIntakeNotice(t('workbench.changeDone', { round: String(round) }))
+            await loadWorkbench({ silent: true })
+          } catch (error) {
+            setWorkbenchError(t('workbench.changeFailed', { message: pipelineErrorText(error) }))
+          } finally {
+            setChangeBusy(false)
+          }
         }
 
         /* ------------------------------------------------------------------ *
@@ -14232,6 +14290,7 @@ ${tail}
           const stages = doc !== null && Array.isArray(doc.stages) ? doc.stages : []
           const requirement = doc !== null && doc.requirement !== null && typeof doc.requirement === 'object' ? doc.requirement : {}
           const requirementTitle = typeof requirement.title === 'string' ? requirement.title.trim() : ''
+          const round = doc !== null && Number.isInteger(doc.round) && doc.round > 0 ? doc.round : 1
           const fastMode = doc !== null && doc.settings !== null && typeof doc.settings === 'object' && doc.settings.gateMode === 'fast'
           const done = stages.filter((stage) => stage !== null && typeof stage === 'object' && stage.status === 'approved').length
           const total = stages.length === 0 ? 6 : stages.length
@@ -14308,6 +14367,14 @@ ${tail}
               events.push({ at: release.createdAt, text: t('workbench.eventReleased', { env: String(release.environment ?? '') }) })
             }
           }
+          for (const change of doc !== null && Array.isArray(doc.changes) ? doc.changes : []) {
+            if (Number.isFinite(change.createdAt)) {
+              events.push({
+                at: change.createdAt,
+                text: t('workbench.eventChanged', { round: String(change.round ?? round), title: String(change.title ?? '') }),
+              })
+            }
+          }
           events.sort((left, right) => right.at - left.at)
           const recentEvents = events.slice(0, 8)
           const running = taskRuns.filter((run) => run.running === true)
@@ -14329,7 +14396,8 @@ ${tail}
                   h(
                     'div',
                     { className: 'ds-wb-progress' },
-                    t('workbench.done', { done: String(done), total: String(total) }) +
+                    t('workbench.round', { round: String(round) }) + ' · ' +
+                      t('workbench.done', { done: String(done), total: String(total) }) +
                       (current === null ? ' · ' + t('workbench.allDone') : ' · ' + t('workbench.current', { stage: stageTitle(current.id) })),
                   ),
                   h(
@@ -14348,7 +14416,16 @@ ${tail}
                     ),
                     h('span', { className: 'ds-spacer' }),
                     current === null
-                      ? h('span', { className: 'ds-wb-status-pill', 'data-status': 'approved' }, t('pipeline.status.approved'))
+                      ? h(
+                          React.Fragment,
+                          null,
+                          h('span', { className: 'ds-wb-status-pill', 'data-status': 'approved' }, t('workbench.completed')),
+                          h(
+                            'button',
+                            { type: 'button', className: 'ds-btn ds-wb-btn', onClick: () => setChangeOpen((open) => !open) },
+                            t('workbench.change'),
+                          ),
+                        )
                       : current.status === 'active'
                         ? h('span', { className: 'ds-wb-status-pill', 'data-status': 'active' }, t('workbench.runningStage'))
                         : current.status === 'review'
@@ -14376,6 +14453,46 @@ ${tail}
                   current !== null && (current.status === 'pending' || current.status === 'failed')
                     ? h('div', { className: 'ds-wb-start-hint' }, t('workbench.startHint'))
                     : null,
+                  changeOpen
+                    ? h(
+                        'div',
+                        { className: 'ds-wb-change' },
+                        h('input', {
+                          className: 'ds-pipe-input',
+                          value: changeTitle,
+                          placeholder: t('workbench.changeTitle'),
+                          spellCheck: false,
+                          onChange: (event) => setChangeTitle(event.target.value),
+                        }),
+                        h('textarea', {
+                          className: 'ds-pipe-textarea ds-wb-change-text',
+                          rows: 3,
+                          value: changeDetail,
+                          placeholder: t('workbench.changeDetail'),
+                          onChange: (event) => setChangeDetail(event.target.value),
+                        }),
+                        h(
+                          'div',
+                          { className: 'ds-wb-actions' },
+                          h(
+                            'button',
+                            {
+                              type: 'button',
+                              className: 'ds-btn ds-btn-primary ds-wb-btn',
+                              disabled: changeBusy || changeTitle.trim().length === 0 || changeDetail.trim().length === 0,
+                              onClick: () => void startChangeRound(),
+                            },
+                            changeBusy ? t('acceptance.saving') : t('workbench.changeSubmit', { round: String(round + 1) }),
+                          ),
+                          h(
+                            'button',
+                            { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: () => setChangeOpen(false) },
+                            t('workbench.changeCancel'),
+                          ),
+                        ),
+                      )
+                    : null,
+                  intakeNotice.length === 0 ? null : h('div', { className: 'ds-wb-notice' }, intakeNotice),
                 )
               : h(
                   'div',
@@ -14589,6 +14706,7 @@ ${tail}
                     'div',
                     { className: 'ds-wb-card-head' },
                     h('div', { className: 'ds-wb-card-title ds-wb-card-title-inline' }, t('workbench.flow')),
+                    h('span', { className: 'ds-wb-flow-round' }, t('pipeline.round', { round: String(round) })),
                     h('span', { className: 'ds-spacer' }),
                     h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: openPipeline }, t('workbench.openPipeline')),
                   ),
@@ -14759,6 +14877,9 @@ ${tail}
           const requirementDetail = typeof requirement.detail === 'string' ? requirement.detail : ''
           const requirementReady = requirementTitle.trim().length > 0 && requirementDetail.trim().length > 0
           const releases = doc !== null && Array.isArray(doc.releases) ? doc.releases : []
+          const round = doc !== null && Number.isInteger(doc.round) && doc.round > 0 ? doc.round : 1
+          const changes = doc !== null && Array.isArray(doc.changes) ? doc.changes : []
+          const history = doc !== null && Array.isArray(doc.history) ? doc.history : []
           const reviewStage = stages.find((stage) => stage !== null && typeof stage === 'object' && stage.status === 'review') ?? null
           const activeStage = stages.find((stage) => stage !== null && typeof stage === 'object' && stage.status === 'active') ?? null
           const ownerGateStage =
@@ -14976,6 +15097,7 @@ ${tail}
               'div',
               { className: 'ds-pipe-toolbar' },
               h('span', { className: 'ds-pipe-heading' }, t('pipeline.title')),
+              h('span', { className: 'ds-pipe-round' }, t('pipeline.round', { round: String(round) })),
               h('span', { className: 'ds-spacer' }),
               pipelineBusy ? h('span', { className: 'ds-pipe-waiting' }, t('acceptance.saving')) : null,
               h(
@@ -15128,6 +15250,36 @@ ${tail}
               stages.length === 0
                 ? h('div', { className: 'ds-hint' }, t('pipeline.loadFailed', { message: '—' }))
                 : stages.map((stage, index) => stageNode(stage, index)),
+              changes.length === 0 && history.length === 0
+                ? null
+                : h(
+                    'div',
+                    { className: 'ds-pipe-changes' },
+                    h('div', { className: 'ds-pipe-group-title' }, t('pipeline.changes')),
+                    changes.slice(0, 6).map((change, index) =>
+                      h(
+                        'div',
+                        { key: String(index), className: 'ds-pipe-change-row' },
+                        h('span', { className: 'ds-pipe-change-round' }, t('pipeline.round', { round: String(change.round ?? '?') })),
+                        h('span', { className: 'ds-pipe-change-title', title: String(change.title ?? '') }, String(change.title ?? '')),
+                      ),
+                    ),
+                    history.length === 0
+                      ? null
+                      : h(
+                          'div',
+                          { className: 'ds-pipe-history' },
+                          h('div', { className: 'ds-pipe-group-title' }, t('pipeline.history')),
+                          history.slice(0, 4).map((entry, index) =>
+                            h(
+                              'div',
+                              { key: String(index), className: 'ds-pipe-change-row' },
+                              h('span', { className: 'ds-pipe-change-round' }, t('pipeline.round', { round: String(entry.round ?? '?') })),
+                              h('span', { className: 'ds-pipe-change-title', title: String(entry.title ?? '') }, String(entry.title ?? '') + ' · ' + t('pipeline.status.approved')),
+                            ),
+                          ),
+                        ),
+                  ),
               h('div', { className: 'ds-hint ds-pipe-hint' }, t('pipeline.hint')),
               h('div', { className: 'ds-hint ds-pipe-hint' }, t('pipeline.roleHint')),
             ),
@@ -19537,6 +19689,15 @@ ${tail}
 .ds-pipe-todo-hint { flex: 1 1 100%; color: var(--dsw-alias-label-caption); font-size: 9.5px; }
 .ds-pipe-kickoff { font-weight: 600; }
 .ds-pipe-toolbar { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
+.ds-pipe-round { padding: 1px 7px; border-radius: 9px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-caption); font-size: 9px; }
+.ds-wb-flow-round { padding: 1px 7px; border-radius: 9px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-caption); font-size: 9px; }
+.ds-wb-change { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; padding-top: 9px; border-top: 1px dashed var(--dsw-alias-border-l1); }
+.ds-wb-change-text { width: 100%; box-sizing: border-box; min-height: 64px; resize: vertical; }
+.ds-pipe-changes { margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--dsw-alias-border-l1); }
+.ds-pipe-change-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; font-size: 10px; }
+.ds-pipe-change-round { flex: 0 0 auto; color: var(--dsw-alias-label-caption); font-size: 9px; }
+.ds-pipe-change-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-primary); }
+.ds-pipe-history { margin-top: 6px; }
 .ds-pipe-fast { display: inline-flex; align-items: center; gap: 4px; color: var(--dsw-alias-label-secondary); font-size: 9.5px; cursor: pointer; }
 .ds-pipe-fast input { margin: 0; }
 .ds-pipe-heading { font-weight: 600; font-size: 11px; color: var(--dsw-alias-label-primary); }
