@@ -28,6 +28,7 @@ import * as delivery from './delivery.js'
 import * as memory from './memory.js'
 import * as ssh from './ssh.js'
 import { createTaskManager } from './tasks.js'
+import { createPreviewManager } from './preview.js'
 import { createWatchManager } from './watcher.js'
 import { createTerminalManager } from './terminal.js'
 import * as todo from './todo.js'
@@ -49,6 +50,9 @@ const TASKS_ROUTE = '/api/dsh-web-filebrowser-tasks'
 
 /** Workspace change long-poll route. */
 const WATCH_ROUTE = '/api/dsh-web-filebrowser-watch'
+
+/** Preview share-server management route. */
+const PREVIEW_ROUTE = '/api/dsh-web-filebrowser-preview'
 
 /** Delivery packaging route: build-output ZIP and report bundle. */
 const DELIVERY_ROUTE = '/api/dsh-web-filebrowser-delivery'
@@ -175,6 +179,7 @@ export function apply(ctx) {
     })
     const tasks = createTaskManager({ resolveRoot: (requested) => resolveRoot(ctx, requested) })
     const watcher = createWatchManager({ resolveRoot: (requested) => resolveRoot(ctx, requested) })
+    const previews = createPreviewManager({})
     const register = (route, methods, handler, label) => {
       const registration = ctx.connection.fetch.register({
         path: route,
@@ -200,6 +205,7 @@ export function apply(ctx) {
     register(TERMINAL_ROUTE, ['GET', 'POST'], (request) => terminals.handle(request), 'the terminal route')
     register(TASKS_ROUTE, ['POST'], (request) => tasks.handle(request), 'the task runner route')
     register(WATCH_ROUTE, ['POST'], (request) => watcher.handle(request), 'the workspace watcher route')
+    register(PREVIEW_ROUTE, ['POST'], (request) => previews.handle(request), 'the preview share route')
     register(DELIVERY_ROUTE, ['GET', 'POST'], (request) => handleDelivery(ctx, request), 'the delivery route')
     return () => {
       disposed = true
@@ -207,6 +213,7 @@ export function apply(ctx) {
       terminals.closeAll()
       tasks.closeAll()
       watcher.closeAll()
+      previews.closeAll()
       void ssh.closeAll()
     }
   }, 'dsh-web-filebrowser: authenticated file API')

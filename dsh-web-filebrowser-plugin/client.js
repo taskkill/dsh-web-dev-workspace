@@ -91,6 +91,8 @@ window.__ModuleLoader__.load({
     const DELIVERY_PATH = 'api/dsh-web-filebrowser-delivery'
     /** Host workspace change watcher (long poll). */
     const WATCH_PATH = 'api/dsh-web-filebrowser-watch'
+    /** Host preview share-server management route. */
+    const PREVIEW_PATH = 'api/dsh-web-filebrowser-preview'
     /** Gap between task output polls (matches the terminal long-poll cadence). */
     const TASK_POLL_GAP_MS = 12
 
@@ -421,6 +423,16 @@ window.__ModuleLoader__.load({
       'acceptance.evidenceFailed': '证据上传失败：{message}',
       'acceptance.evidenceNoItem': '已上传 1 个证据；先选中一条验收项即可自动附到备注。',
       'acceptance.history': '交付记录',
+      'acceptance.preview': '预览分享',
+      'acceptance.previewPort': '端口',
+      'acceptance.previewCreate': '创建分享链接',
+      'acceptance.previewEmpty': '还没有分享链接。输入 dev server 端口后创建。',
+      'acceptance.previewCopy': '复制链接',
+      'acceptance.previewOpen': '打开',
+      'acceptance.previewClose': '关闭',
+      'acceptance.previewCopied': '链接已复制',
+      'acceptance.previewFailed': '预览分享失败：{message}',
+      'acceptance.previewHint': '链接指向当前 Harness 主机的预览端口，局域网/手机可直接打开；公网访问需要该端口可达。',
       'acceptance.historyEmpty': '还没有交付包。点「打包交付」会记录在这里。',
       'todo.title': '待办清单',
       'todo.hint': '随工作区保存，面板、会话工具和 DeepSeek 共享同一份任务',
@@ -1088,6 +1100,16 @@ window.__ModuleLoader__.load({
       'acceptance.evidenceFailed': 'Evidence upload failed: {message}',
       'acceptance.evidenceNoItem': 'Uploaded 1 evidence file; select an acceptance item to attach it to the note.',
       'acceptance.history': 'Delivery history',
+      'acceptance.preview': 'Preview sharing',
+      'acceptance.previewPort': 'Port',
+      'acceptance.previewCreate': 'Create share link',
+      'acceptance.previewEmpty': 'No share links yet. Enter the dev-server port and create one.',
+      'acceptance.previewCopy': 'Copy link',
+      'acceptance.previewOpen': 'Open',
+      'acceptance.previewClose': 'Close',
+      'acceptance.previewCopied': 'Link copied',
+      'acceptance.previewFailed': 'Preview sharing failed: {message}',
+      'acceptance.previewHint': 'The link points at this Harness host on the preview port; phones on the same network can open it. Public access needs that port reachable.',
       'acceptance.historyEmpty': 'No delivery bundles yet. Pack one and it shows up here.',
       'todo.title': 'Workspace todos',
       'todo.hint': 'Saved with the workspace; the panel, chat tools and DeepSeek share one task board',
@@ -7184,6 +7206,10 @@ window.__ModuleLoader__.load({
         const [evidenceFiles, setEvidenceFiles] = useState([])
         const [evidenceBusy, setEvidenceBusy] = useState(false)
         const [deliveryHistory, setDeliveryHistory] = useState([])
+        const [previewPortDraft, setPreviewPortDraft] = useState('5173')
+        const [previewShares, setPreviewShares] = useState([])
+        const [previewBusy, setPreviewBusy] = useState(false)
+        const [previewError, setPreviewError] = useState(null)
         const evidenceInputRef = useRef(null)
         const [deliveryBundle, setDeliveryBundle] = useState(null)
         const [paneView, setPaneView] = useState('files')
@@ -7478,6 +7504,7 @@ window.__ModuleLoader__.load({
             void loadAcceptance()
             void loadEvidence()
             void loadDeliveryHistory()
+            void loadPreviewShares()
           }
           return undefined
         }, [paneView, state.root])
@@ -9004,6 +9031,96 @@ window.__ModuleLoader__.load({
           } catch {
             if (store.get().root === targetRoot) setDeliveryHistory([])
           }
+        }
+
+        /** Call the Host preview share manager. */
+        async function callPreview(op, params = {}) {
+          let response
+          try {
+            response = await fetch(new URL(PREVIEW_PATH, document.baseURI).href, {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ op, ...params }),
+            })
+          } catch {
+            throw new SideRequestError('preview-offline', 'preview sharing unavailable')
+          }
+          if (!response.ok) throw new SideRequestError(`http-${String(response.status)}`, 'preview sharing unavailable')
+          let payload
+          try {
+            payload = await response.json()
+          } catch {
+            throw new SideRequestError('preview-bad-response', 'preview sharing unavailable')
+          }
+          if (payload === null || typeof payload !== 'object' || payload.ok !== true) {
+            const failure = payload?.error ?? {}
+            throw new SideRequestError(failure.code ?? 'preview-error', failure.message ?? 'preview sharing failed')
+          }
+          return payload.value
+        }
+
+        /** Build the share URL on the same hostname the browser used for Harness. */
+        function previewShareUrl(share) {
+          if (share === null || typeof share !== 'object') return ''
+          const hostname = window.location.hostname || '127.0.0.1'
+          return `http://${hostname}:${String(share.port ?? '')}${typeof share.url === 'string' ? share.url : '/'}`
+        }
+
+        /** Refresh the active preview share list. */
+        async function loadPreviewShares() {
+          const targetRoot = store.get().root
+          try {
+            const value = await callPreview('list')
+            if (targetRoot !== null && store.get().root !== targetRoot) return
+            setPreviewShares(Array.isArray(value?.previews) ? value.previews : Array.isArray(value) ? value : [])
+            setPreviewError(null)
+          } catch {
+            setPreviewShares([])
+          }
+        }
+
+        /** Share one local dev-server port through the Host preview proxy. */
+        async function createPreviewShare() {
+          const port = Number.parseInt(previewPortDraft, 10)
+          if (!Number.isInteger(port) || port < 1 || port > 65535) {
+            setPreviewError(t('acceptance.previewFailed', { message: 'bad port' }))
+            return
+          }
+          setPreviewBusy(true)
+          setPreviewError(null)
+          try {
+            await callPreview('open', { port })
+            await loadPreviewShares()
+          } catch (error) {
+            setPreviewError(t('acceptance.previewFailed', { message: errorText(error) }))
+          } finally {
+            setPreviewBusy(false)
+          }
+        }
+
+        /** Stop one preview share. */
+        async function closePreviewShare(id) {
+          try {
+            await callPreview('close', { id })
+            await loadPreviewShares()
+          } catch (error) {
+            setPreviewError(t('acceptance.previewFailed', { message: errorText(error) }))
+          }
+        }
+
+        /** Copy one share URL to the clipboard. */
+        function copyPreviewLink(share) {
+          const url = previewShareUrl(share)
+          if (url.length === 0) return
+          if (typeof navigator.clipboard?.writeText === 'function') {
+            void navigator.clipboard.writeText(url).then(
+              () => showToast(t('acceptance.previewCopied')),
+              () => setPreviewError(t('acceptance.previewFailed', { message: 'clipboard' })),
+            )
+            return
+          }
+          setPreviewError(t('acceptance.previewFailed', { message: 'clipboard' }))
         }
 
         /** Ensure the workspace evidence directory exists (best effort). */
@@ -13192,6 +13309,64 @@ window.__ModuleLoader__.load({
                   deliveryBusy ? t('acceptance.saving') : t('acceptance.pack'),
                 ),
                 h('button', { type: 'button', className: 'ds-btn', onClick: () => downloadBuildZip() }, t('acceptance.buildZip')),
+              ),
+              h(
+                'div',
+                { className: 'ds-acc-preview' },
+                h('div', { className: 'ds-acc-detail-label' }, t('acceptance.preview')),
+                h(
+                  'div',
+                  { className: 'ds-acc-preview-create' },
+                  h('span', { className: 'ds-acc-preview-port-label' }, t('acceptance.previewPort')),
+                  h('input', {
+                    className: 'ds-acc-preview-port',
+                    value: previewPortDraft,
+                    inputMode: 'numeric',
+                    spellCheck: false,
+                    onChange: (event) => setPreviewPortDraft(event.target.value.replace(/[^0-9]/gu, '').slice(0, 5)),
+                    onKeyDown: (event) => {
+                      if (event.key !== 'Enter') return
+                      event.preventDefault()
+                      void createPreviewShare()
+                    },
+                  }),
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-btn',
+                      disabled: previewBusy,
+                      onClick: () => void createPreviewShare(),
+                    },
+                    previewBusy ? t('acceptance.saving') : t('acceptance.previewCreate'),
+                  ),
+                ),
+                previewError === null ? null : h('div', { className: 'ds-errorline' }, previewError),
+                previewShares.length === 0
+                  ? h('div', { className: 'ds-hint ds-acc-evidence-empty' }, t('acceptance.previewEmpty'))
+                  : previewShares.map((share) =>
+                      h(
+                        'div',
+                        { key: String(share.id ?? share.url ?? ''), className: 'ds-acc-preview-row' },
+                        h(
+                          'span',
+                          { className: 'ds-acc-preview-target', title: `${String(share.target ?? '')}:${String(share.targetPort ?? '')}` },
+                          `${String(share.target ?? '')}:${String(share.targetPort ?? '')} → :${String(share.port ?? '')}`,
+                        ),
+                        h('button', { type: 'button', className: 'ds-linkbtn', onClick: () => copyPreviewLink(share) }, t('acceptance.previewCopy')),
+                        h(
+                          'button',
+                          {
+                            type: 'button',
+                            className: 'ds-linkbtn',
+                            onClick: () => window.open(previewShareUrl(share), '_blank', 'noopener,noreferrer'),
+                          },
+                          t('acceptance.previewOpen'),
+                        ),
+                        h('button', { type: 'button', className: 'ds-linkbtn', onClick: () => void closePreviewShare(share.id) }, t('acceptance.previewClose')),
+                      ),
+                    ),
+                h('div', { className: 'ds-hint ds-acc-evidence-empty' }, t('acceptance.previewHint')),
               ),
               deliveryHistory.length === 0
                 ? null
@@ -17541,6 +17716,13 @@ window.__ModuleLoader__.load({
 .ds-acc-evidence-item:hover { border-color: var(--dsw-alias-border-l2); color: var(--dsw-alias-label-primary); }
 .ds-acc-evidence-thumb { width: 58px; height: 42px; object-fit: cover; border-radius: 4px; background: var(--dsw-alias-bg-layer-2); }
 .ds-acc-evidence-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-acc-preview { margin-top: 6px; }
+.ds-acc-preview-create { display: flex; align-items: center; gap: 5px; margin-bottom: 4px; }
+.ds-acc-preview-port-label { color: var(--dsw-alias-label-caption); font-size: 9.5px; }
+.ds-acc-preview-port { width: 64px; height: 24px; padding: 0 6px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 5px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary); font: inherit; font-size: 11px; }
+.ds-acc-preview-port:focus { outline: none; border-color: var(--dsw-alias-brand-primary); }
+.ds-acc-preview-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; font-size: 9.5px; }
+.ds-acc-preview-target { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-secondary); font-family: var(--ds-mono); }
 .ds-acc-history { margin-top: 6px; }
 .ds-acc-history-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; font-size: 9.5px; }
 .ds-acc-history-name { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-secondary); font-family: var(--ds-mono); }

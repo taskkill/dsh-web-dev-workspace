@@ -4,6 +4,21 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Preview sharing for client hand-off
+
+- The Acceptance panel can **share a running dev server**: enter the local port,
+  the Host starts a small reverse proxy on its own random port with a 32-hex token
+  path and returns a link like `http://<harness-host>:<preview-port>/<token>/`.
+  LAN phones and remote reviewers open that link directly; the panel can copy it,
+  open it, or close the share. The proxy streams HTTP responses, rewrites HTML
+  (injects `<base>`, prefixes absolute `src`/`href`/`srcset`/`url()` values,
+  rewrites redirects) and proxies WebSocket upgrades so Vite HMR keeps working.
+  Eight shares per Host, 30-minute idle shutdown, loopback targets only, token
+  compared in constant time, no request query values logged. Only HTML is
+  rewritten: front-end code that builds absolute URLs in JavaScript needs the dev
+  server's `base` configured accordingly, and public access requires the preview
+  port itself to be reachable.
+
 ### Delivery history
 
 - Every packed delivery bundle is now recorded in `.dsh/deliveries.json`

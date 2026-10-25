@@ -79,7 +79,9 @@ it for you.
   download a build-output ZIP or pack the report plus build output into
   `.dsh/deliveries/`; screenshots and other evidence upload to `.dsh/evidence/`
   and attach to the selected acceptance item note; each packed bundle is recorded
-  in `.dsh/deliveries.json` and can be downloaded again from the panel.
+  in `.dsh/deliveries.json` and can be downloaded again from the panel; a
+  running dev-server port can be shared as a tokenised preview link for phones
+  and clients on the same network.
 - **Fits the host** — theme-token styling, English/Chinese copy, a compact
   single-column layout in narrow sidebars, a right-sidebar Start card, and a
   mobile/tablet layout.
@@ -775,6 +777,10 @@ issue for security-sensitive reports.
   picker, but the tree shows the selected root.
 - **No binary editing**: binary files are previewed (images/PDF) or handed to the
   browser.
+- **Preview sharing**: a share link is a token-prefixed reverse proxy on its own
+  random Host port (bound to `0.0.0.0` by default); public access requires that
+  port to be reachable. Only HTML is rewritten, so front-end code that builds
+  absolute URLs in JavaScript needs a matching dev-server `base`.
 - **Host API stability**: built against the `0.2.1-rc.2` Harness package APIs. A
   future Harness release may require updates to the slot/service contracts.
 
