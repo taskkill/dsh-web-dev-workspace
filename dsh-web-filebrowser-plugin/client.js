@@ -7548,6 +7548,7 @@ window.__ModuleLoader__.load({
     function makeIdePage(ctx, t, store) {
       return function IdePage(props) {
         const state = useStore(store)
+        const workbenchTabActive = state.tabs.some((tab) => tab !== null && typeof tab === 'object' && tab.mode === 'workbench' && tab.path === state.active)
         const [isMobileBrowser] = useState(() => detectMobileBrowser())
         const inSidebarTab = typeof props?.useTabInfo === 'function'
         const inlineChatSlot = inSidebarTab ? CHAT_SIDEBAR_INLINE_SLOT : CHAT_INLINE_SLOT
@@ -7684,7 +7685,6 @@ window.__ModuleLoader__.load({
         const [previewShares, setPreviewShares] = useState([])
         const [previewBusy, setPreviewBusy] = useState(false)
         const [previewError, setPreviewError] = useState(null)
-        const [workbenchOpen, setWorkbenchOpen] = useState(false)
         const [workbenchDraft, setWorkbenchDraft] = useState('')
         const [workbenchBusy, setWorkbenchBusy] = useState(false)
         const [workbenchKickoffBusy, setWorkbenchKickoffBusy] = useState(false)
@@ -8008,9 +8008,9 @@ window.__ModuleLoader__.load({
             void loadPreviewShares()
           }
           if (paneView === 'pipeline') void loadPipeline()
-          if (workbenchOpen) void loadWorkbench()
+          if (workbenchTabActive) void loadWorkbench()
           return undefined
-        }, [paneView, state.root, workbenchOpen])
+        }, [paneView, state.root, workbenchTabActive])
 
         useEffect(() => {
           if (paneView !== 'todo') return undefined
@@ -8052,10 +8052,6 @@ window.__ModuleLoader__.load({
           void (async () => {
             const saved = readStorage(`${VIEW_KEY}:${root}`)
             const valid = ['files', 'search', 'todo', 'tasks', 'acceptance', 'pipeline', 'git', 'memory']
-            if (saved === 'workbench') {
-              if (alive) setWorkbenchOpen(true)
-              return
-            }
             if (typeof saved === 'string' && valid.includes(saved)) {
               if (alive && !(ssh && (saved === 'git' || saved === 'memory'))) setPaneView(saved)
               return
@@ -8065,7 +8061,7 @@ window.__ModuleLoader__.load({
               const snapshot = value !== null && typeof value === 'object' && value.doc !== undefined ? value.doc : value
               const requirement = snapshot !== null && typeof snapshot === 'object' && snapshot.requirement !== null && typeof snapshot.requirement === 'object' ? snapshot.requirement : {}
               const hasProject = typeof requirement.title === 'string' && requirement.title.trim().length > 0
-              if (alive && hasProject) setWorkbenchOpen(true)
+              if (alive && hasProject) ensureWorkbenchTab(store.get().tabs.length === 0)
             } catch {
               /* no pipeline route (older Host): keep the explorer */
             }
@@ -8076,12 +8072,7 @@ window.__ModuleLoader__.load({
           // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [state.ready, state.root])
 
-        // Navigating from the dashboard to a sidebar view must reveal the sidebar:
-        // the workbench hides it, so close the dashboard when the pane changes.
-        useEffect(() => {
-          // Use the store value here: this effect sits before the activeTab const.
-          if (workbenchOpen && store.get().active === null && paneView !== 'files') setWorkbenchOpen(false)
-        }, [workbenchOpen, paneView])
+
 
         // Surface panel errors on the dashboard instead of hiding them in their panels.
         useEffect(() => {
@@ -8104,18 +8095,18 @@ window.__ModuleLoader__.load({
         // Remember the last view per workspace so reopening feels continuous.
         useEffect(() => {
           if (state.root === null) return
-          writeStorage(`${VIEW_KEY}:${state.root}`, workbenchOpen ? 'workbench' : paneView)
-        }, [paneView, state.root, workbenchOpen])
+          writeStorage(`${VIEW_KEY}:${state.root}`, paneView)
+        }, [paneView, state.root])
 
         // The workbench aggregates agent-driven state; refresh it while visible.
         useEffect(() => {
-          if (!workbenchOpen) return undefined
+          if (!workbenchTabActive) return undefined
           const timer = window.setInterval(() => {
             if (!document.hidden && !pipelineBusy && !deliveryBusy) void loadWorkbench({ silent: true })
           }, 3000)
           return () => window.clearInterval(timer)
           // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [workbenchOpen, pipelineBusy, deliveryBusy])
+        }, [workbenchTabActive, pipelineBusy, deliveryBusy])
 
         // The agent advances stages from the conversation; keep the panel in step
         // without the owner having to press refresh.
@@ -8479,9 +8470,8 @@ window.__ModuleLoader__.load({
         const treeDisplayWidth = compact
           ? '100%'
           : `${String(containerWidth > 0 ? Math.min(state.treeWidth, Math.max(220, Math.floor(containerWidth * 0.42))) : state.treeWidth)}px`
-        const workbenchActive = workbenchOpen && activeTab === null
-        const showSide = !maximized && (compact ? !workbenchActive && (compactView === 'tree' || activeTab === null) : true)
-        const showMain = workbenchActive ? !maximized : maximized || !compact || (activeTab !== null && compactView === 'editor')
+        const showSide = !maximized && (!compact || compactView === 'tree' || activeTab === null)
+        const showMain = maximized || !compact || (activeTab !== null && compactView === 'editor')
         const canCollapse = Object.keys(state.expanded).some((entry) => entry !== '')
         const rootFavorites = state.root === null ? [] : state.favorites[state.root] ?? []
         const favoritePaths = new Set(rootFavorites.map((item) => item.path))
@@ -16767,40 +16757,6 @@ h(
           )
         }
 
-        /** The Workbench tab in the editor tab strip. */
-        function renderWorkbenchTab() {
-          return h(
-            'div',
-            {
-              key: '__workbench__',
-              className: 'ds-tab ds-wb-tab',
-              role: 'tab',
-              'data-active': activeTab === null ? 'true' : 'false',
-              'aria-selected': activeTab === null,
-              title: t('workbench.title'),
-              onClick: () => {
-                store.set((current) => ({ ...current, active: null }))
-                setCompactView('editor')
-              },
-            },
-            h('span', { className: 'ds-glyph' }, h(WorkbenchIcon)),
-            h('span', { className: 'ds-tab-name' }, t('workbench.title')),
-            h(
-              'button',
-              {
-                type: 'button',
-                className: 'ds-tabclose',
-                title: t('action.cancel'),
-                onClick: (event) => {
-                  event.stopPropagation()
-                  closeWorkbench()
-                },
-              },
-              h(CloseIcon),
-            ),
-          )
-        }
-
         function renderSideViews() {
           // Owner-first information architecture: the strip keeps only three
           // entries (workbench, files, search) plus "more"; project and
@@ -16886,7 +16842,7 @@ h(
             id: 'workbench',
             label: t('workbench.title'),
             icon: h(WorkbenchIcon),
-            active: workbenchOpen,
+            active: workbenchTabActive,
             select: openWorkbench,
           }
           const groups = [
@@ -17873,9 +17829,7 @@ h(
             h(
               'section',
               { className: 'ds-main', style: showMain ? undefined : { display: 'none' } },
-              workbenchOpen
-                ? renderWorkbenchPage()
-                : state.tabs.length === 0
+              state.tabs.length === 0
                 ? h(
                     'div',
                     { className: 'ds-welcome' },
@@ -17973,13 +17927,12 @@ h(
                     h(
                       'div',
                       { className: 'ds-tabs', role: 'tablist' },
-                      workbenchOpen ? renderWorkbenchTab() : null,
                       state.tabs.map(renderFileTab),
                     ),
-                    workbenchOpen && activeTab === null
-                      ? renderWorkbenchPage()
-                      : activeTab === null
+                    activeTab === null
                       ? h('div', { className: 'ds-empty' }, t('hint.noFile'))
+                      : activeTab.mode === 'workbench'
+                      ? renderWorkbenchPage()
                       : h(
                           React.Fragment,
                           null,

@@ -4,6 +4,21 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Workbench is now a real editor tab (like the browser tab)
+
+- The Workbench stopped being a synthetic overlay: it is created as a normal tab
+  (`mode: 'workbench'`, path `workbench:home`) in the same tab store as files,
+  browser pages and terminals. It therefore participates in the regular tab strip,
+  active state, neighbour selection on close, session landing and the sidebar
+  groups exactly like the built-in browser tab.
+- Opening the Workbench creates/focuses that tab; closing it (tab × or the page
+  header ×) uses the normal close path; clicking it in the sidebar/menu focuses the
+  tab. Opening a file simply switches the active tab and keeps the Workbench tab
+  available. The page header keeps its title + close button, compact layouts keep
+  the back button.
+- Removed the synthetic `workbenchOpen` state, the special main-area branch and the
+  hand-rolled tab renderer; the workbench page renders from `activeTab.mode`.
+
 ### Make the team actually redo the flow after a requirement change
 
 - After an append/edit the Workbench now asks **which stage should be redone with
