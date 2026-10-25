@@ -441,6 +441,8 @@ window.__ModuleLoader__.load({
       'harness.closeConfig': '返回',
       'harness.noConfig': '没有可读取的配置文件',
       'harness.failed': '读取失败：{message}',
+      'harness.open': 'Harness 信息',
+      'harness.back': '返回上一视图',
       favorites: '收藏夹',
       'favorite.add': '收藏',
       'favorite.remove': '取消收藏',
@@ -1033,6 +1035,8 @@ window.__ModuleLoader__.load({
       'harness.closeConfig': 'Back',
       'harness.noConfig': 'No readable configuration files',
       'harness.failed': 'Read failed: {message}',
+      'harness.open': 'Harness info',
+      'harness.back': 'Back to previous view',
       favorites: 'Favorites',
       'favorite.add': 'Add to favorites',
       'favorite.remove': 'Remove from favorites',
@@ -7636,7 +7640,7 @@ window.__ModuleLoader__.load({
             { id: 'browser', label: t('browser.open'), run: () => openBrowser() },
             { id: 'memory', label: t('side.memory'), run: openMemory },
             { id: 'todo', label: t('todo.title'), run: openTodo },
-            { id: 'harness', label: t('side.harness'), run: () => void openHarness() },
+            { id: 'harness', label: t('harness.open'), run: () => void openHarness() },
           ]
           if (gitAvailable) commands.push({ id: 'git', label: t('git.title'), run: () => setPaneView('git') })
           return commands
@@ -7663,10 +7667,31 @@ window.__ModuleLoader__.load({
           }
         }
 
+        // Remember the sidebar view Harness was opened from so the header
+        // toggle can return there instead of always landing on the explorer.
+        const harnessReturnRef = useRef('files')
+
         async function openHarness() {
+          if (paneView !== 'harness') harnessReturnRef.current = paneView
+          // The panel lives in the sidebar, so reveal it when the editor is
+          // maximized instead of silently switching a hidden view.
+          if (maximized) setMaximized(false)
           setPaneView('harness')
           setCompactView('tree')
           await loadHarness()
+        }
+
+        /** Leave Harness, restoring the sidebar view it was opened from. */
+        function closeHarness() {
+          let previous = harnessReturnRef.current
+          if (previous === 'harness' || (!gitAvailable && (previous === 'git' || previous === 'memory'))) previous = 'files'
+          setPaneView(previous)
+        }
+
+        /** Toggle the Harness info panel from the header icon. */
+        function toggleHarness() {
+          if (paneView !== 'harness') void openHarness()
+          else closeHarness()
         }
 
         async function openHarnessConfig(name) {
@@ -12257,10 +12282,6 @@ window.__ModuleLoader__.load({
          * - every view fits with its label;
          * - labels collapse to icons;
          * - icons plus a "more" menu, keeping the active view in the strip.
-         *
-         * The Harness info panel is a low-frequency view, so it keeps no
-         * permanent tab slot: it sits at the end of the "more views" menu (and
-         * stays reachable from the command palette) instead.
          */
         function renderSideViews() {
           const views = [
@@ -12306,24 +12327,12 @@ window.__ModuleLoader__.load({
               select: openMemory,
             })
           }
-          // Secondary views only appear in the "more views" menu: they are
-          // checked too rarely to earn a permanent tab slot.
-          const secondaryViews = [
-            {
-              id: 'harness',
-              label: t('side.harness'),
-              icon: h(HarnessIcon),
-              active: showHarness,
-              select: () => void openHarness(),
-            },
-          ]
-          const menuViews = [...views, ...secondaryViews]
+          // The low-frequency Harness info panel keeps no sidebar tab: the
+          // header icon (and the command palette) open it instead, so the strip
+          // stays File / Search / Todo / Git / Memory.
 
-          // The trailing "more" button is permanent (it holds the secondary
-          // views), so it claims one icon slot when measuring the strip.
-          const slots = views.length + 1
           const width = sideTabsWidth
-          const labelBudget = width > 0 ? width / slots : 0
+          const labelBudget = width > 0 ? width / views.length : 0
           const labelMode = width <= 0 || labelBudget >= SIDE_TAB_LABEL_WIDTH
           const iconMode = !labelMode && labelBudget >= SIDE_TAB_ICON_WIDTH
           const overflow = !labelMode && !iconMode
@@ -12349,9 +12358,6 @@ window.__ModuleLoader__.load({
           const hiddenWarn = hidden.some((view) => view.countTone === 'warn' && view.count > 0)
           const hiddenCount = hidden.some((view) => view.count > 0)
           const iconOnly = !labelMode
-          // An open secondary view has no tab of its own, so the "more" tab
-          // carries its active state.
-          const moreActive = sideViewsOpen || secondaryViews.some((view) => view.active)
 
           function renderTab(view) {
             const title =
@@ -12411,67 +12417,61 @@ window.__ModuleLoader__.load({
                 'data-views-open': sideViewsOpen ? 'true' : undefined,
               },
               visible.map(renderTab),
-              h(
-                'button',
-                {
-                  type: 'button',
-                  className: 'ds-side-tab ds-side-tab-more',
-                  'data-active': moreActive ? 'true' : undefined,
-                  title: t('side.more'),
-                  'aria-label': t('side.more'),
-                  'aria-haspopup': 'menu',
-                  'aria-expanded': sideViewsOpen,
-                  onClick: () => setSideViewsOpen((open) => !open),
-                },
-                h(MoreIcon),
-                hiddenCount
-                  ? h('span', {
-                      className: 'ds-side-tab-alert',
-                      'data-tone': hiddenWarn ? 'warn' : undefined,
-                      'aria-hidden': true,
-                    })
-                  : null,
-              ),
+              hidden.length > 0
+                ? h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-side-tab ds-side-tab-more',
+                      'data-active': sideViewsOpen ? 'true' : undefined,
+                      title: t('side.more'),
+                      'aria-label': t('side.more'),
+                      'aria-haspopup': 'menu',
+                      'aria-expanded': sideViewsOpen,
+                      onClick: () => setSideViewsOpen((open) => !open),
+                    },
+                    h(MoreIcon),
+                    hiddenCount
+                      ? h('span', {
+                          className: 'ds-side-tab-alert',
+                          'data-tone': hiddenWarn ? 'warn' : undefined,
+                          'aria-hidden': true,
+                        })
+                      : null,
+                  )
+                : null,
               sideViewsOpen
                 ? h(
                     'div',
                     { className: 'ds-side-views-menu', role: 'menu', 'aria-label': t('side.views') },
                     h('div', { className: 'ds-side-views-title' }, t('side.views')),
-                    menuViews.map((view, index) =>
+                    views.map((view) =>
                       h(
-                        React.Fragment,
-                        { key: view.id },
-                        // Separate the low-frequency secondary views from the
-                        // primary ones that already have their own tab.
-                        index === views.length
-                          ? h('div', { className: 'ds-menu-sep', role: 'separator' })
-                          : null,
-                        h(
-                          'button',
-                          {
-                            type: 'button',
-                            role: 'menuitemradio',
-                            'aria-checked': view.active,
-                            className: 'ds-side-views-item',
-                            'data-active': view.active ? 'true' : undefined,
-                            onClick: () => {
-                              setSideViewsOpen(false)
-                              view.select()
-                            },
+                        'button',
+                        {
+                          key: view.id,
+                          type: 'button',
+                          role: 'menuitemradio',
+                          'aria-checked': view.active,
+                          className: 'ds-side-views-item',
+                          'data-active': view.active ? 'true' : undefined,
+                          onClick: () => {
+                            setSideViewsOpen(false)
+                            view.select()
                           },
-                          view.icon,
-                          h('span', { className: 'ds-side-views-name' }, view.label),
-                          view.count !== undefined && view.count > 0
-                            ? h(
-                                'span',
-                                {
-                                  className: 'ds-side-views-count',
-                                  'data-tone': view.countTone === undefined ? undefined : view.countTone,
-                                },
-                                formatBadgeCount(view.count),
-                              )
-                            : null,
-                        ),
+                        },
+                        view.icon,
+                        h('span', { className: 'ds-side-views-name' }, view.label),
+                        view.count !== undefined && view.count > 0
+                          ? h(
+                              'span',
+                              {
+                                className: 'ds-side-views-count',
+                                'data-tone': view.countTone === undefined ? undefined : view.countTone,
+                              },
+                              formatBadgeCount(view.count),
+                            )
+                          : null,
                       ),
                     ),
                   )
@@ -12951,6 +12951,18 @@ window.__ModuleLoader__.load({
               'button',
               {
                 type: 'button',
+                className: 'ds-iconbtn ds-header-harness',
+                title: showHarness ? t('harness.back') : t('harness.open'),
+                'aria-pressed': showHarness,
+                'data-active': showHarness ? 'true' : undefined,
+                onClick: toggleHarness,
+              },
+              h(HarnessIcon),
+            ),
+            h(
+              'button',
+              {
+                type: 'button',
                 className: 'ds-iconbtn ds-maximize-btn',
                 title: maximized ? t('action.restore') : t('action.maximize'),
                 'aria-pressed': maximized,
@@ -13025,6 +13037,20 @@ window.__ModuleLoader__.load({
                     },
                     sidePosition === 'left' ? h(PanelRightIcon) : h(PanelLeftIcon),
                   ),
+                  // The header icon toggles Harness globally; this small × gives
+                  // the panel its own way out, which matters on touch layouts.
+                  showHarness
+                    ? h(
+                        'button',
+                        {
+                          type: 'button',
+                          className: 'ds-iconbtn ds-iconbtn-sm ds-harness-back',
+                          title: t('harness.back'),
+                          onClick: closeHarness,
+                        },
+                        h(CloseIcon),
+                      )
+                    : null,
                 ),
                 h(
                   'span',
@@ -15878,6 +15904,7 @@ window.__ModuleLoader__.load({
 .ds-palette-item-path { margin-left: auto; min-width: 0; max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-caption); font-family: var(--ds-mono); font-size: 10px; }
 .ds-palette-hint { flex: 0 0 auto; padding: 6px 12px; border-top: 1px solid var(--dsw-alias-border-l1); color: var(--dsw-alias-label-caption); font-size: 10px; }
 .ds-terminal-toggle[data-active="true"] { color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent); }
+.ds-header-harness[data-active="true"] { color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent); }
 .ds-glyph-terminal { color: var(--dsw-alias-brand-primary); }
 .ds-glyph-terminal svg { width: 14px; height: 14px; }
 .ds-terminal-panel {

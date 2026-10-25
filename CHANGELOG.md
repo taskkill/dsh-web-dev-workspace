@@ -4,16 +4,20 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
-### Harness panel moved into the More views menu
+### Harness panel moved to a header icon
 
 - The low-frequency **Harness** info panel no longer takes a permanent slot in the
-  sidebar view strip. It now sits at the end of the **More views** menu (below a
-  separator) and stays reachable from the command palette, so File / Search / Todo
-  / Git / Memory keep the primary strip on narrow screens. Opening it from the
-  menu highlights the **More views** button as the active tab, and the pane title
-  still reads **Harness**. The **More views** button is always present now (it also
-  holds views that overflow a narrow strip) and keeps its badge dot when a hidden
-  view has a pending count.
+  sidebar view strip. A small icon in the header action cluster (between the
+  browser and maximize buttons) opens and closes it, so File / Search / Todo / Git
+  / Memory keep the primary strip and narrow-screen bottom bar to themselves.
+  Clicking the icon again, or the × in the panel's title bar, restores the sidebar
+  view Harness was opened from; opening it while the editor is maximized first
+  restores the sidebar. The button shows the brand tint while the panel is open,
+  and the pane title still reads **Harness**.
+- Because the panel is no longer a sidebar tab, the strip no longer needs a
+  permanent **More views** button: it returns to appearing only when the tabs do
+  not fit. The command palette entry is renamed to **Harness info**, matching the
+  button tooltip.
 
 ### SSH terminals
 
