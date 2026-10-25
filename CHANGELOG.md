@@ -4,6 +4,15 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Fix: “Cannot read properties of undefined (reading 'status')” when approving the last stage
+
+- After a successful approval the client auto-advances to the next stage by
+  reading `nextStages[index + 1]`. Approving the final stage (release) produced
+  `undefined`, and the check used `next !== null`, so `next.status` threw and the
+  dashboard reported a review failure even though the review itself had succeeded.
+  The lookup is now bounds-checked (`index + 1 < length`) and the inner
+  approval-stage branch is null-guarded.
+
 ### UI design stage must deliver screenshots, and the Workbench shows them
 
 - The design stage prompt now requires **UI screenshots or high-fidelity mockups**

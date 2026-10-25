@@ -9934,9 +9934,9 @@ ${tail}
               const snapshot = await call('pipelineList', { root: targetRoot })
               const nextStages = Array.isArray(snapshot?.stages) ? snapshot.stages : Array.isArray(snapshot?.doc?.stages) ? snapshot.doc.stages : []
               const index = nextStages.findIndex((stage) => stage !== null && typeof stage === 'object' && stage.id === stageId)
-              const next = index >= 0 ? nextStages[index + 1] : null
+              const next = index >= 0 && index + 1 < nextStages.length ? nextStages[index + 1] : null
               if (next !== null && (next.status === 'pending' || next.status === 'failed')) {
-                if (next.id === 'approval') {
+                if (next !== null && next.id === 'approval') {
                   await call('pipelineStart', { root: targetRoot, stageId: 'approval' })
                   await loadPipeline({ silent: true })
                 } else {
