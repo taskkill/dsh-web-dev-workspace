@@ -4,6 +4,14 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Fix: “error is not defined” crash on the dashboard
+
+- The problem-aggregation effect referenced the file-operation `error` state that
+  only exists inside the Git panel component, so the whole Dev Workspace crashed
+  into the error boundary. The entry was removed; the aggregated sources are the
+  states that actually live in the IDE component (pipeline, workbench,
+  acceptance, preview, tasks, connection banner).
+
 ### Workbench: one “Problems & status” card for every panel
 
 - The Workbench now starts with a full-width **Problems & status** card. Panel

@@ -8078,7 +8078,6 @@ window.__ModuleLoader__.load({
             ['preview', previewError],
             ['tasks', taskError],
             ['tasks', taskDetectError],
-            ['files', error],
             ['banner', banner !== null && banner.kind === 'error' ? banner.message : null],
           ]
           for (const [source, value] of entries) {
@@ -8086,7 +8085,7 @@ window.__ModuleLoader__.load({
             if (message !== null) reportIssue(source, message)
           }
           // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, [pipelineError, workbenchError, acceptanceError, previewError, taskError, taskDetectError, error, banner])
+        }, [pipelineError, workbenchError, acceptanceError, previewError, taskError, taskDetectError, banner])
 
         // Remember the last view per workspace so reopening feels continuous.
         useEffect(() => {
