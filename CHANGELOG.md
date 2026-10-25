@@ -4,6 +4,17 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Fix: welcome screen showed raw locale keys
+
+- The welcome redesign added `welcome.save`, `welcome.rename`,
+  `welcome.delete`, `welcome.workbenchDesc`, `welcome.browserDesc`,
+  `welcome.quickOpen`, `welcome.quickOpenDesc` and `welcome.terminalDesc`
+  to the markup but not to the zh/en dictionaries (the dictionary uses bare
+  identifiers for the neighbouring keys), so the screen rendered the key names.
+  The keys are now registered flat ('welcome.save': …) in both dictionaries, and
+  an audit confirms every `t('…')` key used in the client resolves in both
+  languages (705 keys, 0 missing).
+
 ### Welcome screen redesign
 
 - The empty-workspace screen was rebuilt as a small landing page: framed hero
