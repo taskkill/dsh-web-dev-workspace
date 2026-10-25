@@ -72,6 +72,7 @@ it for you.
   commands, runs them with streamed output and exit codes, and turns errors in
   the output into clickable file:line links that jump into the editor. Tasks that
   were still running when the page reloaded are re-attached.
+- **File properties** — right-click a file or folder in the explorer → Properties to see type, location, size (recursive folder total and item counts), modified/created/accessed times, mode, read-only flag and symlink target.
 - **Requirement revision centre** — append notes or edit the requirement while a project is running, and open a new change round once it is delivered; every revision is logged with its type and time and dispatched to the product manager to absorb into the plan and acceptance items.
 - **Change rounds with scopes** — after a delivery, “Start a change” opens round N and lets you pick full six stages, code/config only (skip product and design) or release only (sign-off and release); skipped stages stay in the flow with a reason and the round starts from the first applicable stage.
 - **Run & check panel** — the Tasks view now leads with the latest run (command, status, duration), quick-run command chips, a run history with durations and exit codes, clickable problems and a one-click “send failure to agent”.

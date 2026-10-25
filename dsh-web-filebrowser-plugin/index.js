@@ -295,6 +295,8 @@ async function dispatch(ctx, op, body) {
       return deletePath(ctx, body)
     case 'stat':
       return statPath(ctx, body)
+    case 'properties':
+      return inspectProperties(ctx, body)
     case 'search':
       return searchWorkspace(ctx, body)
     case 'files':
@@ -1311,7 +1313,113 @@ async function statPath(ctx, body) {
   return { root, path: body.path, type: kind, bytes: target.info.size, version: versionOf(target.info) }
 }
 
-/** Read one UTF-8 text file. */
+/** Walk a directory tree with hard caps so the properties dialog stays responsive. */
+async function measureDirectory(absolute) {
+  const startedAt = Date.now()
+  const MAX_ENTRIES = 20_000
+  const MAX_MS = 1_500
+  let files = 0
+  let directories = 0
+  let bytes = 0
+  let skipped = 0
+  let truncated = false
+  const stack = [absolute]
+  while (stack.length > 0) {
+    if (files + directories >= MAX_ENTRIES || Date.now() - startedAt > MAX_MS) {
+      truncated = true
+      break
+    }
+    const directory = stack.pop()
+    let entries
+    try {
+      entries = await fsp.readdir(directory, { withFileTypes: true })
+    } catch {
+      skipped += 1
+      continue
+    }
+    for (const entry of entries) {
+      const child = path.join(directory, entry.name)
+      if (entry.isDirectory()) {
+        directories += 1
+        stack.push(child)
+        continue
+      }
+      files += 1
+      if (entry.isFile()) {
+        try {
+          bytes += (await fsp.stat(child)).size
+        } catch {
+          skipped += 1
+        }
+      }
+    }
+  }
+  return { bytes, files, directories, total: files + directories, skipped, truncated }
+}
+
+/** Read display-oriented properties of one file or directory. */
+async function inspectProperties(ctx, body) {
+  const root = await resolveRoot(ctx, body.root)
+  if (ssh.isSshRoot(root)) return ssh.stat(root, body)
+  const absolute = childPath(root, body.path)
+  let info
+  try {
+    info = await fsp.lstat(absolute)
+  } catch (error) {
+    if (error !== null && typeof error === 'object' && error.code === 'ENOENT') {
+      throw new SideError('not-found', '文件不存在')
+    }
+    throw error
+  }
+  const isDirectory = info.isDirectory()
+  const isSymbolicLink = info.isSymbolicLink()
+  const type = isDirectory ? 'directory' : isSymbolicLink ? 'symlink' : info.isFile() ? 'file' : 'other'
+  const name = path.basename(absolute) || path.basename(path.resolve(root))
+  let bytes = info.size
+  let entries = null
+  let truncated = false
+  let skipped = 0
+  let symlink = null
+  let directChildren = null
+  if (isDirectory) {
+    const measured = await measureDirectory(absolute)
+    bytes = measured.bytes
+    truncated = measured.truncated
+    skipped = measured.skipped
+    try {
+      directChildren = (await fsp.readdir(absolute)).length
+    } catch {
+      directChildren = null
+    }
+    entries = { files: measured.files, directories: measured.directories, total: measured.total, direct: directChildren }
+  } else if (isSymbolicLink) {
+    try {
+      symlink = await fsp.readlink(absolute)
+    } catch {
+      symlink = null
+    }
+  }
+  return {
+    root,
+    path: body.path,
+    name,
+    type,
+    bytes,
+    entries,
+    truncated,
+    skipped,
+    symlink,
+    directChildren,
+    mtimeMs: info.mtimeMs,
+    ctimeMs: info.ctimeMs,
+    atimeMs: info.atimeMs,
+    birthtimeMs: info.birthtimeMs,
+    mode: (info.mode & 0o777).toString(8).padStart(3, '0'),
+    readonly: (info.mode & 0o200) === 0,
+  }
+}
+
+/** Read one UTF-8 text file. *//** Read one UTF-8 text file. */
 async function readText(ctx, body) {
   const root = await resolveRoot(ctx, body.root)
   if (ssh.isSshRoot(root)) return ssh.readText(root, body)

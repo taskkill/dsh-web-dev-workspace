@@ -4,6 +4,20 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### File and folder properties from the explorer context menu
+
+- The explorer context menu (files, folders and the workspace root) gained
+  **Properties…**: a dialog showing type, absolute location, size, modified /
+  created / accessed times, permission mode, read-only flag, symlink target and,
+  for folders, a recursive size with file/folder counts plus the number of direct
+  children.
+- Host op `properties` walks directories with hard caps (20 000 entries or
+  1.5 s) and reports truncation/permission-skipped counts instead of hanging; the
+  dialog shows those notes when present. SSH roots fall back to the remote stat
+  response.
+- The menu item uses a new info icon; the dialog reuses the modal shell and adds
+  a properties row layout.
+
 ### Prominent requirement card and scoped change rounds
 
 - The revision entry moved out of the status card's link row into a dedicated

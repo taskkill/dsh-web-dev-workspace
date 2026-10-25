@@ -739,6 +739,31 @@ window.__ModuleLoader__.load({
       'action.rename': '重命名',
       'action.delete': '删除',
       'action.copyPath': '复制相对路径',
+      'action.properties': '属性…',
+      'action.close': '关闭',
+      'props.title': '属性',
+      'props.loading': '正在统计…',
+      'props.name': '名称',
+      'props.type': '类型',
+      'props.type.file': '文件',
+      'props.type.directory': '文件夹',
+      'props.type.symlink': '符号链接',
+      'props.type.other': '其他',
+      'props.location': '位置',
+      'props.size': '大小',
+      'props.directorySize': '小计大小',
+      'props.entries': '包含',
+      'props.entriesValue': '共 {total} 项（文件 {files} / 文件夹 {directories}）',
+      'props.directChildren': '直属子项',
+      'props.modified': '修改时间',
+      'props.created': '创建时间',
+      'props.accessed': '访问时间',
+      'props.mode': '权限',
+      'props.readonly': '只读',
+      'props.symlink': '链接目标',
+      'props.truncated': '目录较大，统计达到上限，大小可能偏小。',
+      'props.skipped': '有 {count} 项无法读取（权限不足）。',
+      'props.failed': '读取属性失败：{message}',
       'action.copyAbsolutePath': '复制绝对路径',
       'action.copy': '复制',
       'action.cut': '剪切',
@@ -1590,6 +1615,31 @@ window.__ModuleLoader__.load({
       'action.rename': 'Rename',
       'action.delete': 'Delete',
       'action.copyPath': 'Copy relative path',
+      'action.properties': 'Properties…',
+      'action.close': 'Close',
+      'props.title': 'Properties',
+      'props.loading': 'Measuring…',
+      'props.name': 'Name',
+      'props.type': 'Type',
+      'props.type.file': 'File',
+      'props.type.directory': 'Folder',
+      'props.type.symlink': 'Symbolic link',
+      'props.type.other': 'Other',
+      'props.location': 'Location',
+      'props.size': 'Size',
+      'props.directorySize': 'Total size',
+      'props.entries': 'Contains',
+      'props.entriesValue': '{total} items ({files} files / {directories} folders)',
+      'props.directChildren': 'Direct children',
+      'props.modified': 'Modified',
+      'props.created': 'Created',
+      'props.accessed': 'Accessed',
+      'props.mode': 'Mode',
+      'props.readonly': 'Read-only',
+      'props.symlink': 'Link target',
+      'props.truncated': 'Large folder: measurement hit its limit, so the size may be understated.',
+      'props.skipped': '{count} item(s) could not be read (permission denied).',
+      'props.failed': 'Could not read properties: {message}',
       'action.copyAbsolutePath': 'Copy absolute path',
       'action.copy': 'Copy',
       'action.cut': 'Cut',
@@ -3347,6 +3397,14 @@ window.__ModuleLoader__.load({
 
     function EyeIcon() {
       return icon(15, h('path', { d: 'M1.75 8s2.3-4.25 6.25-4.25S14.25 8 14.25 8 12 12.25 8 12.25 1.75 8 1.75 8Z' }), h('circle', { cx: 8, cy: 8, r: 1.9 }))
+    }
+
+    function InfoIcon() {
+      return icon(14,
+        h('circle', { cx: 7, cy: 7, r: 5.6 }),
+        h('path', { d: 'M7 6.2v4.2' }),
+        h('circle', { cx: 7, cy: 4.2, r: 0.7, fill: 'currentColor', stroke: 'none' }),
+      )
     }
 
     function TrashIcon() {
@@ -7454,6 +7512,7 @@ window.__ModuleLoader__.load({
           typeof props?.useSessions === 'function' ? props.useSessions((snapshot) => snapshot) : null
         const [draft, setDraft] = useState(null)
         const [menu, setMenu] = useState(null)
+        const [propertiesState, setPropertiesState] = useState(null)
         const [modal, setModal] = useState(null)
         const [toast, setToast] = useState(null)
         const [banner, setBanner] = useState(null)
@@ -12732,6 +12791,92 @@ ${tail}
           store.set((current) => ({ ...current, selected: relative }))
         }
 
+        /** Format a byte count for the properties dialog. */
+        function formatBytes(value) {
+          if (!Number.isFinite(value) || value < 0) return '—'
+          const units = ['B', 'KB', 'MB', 'GB', 'TB']
+          let size = value
+          let index = 0
+          while (size >= 1024 && index < units.length - 1) {
+            size /= 1024
+            index += 1
+          }
+          return (index === 0 ? String(size) : size.toFixed(size < 10 ? 1 : 0)) + ' ' + units[index]
+        }
+
+        /** Format a timestamp for the properties dialog. */
+        function formatDateTime(value) {
+          if (!Number.isFinite(value) || value <= 0) return '—'
+          try {
+            return new Date(value).toLocaleString()
+          } catch {
+            return '—'
+          }
+        }
+
+        /** Load and show the properties dialog for one file or directory. */
+        async function openProperties(relative) {
+          setMenu(null)
+          const root = store.get().root
+          if (root === null) return
+          setPropertiesState({ path: relative, loading: true, error: null, data: null })
+          try {
+            const value = await call('properties', { root, path: relative })
+            setPropertiesState({ path: relative, loading: false, error: null, data: value })
+          } catch (error) {
+            setPropertiesState({ path: relative, loading: false, error: t('props.failed', { message: errorText(error) }), data: null })
+          }
+        }
+
+        /** Render the properties rows for the open dialog. */
+        function renderPropertiesBody(state) {
+          const data = state.data
+          if (data === null || typeof data !== 'object') return null
+          const root = store.get().root
+          const isDirectory = data.type === 'directory'
+          const row = (key, label, value) =>
+            value === null || value === undefined || value === ''
+              ? null
+              : h(
+                  'div',
+                  { key, className: 'ds-props-row' },
+                  h('span', { className: 'ds-props-label' }, label),
+                  h('span', { className: 'ds-props-value', title: typeof value === 'string' ? value : undefined }, value),
+                )
+          return h(
+            'div',
+            { className: 'ds-props-body' },
+            row('name', t('props.name'), String(data.name ?? '')),
+            row('type', t('props.type'), t('props.type.' + String(data.type ?? 'other'))),
+            row('location', t('props.location'), root === null ? String(data.path ?? '') : absolutePathOf(root, String(data.path ?? ''))),
+            row('size', isDirectory ? t('props.directorySize') : t('props.size'), formatBytes(data.bytes)),
+            isDirectory && data.entries !== null && typeof data.entries === 'object'
+              ? row(
+                  'entries',
+                  t('props.entries'),
+                  t('props.entriesValue', {
+                    total: String(data.entries.total),
+                    files: String(data.entries.files),
+                    directories: String(data.entries.directories),
+                  }),
+                )
+              : null,
+            isDirectory && Number.isInteger(data.directChildren)
+              ? row('direct', t('props.directChildren'), String(data.directChildren))
+              : null,
+            row('modified', t('props.modified'), formatDateTime(data.mtimeMs)),
+            row('created', t('props.created'), formatDateTime(data.birthtimeMs)),
+            row('accessed', t('props.accessed'), formatDateTime(data.atimeMs)),
+            row('mode', t('props.mode'), String(data.mode ?? '')),
+            row('readonly', t('props.readonly'), data.readonly === true ? '✓' : ''),
+            data.symlink ? row('symlink', t('props.symlink'), String(data.symlink)) : null,
+            data.truncated ? h('div', { className: 'ds-props-note' }, t('props.truncated')) : null,
+            Number.isInteger(data.skipped) && data.skipped > 0
+              ? h('div', { className: 'ds-props-note' }, t('props.skipped', { count: String(data.skipped) }))
+              : null,
+          )
+        }
+
         async function copyRelative(relative) {
           const text = relative.length === 0 ? '.' : relative
           try {
@@ -17856,6 +18001,41 @@ ${tail}
                   },
                   h(CopyIcon),
                 ),
+                h('div', { key: 'sep-props', className: 'ds-menu-sep' }),
+                h(
+                  MenuItem,
+                  {
+                    label: t('action.properties'),
+                    onClick: () => void openProperties(menu.path),
+                  },
+                  h(InfoIcon),
+                ),
+              ),
+          propertiesState === null
+            ? null
+            : h(
+                'div',
+                {
+                  className: 'ds-modal-backdrop',
+                  onPointerDown: (event) => {
+                    if (event.target === event.currentTarget) setPropertiesState(null)
+                  },
+                },
+                h(
+                  'div',
+                  { className: 'ds-modal ds-props-modal', role: 'dialog', 'aria-modal': true },
+                  h('div', { className: 'ds-modal-title' }, t('props.title')),
+                  propertiesState.loading
+                    ? h('div', { className: 'ds-hint ds-props-loading' }, t('props.loading'))
+                    : propertiesState.error !== null
+                      ? h('div', { className: 'ds-errorline' }, propertiesState.error)
+                      : renderPropertiesBody(propertiesState),
+                  h(
+                    'div',
+                    { className: 'ds-modal-actions' },
+                    h('button', { type: 'button', className: 'ds-btn', onClick: () => setPropertiesState(null) }, t('action.close')),
+                  ),
+                ),
               ),
           sshOpen
             ? h(
@@ -20955,6 +21135,12 @@ ${tail}
   background: var(--dsw-alias-bg-overlay);
   box-shadow: 0 24px 70px color-mix(in srgb, var(--dsw-alias-label-primary) 30%, transparent);
 }
+.ds-props-modal { width: min(540px, 92vw); }
+.ds-props-body { display: flex; flex-direction: column; gap: 1px; margin: 8px 0 4px; max-height: 52vh; overflow: auto; }
+.ds-props-row { display: flex; gap: 10px; padding: 3px 0; font-size: 11.5px; }
+.ds-props-label { flex: 0 0 74px; color: var(--dsw-alias-label-caption); }
+.ds-props-value { flex: 1 1 auto; min-width: 0; color: var(--dsw-alias-label-primary); word-break: break-all; }
+.ds-props-note { margin-top: 6px; color: var(--dsw-alias-label-caption); font-size: 10px; }
 .ds-modal-title { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
 .ds-modal-text { color: var(--dsw-alias-label-secondary); line-height: 1.65; overflow-wrap: anywhere; }
 .ds-modal-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 18px; }
