@@ -357,6 +357,8 @@ async function dispatch(ctx, op, body) {
       return pipelineStartChange(ctx, body)
     case 'pipelineUpdateRequirement':
       return pipelineUpdateRequirement(ctx, body)
+    case 'pipelineRestartStage':
+      return pipelineRestartStage(ctx, body)
     case 'browserBookmarks':
       return listBrowserBookmarks(ctx, body)
     case 'browserBookmarkAdd':
@@ -1107,6 +1109,12 @@ async function pipelineUpdateRequirement(ctx, body) {
     title: body.title,
     detail: body.detail,
   })
+}
+
+/** Reset a running/review stage so it can be redone after a requirement update. */
+async function pipelineRestartStage(ctx, body) {
+  const root = await pipelineRoot(ctx, body.root)
+  return pipeline.restartStage(root, { stageId: body.stageId, note: body.note })
 }
 
 /** Start a new change round on a completed project (owner action). */

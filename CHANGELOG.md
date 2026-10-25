@@ -4,6 +4,20 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Requirement adjustments: visible feedback and an explicit “redo this stage”
+
+- Appending or editing a requirement now shows its result **inside the requirement
+  card** (not only below in the status card) and, when a stage is running or
+  awaiting review, offers a clear follow-up: **Redo this stage with the new
+  requirement** or “record only, do not redo”. The stage is reset by a new host op
+  (`pipelineRestartStage` → `restartStage`) and its role prompt is dispatched
+  again, so the adjustment has a visible effect on the flow.
+- The mode hints now state plainly that append/edit only update the requirement and
+  notify the product manager and do **not** rerun stages automatically. The
+  revision log keeps the history entry for every adjustment.
+- Pipeline selftest extended to 29/29 (restart resets running and reviewed stages,
+  rejects other statuses).
+
 ### Workbench behaves like a normal editor tab
 
 - The dashboard no longer takes over the window: on desktop the file sidebar

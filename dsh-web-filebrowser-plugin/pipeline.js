@@ -1123,6 +1123,39 @@ export async function startChangeRound(root, input) {
 }
 
 /**
+ * Reset one running or submitted stage back to pending so it can be redone
+ * against an updated requirement. The owner triggers this from the workbench;
+ * the note records why the stage was reset.
+ *
+ * @param root - absolute workspace root.
+ * @param input - `{ stageId, note? }`.
+ * @returns the reset stage.
+ */
+export async function restartStage(root, input) {
+  const workspace = assertRoot(root)
+  const definition = stageDefinition(input?.stageId)
+  const note = validateNote(input?.note) || '需求更新后重做'
+  return withMutationLock(workspace, async () => {
+    const doc = await readPipeline(workspace)
+    const stage = documentStage(doc, definition)
+    if (stage.status !== 'active' && stage.status !== 'review') {
+      throw new PipelineError('bad-status', `阶段「${definition.title}」当前状态是 ${stage.status}，只有进行中或待评审的阶段可以重做`)
+    }
+    const now = Date.now()
+    stage.status = 'pending'
+    stage.startedAt = 0
+    stage.submittedAt = 0
+    stage.reviewedAt = 0
+    stage.summary = ''
+    stage.artifacts = []
+    stage.note = note
+    doc.updatedAt = now
+    await writePipeline(workspace, doc)
+    return publicStage(stage, definition)
+  })
+}
+
+/**
  * Append one release record (newest first, newest 100 kept).
  *
  * The caller decides how the record relates to the release stage: it can be

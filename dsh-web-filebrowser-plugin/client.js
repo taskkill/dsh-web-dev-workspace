@@ -438,6 +438,10 @@ window.__ModuleLoader__.load({
       'workbench.source.workbench': '工作台',
       'workbench.source.stage': '阶段',
       'workbench.changeLine': '第 {round} 轮变更 · {title}',
+      'workbench.redoOffer': '「{stage}」正在进行或待评审：要让该阶段按新需求重做吗？',
+      'workbench.redoAction': '按新需求重做该阶段',
+      'workbench.redoSkip': '仅记录，不重做',
+      'workbench.redoSent': '已重置「{stage}」并重新派发角色提示。',
       'workbench.status': '项目状态',
       'workbench.reqScope': '适用范围',
       'workbench.reqScope.full': '完整六关',
@@ -451,8 +455,8 @@ window.__ModuleLoader__.load({
       'workbench.reqMode.append': '追加说明',
       'workbench.reqMode.replace': '修改需求',
       'workbench.reqMode.change': '新轮变更',
-      'workbench.reqMode.appendHint': '补充细节、边界或验收说明：不改范围，通知产品经理吸收到需求与验收项。',
-      'workbench.reqMode.replaceHint': '直接更新需求内容：若当前阶段已在进行，可能需要打回该阶段重做。',
+      'workbench.reqMode.appendHint': '只追加需求详情并通知产品经理更新需求文档与验收项；不会自动让已完成/进行中的阶段重做。',
+      'workbench.reqMode.replaceHint': '直接改写需求标题/内容并通知产品经理；不会自动重跑阶段，提交后可以选择「按新需求重做当前阶段」。',
       'workbench.reqMode.changeHint': '归档本轮六关并重新走一遍：项目全部完成后可用。',
       'workbench.reqDetailPlaceholder': '写清本次追加/修改的内容…',
       'workbench.reqSubmitAppend': '追加并通知产品经理',
@@ -1334,6 +1338,10 @@ window.__ModuleLoader__.load({
       'workbench.source.workbench': 'Workbench',
       'workbench.source.stage': 'Stage',
       'workbench.changeLine': 'Round {round} change · {title}',
+      'workbench.redoOffer': '“{stage}” is running or awaiting review — redo it against the new requirement?',
+      'workbench.redoAction': 'Redo this stage with the new requirement',
+      'workbench.redoSkip': 'Record only, do not redo',
+      'workbench.redoSent': '“{stage}” was reset and its role prompt resent.',
       'workbench.status': 'Project status',
       'workbench.reqScope': 'Scope',
       'workbench.reqScope.full': 'Full six stages',
@@ -1347,8 +1355,8 @@ window.__ModuleLoader__.load({
       'workbench.reqMode.append': 'Append notes',
       'workbench.reqMode.replace': 'Edit requirement',
       'workbench.reqMode.change': 'New change round',
-      'workbench.reqMode.appendHint': 'Add details, edge cases or acceptance notes without changing scope; the product manager absorbs them into the plan and acceptance items.',
-      'workbench.reqMode.replaceHint': 'Rewrite the requirement directly; if a stage is already running it may need to be sent back and redone.',
+      'workbench.reqMode.appendHint': 'Append details and notify the product manager; completed or running stages are not re-run automatically.',
+      'workbench.reqMode.replaceHint': 'Rewrite the requirement and notify the product manager; after submitting you can choose to redo the current stage.',
       'workbench.reqMode.changeHint': 'Archive this round and run the six stages again; available once every stage is approved.',
       'workbench.reqDetailPlaceholder': 'What should be appended or changed…',
       'workbench.reqSubmitAppend': 'Append and notify the product manager',
@@ -7688,6 +7696,7 @@ window.__ModuleLoader__.load({
         const [requirementTitleDraft, setRequirementTitleDraft] = useState('')
         const [requirementDetailDraft, setRequirementDetailDraft] = useState('')
         const [requirementBusy, setRequirementBusy] = useState(false)
+        const [redoOffer, setRedoOffer] = useState(null)
         const [requirementScope, setRequirementScope] = useState('full')
         const [workbenchError, setWorkbenchError] = useState(null)
         const [workbenchUpdatedAt, setWorkbenchUpdatedAt] = useState(0)
@@ -9634,7 +9643,37 @@ ${tail}
               await loadPipeline({ silent: true })
               await sendPromptText(buildRequirementPrompt(value?.entry ?? { title, detail }, currentRound))
               setIntakeNotice(t('workbench.reqSaved'))
+              try {
+                const snapshot = await call('pipelineList', { root })
+                const stages = Array.isArray(snapshot?.stages) ? snapshot.stages : []
+                const running = stages.find((stage) => stage !== null && typeof stage === 'object' && (stage.status === 'active' || stage.status === 'review')) ?? null
+                setRedoOffer(running === null ? null : { stageId: running.id, stageTitle: running.title ?? running.id })
+              } catch {
+                setRedoOffer(null)
+              }
             }
+            await loadWorkbench({ silent: true })
+          } catch (error) {
+            setWorkbenchError(t('workbench.reqFailed', { message: pipelineErrorText(error) }))
+          } finally {
+            setRequirementBusy(false)
+          }
+        }
+
+        /** Reset the current stage and start it again after a requirement update. */
+        async function redoStageAfterRequirement() {
+          const offer = redoOffer
+          if (offer === null) return
+          const root = store.get().root
+          if (root === null) return
+          setRequirementBusy(true)
+          setWorkbenchError(null)
+          try {
+            await call('pipelineRestartStage', { root, stageId: offer.stageId })
+            setRedoOffer(null)
+            await loadPipeline({ silent: true })
+            await startPipelineStage(offer.stageId)
+            setIntakeNotice(t('workbench.redoSent', { stage: offer.stageTitle }))
             await loadWorkbench({ silent: true })
           } catch (error) {
             setWorkbenchError(t('workbench.reqFailed', { message: pipelineErrorText(error) }))
@@ -14926,6 +14965,28 @@ ${tail}
                     ),
                   ),
                   adjustPanel,
+                  intakeNotice.length === 0 ? null : h('div', { className: 'ds-wb-notice' }, intakeNotice),
+                  redoOffer === null
+                    ? null
+                    : h(
+                        'div',
+                        { className: 'ds-wb-redo' },
+                        h('div', { className: 'ds-wb-redo-text' }, t('workbench.redoOffer', { stage: redoOffer.stageTitle })),
+                        h(
+                          'div',
+                          { className: 'ds-wb-actions' },
+                          h(
+                            'button',
+                            { type: 'button', className: 'ds-btn ds-btn-primary ds-wb-btn', disabled: requirementBusy, onClick: () => void redoStageAfterRequirement() },
+                            t('workbench.redoAction'),
+                          ),
+                          h(
+                            'button',
+                            { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: () => setRedoOffer(null) },
+                            t('workbench.redoSkip'),
+                          ),
+                        ),
+                      ),
                   !Array.isArray(doc.requirementLog) || doc.requirementLog.length === 0
                     ? null
                     : h(
@@ -20388,6 +20449,8 @@ h(
 .ds-wb-issue-source { flex: 0 0 auto; padding: 0 6px; border-radius: 8px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-caption); font-size: 9px; }
 .ds-wb-issue-text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-primary); font-size: 10.5px; }
 .ds-wb-change-line { margin-top: 6px; color: var(--dsw-alias-label-caption); font-size: 10px; }
+.ds-wb-redo { margin-top: 9px; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--dsw-alias-state-warn-primary) 40%, var(--dsw-alias-border-l1)); border-radius: 8px; background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 7%, transparent); }
+.ds-wb-redo-text { color: var(--dsw-alias-label-primary); font-size: 11px; }
 .ds-wb-reqpanel { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; padding-top: 9px; border-top: 1px dashed var(--dsw-alias-border-l1); }
 .ds-wb-adjust { grid-column: 1 / -1; }
 .ds-wb-adjust-title { font-size: 15px; font-weight: 600; color: var(--dsw-alias-label-primary); overflow-wrap: anywhere; }
