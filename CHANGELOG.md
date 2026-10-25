@@ -4,6 +4,20 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Workbench: full project flow view
+
+- The Workbench gained a **Project flow** card (full grid width, shown whenever a
+  requirement exists): the six stages render as connected step cards with the
+  stage name, responsible role, status, elapsed time for the running stage and a
+  truncation of a rejection note — every card is clickable to open the pipeline.
+- Under the step strip, a “now” line reports the current stage, its status,
+  elapsed time and owner; a compact **flow log** lists the last eight events
+  (stage started / submitted / approved / sent back / release recorded) with
+  local times, newest first.
+- The duplicate anonymous stage chips on the project card were removed so the
+  flow card is the single place that describes the pipeline; the project card
+  keeps the requirement title, completed count and stage actions.
+
 ### Workbench clarity: working navigation and honest stage actions
 
 - **“Open pipeline / acceptance / tasks” from the dashboard now works.** The

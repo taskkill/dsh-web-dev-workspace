@@ -412,6 +412,20 @@ window.__ModuleLoader__.load({
       'workbench.resend': '重发角色提示',
       'workbench.runningStage': '进行中',
       'workbench.waitingReview': '待审批',
+      'workbench.flow': '项目流程',
+      'workbench.flowDone': '全部阶段已完成',
+      'workbench.flowElapsed': '已进行 {time}',
+      'workbench.flowOwner': '负责：{role}',
+      'workbench.flowEvents': '流程记录',
+      'workbench.flowEmpty': '还没有流程记录',
+      'workbench.eventStarted': '开始「{stage}」',
+      'workbench.eventSubmitted': '「{stage}」提交待审',
+      'workbench.eventApproved': '「{stage}」通过',
+      'workbench.eventRejected': '「{stage}」被打回',
+      'workbench.eventReleased': '发布到 {env}',
+      'workbench.spanSeconds': '{n} 秒',
+      'workbench.spanMinutes': '{m} 分 {s} 秒',
+      'workbench.spanHours': '{h} 小时 {m} 分',
       'workbench.needsYou': '需要你处理',
       'workbench.nothingNeedsYou': '暂无待办，团队进行中。',
       'workbench.reviewGate': '第 {n} 关「{stage}」待审批',
@@ -1203,6 +1217,20 @@ window.__ModuleLoader__.load({
       'workbench.resend': 'Resend role prompt',
       'workbench.runningStage': 'In progress',
       'workbench.waitingReview': 'Awaiting review',
+      'workbench.flow': 'Project flow',
+      'workbench.flowDone': 'All stages complete',
+      'workbench.flowElapsed': '{time} elapsed',
+      'workbench.flowOwner': 'owner: {role}',
+      'workbench.flowEvents': 'Flow log',
+      'workbench.flowEmpty': 'No flow events yet',
+      'workbench.eventStarted': 'Started “{stage}”',
+      'workbench.eventSubmitted': '“{stage}” submitted for review',
+      'workbench.eventApproved': '“{stage}” approved',
+      'workbench.eventRejected': '“{stage}” sent back',
+      'workbench.eventReleased': 'Released to {env}',
+      'workbench.spanSeconds': '{n}s',
+      'workbench.spanMinutes': '{m}m {s}s',
+      'workbench.spanHours': '{h}h {m}m',
       'workbench.needsYou': 'Needs you',
       'workbench.nothingNeedsYou': 'Nothing needs you right now; the team is working.',
       'workbench.reviewGate': 'Stage {n} “{stage}” is waiting for your review',
@@ -14237,6 +14265,51 @@ ${tail}
           const failCount = items.filter((item) => item.status === 'fail').length
           const pendingCount = items.filter((item) => item.status === 'pending' || item.status === 'blocked').length
           const failedItems = items.filter((item) => item.status === 'fail')
+          const releases = doc !== null && Array.isArray(doc.releases) ? doc.releases : []
+          const roleLabels = {
+            product: t('pipeline.role.product'),
+            design: t('pipeline.role.design'),
+            development: t('pipeline.role.development'),
+            testing: t('pipeline.role.testing'),
+            approval: t('pipeline.role.approval'),
+            release: t('pipeline.role.release'),
+          }
+          const formatSpan = (value) => {
+            if (!Number.isFinite(value) || value < 0) return ''
+            const seconds = Math.round(value / 1000)
+            if (seconds < 60) return t('workbench.spanSeconds', { n: String(seconds) })
+            const minutes = Math.floor(seconds / 60)
+            if (minutes < 60) return t('workbench.spanMinutes', { m: String(minutes), s: String(seconds % 60) })
+            return t('workbench.spanHours', { h: String(Math.floor(minutes / 60)), m: String(minutes % 60) })
+          }
+          const currentElapsed =
+            current !== null && current.status === 'active' && Number.isFinite(current.startedAt) && current.startedAt > 0
+              ? Date.now() - current.startedAt
+              : null
+          const events = []
+          for (const stage of stages) {
+            if (!Number.isFinite(stage.startedAt) || stage.startedAt <= 0) continue
+            events.push({ at: stage.startedAt, text: t('workbench.eventStarted', { stage: stageTitle(stage.id) }) })
+            if (Number.isFinite(stage.submittedAt) && stage.submittedAt > 0) {
+              events.push({ at: stage.submittedAt, text: t('workbench.eventSubmitted', { stage: stageTitle(stage.id) }) })
+            }
+            if (Number.isFinite(stage.reviewedAt) && stage.reviewedAt > 0) {
+              events.push({
+                at: stage.reviewedAt,
+                text:
+                  stage.status === 'failed'
+                    ? t('workbench.eventRejected', { stage: stageTitle(stage.id) })
+                    : t('workbench.eventApproved', { stage: stageTitle(stage.id) }),
+              })
+            }
+          }
+          for (const release of releases) {
+            if (Number.isFinite(release.createdAt)) {
+              events.push({ at: release.createdAt, text: t('workbench.eventReleased', { env: String(release.environment ?? '') }) })
+            }
+          }
+          events.sort((left, right) => right.at - left.at)
+          const recentEvents = events.slice(0, 8)
           const running = taskRuns.filter((run) => run.running === true)
           const lastRun = taskRuns.length === 0 ? null : taskRuns[taskRuns.length - 1]
           const lastFailed = [...taskRuns].reverse().find((run) => run.status === 'failed' && typeof run.command === 'string' && run.command.length > 0) ?? null
@@ -14253,39 +14326,6 @@ ${tail}
                   React.Fragment,
                   null,
                   h('div', { className: 'ds-wb-project-title' }, requirementTitle),
-                  stages.length === 0
-                    ? null
-                    : h(
-                        'div',
-                        { className: 'ds-wb-stages' },
-                        stages.map((stage) =>
-                          h(
-                            'button',
-                            {
-                              key: stage.id,
-                              type: 'button',
-                              className: 'ds-wb-stage',
-                              'data-status': stage.status,
-                              title: stageTitle(stage.id) + ' · ' + (statusText[stage.status] ?? String(stage.status)),
-                              onClick: openPipeline,
-                            },
-                            h(
-                              'span',
-                              { className: 'ds-wb-stage-glyph', 'aria-hidden': true },
-                              stage.status === 'approved'
-                                ? '✓'
-                                : stage.status === 'active'
-                                  ? '●'
-                                  : stage.status === 'review'
-                                    ? '◆'
-                                    : stage.status === 'failed'
-                                      ? '✗'
-                                      : '○',
-                            ),
-                            h('span', { className: 'ds-wb-stage-name' }, stageTitle(stage.id)),
-                          ),
-                        ),
-                      ),
                   h(
                     'div',
                     { className: 'ds-wb-progress' },
@@ -14539,6 +14579,101 @@ ${tail}
             ),
             h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: openAcceptance }, t('workbench.checklist')),
           )
+          const flowCard =
+            requirementTitle.length === 0
+              ? null
+              : h(
+                  'div',
+                  { className: 'ds-wb-card ds-wb-flow' },
+                  h(
+                    'div',
+                    { className: 'ds-wb-card-head' },
+                    h('div', { className: 'ds-wb-card-title ds-wb-card-title-inline' }, t('workbench.flow')),
+                    h('span', { className: 'ds-spacer' }),
+                    h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: openPipeline }, t('workbench.openPipeline')),
+                  ),
+                  h(
+                    'ol',
+                    { className: 'ds-wb-steps' },
+                    stages.map((stage, index) =>
+                      h(
+                        'li',
+                        {
+                          key: stage.id,
+                          className: 'ds-wb-step',
+                          'data-status': stage.status,
+                          'data-current': current !== null && current.id === stage.id ? 'true' : undefined,
+                        },
+                        h(
+                          'button',
+                          {
+                            type: 'button',
+                            className: 'ds-wb-step-btn',
+                            title: stageTitle(stage.id) + ' · ' + (statusText[stage.status] ?? String(stage.status)) + (typeof stage.summary === 'string' && stage.summary.length > 0 ? ' · ' + stage.summary : ''),
+                            onClick: openPipeline,
+                          },
+                          h(
+                            'span',
+                            { className: 'ds-wb-step-head' },
+                            h(
+                              'span',
+                              { className: 'ds-wb-step-index' },
+                              stage.status === 'approved' ? '✓' : String(index + 1),
+                            ),
+                            h('span', { className: 'ds-wb-step-name' }, stageTitle(stage.id)),
+                          ),
+                          h('span', { className: 'ds-wb-step-role' }, roleLabels[stage.id] ?? ''),
+                          h('span', { className: 'ds-wb-step-state', 'data-status': stage.status }, statusText[stage.status] ?? ''),
+                          stage.status === 'active' && Number.isFinite(stage.startedAt) && stage.startedAt > 0
+                            ? h('span', { className: 'ds-wb-step-elapsed' }, t('workbench.flowElapsed', { time: formatSpan(Date.now() - stage.startedAt) }))
+                            : null,
+                          stage.status === 'failed' && typeof stage.note === 'string' && stage.note.length > 0
+                            ? h('span', { className: 'ds-wb-step-note' }, stage.note)
+                            : null,
+                        ),
+                        index < stages.length - 1 ? h('span', { className: 'ds-wb-step-connector', 'aria-hidden': true }) : null,
+                      ),
+                    ),
+                  ),
+                  h(
+                    'div',
+                    { className: 'ds-wb-flow-now' },
+                    current === null
+                      ? t('workbench.flowDone')
+                      : h(
+                          React.Fragment,
+                          null,
+                          h('span', { className: 'ds-task-run-dot', 'data-status': current.status }),
+                          h('strong', null, stageTitle(current.id)),
+                          h('span', { className: 'ds-wb-flow-sep' }, '·'),
+                          h('span', null, statusText[current.status] ?? ''),
+                          currentElapsed === null ? null : h('span', { className: 'ds-wb-flow-sep' }, '·'),
+                          currentElapsed === null ? null : h('span', null, t('workbench.flowElapsed', { time: formatSpan(currentElapsed) })),
+                          h('span', { className: 'ds-wb-flow-sep' }, '·'),
+                          h('span', null, t('workbench.flowOwner', { role: roleLabels[current.id] ?? '' })),
+                        ),
+                  ),
+                  h(
+                    'div',
+                    { className: 'ds-wb-flow-events' },
+                    h('div', { className: 'ds-wb-flow-events-title' }, t('workbench.flowEvents')),
+                    recentEvents.length === 0
+                      ? h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.flowEmpty'))
+                      : recentEvents.map((event, index) =>
+                          h(
+                            'div',
+                            { key: String(event.at) + ':' + String(index), className: 'ds-wb-flow-event' },
+                            h(
+                              'span',
+                              { className: 'ds-wb-flow-event-time' },
+                              new Date(event.at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }),
+                            ),
+                            h('span', { className: 'ds-wb-flow-event-text' }, event.text),
+                          ),
+                        ),
+                  ),
+                )
+
           const runningCard = h(
             'div',
             { className: 'ds-wb-card' },
@@ -14606,6 +14741,7 @@ ${tail}
                 { className: 'ds-wb-page-inner' },
                 attention ? attentionCard : null,
                 requirementCard,
+                flowCard,
                 acceptanceCard,
                 runningCard,
                 workbenchError !== null ? h('div', { className: 'ds-errorline' }, workbenchError) : null,
@@ -19532,6 +19668,40 @@ ${tail}
 .ds-wb-status-pill[data-status="review"] { color: var(--dsw-alias-state-warn-primary); background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 12%, transparent); }
 .ds-wb-status-pill[data-status="approved"] { color: var(--dsw-alias-state-success-primary); background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 12%, transparent); }
 .ds-wb-start-hint { margin-top: 5px; color: var(--dsw-alias-label-caption); font-size: 9.5px; }
+.ds-wb-flow { grid-column: 1 / -1; }
+.ds-wb-card-head { display: flex; align-items: center; gap: 6px; margin-bottom: 7px; }
+.ds-wb-card-title-inline { margin-bottom: 0; }
+.ds-wb-steps { display: flex; align-items: stretch; margin: 0; padding: 0; list-style: none; overflow-x: auto; }
+.ds-wb-step { display: flex; align-items: center; flex: 1 0 auto; min-width: 116px; }
+.ds-wb-step-btn { display: flex; flex-direction: column; gap: 2px; width: 100%; padding: 7px 9px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 8px; background: var(--dsw-alias-bg-layer-1); text-align: left; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.ds-wb-step-btn:hover { border-color: color-mix(in srgb, var(--dsw-alias-brand-primary) 45%, var(--dsw-alias-border-l1)); }
+.ds-wb-step[data-status="approved"] .ds-wb-step-btn { border-color: color-mix(in srgb, var(--dsw-alias-state-success-primary) 32%, var(--dsw-alias-border-l1)); background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 5%, var(--dsw-alias-bg-layer-1)); }
+.ds-wb-step[data-status="active"] .ds-wb-step-btn { border-color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 8%, var(--dsw-alias-bg-layer-1)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--dsw-alias-brand-primary) 22%, transparent); }
+.ds-wb-step[data-status="review"] .ds-wb-step-btn { border-color: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 45%, var(--dsw-alias-border-l1)); background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 7%, var(--dsw-alias-bg-layer-1)); }
+.ds-wb-step[data-status="failed"] .ds-wb-step-btn { border-color: color-mix(in srgb, var(--dsw-alias-state-error-primary) 45%, var(--dsw-alias-border-l1)); background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 6%, var(--dsw-alias-bg-layer-1)); }
+.ds-wb-step-head { display: flex; align-items: center; gap: 5px; }
+.ds-wb-step-index { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; border-radius: 50%; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-caption); font-size: 8.5px; font-weight: 600; }
+.ds-wb-step[data-status="approved"] .ds-wb-step-index { background: var(--dsw-alias-state-success-primary); color: #fff; }
+.ds-wb-step[data-status="active"] .ds-wb-step-index { background: var(--dsw-alias-brand-primary); color: #fff; }
+.ds-wb-step[data-status="review"] .ds-wb-step-index { background: var(--dsw-alias-state-warn-primary); color: #fff; }
+.ds-wb-step[data-status="failed"] .ds-wb-step-index { background: var(--dsw-alias-state-error-primary); color: #fff; }
+.ds-wb-step-name { font-size: 11px; font-weight: 600; color: var(--dsw-alias-label-primary); white-space: nowrap; }
+.ds-wb-step-role { font-size: 9px; color: var(--dsw-alias-label-caption); }
+.ds-wb-step-state { font-size: 9px; color: var(--dsw-alias-label-caption); }
+.ds-wb-step-state[data-status="active"] { color: var(--dsw-alias-brand-primary); }
+.ds-wb-step-state[data-status="review"] { color: var(--dsw-alias-state-warn-primary); }
+.ds-wb-step-state[data-status="failed"] { color: var(--dsw-alias-state-error-primary); }
+.ds-wb-step-state[data-status="approved"] { color: var(--dsw-alias-state-success-primary); }
+.ds-wb-step-elapsed { font-size: 9px; color: var(--dsw-alias-brand-primary); }
+.ds-wb-step-note { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; color: var(--dsw-alias-state-error-primary); }
+.ds-wb-step-connector { flex: 0 0 12px; height: 1px; margin: 0 4px; background: var(--dsw-alias-border-l1); }
+.ds-wb-flow-now { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin-top: 10px; font-size: 11px; color: var(--dsw-alias-label-secondary); }
+.ds-wb-flow-sep { color: var(--dsw-alias-label-caption); }
+.ds-wb-flow-events { margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--dsw-alias-border-l1); }
+.ds-wb-flow-events-title { margin-bottom: 4px; color: var(--dsw-alias-label-caption); font-size: 9px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+.ds-wb-flow-event { display: flex; gap: 7px; padding: 1px 0; font-size: 10px; color: var(--dsw-alias-label-secondary); }
+.ds-wb-flow-event-time { flex: 0 0 36px; color: var(--dsw-alias-label-caption); font-variant-numeric: tabular-nums; }
+.ds-wb-flow-event-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ds-wb-subtitle { margin-top: 9px; }
 .ds-wb-attention { order: -1; }
 .ds-wb-scroll { gap: 6px; padding: 8px 8px 14px; }
