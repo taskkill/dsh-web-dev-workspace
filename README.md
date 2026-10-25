@@ -78,7 +78,8 @@ it for you.
   the Git changes list gains per-file **reviewed** marks; for delivery you can
   download a build-output ZIP or pack the report plus build output into
   `.dsh/deliveries/`; screenshots and other evidence upload to `.dsh/evidence/`
-  and attach to the selected acceptance item note.
+  and attach to the selected acceptance item note; each packed bundle is recorded
+  in `.dsh/deliveries.json` and can be downloaded again from the panel.
 - **Fits the host** — theme-token styling, English/Chinese copy, a compact
   single-column layout in narrow sidebars, a right-sidebar Start card, and a
   mobile/tablet layout.

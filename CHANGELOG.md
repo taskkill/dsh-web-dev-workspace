@@ -4,6 +4,14 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Delivery history
+
+- Every packed delivery bundle is now recorded in `.dsh/deliveries.json`
+  (name, relative path, size, file count, timestamp, whether the acceptance
+  report was included; newest 100 kept, atomic rename). The Acceptance panel
+  lists the latest bundles with a download link, so a client hand-off can be
+  repeated or audited later without hunting the filesystem.
+
 ### Acceptance evidence
 
 - The Acceptance panel can now store **evidence** per workspace: pick screenshots

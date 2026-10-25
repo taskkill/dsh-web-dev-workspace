@@ -420,6 +420,8 @@ window.__ModuleLoader__.load({
       'acceptance.evidenceUploading': '上传中…',
       'acceptance.evidenceFailed': '证据上传失败：{message}',
       'acceptance.evidenceNoItem': '已上传 1 个证据；先选中一条验收项即可自动附到备注。',
+      'acceptance.history': '交付记录',
+      'acceptance.historyEmpty': '还没有交付包。点「打包交付」会记录在这里。',
       'todo.title': '待办清单',
       'todo.hint': '随工作区保存，面板、会话工具和 DeepSeek 共享同一份任务',
       'todo.loading': '正在读取待办…',
@@ -1085,6 +1087,8 @@ window.__ModuleLoader__.load({
       'acceptance.evidenceUploading': 'Uploading…',
       'acceptance.evidenceFailed': 'Evidence upload failed: {message}',
       'acceptance.evidenceNoItem': 'Uploaded 1 evidence file; select an acceptance item to attach it to the note.',
+      'acceptance.history': 'Delivery history',
+      'acceptance.historyEmpty': 'No delivery bundles yet. Pack one and it shows up here.',
       'todo.title': 'Workspace todos',
       'todo.hint': 'Saved with the workspace; the panel, chat tools and DeepSeek share one task board',
       'todo.loading': 'Reading todos…',
@@ -7179,6 +7183,7 @@ window.__ModuleLoader__.load({
         const [deliveryBusy, setDeliveryBusy] = useState(false)
         const [evidenceFiles, setEvidenceFiles] = useState([])
         const [evidenceBusy, setEvidenceBusy] = useState(false)
+        const [deliveryHistory, setDeliveryHistory] = useState([])
         const evidenceInputRef = useRef(null)
         const [deliveryBundle, setDeliveryBundle] = useState(null)
         const [paneView, setPaneView] = useState('files')
@@ -7472,6 +7477,7 @@ window.__ModuleLoader__.load({
           if (paneView === 'acceptance') {
             void loadAcceptance()
             void loadEvidence()
+            void loadDeliveryHistory()
           }
           return undefined
         }, [paneView, state.root])
@@ -8911,6 +8917,7 @@ window.__ModuleLoader__.load({
             }
             const value = await callDelivery('bundle', { root: targetRoot, reportMarkdown })
             setDeliveryBundle(value === null || typeof value !== 'object' ? null : value)
+            await loadDeliveryHistory()
           } catch (error) {
             setAcceptanceError(t('acceptance.packFailed', { message: errorText(error) }))
           } finally {
@@ -8984,6 +8991,19 @@ window.__ModuleLoader__.load({
           const prompt = `请修复下面这些未通过的验收项（工作区：\`${root}\`）。修好后请用 acceptance_update 把对应项回填为 pass 或保留 fail 并说明原因。\n\n${lines.join('\n')}`
           const sent = await sendPromptText(prompt)
           if (sent) setChatOpen(true)
+        }
+
+        /** Read the workspace delivery history. */
+        async function loadDeliveryHistory() {
+          const targetRoot = store.get().root
+          if (targetRoot === null) return
+          try {
+            const value = await call('deliveryHistory', { root: targetRoot })
+            if (store.get().root !== targetRoot) return
+            setDeliveryHistory(Array.isArray(value?.deliveries) ? value.deliveries : [])
+          } catch {
+            if (store.get().root === targetRoot) setDeliveryHistory([])
+          }
         }
 
         /** Ensure the workspace evidence directory exists (best effort). */
@@ -13173,6 +13193,42 @@ window.__ModuleLoader__.load({
                 ),
                 h('button', { type: 'button', className: 'ds-btn', onClick: () => downloadBuildZip() }, t('acceptance.buildZip')),
               ),
+              deliveryHistory.length === 0
+                ? null
+                : h(
+                    'div',
+                    { className: 'ds-acc-history' },
+                    h('div', { className: 'ds-acc-detail-label' }, t('acceptance.history')),
+                    deliveryHistory.slice(0, 5).map((record) =>
+                      h(
+                        'div',
+                        { key: record.id ?? record.relative, className: 'ds-acc-history-row' },
+                        h(
+                          'span',
+                          { className: 'ds-acc-history-name', title: String(record.relative ?? '') },
+                          String(record.name ?? record.relative ?? ''),
+                        ),
+                        h('span', { className: 'ds-acc-history-meta' }, `${String(record.fileCount ?? 0)} · ${new Date(Number(record.createdAt) || Date.now()).toLocaleString()}`),
+                        h(
+                          'button',
+                          {
+                            type: 'button',
+                            className: 'ds-linkbtn',
+                            onClick: () => {
+                              const root = store.get().root
+                              if (root === null || typeof record.relative !== 'string') return
+                              const url = new URL(
+                                `${API_PATH}?op=raw&root=${encodeURIComponent(root)}&path=${encodeURIComponent(record.relative)}&download=1`,
+                                document.baseURI,
+                              )
+                              window.open(url.href, '_blank', 'noopener,noreferrer')
+                            },
+                          },
+                          t('acceptance.download'),
+                        ),
+                      ),
+                    ),
+                  ),
               deliveryBundle === null
                 ? null
                 : h(
@@ -17485,6 +17541,10 @@ window.__ModuleLoader__.load({
 .ds-acc-evidence-item:hover { border-color: var(--dsw-alias-border-l2); color: var(--dsw-alias-label-primary); }
 .ds-acc-evidence-thumb { width: 58px; height: 42px; object-fit: cover; border-radius: 4px; background: var(--dsw-alias-bg-layer-2); }
 .ds-acc-evidence-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-acc-history { margin-top: 6px; }
+.ds-acc-history-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; font-size: 9.5px; }
+.ds-acc-history-name { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-secondary); font-family: var(--ds-mono); }
+.ds-acc-history-meta { flex: 0 0 auto; color: var(--dsw-alias-label-caption); }
 .ds-todo-edit { display: flex; flex-direction: column; gap: 5px; background: color-mix(in srgb, var(--dsw-alias-brand-primary) 5%, transparent); }
 .ds-todo-note-input {
   width: 100%;

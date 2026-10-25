@@ -335,6 +335,8 @@ async function dispatch(ctx, op, body) {
       return renameBrowserBookmark(ctx, body)
     case 'browserSettingsSave':
       return saveBrowserSettings(ctx, body)
+    case 'deliveryHistory':
+      return listDeliveryHistory(ctx, body)
     case 'version':
       return { version: await readPackageVersion() }
     case 'versionCheck':
@@ -1423,6 +1425,56 @@ async function destinationPath(root, absolute) {
   return path.join(realParent, path.basename(absolute))
 }
 
+/** Delivery history file inside the workspace .dsh directory. */
+const DELIVERY_HISTORY_FILE = 'deliveries.json'
+const DELIVERY_HISTORY_MAX = 100
+
+/**
+ * Read the delivery history of one workspace.
+ * @param root - absolute local workspace root.
+ * @returns array of delivery records, newest first.
+ */
+async function readDeliveryHistory(root) {
+  try {
+    const parsed = JSON.parse(await fsp.readFile(path.join(root, '.dsh', DELIVERY_HISTORY_FILE), 'utf8'))
+    return Array.isArray(parsed?.deliveries) ? parsed.deliveries : []
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Read the delivery history for the Delivery panel.
+ * @param ctx - Host context.
+ * @param body - `{ root }`.
+ * @returns `{ deliveries }`.
+ */
+async function listDeliveryHistory(ctx, body) {
+  const root = await resolveRoot(ctx, body.root)
+  if (ssh.isSshRoot(root)) throw new SideError('ssh-unsupported', 'SSH 远程工作区暂不支持交付记录')
+  return { deliveries: await readDeliveryHistory(root) }
+}
+
+/**
+ * Append one delivery record, keeping the newest entries and writing atomically.
+ * Failure to record history never fails the delivery itself.
+ * @param root - absolute local workspace root.
+ * @param record - delivery record to prepend.
+ */
+async function appendDeliveryHistory(root, record) {
+  try {
+    const directory = path.join(root, '.dsh')
+    await fsp.mkdir(directory, { recursive: true })
+    const deliveries = [record, ...(await readDeliveryHistory(root))].slice(0, DELIVERY_HISTORY_MAX)
+    const file = path.join(directory, DELIVERY_HISTORY_FILE)
+    const temp = `${file}.${String(process.pid)}-${String(Date.now())}.tmp`
+    await fsp.writeFile(temp, JSON.stringify({ version: 1, updatedAt: Date.now(), deliveries }, null, 2))
+    await fsp.rename(temp, file)
+  } catch (error) {
+    console.error('dsh-web-filebrowser: failed to record delivery history', error)
+  }
+}
+
 /**
  * Package the workspace build output for client delivery.
  *
@@ -1455,6 +1507,15 @@ async function handleDelivery(ctx, request) {
         targets: Array.isArray(body.targets) ? body.targets : undefined,
         include: typeof body.include === 'string' ? body.include : undefined,
         exclude: typeof body.exclude === 'string' ? body.exclude : undefined,
+      })
+      await appendDeliveryHistory(root, {
+        id: `${String(Date.now())}-${String(result.fileCount)}`,
+        name: path.basename(result.path),
+        relative: path.relative(root, result.path).split(path.sep).join('/'),
+        bytes: result.bytes,
+        fileCount: result.fileCount,
+        createdAt: Date.now(),
+        hasReport: typeof body.reportMarkdown === 'string' && body.reportMarkdown.length > 0,
       })
       return json({
         ok: true,
