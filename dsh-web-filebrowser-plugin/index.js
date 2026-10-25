@@ -349,6 +349,8 @@ async function dispatch(ctx, op, body) {
       return pipelinePrompt(ctx, body)
     case 'pipelineRecordRelease':
       return pipelineRecordRelease(ctx, body)
+    case 'pipelineSetMode':
+      return pipelineSetMode(ctx, body)
     case 'browserBookmarks':
       return listBrowserBookmarks(ctx, body)
     case 'browserBookmarkAdd':
@@ -1088,6 +1090,12 @@ async function pipelinePrompt(ctx, body) {
   const root = await pipelineRoot(ctx, body.root)
   const doc = await pipeline.readPipeline(root)
   return { prompt: pipeline.buildStagePrompt(doc, typeof body.stageId === 'string' ? body.stageId : '') }
+}
+
+/** Set the owner's gate mode for the delivery pipeline. */
+async function pipelineSetMode(ctx, body) {
+  const root = await pipelineRoot(ctx, body.root)
+  return pipeline.setGateMode(root, body.mode === 'fast' ? 'fast' : 'normal')
 }
 
 /** Record a release performed by the ops agent or the owner. */

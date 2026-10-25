@@ -4,6 +4,25 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Fast mode: the owner only handles the two real gates
+
+- The pipeline gained an owner setting `.dsh/pipeline.json → settings.gateMode`
+  (`normal` | `fast`): the panel exposes it as a **Fast mode** checkbox.
+- In fast mode, the four intermediate stages (product, design, development,
+  testing) are **auto-approved when submitted**: the summary and artifacts are
+  recorded with a “owner pre-authorized (fast mode)” note, and the submit tool
+  result reports `autoApproved: true` plus the next stage id so the agent keeps
+  going without a human round-trip. The approval and release gates always stay
+  manual — fast mode never auto-approves them.
+- The pipeline panel now treats an active `approval` stage as an owner gate (pass /
+  request-changes in the top banner), keeps the stage cards as detail, and
+  refreshes itself every five seconds while visible so agent-driven advances show
+  up without pressing refresh. The system-prompt guide explains the fast-mode
+  behaviour to the model.
+- PLAYBOOK’s three-step minimal usage and the OPC README now recommend fast mode:
+  the owner writes the requirement, approves the final sign-off and release, and
+  collects the delivery package.
+
 ### Simpler owner flow: one-click kickoff, auto-advance, action banner
 
 - The pipeline panel now has a single primary action for the owner: **“Kick off:

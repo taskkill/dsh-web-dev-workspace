@@ -60,6 +60,9 @@ export const PIPELINE_STAGES = [
 /** Accepted stage statuses; only `pending` and `failed` can be started. */
 export const PIPELINE_STATUSES = ['pending', 'active', 'review', 'approved', 'failed']
 
+/** Gate modes: normal asks the owner for every stage; fast auto-approves intermediate ones. */
+export const PIPELINE_GATE_MODES = ['normal', 'fast']
+
 /** Hard bounds; the model receives them in validation errors and stage prompts. */
 export const PIPELINE_MAX_ARTIFACTS = 20
 export const PIPELINE_MAX_SUMMARY = 4_000
@@ -107,7 +110,7 @@ const STAGE_STATUS_MARKS = {
 /** Model-facing guidance folded into the system prompt for workspace sessions. */
 export const PIPELINE_SECTION = `## 交付流水线（六阶段 + 人工闸门）
 
-本工作区把交付过程保存在 \`.dsh/pipeline.json\`，阶段顺序固定为：产品经理（需求分析）→ UI 设计师（UI 设计）→ 全栈开发（开发实现）→ 测试工程师（测试验收）→ 项目经理（人工确认）→ 运维（发布上线）。阶段状态为 pending / active / review / approved / failed。product 阶段开始前必须先有需求标题与详情；除 product 外，每个阶段开始前要求上一阶段 approved；提交评审后阶段变为 review，只有项目经理（owner）在 Dev Workspace 面板上 approve 后下一阶段才能开始，被 reject 会变成 failed，可修复后用 pipeline_start_stage 重新开始。approval 是人工闸门：模型只负责启动它，绝不允许自己审批；release 阶段必须在 approval approved 之后才能开始。
+本工作区把交付过程保存在 \`.dsh/pipeline.json\`，阶段顺序固定为：产品经理（需求分析）→ UI 设计师（UI 设计）→ 全栈开发（开发实现）→ 测试工程师（测试验收）→ 项目经理（人工确认）→ 运维（发布上线）。阶段状态为 pending / active / review / approved / failed。product 阶段开始前必须先有需求标题与详情；除 product 外，每个阶段开始前要求上一阶段 approved；提交评审后阶段通常变为 review，只有项目经理（owner）在 Dev Workspace 面板上 approve 后下一阶段才能开始，被 reject 会变成 failed，可修复后用 pipeline_start_stage 重新开始。如果 Owner 开启了「快速模式」（gateMode=fast），product/design/development/testing 四个中间阶段提交后会被自动通过：pipeline_submit_stage 的结果会带 autoApproved=true 与 nextStageId，此时不要等待人工审批，直接对 nextStageId 取 pipeline_stage_prompt、pipeline_start_stage 并继续工作；approval 与 release 永远保持人工闸门，快速模式也不会自动通过它们。approval 是人工闸门：模型只负责启动它，绝不允许自己审批；release 阶段必须在 approval approved 之后才能开始。
 
 工具用法：用 \`pipeline_status\` 查看需求、六个阶段、当前阶段与发布记录；进入某个阶段前先用 \`pipeline_stage_prompt\` 取该角色的中文提示词（需求、上游摘要与产物、本角色只做什么/不做什么、交付物要求、闸门规则），按提示词工作；用 \`pipeline_set_requirement\` 写入需求；用 \`pipeline_start_stage\` 开始阶段；完成后用 \`pipeline_submit_stage\` 提交 summary 与 artifacts 等待项目经理审批。不要编造审批结果，也不要在闸门未通过时开始下一阶段。验收标准请配合 \`acceptance_add\` / \`acceptance_update\` 维护，交付前逐项核对。
 
@@ -145,6 +148,7 @@ export function emptyPipeline() {
       artifacts: [],
     })),
     releases: [],
+    settings: { gateMode: 'normal' },
   }
 }
 
@@ -341,12 +345,18 @@ function normalizeStoredState(value) {
     if (release !== null) releases.push(release)
   }
   releases.sort(compareReleases)
+  const settingsSource =
+    value.settings !== null && typeof value.settings === 'object' && !Array.isArray(value.settings) ? value.settings : {}
+  const settings = {
+    gateMode: PIPELINE_GATE_MODES.includes(settingsSource.gateMode) ? settingsSource.gateMode : 'normal',
+  }
   return {
     version: PIPELINE_VERSION,
     updatedAt: timestampValue(value.updatedAt),
     requirement,
     stages,
     releases: releases.slice(0, PIPELINE_MAX_RELEASES),
+    settings,
   }
 }
 
@@ -370,6 +380,7 @@ function serializePipeline(doc) {
       requirement: doc.requirement,
       stages: doc.stages,
       releases: doc.releases,
+      settings: doc.settings,
     },
     null,
     2,
@@ -492,6 +503,14 @@ function validateSummary(value) {
     throw new PipelineError('too-large', `summary 最多 ${String(PIPELINE_MAX_SUMMARY)} 个字符`)
   }
   return summary
+}
+
+/** Append one line to an existing stage note, keeping it within the limit. */
+function appendStageNote(existing, extra) {
+  const base = typeof existing === 'string' ? existing.trim() : ''
+  const text = typeof extra === 'string' ? extra.trim() : ''
+  const combined = text.length === 0 ? base : base.length === 0 ? text : base + '\n' + text
+  return combined.slice(0, PIPELINE_MAX_NOTE)
 }
 
 /** Validate an optional review note. */
@@ -678,6 +697,31 @@ export async function setRequirement(root, input) {
 }
 
 /**
+ * Set the pipeline gate mode. `fast` lets the owner pre-authorize the four
+ * intermediate stages (product/design/development/testing): submitting one of
+ * them approves it automatically and reports the next stage id, so the agent can
+ * continue without a human round-trip. The approval and release gates always
+ * stay manual.
+ *
+ * @param root - absolute workspace root.
+ * @param mode - 'normal' | 'fast'.
+ * @returns the stored settings.
+ */
+export async function setGateMode(root, mode) {
+  if (!PIPELINE_GATE_MODES.includes(mode)) {
+    throw new PipelineError('bad-request', 'gateMode 必须是 normal 或 fast')
+  }
+  const workspace = assertRoot(root)
+  return withMutationLock(workspace, async () => {
+    const doc = await readPipeline(workspace)
+    doc.settings = { gateMode: mode }
+    doc.updatedAt = Date.now()
+    await writePipeline(workspace, doc)
+    return doc.settings
+  })
+}
+
+/**
  * Start one delivery stage.
  *
  * `product` requires a non-empty requirement title and detail; every other
@@ -756,6 +800,24 @@ export async function submitStage(root, input) {
       )
     }
     const now = Date.now()
+    const fastApproval =
+      doc.settings?.gateMode === 'fast' && definition.id !== 'approval' && definition.id !== 'release'
+    if (fastApproval) {
+      // The owner pre-authorized intermediate stages in fast mode: record the
+      // summary and approve, then tell the caller which stage comes next so the
+      // agent can continue without a human round-trip.
+      stage.status = 'approved'
+      stage.summary = summary
+      stage.artifacts = artifacts
+      stage.submittedAt = now
+      stage.reviewedAt = now
+      stage.note = appendStageNote(stage.note, '快速模式：Owner 预授权自动通过')
+      doc.updatedAt = now
+      await writePipeline(workspace, doc)
+      const index = PIPELINE_STAGES.findIndex((candidate) => candidate.id === definition.id)
+      const next = index >= 0 ? PIPELINE_STAGES[index + 1] : null
+      return { stage: publicStage(stage, definition), autoApproved: true, nextStageId: next === null ? '' : next.id }
+    }
     stage.status = 'review'
     stage.summary = summary
     stage.artifacts = artifacts
@@ -1461,7 +1523,7 @@ export function registerPipelineTools(ctx) {
   register({
     name: 'pipeline_submit_stage',
     description:
-      'Submit the active stage for review with a summary and artifacts. The stage moves to review and waits for the project manager (owner) to approve or reject it in the Dev Workspace panel — the model cannot approve its own work. Artifacts are workspace-relative paths with optional labels.',
+      'Submit the active stage for review with a summary and artifacts. Normally the stage moves to review and waits for the project manager (owner) to approve or reject it in the Dev Workspace panel — the model cannot approve its own work. In fast mode the four intermediate stages (product/design/development/testing) are auto-approved by the owner\'s pre-authorization; the result then reports autoApproved and nextStageId and you should continue with that stage. Artifacts are workspace-relative paths with optional labels.',
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -1489,27 +1551,34 @@ export function registerPipelineTools(ctx) {
         additionalProperties: false,
         properties: {
           stage: STAGE_SCHEMA,
+          autoApproved: { type: 'boolean' },
+          nextStageId: { type: 'string' },
           scope: { type: 'string' },
         },
-        required: ['stage', 'scope'],
+        required: ['stage', 'autoApproved', 'nextStageId', 'scope'],
       },
       render: (_args, value) => [
         {
           type: 'text',
-          text: `Submitted stage "${value.stage.id}" for review (${String(value.stage.artifacts.length)} artifact(s)). Waiting for the project manager to approve it in the Dev Workspace panel; the model must not approve its own work.`,
+          text: value.autoApproved === true
+            ? `Stage "${value.stage.id}" was auto-approved by the owner's fast mode (summary and artifacts recorded). Continue with the next stage "${value.nextStageId}": call pipeline_stage_prompt({stageId:"${value.nextStageId}"}), then pipeline_start_stage({stageId:"${value.nextStageId}"}) and do the work. The human approval and release gates remain manual.`
+            : `Submitted stage "${value.stage.id}" for review (${String(value.stage.artifacts.length)} artifact(s)). Waiting for the project manager to approve it in the Dev Workspace panel; the model must not approve its own work.`,
         },
       ],
     },
     async execute(args, exec) {
       exec.signal.throwIfAborted()
       const root = toolWorkspace(ctx, exec)
-      const stage = await submitStage(root, {
+      const result = await submitStage(root, {
         stageId: requiredString(args?.stageId, 'stageId'),
         summary: args?.summary,
         artifacts: args?.artifacts,
       })
       exec.signal.throwIfAborted()
-      return { stage, scope: root }
+      if (result !== null && typeof result === 'object' && result.autoApproved === true) {
+        return { stage: result.stage, autoApproved: true, nextStageId: result.nextStageId, scope: root }
+      }
+      return { stage: result, autoApproved: false, nextStageId: '', scope: root }
     },
   })
 

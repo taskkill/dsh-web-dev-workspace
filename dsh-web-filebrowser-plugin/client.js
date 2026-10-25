@@ -395,6 +395,9 @@ window.__ModuleLoader__.load({
       'pipeline.activeBanner': '「{stage}」进行中，agent 正在执行',
       'pipeline.nextBanner': '下一步：启动「{stage}」',
       'pipeline.bannerHint': '你只需要点通过 / 打回，其余交给团队。批准后会自动进入下一阶段。',
+      'pipeline.fastMode': '快速模式',
+      'pipeline.fastHint': '中间阶段（需求/设计/开发/测试）提交后自动通过并推进；只有最终确认与发布需要你点。',
+      'pipeline.fastSaveFailed': '切换快速模式失败：{message}',
       'pipeline.editRequirement': '编辑需求',
       'pipeline.cancelEdit': '取消',
       'pipeline.requirementPlaceholder': '一句话目标…',
@@ -1130,6 +1133,9 @@ window.__ModuleLoader__.load({
       'pipeline.activeBanner': '“{stage}” is in progress (agent working)',
       'pipeline.nextBanner': 'Next: start “{stage}”',
       'pipeline.bannerHint': 'You only approve or send back; the team handles the rest. Approval auto-advances to the next stage.',
+      'pipeline.fastMode': 'Fast mode',
+      'pipeline.fastHint': 'Intermediate stages (product/design/development/testing) auto-approve and advance on submit; only the final sign-off and release need you.',
+      'pipeline.fastSaveFailed': 'Could not switch fast mode: {message}',
       'pipeline.editRequirement': 'Edit requirement',
       'pipeline.cancelEdit': 'Cancel',
       'pipeline.requirementPlaceholder': 'One-line goal…',
@@ -7672,6 +7678,17 @@ window.__ModuleLoader__.load({
         // Leaving the panel (or the whole page) must not leave poll timers behind.
         useEffect(() => () => stopAllTaskPolling(), [])
 
+        // The agent advances stages from the conversation; keep the panel in step
+        // without the owner having to press refresh.
+        useEffect(() => {
+          if (paneView !== 'pipeline') return undefined
+          const timer = window.setInterval(() => {
+            if (!document.hidden && !pipelineBusy) void loadPipeline({ silent: true })
+          }, 5000)
+          return () => window.clearInterval(timer)
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [paneView, pipelineBusy])
+
         // Keep the requirement form in sync with the Host document unless the
         // owner is editing it.
         useEffect(() => {
@@ -8984,6 +9001,22 @@ ${tail}
             setPipelineError(null)
           } catch (error) {
             setPipelineError(pipelineErrorText(error))
+          } finally {
+            setPipelineBusy(false)
+          }
+        }
+
+        /** Toggle the owner's gate mode (normal: every stage; fast: intermediate auto-approve). */
+        async function setPipelineGateMode(mode) {
+          const targetRoot = store.get().root
+          if (targetRoot === null) return
+          setPipelineBusy(true)
+          setPipelineError(null)
+          try {
+            await call('pipelineSetMode', { root: targetRoot, mode: mode === 'fast' ? 'fast' : 'normal' })
+            await loadPipeline({ silent: true })
+          } catch (error) {
+            setPipelineError(t('pipeline.fastSaveFailed', { message: pipelineErrorText(error) }))
           } finally {
             setPipelineBusy(false)
           }
@@ -13793,6 +13826,12 @@ ${tail}
           const releases = doc !== null && Array.isArray(doc.releases) ? doc.releases : []
           const reviewStage = stages.find((stage) => stage !== null && typeof stage === 'object' && stage.status === 'review') ?? null
           const activeStage = stages.find((stage) => stage !== null && typeof stage === 'object' && stage.status === 'active') ?? null
+          const ownerGateStage =
+            reviewStage !== null
+              ? reviewStage
+              : activeStage !== null && activeStage.id === 'approval'
+                ? activeStage
+                : null
           const actionableStage =
             stages.find((stage, index) => {
               if (stage === null || typeof stage !== 'object') return false
@@ -14005,6 +14044,17 @@ ${tail}
               h('span', { className: 'ds-spacer' }),
               pipelineBusy ? h('span', { className: 'ds-pipe-waiting' }, t('acceptance.saving')) : null,
               h(
+                'label',
+                { className: 'ds-pipe-fast', title: t('pipeline.fastHint') },
+                h('input', {
+                  type: 'checkbox',
+                  checked: doc !== null && doc.settings !== null && typeof doc.settings === 'object' && doc.settings.gateMode === 'fast',
+                  disabled: pipelineBusy,
+                  onChange: (event) => void setPipelineGateMode(event.target.checked ? 'fast' : 'normal'),
+                }),
+                h('span', null, t('pipeline.fastMode')),
+              ),
+              h(
                 'button',
                 { type: 'button', className: 'ds-linkbtn', onClick: () => void loadPipeline() },
                 t('action.refresh'),
@@ -14021,10 +14071,10 @@ ${tail}
                   h(
                     'div',
                     { className: 'ds-pipe-todo-text' },
-                    reviewStage !== null
+                    ownerGateStage !== null
                       ? t('pipeline.reviewBanner', {
-                          n: String(stages.findIndex((stage) => stage !== null && stage.id === reviewStage.id) + 1),
-                          stage: stageTitles[reviewStage.id] ?? reviewStage.id,
+                          n: String(stages.findIndex((stage) => stage !== null && stage.id === ownerGateStage.id) + 1),
+                          stage: stageTitles[ownerGateStage.id] ?? ownerGateStage.id,
                         })
                       : activeStage !== null
                         ? t('pipeline.activeBanner', { stage: stageTitles[activeStage.id] ?? activeStage.id })
@@ -14033,18 +14083,18 @@ ${tail}
                   h(
                     'div',
                     { className: 'ds-pipe-todo-actions' },
-                    reviewStage !== null
+                    ownerGateStage !== null
                       ? h(
                           React.Fragment,
                           null,
                           h(
                             'button',
-                            { type: 'button', className: 'ds-btn', disabled: pipelineBusy, onClick: () => void reviewPipelineStage(reviewStage.id, 'approve') },
+                            { type: 'button', className: 'ds-btn', disabled: pipelineBusy, onClick: () => void reviewPipelineStage(ownerGateStage.id, 'approve') },
                             t('pipeline.approve'),
                           ),
                           h(
                             'button',
-                            { type: 'button', className: 'ds-btn ds-pipe-reject', disabled: pipelineBusy, onClick: () => void reviewPipelineStage(reviewStage.id, 'reject') },
+                            { type: 'button', className: 'ds-btn ds-pipe-reject', disabled: pipelineBusy, onClick: () => void reviewPipelineStage(ownerGateStage.id, 'reject') },
                             t('pipeline.reject'),
                           ),
                         )
@@ -14056,7 +14106,7 @@ ${tail}
                           )
                         : h('span', { className: 'ds-pipe-waiting' }, t('pipeline.waitingAgent')),
                   ),
-                  reviewStage !== null
+                  ownerGateStage !== null
                     ? h('input', {
                         className: 'ds-pipe-input ds-pipe-todo-note',
                         value: pipelineReviewNote,
@@ -18477,6 +18527,8 @@ ${tail}
 .ds-pipe-todo-hint { flex: 1 1 100%; color: var(--dsw-alias-label-caption); font-size: 9.5px; }
 .ds-pipe-kickoff { font-weight: 600; }
 .ds-pipe-toolbar { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
+.ds-pipe-fast { display: inline-flex; align-items: center; gap: 4px; color: var(--dsw-alias-label-secondary); font-size: 9.5px; cursor: pointer; }
+.ds-pipe-fast input { margin: 0; }
 .ds-pipe-heading { font-weight: 600; font-size: 11px; color: var(--dsw-alias-label-primary); }
 .ds-pipe-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 6px 8px 12px; }
 .ds-pipe-group-title { color: var(--dsw-alias-label-caption); font-size: 9.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 3px; }
