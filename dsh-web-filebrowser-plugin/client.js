@@ -595,6 +595,11 @@ window.__ModuleLoader__.load({
       'acceptance.delete': '删除',
       'acceptance.report': '导出验收报告',
       'acceptance.pack': '打包交付（zip）',
+      'acceptance.packConfirmTitle': '打包交付物？',
+      'acceptance.packConfirmMessage': '将把构建产物与当前验收报告打包到 .dsh/deliveries/（不会上传或发布）。',
+      'acceptance.packConfirmPending': '还有 {pending} 项验收未完成；仍要打包吗？',
+      'acceptance.packConfirmFail': '还有 {fail} 项验收未通过；打包记录会保留这些失败项。仍要打包吗？',
+      'acceptance.packConfirmAction': '确认打包',
       'acceptance.buildZip': '下载构建产物',
       'acceptance.bundleReady': '交付包已生成',
       'acceptance.download': '下载',
@@ -1499,6 +1504,11 @@ window.__ModuleLoader__.load({
       'acceptance.delete': 'Delete',
       'acceptance.report': 'Export acceptance report',
       'acceptance.pack': 'Pack delivery (zip)',
+      'acceptance.packConfirmTitle': 'Pack the deliverable?',
+      'acceptance.packConfirmMessage': 'Build outputs and the current acceptance report will be packed into .dsh/deliveries/ (no upload or release).',
+      'acceptance.packConfirmPending': '{pending} acceptance item(s) are still open. Pack anyway?',
+      'acceptance.packConfirmFail': '{fail} acceptance item(s) failed; the delivery record will keep those failures. Pack anyway?',
+      'acceptance.packConfirmAction': 'Pack',
       'acceptance.buildZip': 'Download build output',
       'acceptance.bundleReady': 'Delivery bundle written',
       'acceptance.download': 'Download',
@@ -10118,7 +10128,32 @@ ${tail}
         }
 
         /** Write a delivery bundle (build output + acceptance report) to `.dsh/deliveries`. */
-        async function packDeliveryBundle() {
+        /** Confirm before packaging so an accidental click does not create a bundle. */
+        function packDeliveryBundle() {
+          const targetRoot = store.get().root
+          if (targetRoot === null) return
+          const items = Array.isArray(acceptanceItems) ? acceptanceItems : []
+          const failures = items.filter((item) => item.status === 'fail').length
+          const pending = items.filter((item) => item.status === 'pending' || item.status === 'blocked').length
+          setModal({
+            title: t('acceptance.packConfirmTitle'),
+            message:
+              failures > 0
+                ? t('acceptance.packConfirmFail', { fail: String(failures) })
+                : pending > 0
+                  ? t('acceptance.packConfirmPending', { pending: String(pending) })
+                  : t('acceptance.packConfirmMessage'),
+            confirmLabel: t('acceptance.packConfirmAction'),
+            danger: failures > 0,
+            onConfirm: () => {
+              setModal(null)
+              void runPackDelivery()
+            },
+          })
+        }
+
+        /** Perform the actual packaging. */
+        async function runPackDelivery() {
           const targetRoot = store.get().root
           if (targetRoot === null) return
           setDeliveryBusy(true)

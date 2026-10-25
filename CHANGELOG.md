@@ -4,6 +4,14 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Confirmation before packing a delivery bundle
+
+- Clicking **Pack delivery** (Workbench and Acceptance board) now opens a confirm
+  dialog first: it names the output location (`.dsh/deliveries/`, no upload or
+  release), and adapts the message to the acceptance state — open items or failed
+  items are called out (failure styling) so an accidental click cannot silently
+  produce a bundle. `runPackDelivery` performs the actual work after confirmation.
+
 ### Fix: downloading large deliverables failed with “文件过大，无法预览”
 
 - The raw route capped every response at 128 MB, including `download=1` file
