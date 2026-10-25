@@ -370,6 +370,8 @@ window.__ModuleLoader__.load({
       'tasks.failed': '失败',
       'tasks.exit': '退出码 {code}',
       'tasks.output': '输出',
+      'tasks.runs': '运行记录',
+      'tasks.noRuns': '还没有运行记录，点上面的命令开始。',
       'tasks.waiting': '等待输出…',
       'tasks.problems': '问题 ({count})',
       'tasks.noProblems': '没有解析到可点击的问题',
@@ -1151,6 +1153,8 @@ window.__ModuleLoader__.load({
       'tasks.failed': 'Failed',
       'tasks.exit': 'Exit code {code}',
       'tasks.output': 'Output',
+      'tasks.runs': 'Run history',
+      'tasks.noRuns': 'No runs yet; pick a command above to start.',
       'tasks.waiting': 'Waiting for output…',
       'tasks.problems': 'Problems ({count})',
       'tasks.noProblems': 'No clickable problems parsed from the output',
@@ -13630,8 +13634,22 @@ ${tail}
 
         /** Render the task runner: detected commands, runs, output and problems. */
         function renderTasksPanel() {
-          const activeRun = taskRuns.find((run) => run.id === taskActiveId) ?? null
+          const latest = taskRuns.length === 0 ? null : taskRuns[taskRuns.length - 1]
+          const activeRun = taskRuns.find((run) => run.id === taskActiveId) ?? latest
           const problems = activeRun === null || !Array.isArray(activeRun.problems) ? [] : activeRun.problems
+          const formatDuration = (value) => {
+            if (!Number.isFinite(value) || value < 0) return ''
+            if (value < 1000) return String(Math.round(value)) + 'ms'
+            return (value / 1000).toFixed(value < 10000 ? 1 : 0) + 's'
+          }
+          const runStatusText = (run) =>
+            run.running === true
+              ? t('tasks.running')
+              : run.status === 'passed'
+                ? t('tasks.passed')
+                : run.exitCode === null
+                  ? t('tasks.failed')
+                  : t('tasks.exit', { code: String(run.exitCode) })
           const groupLabels = {
             dev: t('tasks.group.dev'),
             build: t('tasks.group.build'),
@@ -13650,90 +13668,97 @@ ${tail}
             }
             bucket.items.push(suggestion)
           }
+          const runningCount = taskRuns.filter((run) => run.running === true).length
           return h(
             'div',
             { className: 'ds-side-view ds-tasks-view', style: { display: showTasks ? 'flex' : 'none' } },
             h(
               'div',
               { className: 'ds-task-toolbar' },
+              latest === null
+                ? h('span', { className: 'ds-task-summary ds-hint' }, t('tasks.noRuns'))
+                : h(
+                    'div',
+                    { className: 'ds-task-summary', title: latest.command },
+                    h('span', { className: 'ds-task-run-dot', 'data-status': latest.status }),
+                    h('span', { className: 'ds-task-summary-name' }, latest.name.length > 0 ? latest.name : latest.command),
+                    h('span', { className: 'ds-task-summary-meta', 'data-ok': latest.status === 'passed' ? 'true' : undefined }, runStatusText(latest)),
+                    latest.durationMs === null ? null : h('span', { className: 'ds-task-summary-meta' }, formatDuration(latest.durationMs)),
+                    runningCount > 0 ? h('span', { className: 'ds-task-running' }, t('tasks.running')) : null,
+                  ),
+              h('span', { className: 'ds-spacer' }),
               h(
                 'button',
                 {
                   type: 'button',
-                  className: 'ds-btn ds-task-detect',
+                  className: 'ds-linkbtn ds-task-recheck',
                   disabled: taskDetectBusy || state.root === null,
+                  title: t('tasks.detect'),
                   onClick: () => void loadTasks(),
                 },
                 taskDetectBusy ? t('tasks.detecting') : t('tasks.detect'),
               ),
-              h('span', { className: 'ds-spacer' }),
-              taskRuns.filter((run) => run.running === true).length > 0
-                ? h('span', { className: 'ds-task-running' }, t('tasks.running'))
-                : null,
             ),
-            h('div', { className: 'ds-hint ds-task-hint' }, t('tasks.hint')),
+            groups.length === 0
+              ? null
+              : h(
+                  'div',
+                  { className: 'ds-task-quick' },
+                  groups.map((bucket) =>
+                    h(
+                      'div',
+                      { key: bucket.group, className: 'ds-task-quick-group' },
+                      h('span', { className: 'ds-task-quick-title' }, groupLabels[bucket.group] ?? groupLabels.other),
+                      bucket.items.map((item, index) =>
+                        h(
+                          'button',
+                          {
+                            key: bucket.group + ':' + String(index),
+                            type: 'button',
+                            className: 'ds-task-chip',
+                            title: String(item.command ?? ''),
+                            disabled: state.root === null,
+                            onClick: () =>
+                              void runTaskCommand(String(item.command ?? ''), typeof item.label === 'string' ? item.label : undefined),
+                          },
+                          h('span', { className: 'ds-task-chip-glyph', 'aria-hidden': true }, '▶'),
+                          h('span', { className: 'ds-task-chip-label' }, String(item.label ?? item.command ?? '')),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             taskDetectError === null ? null : h('div', { className: 'ds-errorline' }, taskDetectError),
             taskError === null ? null : h('div', { className: 'ds-errorline' }, taskError),
             h(
               'div',
               { className: 'ds-task-scroll' },
-              groups.length === 0
-                ? h('div', { className: 'ds-hint' }, taskDetectBusy ? t('tasks.detecting') : t('tasks.empty'))
-                : groups.map((bucket) =>
-                    h(
-                      'div',
-                      { key: bucket.group, className: 'ds-task-group' },
-                      h('div', { className: 'ds-task-group-title' }, groupLabels[bucket.group] ?? groupLabels.other),
-                      bucket.items.map((item, index) =>
-                        h(
-                          'div',
-                          { key: `${bucket.group}:${String(index)}`, className: 'ds-task-item' },
-                          h(
-                            'button',
-                            {
-                              type: 'button',
-                              className: 'ds-task-run-btn',
-                              title: item.command,
-                              disabled: state.root === null,
-                              onClick: () => void runTaskCommand(String(item.command ?? ''), typeof item.label === 'string' ? item.label : undefined),
-                            },
-                            t('tasks.run'),
-                          ),
-                          h(
-                            'div',
-                            { className: 'ds-task-item-body' },
-                            h('div', { className: 'ds-task-item-label' }, String(item.label ?? item.command ?? '')),
-                            h('div', { className: 'ds-task-item-command' }, String(item.command ?? '')),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
               taskRuns.length === 0
-                ? null
+                ? h('div', { className: 'ds-hint ds-task-empty' }, t('tasks.empty'))
                 : h(
                     'div',
                     { className: 'ds-task-runs' },
-                    h('div', { className: 'ds-task-group-title' }, t('tasks.output')),
-                    taskRuns.map((run) =>
+                    h('div', { className: 'ds-task-runs-head' }, t('tasks.runs')),
+                    [...taskRuns].reverse().map((run) =>
                       h(
                         'div',
                         {
                           key: run.id,
                           className: 'ds-task-run-row',
-                          'data-active': run.id === taskActiveId ? 'true' : undefined,
+                          'data-active': activeRun !== null && activeRun.id === run.id ? 'true' : undefined,
                         },
                         h(
                           'button',
                           { type: 'button', className: 'ds-task-run-main', onClick: () => setTaskActiveId(run.id) },
                           h('span', { className: 'ds-task-run-dot', 'data-status': run.status }),
                           h('span', { className: 'ds-task-run-name' }, run.name.length > 0 ? run.name : run.command),
+                          run.durationMs === null ? null : h('span', { className: 'ds-task-run-time' }, formatDuration(run.durationMs)),
                           run.status === 'running'
                             ? null
                             : h(
                                 'span',
                                 { className: 'ds-task-run-exit', 'data-ok': run.exitCode === 0 ? 'true' : undefined },
-                                run.exitCode === null ? t('tasks.failed') : t('tasks.exit', { code: String(run.exitCode) }),
+                                runStatusText(run),
                               ),
                         ),
                         run.running === true
@@ -13750,53 +13775,59 @@ ${tail}
                       ),
                     ),
                   ),
-            ),
-            activeRun === null
-              ? null
-              : h(
-                  'div',
-                  { className: 'ds-task-detail' },
-                  problems.length > 0
-                    ? h(
-                        'div',
-                        { className: 'ds-task-problems' },
-                        h('div', { className: 'ds-task-group-title' }, t('tasks.problems', { count: String(problems.length) })),
-                        problems.map((problem, index) =>
+              activeRun === null
+                ? null
+                : h(
+                    'div',
+                    { className: 'ds-task-detail' },
+                    h(
+                      'div',
+                      { className: 'ds-task-detail-head' },
+                      h('span', { className: 'ds-task-detail-title', title: activeRun.command }, activeRun.name.length > 0 ? activeRun.name : activeRun.command),
+                      problems.length > 0 ? h('span', { className: 'ds-task-detail-badge' }, t('tasks.problems', { count: String(problems.length) })) : null,
+                      activeRun.status === 'failed' ? h('span', { className: 'ds-task-detail-badge', 'data-tone': 'warn' }, t('tasks.failed')) : null,
+                    ),
+                    problems.length > 0
+                      ? h(
+                          'div',
+                          { className: 'ds-task-problems' },
+                          problems.map((problem, index) =>
+                            h(
+                              'button',
+                              {
+                                key: problem.path + ':' + String(problem.line) + ':' + String(index),
+                                type: 'button',
+                                className: 'ds-task-problem',
+                                title: problem.message,
+                                onClick: () => void openFileAt(problem.path, problem.line, problem.column),
+                              },
+                              h('span', { className: 'ds-task-problem-sev', 'data-sev': problem.severity }),
+                              h('span', { className: 'ds-task-problem-loc' }, problem.path + ':' + String(problem.line)),
+                              h('span', { className: 'ds-task-problem-msg' }, problem.message),
+                            ),
+                          ),
+                        )
+                      : activeRun.status === 'failed'
+                        ? h('div', { className: 'ds-hint ds-task-empty' }, t('tasks.noProblems'))
+                        : null,
+                    activeRun.status === 'failed'
+                      ? h(
+                          'div',
+                          { className: 'ds-task-detail-actions' },
                           h(
                             'button',
-                            {
-                              key: `${problem.path}:${String(problem.line)}:${String(index)}`,
-                              type: 'button',
-                              className: 'ds-task-problem',
-                              title: problem.message,
-                              onClick: () => void openFileAt(problem.path, problem.line, problem.column),
-                            },
-                            h('span', { className: 'ds-task-problem-sev', 'data-sev': problem.severity }),
-                            h('span', { className: 'ds-task-problem-loc' }, `${problem.path}:${String(problem.line)}`),
-                            h('span', { className: 'ds-task-problem-msg' }, problem.message),
+                            { type: 'button', className: 'ds-linkbtn', onClick: () => void sendTaskToAgent(activeRun) },
+                            t('tasks.sendToAgent'),
                           ),
-                        ),
-                      )
-                    : activeRun.status === 'failed'
-                      ? h('div', { className: 'ds-hint' }, t('tasks.noProblems'))
+                        )
                       : null,
-                  activeRun.status === 'failed'
-                    ? h(
-                        'div',
-                        { className: 'ds-task-detail-actions' },
-                        h(
-                          'button',
-                          { type: 'button', className: 'ds-linkbtn', onClick: () => void sendTaskToAgent(activeRun) },
-                          t('tasks.sendToAgent'),
-                        ),
-                      )
-                    : null,
-                  h(
-                    'pre',
-                    { ref: taskOutputRef, className: 'ds-task-output' },
-                    activeRun.output.length === 0 ? t('tasks.waiting') : activeRun.output,
+                    h(
+                      'pre',
+                      { ref: taskOutputRef, className: 'ds-task-output' },
+                      activeRun.output.length === 0 ? t('tasks.waiting') : activeRun.output,
+                    ),
                   ),
-                ),
+            ),
           )
         }
 
@@ -19185,7 +19216,27 @@ ${tail}
 .ds-todo-empty { padding: 18px 12px; color: var(--dsw-alias-label-secondary); font-size: 11.5px; line-height: 1.6; }
 .ds-todo-help { padding: 8px 10px 12px; color: var(--dsw-alias-label-caption); font-size: 9.5px; line-height: 1.5; }
 .ds-tasks-view { overflow: hidden; }
-.ds-task-toolbar { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
+.ds-task-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
+.ds-task-summary { display: flex; align-items: center; gap: 5px; min-width: 0; font-size: 10.5px; color: var(--dsw-alias-label-primary); }
+.ds-task-summary-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.ds-task-summary-meta { color: var(--dsw-alias-label-caption); font-size: 9.5px; }
+.ds-task-summary-meta[data-ok="true"] { color: var(--dsw-alias-state-success-primary); }
+.ds-task-recheck { font-size: 9.5px; }
+.ds-task-quick { display: flex; flex-direction: column; gap: 5px; padding: 7px 8px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
+.ds-task-quick-group { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.ds-task-quick-title { min-width: 26px; color: var(--dsw-alias-label-caption); font-size: 9px; }
+.ds-task-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; height: 22px; padding: 0 8px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 11px; background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-primary); font-size: 10px; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.ds-task-chip:hover:not(:disabled) { border-color: color-mix(in srgb, var(--dsw-alias-brand-primary) 50%, var(--dsw-alias-border-l1)); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 5%, var(--dsw-alias-bg-layer-1)); }
+.ds-task-chip:disabled { opacity: 0.5; cursor: default; }
+.ds-task-chip-glyph { color: var(--dsw-alias-brand-primary); font-size: 8px; }
+.ds-task-chip-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-task-runs-head { padding: 6px 8px 3px; color: var(--dsw-alias-label-caption); font-size: 9px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+.ds-task-run-time { color: var(--dsw-alias-label-caption); font-size: 9.5px; }
+.ds-task-detail-head { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
+.ds-task-detail-title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; font-weight: 600; color: var(--dsw-alias-label-primary); }
+.ds-task-detail-badge { flex: 0 0 auto; padding: 1px 6px; border-radius: 8px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-caption); font-size: 9px; }
+.ds-task-detail-badge[data-tone="warn"] { color: var(--dsw-alias-state-error-primary); }
+.ds-task-empty { padding: 6px 8px; }
 .ds-task-detect { height: 26px; padding: 0 10px; font-size: 11px; }
 .ds-task-running { padding: 0 6px; border-radius: 8px; background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent); color: var(--dsw-alias-brand-primary); font-size: 9.5px; }
 .ds-task-hint { padding: 6px 10px 2px; font-size: 10px; }

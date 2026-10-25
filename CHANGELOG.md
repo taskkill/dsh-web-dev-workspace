@@ -4,6 +4,19 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Tasks panel: run history and results instead of a bare detector list
+
+- The Tasks / retest panel was rebuilt around outcomes: the toolbar now shows the
+  **latest run** (status dot, command, pass/fail or exit code, duration) with a
+  compact “detect again” link, detected project commands appear as **quick-run
+  chips** grouped by kind, and a **run history** lists every run with duration,
+  status and stop/remove actions (newest first, selectable).
+- The selected run gets a detail header (command, problem count, failure badge),
+  the existing clickable Problems list (jumps to file:line), a “send failure to
+  agent” action, and the output console. Empty states explain how to start, and
+  the old always-on hint text was dropped now that the summary carries the
+  context.
+
 ### Fix: welcome screen showed raw locale keys
 
 - The welcome redesign added `welcome.save`, `welcome.rename`,
