@@ -422,6 +422,17 @@ window.__ModuleLoader__.load({
       'workbench.completed': '已完成',
       'workbench.change': '发起变更',
       'workbench.reqRevise': '修订需求',
+      'workbench.adjust': '需求与调整',
+      'workbench.status': '项目状态',
+      'workbench.reqScope': '适用范围',
+      'workbench.reqScope.full': '完整六关',
+      'workbench.reqScope.development': '仅开发调整',
+      'workbench.reqScope.release': '仅发布调整',
+      'workbench.reqScope.fullHint': '需求 → 设计 → 开发 → 测试 → 确认 → 发布。',
+      'workbench.reqScope.developmentHint': '跳过需求与设计：开发 → 测试 → 确认 → 发布。适合代码/配置调整。',
+      'workbench.reqScope.releaseHint': '跳过需求/设计/开发/测试：只做确认 → 发布。适合发布物调整。',
+      'workbench.changeHintIncomplete': '完成全部六关后，才能发起新轮变更',
+      'workbench.skipped': '跳过',
       'workbench.reqMode.append': '追加说明',
       'workbench.reqMode.replace': '修改需求',
       'workbench.reqMode.change': '新轮变更',
@@ -1262,6 +1273,17 @@ window.__ModuleLoader__.load({
       'workbench.completed': 'Completed',
       'workbench.change': 'Start a change',
       'workbench.reqRevise': 'Revise requirement',
+      'workbench.adjust': 'Requirement & adjustments',
+      'workbench.status': 'Project status',
+      'workbench.reqScope': 'Scope',
+      'workbench.reqScope.full': 'Full six stages',
+      'workbench.reqScope.development': 'Code/config only',
+      'workbench.reqScope.release': 'Release only',
+      'workbench.reqScope.fullHint': 'Product → design → development → testing → sign-off → release.',
+      'workbench.reqScope.developmentHint': 'Skip product and design: development → testing → sign-off → release. For code/config changes.',
+      'workbench.reqScope.releaseHint': 'Skip product/design/development/testing: sign-off → release only. For packaging changes.',
+      'workbench.changeHintIncomplete': 'Start a change round once all six stages are approved',
+      'workbench.skipped': 'Skipped',
       'workbench.reqMode.append': 'Append notes',
       'workbench.reqMode.replace': 'Edit requirement',
       'workbench.reqMode.change': 'New change round',
@@ -7567,6 +7589,7 @@ window.__ModuleLoader__.load({
         const [requirementTitleDraft, setRequirementTitleDraft] = useState('')
         const [requirementDetailDraft, setRequirementDetailDraft] = useState('')
         const [requirementBusy, setRequirementBusy] = useState(false)
+        const [requirementScope, setRequirementScope] = useState('full')
         const [workbenchError, setWorkbenchError] = useState(null)
         const [pipelineDoc, setPipelineDoc] = useState(null)
         const [pipelineBusy, setPipelineBusy] = useState(false)
@@ -9408,9 +9431,10 @@ ${tail}
         }
 
         /** Open the requirement revision panel with sensible defaults. */
-        function openRequirementPanel(complete) {
+        function openRequirementPanel(complete, mode) {
           setRequirementPanelOpen(true)
-          setRequirementMode(complete ? 'change' : 'append')
+          setRequirementMode(typeof mode === 'string' ? mode : complete ? 'change' : 'append')
+          setRequirementScope('full')
           setRequirementTitleDraft(pipelineTitleDraft.length > 0 ? pipelineTitleDraft : '')
           setRequirementDetailDraft('')
           setWorkbenchError(null)
@@ -9448,6 +9472,7 @@ ${tail}
                 root,
                 title: title.length > 0 ? title : pipelineTitleDraft.trim(),
                 detail,
+                scope: requirementScope,
               })
               const round = value !== null && typeof value === 'object' && Number.isInteger(value.round) ? value.round : 2
               setRequirementPanelOpen(false)
@@ -9455,7 +9480,13 @@ ${tail}
               setPipelineTitleDraft(title.length > 0 ? title : pipelineTitleDraft)
               setPipelineDetailDraft(detail)
               await loadPipeline({ silent: true })
-              await startPipelineStage('product')
+              const nextStageId = value !== null && typeof value === 'object' && typeof value.nextStageId === 'string' ? value.nextStageId : 'product'
+              if (nextStageId === 'approval') {
+                await call('pipelineStart', { root, stageId: 'approval' })
+                await loadPipeline({ silent: true })
+              } else if (nextStageId.length > 0) {
+                await startPipelineStage(nextStageId)
+              }
               setIntakeNotice(t('workbench.reqSavedChange', { round: String(round) }))
             } else {
               const value = await call('pipelineUpdateRequirement', {
@@ -14473,16 +14504,166 @@ ${tail}
           const previewShare = previewShares.length > 0 ? previewShares[0] : null
           const latestDelivery = deliveryHistory.length > 0 ? deliveryHistory[0] : null
           const attention = reviewStage !== null || failedItems.length > 0
+          const adjustPanel = !requirementPanelOpen
+            ? null
+            : h(
+                'div',
+                { className: 'ds-wb-reqpanel' },
+                h(
+                  'div',
+                  { className: 'ds-wb-reqmodes' },
+                  ['append', 'replace']
+                    .concat(current === null ? ['change'] : [])
+                    .map((mode) =>
+                      h(
+                        'button',
+                        {
+                          key: mode,
+                          type: 'button',
+                          className: 'ds-wb-reqmode',
+                          'data-active': requirementMode === mode ? 'true' : undefined,
+                          onClick: () => setRequirementMode(mode),
+                        },
+                        t('workbench.reqMode.' + mode),
+                      ),
+                    ),
+                ),
+                h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.reqMode.' + requirementMode + 'Hint')),
+                requirementMode === 'change'
+                  ? h(
+                      React.Fragment,
+                      null,
+                      h(
+                        'div',
+                        { className: 'ds-wb-reqscope' },
+                        h('span', { className: 'ds-wb-reqscope-label' }, t('workbench.reqScope')),
+                        ['full', 'development', 'release'].map((scope) =>
+                          h(
+                            'button',
+                            {
+                              key: scope,
+                              type: 'button',
+                              className: 'ds-wb-reqmode',
+                              'data-active': requirementScope === scope ? 'true' : undefined,
+                              onClick: () => setRequirementScope(scope),
+                            },
+                            t('workbench.reqScope.' + scope),
+                          ),
+                        ),
+                      ),
+                      h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.reqScope.' + requirementScope + 'Hint')),
+                    )
+                  : null,
+                requirementMode === 'append'
+                  ? null
+                  : h('input', {
+                      className: 'ds-pipe-input',
+                      value: requirementTitleDraft,
+                      placeholder: t('workbench.changeTitle'),
+                      spellCheck: false,
+                      onChange: (event) => setRequirementTitleDraft(event.target.value),
+                    }),
+                h('textarea', {
+                  className: 'ds-pipe-textarea ds-wb-reqtext',
+                  rows: 3,
+                  value: requirementDetailDraft,
+                  placeholder: t('workbench.reqDetailPlaceholder'),
+                  onChange: (event) => setRequirementDetailDraft(event.target.value),
+                }),
+                h(
+                  'div',
+                  { className: 'ds-wb-actions' },
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-btn ds-btn-primary ds-wb-btn',
+                      disabled: requirementBusy || requirementDetailDraft.trim().length === 0,
+                      onClick: () => void submitRequirementChange(),
+                    },
+                    requirementBusy
+                      ? t('acceptance.saving')
+                      : requirementMode === 'change'
+                        ? t('workbench.reqSubmitChange', { round: String(round + 1) })
+                        : requirementMode === 'replace'
+                          ? t('workbench.reqSubmitReplace')
+                          : t('workbench.reqSubmitAppend'),
+                  ),
+                  h(
+                    'button',
+                    { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: () => setRequirementPanelOpen(false) },
+                    t('workbench.reqCancel'),
+                  ),
+                ),
+              )
+          const adjustCard =
+            requirementTitle.length === 0
+              ? null
+              : h(
+                  'div',
+                  { className: 'ds-wb-card ds-wb-adjust' },
+                  h(
+                    'div',
+                    { className: 'ds-wb-card-head' },
+                    h('div', { className: 'ds-wb-card-title ds-wb-card-title-inline' }, t('workbench.adjust')),
+                    h('span', { className: 'ds-wb-spacer' }),
+                    h('span', { className: 'ds-wb-round-pill' }, t('pipeline.round', { round: String(round) })),
+                  ),
+                  h('div', { className: 'ds-wb-adjust-title' }, requirementTitle),
+                  typeof requirement.detail === 'string' && requirement.detail.length > 0
+                    ? h('div', { className: 'ds-wb-adjust-detail', title: requirement.detail }, requirement.detail)
+                    : null,
+                  h(
+                    'div',
+                    { className: 'ds-wb-actions' },
+                    h(
+                      'button',
+                      { type: 'button', className: 'ds-btn ds-wb-btn', onClick: () => openRequirementPanel(false, 'append') },
+                      t('workbench.reqMode.append'),
+                    ),
+                    h(
+                      'button',
+                      { type: 'button', className: 'ds-btn ds-wb-btn', onClick: () => openRequirementPanel(false, 'replace') },
+                      t('workbench.reqMode.replace'),
+                    ),
+                    h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'ds-btn ds-wb-btn ds-wb-change-btn',
+                        disabled: current !== null,
+                        title: current !== null ? t('workbench.changeHintIncomplete') : t('workbench.reqMode.changeHint'),
+                        onClick: () => openRequirementPanel(true, 'change'),
+                      },
+                      t('workbench.reqMode.change'),
+                    ),
+                  ),
+                  adjustPanel,
+                  !Array.isArray(doc.requirementLog) || doc.requirementLog.length === 0
+                    ? null
+                    : h(
+                        'div',
+                        { className: 'ds-wb-reqlog' },
+                        h('div', { className: 'ds-wb-reqlog-title' }, t('workbench.reqLog')),
+                        doc.requirementLog.slice(0, 4).map((entry, index) =>
+                          h(
+                            'div',
+                            { key: entry.id ?? String(index), className: 'ds-wb-reqlog-row', title: String(entry.detail ?? '') },
+                            h('span', { className: 'ds-wb-reqlog-type', 'data-type': entry.type }, t('workbench.reqType.' + entry.type) ?? String(entry.type ?? '')),
+                            h('span', { className: 'ds-wb-reqlog-text' }, String(entry.title ?? '') || String(entry.detail ?? '')),
+                          ),
+                        ),
+                      ),
+                )
           const requirementCard = h(
             'div',
             { className: 'ds-wb-card' + (requirementTitle.length > 0 ? '' : ' ds-wb-intake') },
-            h('div', { className: 'ds-wb-card-title' }, requirementTitle.length > 0 ? t('workbench.currentProject') : t('workbench.intake')),
+            h('div', { className: 'ds-wb-card-title' }, requirementTitle.length > 0 ? t('workbench.status') : t('workbench.intake')),
             workbenchBusy ? h('div', { className: 'ds-hint ds-wb-hint' }, t('acceptance.saving')) : null,
             requirementTitle.length > 0
               ? h(
                   React.Fragment,
                   null,
-                  h('div', { className: 'ds-wb-project-title' }, requirementTitle),
                   h(
                     'div',
                     { className: 'ds-wb-progress' },
@@ -14529,95 +14710,12 @@ ${tail}
                           t('workbench.resend'),
                         )
                       : null,
-                    h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: () => openRequirementPanel(current === null) }, t('workbench.reqRevise')),
                     h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: openPipeline }, t('workbench.openPipeline')),
                   ),
                   current !== null && (current.status === 'pending' || current.status === 'failed')
                     ? h('div', { className: 'ds-wb-start-hint' }, t('workbench.startHint'))
                     : null,
-                  requirementPanelOpen
-                    ? h(
-                        'div',
-                        { className: 'ds-wb-reqpanel' },
-                        h(
-                          'div',
-                          { className: 'ds-wb-reqmodes' },
-                          ['append', 'replace']
-                            .concat(current === null ? ['change'] : [])
-                            .map((mode) =>
-                              h(
-                                'button',
-                                {
-                                  key: mode,
-                                  type: 'button',
-                                  className: 'ds-wb-reqmode',
-                                  'data-active': requirementMode === mode ? 'true' : undefined,
-                                  onClick: () => setRequirementMode(mode),
-                                },
-                                t('workbench.reqMode.' + mode),
-                              ),
-                            ),
-                        ),
-                        h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.reqMode.' + requirementMode + 'Hint')),
-                        requirementMode === 'append'
-                          ? null
-                          : h('input', {
-                              className: 'ds-pipe-input',
-                              value: requirementTitleDraft,
-                              placeholder: t('workbench.changeTitle'),
-                              spellCheck: false,
-                              onChange: (event) => setRequirementTitleDraft(event.target.value),
-                            }),
-                        h('textarea', {
-                          className: 'ds-pipe-textarea ds-wb-reqtext',
-                          rows: 3,
-                          value: requirementDetailDraft,
-                          placeholder: t('workbench.reqDetailPlaceholder'),
-                          onChange: (event) => setRequirementDetailDraft(event.target.value),
-                        }),
-                        h(
-                          'div',
-                          { className: 'ds-wb-actions' },
-                          h(
-                            'button',
-                            {
-                              type: 'button',
-                              className: 'ds-btn ds-btn-primary ds-wb-btn',
-                              disabled: requirementBusy || requirementDetailDraft.trim().length === 0,
-                              onClick: () => void submitRequirementChange(),
-                            },
-                            requirementBusy
-                              ? t('acceptance.saving')
-                              : requirementMode === 'change'
-                                ? t('workbench.reqSubmitChange', { round: String(round + 1) })
-                                : requirementMode === 'replace'
-                                  ? t('workbench.reqSubmitReplace')
-                                  : t('workbench.reqSubmitAppend'),
-                          ),
-                          h(
-                            'button',
-                            { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: () => setRequirementPanelOpen(false) },
-                            t('workbench.reqCancel'),
-                          ),
-                        ),
-                      )
-                    : null,
                   intakeNotice.length === 0 ? null : h('div', { className: 'ds-wb-notice' }, intakeNotice),
-                  !Array.isArray(doc.requirementLog) || doc.requirementLog.length === 0
-                    ? null
-                    : h(
-                        'div',
-                        { className: 'ds-wb-reqlog' },
-                        h('div', { className: 'ds-wb-reqlog-title' }, t('workbench.reqLog')),
-                        doc.requirementLog.slice(0, 3).map((entry, index) =>
-                          h(
-                            'div',
-                            { key: entry.id ?? String(index), className: 'ds-wb-reqlog-row', title: String(entry.detail ?? '') },
-                            h('span', { className: 'ds-wb-reqlog-type', 'data-type': entry.type }, t('workbench.reqType.' + entry.type) ?? String(entry.type ?? '')),
-                            h('span', { className: 'ds-wb-reqlog-text' }, String(entry.title ?? '') || String(entry.detail ?? '')),
-                          ),
-                        ),
-                      ),
                 )
               : h(
                   'div',
@@ -14866,7 +14964,17 @@ ${tail}
                             h('span', { className: 'ds-wb-step-name' }, stageTitle(stage.id)),
                           ),
                           h('span', { className: 'ds-wb-step-role' }, roleLabels[stage.id] ?? ''),
-                          h('span', { className: 'ds-wb-step-state', 'data-status': stage.status }, statusText[stage.status] ?? ''),
+                          h(
+                            'span',
+                            {
+                              className: 'ds-wb-step-state',
+                              'data-status': stage.status,
+                              'data-skipped': stage.status === 'approved' && typeof stage.note === 'string' && stage.note.startsWith('跳过') ? 'true' : undefined,
+                            },
+                            stage.status === 'approved' && typeof stage.note === 'string' && stage.note.startsWith('跳过')
+                              ? t('workbench.skipped')
+                              : statusText[stage.status] ?? '',
+                          ),
                           stage.status === 'active' && Number.isFinite(stage.startedAt) && stage.startedAt > 0
                             ? h('span', { className: 'ds-wb-step-elapsed' }, t('workbench.flowElapsed', { time: formatSpan(Date.now() - stage.startedAt) }))
                             : null,
@@ -14983,6 +15091,7 @@ ${tail}
                 'div',
                 { className: 'ds-wb-page-inner' },
                 attention ? attentionCard : null,
+                adjustCard,
                 requirementCard,
                 flowCard,
                 acceptanceCard,
@@ -15385,7 +15494,12 @@ ${tail}
                       h(
                         'div',
                         { key: String(index), className: 'ds-pipe-change-row' },
-                        h('span', { className: 'ds-pipe-change-round' }, t('pipeline.round', { round: String(change.round ?? '?') })),
+                        h(
+                          'span',
+                          { className: 'ds-pipe-change-round' },
+                          t('pipeline.round', { round: String(change.round ?? '?') }) +
+                            (typeof change.scope === 'string' && change.scope !== 'full' ? ' · ' + t('workbench.reqScope.' + change.scope) : ''),
+                        ),
                         h('span', { className: 'ds-pipe-change-title', title: String(change.title ?? '') }, String(change.title ?? '')),
                       ),
                     ),
@@ -19833,6 +19947,14 @@ ${tail}
 .ds-wb-flow-round { padding: 1px 7px; border-radius: 9px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-caption); font-size: 9px; }
 .ds-wb-change { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; padding-top: 9px; border-top: 1px dashed var(--dsw-alias-border-l1); }
 .ds-wb-reqpanel { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; padding-top: 9px; border-top: 1px dashed var(--dsw-alias-border-l1); }
+.ds-wb-adjust { grid-column: 1 / -1; }
+.ds-wb-adjust-title { font-size: 15px; font-weight: 600; color: var(--dsw-alias-label-primary); overflow-wrap: anywhere; }
+.ds-wb-adjust-detail { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin-top: 4px; color: var(--dsw-alias-label-secondary); font-size: 11.5px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ds-wb-round-pill { padding: 1px 8px; border-radius: 9px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-caption); font-size: 9.5px; }
+.ds-wb-reqscope { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.ds-wb-reqscope-label { color: var(--dsw-alias-label-caption); font-size: 9.5px; }
+.ds-wb-change-btn { border-color: color-mix(in srgb, var(--dsw-alias-brand-primary) 45%, var(--dsw-alias-border-l1)); }
+.ds-wb-step-state[data-skipped="true"] { color: var(--dsw-alias-label-caption); font-style: italic; }
 .ds-wb-reqmodes { display: flex; flex-wrap: wrap; gap: 5px; }
 .ds-wb-reqmode { height: 24px; padding: 0 10px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 12px; background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-secondary); font-size: 10px; cursor: pointer; }
 .ds-wb-reqmode[data-active="true"] { border-color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 8%, var(--dsw-alias-bg-layer-1)); color: var(--dsw-alias-label-primary); font-weight: 600; }

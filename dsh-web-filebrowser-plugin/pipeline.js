@@ -63,6 +63,23 @@ export const PIPELINE_STATUSES = ['pending', 'active', 'review', 'approved', 'fa
 /** Gate modes: normal asks the owner for every stage; fast auto-approves intermediate ones. */
 export const PIPELINE_GATE_MODES = ['normal', 'fast']
 
+/** Scope of a change round: full pipeline, code/config only, or release only. */
+export const PIPELINE_CHANGE_SCOPES = ['full', 'development', 'release']
+
+/** Stages skipped by each change scope. */
+const CHANGE_SKIP_STAGES = {
+  full: [],
+  development: ['product', 'design'],
+  release: ['product', 'design', 'development', 'testing'],
+}
+
+/** Human note written on skipped stages. */
+function skipNote(scope) {
+  if (scope === 'development') return '跳过：本次变更仅涉及代码/配置调整'
+  if (scope === 'release') return '跳过：本次变更仅调整发布物'
+  return ''
+}
+
 /** Hard bounds; the model receives them in validation errors and stage prompts. */
 export const PIPELINE_MAX_ARTIFACTS = 20
 export const PIPELINE_MAX_SUMMARY = 4_000
@@ -153,6 +170,7 @@ export function emptyPipeline() {
     changes: [],
     history: [],
     requirementLog: [],
+    roundScope: 'full',
   }
 }
 
@@ -364,6 +382,7 @@ function normalizeStoredState(value) {
       round: Number.isInteger(candidate.round) && candidate.round > 0 ? candidate.round : round,
       title,
       detail: typeof candidate.detail === 'string' ? candidate.detail.trim().slice(0, PIPELINE_MAX_DETAIL) : '',
+      scope: PIPELINE_CHANGE_SCOPES.includes(candidate.scope) ? candidate.scope : 'full',
       createdAt: timestampValue(candidate.createdAt),
     })
   }
@@ -392,6 +411,7 @@ function normalizeStoredState(value) {
         })),
     })
   }
+  const roundScope = PIPELINE_CHANGE_SCOPES.includes(value.roundScope) ? value.roundScope : 'full'
   const requirementLog = []
   for (const candidate of Array.isArray(value.requirementLog) ? value.requirementLog : []) {
     if (candidate === null || typeof candidate !== 'object' || Array.isArray(candidate)) continue
@@ -418,6 +438,7 @@ function normalizeStoredState(value) {
     changes: changes.slice(0, 50),
     history: history.slice(0, 10),
     requirementLog: requirementLog.slice(0, 50),
+    roundScope,
   }
 }
 
@@ -446,6 +467,7 @@ function serializePipeline(doc) {
       changes: doc.changes ?? [],
       history: doc.history ?? [],
       requirementLog: doc.requirementLog ?? [],
+      roundScope: doc.roundScope ?? 'full',
     },
     null,
     2,
@@ -733,6 +755,7 @@ function snapshotPipeline(workspace, doc) {
       round: change.round,
       title: change.title,
       detail: change.detail,
+      scope: change.scope ?? 'full',
       createdAt: change.createdAt,
     })),
     history: (doc.history ?? []).map((entry) => ({
@@ -741,6 +764,7 @@ function snapshotPipeline(workspace, doc) {
       completedAt: entry.completedAt,
       stageCount: Array.isArray(entry.stages) ? entry.stages.length : 0,
     })),
+    roundScope: doc.roundScope ?? 'full',
     requirementLog: (doc.requirementLog ?? []).map((entry) => ({
       id: entry.id,
       type: entry.type,
@@ -1030,6 +1054,7 @@ export async function startChangeRound(root, input) {
   const title = validateRequirementTitle(input?.title)
   const detail = validateRequirementDetail(input?.detail)
   const note = validateNote(input?.note)
+  const scope = PIPELINE_CHANGE_SCOPES.includes(input?.scope) ? input.scope : 'full'
   return withMutationLock(workspace, async () => {
     const doc = await readPipeline(workspace)
     const complete = doc.stages.every((stage) => stage.status === 'approved')
@@ -1051,12 +1076,14 @@ export async function startChangeRound(root, input) {
     }
     doc.history = [snapshot, ...(doc.history ?? [])].slice(0, 10)
     doc.round = (doc.round ?? 1) + 1
+    doc.roundScope = scope
     doc.requirement = { title, detail, updatedAt: now }
     const change = {
       round: doc.round,
       title,
       detail,
       note,
+      scope,
       createdAt: now,
     }
     doc.changes = [change, ...(doc.changes ?? [])].slice(0, 50)
@@ -1070,22 +1097,27 @@ export async function startChangeRound(root, input) {
       },
       ...(doc.requirementLog ?? []),
     ].slice(0, 50)
+    const skipped = new Set(CHANGE_SKIP_STAGES[scope] ?? [])
+    const skipText = skipNote(scope)
     doc.stages = doc.stages.map((stage) => ({
       id: stage.id,
-      status: 'pending',
+      status: skipped.has(stage.id) ? 'approved' : 'pending',
       startedAt: 0,
       submittedAt: 0,
-      reviewedAt: 0,
-      summary: '',
-      note: '',
+      reviewedAt: skipped.has(stage.id) ? now : 0,
+      summary: skipped.has(stage.id) ? skipText : '',
+      note: skipped.has(stage.id) ? skipText : '',
       artifacts: [],
     }))
     doc.updatedAt = now
     await writePipeline(workspace, doc)
+    const nextStage = doc.stages.find((stage) => stage.status === 'pending' || stage.status === 'failed') ?? null
     return {
       round: doc.round,
       requirement: publicRequirement(doc.requirement),
-      change: { round: change.round, title: change.title, detail: change.detail, createdAt: change.createdAt },
+      change: { round: change.round, title: change.title, detail: change.detail, scope, createdAt: change.createdAt },
+      nextStageId: nextStage === null ? '' : nextStage.id,
+      skippedStages: [...skipped],
     }
   })
 }

@@ -4,6 +4,25 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Prominent requirement card and scoped change rounds
+
+- The revision entry moved out of the status card's link row into a dedicated
+  full-width **Requirement & adjustments** card: requirement title, a three-line
+  detail preview, the round badge, three prominent buttons (append / edit /
+  start change) and the last four revisions. Edit and change prefill the current
+  title; change is disabled until all six stages are approved with a tooltip
+  explaining why.
+- Change rounds now take a **scope**: `full`, `development` (skip product and
+  design: development → testing → sign-off → release) or `release` (skip the
+  first four stages: sign-off → release only). Skipped stages are stored as
+  approved with a “跳过 / skipped” reason, the flow shows them in italic-ish
+  “Skipped” state, and the round starts from the first applicable stage — a
+  release-only round stops at the sign-off gate for the owner. The scope is
+  recorded on the change entry and shown in the pipeline change log; the workbench
+  status card was trimmed to progress and stage actions.
+- Pipeline selftest extended to 28/28 (development scope skips product/design and
+  starts at development; release scope skips four stages and starts at approval).
+
 ### Requirement revision centre: append, edit, refine with history
 
 - `.dsh/pipeline.json` gained `requirementLog`: every append/edit/change records

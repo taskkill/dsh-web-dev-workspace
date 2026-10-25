@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-web-dev-workspace",
-  "version": "1.2.49",
+  "version": "1.2.50",
   "private": true,
   "description": "VS Code-style development workspace with files, SSH remotes, Git, a terminal, a todo board and a preview browser for the DeepSeek Harness Web UI",
   "license": "MIT",

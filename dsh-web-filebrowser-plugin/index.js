@@ -1114,6 +1114,7 @@ async function pipelineStartChange(ctx, body) {
     title: body.title,
     detail: body.detail,
     note: body.note,
+    scope: body.scope,
   })
 }
 
