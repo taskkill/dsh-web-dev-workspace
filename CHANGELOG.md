@@ -4,6 +4,13 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Sidebar: Git is a first-class tab again
+
+- The visible sidebar strip is now **Files / Search / Git / More** on local
+  workspaces (Git hides itself on SSH roots, which keeps the three-slot layout
+  there). The overflow menu keeps the Home, Project and Development groups;
+  Git no longer appears twice.
+
 ### Requirement intake: from screenshots and text to a running delivery
 
 - The Workbench intake card now accepts a pasted requirement plus **screenshots

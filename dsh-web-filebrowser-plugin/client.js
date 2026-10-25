@@ -15648,6 +15648,18 @@ ${tail}
               select: focusSearch,
             },
           ]
+          if (gitAvailable) {
+            primaryViews.push({
+              id: 'git',
+              label: t('git.title'),
+              icon: h(GitIcon),
+              active: showGit,
+              count: gitChangeCount,
+              countTone: 'warn',
+              title: gitChangeCount > 0 ? t('git.tabDirty', { count: String(gitChangeCount) }) : t('git.title'),
+              select: () => setPaneView('git'),
+            })
+          }
           const projectViews = [
             {
               id: 'pipeline',
@@ -15689,16 +15701,6 @@ ${tail}
             },
           ]
           if (gitAvailable) {
-            developViews.push({
-              id: 'git',
-              label: t('git.title'),
-              icon: h(GitIcon),
-              active: showGit,
-              count: gitChangeCount,
-              countTone: 'warn',
-              title: gitChangeCount > 0 ? t('git.tabDirty', { count: String(gitChangeCount) }) : t('git.title'),
-              select: () => setPaneView('git'),
-            })
             developViews.push({
               id: 'memory',
               label: t('side.memory'),
