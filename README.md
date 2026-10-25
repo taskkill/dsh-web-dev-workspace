@@ -72,6 +72,7 @@ it for you.
   commands, runs them with streamed output and exit codes, and turns errors in
   the output into clickable file:line links that jump into the editor. Tasks that
   were still running when the page reloaded are re-attached.
+- **Requirement revision centre** — append notes or edit the requirement while a project is running, and open a new change round once it is delivered; every revision is logged with its type and time and dispatched to the product manager to absorb into the plan and acceptance items.
 - **Change rounds** — after a delivery, “Start a change” opens round N: the previous round is archived into history, the six stages reset while acceptance items and release records are kept, the product manager is dispatched for the change, and the normal gates/release flow applies again.
 - **Run & check panel** — the Tasks view now leads with the latest run (command, status, duration), quick-run command chips, a run history with durations and exit codes, clickable problems and a one-click “send failure to agent”.
 - **Redesigned welcome screen** — an empty workspace now shows a hero icon, shortcut keycaps, a primary action and a 2×2 quick-action grid (Workbench / browser / quick open / terminal) instead of a vertical button column.

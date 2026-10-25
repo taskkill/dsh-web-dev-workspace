@@ -4,6 +4,26 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Requirement revision centre: append, edit, refine with history
+
+- `.dsh/pipeline.json` gained `requirementLog`: every append/edit/change records
+  an entry with id, type (append / refine / edit / change / initial), title,
+  detail and timestamp. `pipeline.updateRequirement` (exposed as
+  `pipelineUpdateRequirement`) supports `mode: 'append' | 'replace'` with an
+  optional type, and `startChangeRound` also appends a change entry.
+- The Workbench project card now offers **Revise requirement** with three modes —
+  **Append notes** (no scope change), **Edit requirement** (rewrite; may require
+  sending the running stage back) and **New change round** (only once complete) —
+  each with an explanation, prefilled title when relevant, and a mode-specific
+  primary button. Submitting an append/edit dispatches an “absorb this revision”
+  prompt to the product manager (update requirements.md and acceptance items,
+  flag conflicts with the running stage); a change round still dispatches the
+  product manager automatically.
+- Revisions surface as a compact **Requirement revisions** list on the project
+  card (last 3) and in the Pipeline view (last 6), with type chips and titles.
+- Pipeline selftest extended to 27/27 (append, replace, log types and ordering,
+  empty-input rejection).
+
 ### Change rounds: adjust a delivered project without losing history
 
 - `.dsh/pipeline.json` now tracks a **round counter**, a **change log** and up to

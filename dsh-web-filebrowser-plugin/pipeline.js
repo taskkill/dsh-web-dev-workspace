@@ -152,6 +152,7 @@ export function emptyPipeline() {
     round: 1,
     changes: [],
     history: [],
+    requirementLog: [],
   }
 }
 
@@ -391,6 +392,21 @@ function normalizeStoredState(value) {
         })),
     })
   }
+  const requirementLog = []
+  for (const candidate of Array.isArray(value.requirementLog) ? value.requirementLog : []) {
+    if (candidate === null || typeof candidate !== 'object' || Array.isArray(candidate)) continue
+    const text = typeof candidate.detail === 'string' ? candidate.detail.trim().slice(0, PIPELINE_MAX_DETAIL) : ''
+    const title = typeof candidate.title === 'string' ? candidate.title.trim().slice(0, PIPELINE_MAX_TITLE) : ''
+    const type = ['initial', 'append', 'refine', 'change', 'edit'].includes(candidate.type) ? candidate.type : 'refine'
+    if (text.length === 0 && title.length === 0) continue
+    requirementLog.push({
+      id: typeof candidate.id === 'string' && candidate.id.length > 0 ? candidate.id : randomUUID(),
+      type,
+      title,
+      detail: text,
+      createdAt: timestampValue(candidate.createdAt),
+    })
+  }
   return {
     version: PIPELINE_VERSION,
     updatedAt: timestampValue(value.updatedAt),
@@ -401,6 +417,7 @@ function normalizeStoredState(value) {
     round,
     changes: changes.slice(0, 50),
     history: history.slice(0, 10),
+    requirementLog: requirementLog.slice(0, 50),
   }
 }
 
@@ -428,6 +445,7 @@ function serializePipeline(doc) {
       round: doc.round ?? 1,
       changes: doc.changes ?? [],
       history: doc.history ?? [],
+      requirementLog: doc.requirementLog ?? [],
     },
     null,
     2,
@@ -723,6 +741,13 @@ function snapshotPipeline(workspace, doc) {
       completedAt: entry.completedAt,
       stageCount: Array.isArray(entry.stages) ? entry.stages.length : 0,
     })),
+    requirementLog: (doc.requirementLog ?? []).map((entry) => ({
+      id: entry.id,
+      type: entry.type,
+      title: entry.title,
+      detail: entry.detail,
+      createdAt: entry.createdAt,
+    })),
     updatedAt: doc.updatedAt,
     path: pipelineFile(workspace),
   }
@@ -939,6 +964,56 @@ export async function reviewStage(root, input) {
 }
 
 /**
+ * Append to or replace the delivery requirement without touching the stage
+ * state. Every call records an entry in `requirementLog` so the owner can see
+ * what changed and when. The caller/agent is responsible for telling the
+ * product manager to absorb the update into `requirements.md` and the
+ * acceptance items; this function only persists the requirement.
+ *
+ * @param root - absolute workspace root.
+ * @param input - `{ mode?: 'append' | 'replace', type?, title?, detail? }`.
+ * @returns `{ requirement, entry }`.
+ */
+export async function updateRequirement(root, input) {
+  const workspace = assertRoot(root)
+  const mode = input?.mode === 'replace' ? 'replace' : 'append'
+  const type = ['append', 'refine', 'change', 'edit'].includes(input?.type) ? input.type : mode === 'replace' ? 'edit' : 'append'
+  const hasTitle = typeof input?.title === 'string' && input.title.trim().length > 0
+  const hasDetail = typeof input?.detail === 'string' && input.detail.trim().length > 0
+  if (!hasTitle && !hasDetail) {
+    throw new PipelineError('bad-request', '请至少提供需求标题或需求内容')
+  }
+  const title = hasTitle ? validateRequirementTitle(input.title) : ''
+  const detail = hasDetail ? validateRequirementDetail(input.detail) : ''
+  return withMutationLock(workspace, async () => {
+    const doc = await readPipeline(workspace)
+    const now = Date.now()
+    if (mode === 'replace') {
+      if (title.length > 0) doc.requirement.title = title
+      if (detail.length > 0) doc.requirement.detail = detail
+    } else {
+      if (title.length > 0 && doc.requirement.title.trim().length === 0) doc.requirement.title = title
+      if (detail.length > 0) {
+        const separator = doc.requirement.detail.trim().length === 0 ? '' : '\n\n'
+        doc.requirement.detail = (doc.requirement.detail + separator + detail).slice(0, PIPELINE_MAX_DETAIL)
+      }
+    }
+    doc.requirement.updatedAt = now
+    const entry = {
+      id: randomUUID(),
+      type,
+      title: mode === 'replace' && title.length === 0 ? doc.requirement.title : title,
+      detail: mode === 'replace' && detail.length === 0 ? doc.requirement.detail : detail,
+      createdAt: now,
+    }
+    doc.requirementLog = [entry, ...(doc.requirementLog ?? [])].slice(0, 50)
+    doc.updatedAt = now
+    await writePipeline(workspace, doc)
+    return { requirement: publicRequirement(doc.requirement), entry }
+  })
+}
+
+/**
  * Start a new change round on a completed project. Only allowed once every
  * stage is approved: the current round is archived into `history` (last ten
  * kept), the round counter increments, the requirement is replaced with the
@@ -985,6 +1060,16 @@ export async function startChangeRound(root, input) {
       createdAt: now,
     }
     doc.changes = [change, ...(doc.changes ?? [])].slice(0, 50)
+    doc.requirementLog = [
+      {
+        id: randomUUID(),
+        type: 'change',
+        title,
+        detail,
+        createdAt: now,
+      },
+      ...(doc.requirementLog ?? []),
+    ].slice(0, 50)
     doc.stages = doc.stages.map((stage) => ({
       id: stage.id,
       status: 'pending',

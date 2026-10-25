@@ -421,6 +421,27 @@ window.__ModuleLoader__.load({
       'workbench.round': '第 {round} 轮',
       'workbench.completed': '已完成',
       'workbench.change': '发起变更',
+      'workbench.reqRevise': '修订需求',
+      'workbench.reqMode.append': '追加说明',
+      'workbench.reqMode.replace': '修改需求',
+      'workbench.reqMode.change': '新轮变更',
+      'workbench.reqMode.appendHint': '补充细节、边界或验收说明：不改范围，通知产品经理吸收到需求与验收项。',
+      'workbench.reqMode.replaceHint': '直接更新需求内容：若当前阶段已在进行，可能需要打回该阶段重做。',
+      'workbench.reqMode.changeHint': '归档本轮六关并重新走一遍：项目全部完成后可用。',
+      'workbench.reqDetailPlaceholder': '写清本次追加/修改的内容…',
+      'workbench.reqSubmitAppend': '追加并通知产品经理',
+      'workbench.reqSubmitReplace': '更新需求并通知产品经理',
+      'workbench.reqSubmitChange': '发起第 {round} 轮变更',
+      'workbench.reqCancel': '取消',
+      'workbench.reqSaved': '需求已更新，已通知产品经理吸收。',
+      'workbench.reqSavedChange': '已发起第 {round} 轮变更，已派发产品经理。',
+      'workbench.reqFailed': '需求更新失败：{message}',
+      'workbench.reqLog': '需求修订',
+      'workbench.reqType.append': '追加',
+      'workbench.reqType.refine': '完善',
+      'workbench.reqType.edit': '修改',
+      'workbench.reqType.change': '变更',
+      'workbench.reqType.initial': '初始',
       'workbench.changeTitle': '变更标题',
       'workbench.changeDetail': '变更内容：要调整什么、验收标准是什么',
       'workbench.changeSubmit': '发起第 {round} 轮变更',
@@ -431,6 +452,7 @@ window.__ModuleLoader__.load({
       'pipeline.round': '第 {round} 轮',
       'pipeline.changes': '变更记录',
       'pipeline.history': '历史轮次',
+      'pipeline.requirementLog': '需求修订记录',
       'workbench.eventStarted': '开始「{stage}」',
       'workbench.eventSubmitted': '「{stage}」提交待审',
       'workbench.eventApproved': '「{stage}」通过',
@@ -1239,6 +1261,27 @@ window.__ModuleLoader__.load({
       'workbench.round': 'Round {round}',
       'workbench.completed': 'Completed',
       'workbench.change': 'Start a change',
+      'workbench.reqRevise': 'Revise requirement',
+      'workbench.reqMode.append': 'Append notes',
+      'workbench.reqMode.replace': 'Edit requirement',
+      'workbench.reqMode.change': 'New change round',
+      'workbench.reqMode.appendHint': 'Add details, edge cases or acceptance notes without changing scope; the product manager absorbs them into the plan and acceptance items.',
+      'workbench.reqMode.replaceHint': 'Rewrite the requirement directly; if a stage is already running it may need to be sent back and redone.',
+      'workbench.reqMode.changeHint': 'Archive this round and run the six stages again; available once every stage is approved.',
+      'workbench.reqDetailPlaceholder': 'What should be appended or changed…',
+      'workbench.reqSubmitAppend': 'Append and notify the product manager',
+      'workbench.reqSubmitReplace': 'Update and notify the product manager',
+      'workbench.reqSubmitChange': 'Start round {round}',
+      'workbench.reqCancel': 'Cancel',
+      'workbench.reqSaved': 'Requirement updated; the product manager has been notified.',
+      'workbench.reqSavedChange': 'Round {round} started; the product manager has been dispatched.',
+      'workbench.reqFailed': 'Could not update the requirement: {message}',
+      'workbench.reqLog': 'Requirement revisions',
+      'workbench.reqType.append': 'Append',
+      'workbench.reqType.refine': 'Refine',
+      'workbench.reqType.edit': 'Edit',
+      'workbench.reqType.change': 'Change',
+      'workbench.reqType.initial': 'Initial',
       'workbench.changeTitle': 'Change title',
       'workbench.changeDetail': 'What should change and how it will be accepted',
       'workbench.changeSubmit': 'Start round {round}',
@@ -1249,6 +1292,7 @@ window.__ModuleLoader__.load({
       'pipeline.round': 'Round {round}',
       'pipeline.changes': 'Change log',
       'pipeline.history': 'Previous rounds',
+      'pipeline.requirementLog': 'Requirement revisions',
       'workbench.eventStarted': 'Started “{stage}”',
       'workbench.eventSubmitted': '“{stage}” submitted for review',
       'workbench.eventApproved': '“{stage}” approved',
@@ -7518,10 +7562,11 @@ window.__ModuleLoader__.load({
         const [intakeFiles, setIntakeFiles] = useState([])
         const [intakeMode, setIntakeMode] = useState('fast')
         const [intakeNotice, setIntakeNotice] = useState('')
-        const [changeOpen, setChangeOpen] = useState(false)
-        const [changeTitle, setChangeTitle] = useState('')
-        const [changeDetail, setChangeDetail] = useState('')
-        const [changeBusy, setChangeBusy] = useState(false)
+        const [requirementPanelOpen, setRequirementPanelOpen] = useState(false)
+        const [requirementMode, setRequirementMode] = useState('append')
+        const [requirementTitleDraft, setRequirementTitleDraft] = useState('')
+        const [requirementDetailDraft, setRequirementDetailDraft] = useState('')
+        const [requirementBusy, setRequirementBusy] = useState(false)
         const [workbenchError, setWorkbenchError] = useState(null)
         const [pipelineDoc, setPipelineDoc] = useState(null)
         const [pipelineBusy, setPipelineBusy] = useState(false)
@@ -9362,35 +9407,80 @@ ${tail}
           ].join('\n')
         }
 
-        /** Start the next change round on a completed project and dispatch the PM. */
-        async function startChangeRound() {
+        /** Open the requirement revision panel with sensible defaults. */
+        function openRequirementPanel(complete) {
+          setRequirementPanelOpen(true)
+          setRequirementMode(complete ? 'change' : 'append')
+          setRequirementTitleDraft(pipelineTitleDraft.length > 0 ? pipelineTitleDraft : '')
+          setRequirementDetailDraft('')
+          setWorkbenchError(null)
+          setIntakeNotice('')
+        }
+
+        /** Prompt that asks the product manager to absorb a requirement revision. */
+        function buildRequirementPrompt(entry, round) {
+          const type = requirementMode === 'replace' ? 'edit' : 'append'
+          return [
+            '需求已更新（第 ' + String(round) + ' 轮，类型：' + type + '）：',
+            '标题：' + (typeof entry?.title === 'string' && entry.title.length > 0 ? entry.title : '（沿用当前需求标题）'),
+            '内容：' + (typeof entry?.detail === 'string' && entry.detail.length > 0 ? entry.detail : '（见最新需求文档）'),
+            '',
+            '请「产品经理」吸收本次需求修订：',
+            '1) 更新 docs/pipeline/requirements.md 中对应的范围、细节与验收标准；',
+            '2) 用 acceptance_add / acceptance_update 补充或调整验收项（新增项写清验证条件）；',
+            '3) 若当前进行中的阶段产出与新需求冲突，说明需要打回哪一关并等 Owner 决定，不要自行跳阶段或审批；',
+            '4) 若只是补充说明且不影响当前阶段，明确说明无需重做。',
+          ].join('\n')
+        }
+
+        /** Persist a requirement append/edit/change and notify the product manager. */
+        async function submitRequirementChange() {
           const root = store.get().root
           if (root === null) return
-          const title = changeTitle.trim()
-          const detail = changeDetail.trim()
-          if (title.length === 0 || detail.length === 0) return
-          setChangeBusy(true)
+          const title = requirementTitleDraft.trim()
+          const detail = requirementDetailDraft.trim()
+          if (detail.length === 0) return
+          setRequirementBusy(true)
           setWorkbenchError(null)
           try {
-            const value = await call('pipelineStartChange', { root, title, detail })
-            const round = value !== null && typeof value === 'object' && Number.isInteger(value.round) ? value.round : 2
-            setChangeOpen(false)
-            setChangeTitle('')
-            setChangeDetail('')
-            setPipelineTitleDraft(title)
-            setPipelineDetailDraft(detail)
-            await loadPipeline({ silent: true })
-            await startPipelineStage('product')
-            setIntakeNotice(t('workbench.changeDone', { round: String(round) }))
+            if (requirementMode === 'change') {
+              const value = await call('pipelineStartChange', {
+                root,
+                title: title.length > 0 ? title : pipelineTitleDraft.trim(),
+                detail,
+              })
+              const round = value !== null && typeof value === 'object' && Number.isInteger(value.round) ? value.round : 2
+              setRequirementPanelOpen(false)
+              setRequirementDetailDraft('')
+              setPipelineTitleDraft(title.length > 0 ? title : pipelineTitleDraft)
+              setPipelineDetailDraft(detail)
+              await loadPipeline({ silent: true })
+              await startPipelineStage('product')
+              setIntakeNotice(t('workbench.reqSavedChange', { round: String(round) }))
+            } else {
+              const value = await call('pipelineUpdateRequirement', {
+                root,
+                mode: requirementMode === 'replace' ? 'replace' : 'append',
+                type: requirementMode === 'replace' ? 'edit' : 'append',
+                ...(requirementMode === 'replace' && title.length > 0 ? { title } : {}),
+                detail,
+              })
+              setRequirementPanelOpen(false)
+              setRequirementDetailDraft('')
+              await loadPipeline({ silent: true })
+              await sendPromptText(buildRequirementPrompt(value?.entry ?? { title, detail }, round))
+              setIntakeNotice(t('workbench.reqSaved'))
+            }
             await loadWorkbench({ silent: true })
           } catch (error) {
-            setWorkbenchError(t('workbench.changeFailed', { message: pipelineErrorText(error) }))
+            setWorkbenchError(t('workbench.reqFailed', { message: pipelineErrorText(error) }))
           } finally {
-            setChangeBusy(false)
+            setRequirementBusy(false)
           }
         }
 
         /* ------------------------------------------------------------------ *
+         * Delivery pipeline (product → design → dev → test → sign-off → ops)        /* ------------------------------------------------------------------ *
          * Delivery pipeline (product → design → dev → test → sign-off → ops)
          * ------------------------------------------------------------------ */
 
@@ -14416,16 +14506,7 @@ ${tail}
                     ),
                     h('span', { className: 'ds-spacer' }),
                     current === null
-                      ? h(
-                          React.Fragment,
-                          null,
-                          h('span', { className: 'ds-wb-status-pill', 'data-status': 'approved' }, t('workbench.completed')),
-                          h(
-                            'button',
-                            { type: 'button', className: 'ds-btn ds-wb-btn', onClick: () => setChangeOpen((open) => !open) },
-                            t('workbench.change'),
-                          ),
-                        )
+                      ? h('span', { className: 'ds-wb-status-pill', 'data-status': 'approved' }, t('workbench.completed'))
                       : current.status === 'active'
                         ? h('span', { className: 'ds-wb-status-pill', 'data-status': 'active' }, t('workbench.runningStage'))
                         : current.status === 'review'
@@ -14448,28 +14529,51 @@ ${tail}
                           t('workbench.resend'),
                         )
                       : null,
+                    h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: () => openRequirementPanel(current === null) }, t('workbench.reqRevise')),
                     h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: openPipeline }, t('workbench.openPipeline')),
                   ),
                   current !== null && (current.status === 'pending' || current.status === 'failed')
                     ? h('div', { className: 'ds-wb-start-hint' }, t('workbench.startHint'))
                     : null,
-                  changeOpen
+                  requirementPanelOpen
                     ? h(
                         'div',
-                        { className: 'ds-wb-change' },
-                        h('input', {
-                          className: 'ds-pipe-input',
-                          value: changeTitle,
-                          placeholder: t('workbench.changeTitle'),
-                          spellCheck: false,
-                          onChange: (event) => setChangeTitle(event.target.value),
-                        }),
+                        { className: 'ds-wb-reqpanel' },
+                        h(
+                          'div',
+                          { className: 'ds-wb-reqmodes' },
+                          ['append', 'replace']
+                            .concat(current === null ? ['change'] : [])
+                            .map((mode) =>
+                              h(
+                                'button',
+                                {
+                                  key: mode,
+                                  type: 'button',
+                                  className: 'ds-wb-reqmode',
+                                  'data-active': requirementMode === mode ? 'true' : undefined,
+                                  onClick: () => setRequirementMode(mode),
+                                },
+                                t('workbench.reqMode.' + mode),
+                              ),
+                            ),
+                        ),
+                        h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.reqMode.' + requirementMode + 'Hint')),
+                        requirementMode === 'append'
+                          ? null
+                          : h('input', {
+                              className: 'ds-pipe-input',
+                              value: requirementTitleDraft,
+                              placeholder: t('workbench.changeTitle'),
+                              spellCheck: false,
+                              onChange: (event) => setRequirementTitleDraft(event.target.value),
+                            }),
                         h('textarea', {
-                          className: 'ds-pipe-textarea ds-wb-change-text',
+                          className: 'ds-pipe-textarea ds-wb-reqtext',
                           rows: 3,
-                          value: changeDetail,
-                          placeholder: t('workbench.changeDetail'),
-                          onChange: (event) => setChangeDetail(event.target.value),
+                          value: requirementDetailDraft,
+                          placeholder: t('workbench.reqDetailPlaceholder'),
+                          onChange: (event) => setRequirementDetailDraft(event.target.value),
                         }),
                         h(
                           'div',
@@ -14479,20 +14583,41 @@ ${tail}
                             {
                               type: 'button',
                               className: 'ds-btn ds-btn-primary ds-wb-btn',
-                              disabled: changeBusy || changeTitle.trim().length === 0 || changeDetail.trim().length === 0,
-                              onClick: () => void startChangeRound(),
+                              disabled: requirementBusy || requirementDetailDraft.trim().length === 0,
+                              onClick: () => void submitRequirementChange(),
                             },
-                            changeBusy ? t('acceptance.saving') : t('workbench.changeSubmit', { round: String(round + 1) }),
+                            requirementBusy
+                              ? t('acceptance.saving')
+                              : requirementMode === 'change'
+                                ? t('workbench.reqSubmitChange', { round: String(round + 1) })
+                                : requirementMode === 'replace'
+                                  ? t('workbench.reqSubmitReplace')
+                                  : t('workbench.reqSubmitAppend'),
                           ),
                           h(
                             'button',
-                            { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: () => setChangeOpen(false) },
-                            t('workbench.changeCancel'),
+                            { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: () => setRequirementPanelOpen(false) },
+                            t('workbench.reqCancel'),
                           ),
                         ),
                       )
                     : null,
                   intakeNotice.length === 0 ? null : h('div', { className: 'ds-wb-notice' }, intakeNotice),
+                  !Array.isArray(doc.requirementLog) || doc.requirementLog.length === 0
+                    ? null
+                    : h(
+                        'div',
+                        { className: 'ds-wb-reqlog' },
+                        h('div', { className: 'ds-wb-reqlog-title' }, t('workbench.reqLog')),
+                        doc.requirementLog.slice(0, 3).map((entry, index) =>
+                          h(
+                            'div',
+                            { key: entry.id ?? String(index), className: 'ds-wb-reqlog-row', title: String(entry.detail ?? '') },
+                            h('span', { className: 'ds-wb-reqlog-type', 'data-type': entry.type }, t('workbench.reqType.' + entry.type) ?? String(entry.type ?? '')),
+                            h('span', { className: 'ds-wb-reqlog-text' }, String(entry.title ?? '') || String(entry.detail ?? '')),
+                          ),
+                        ),
+                      ),
                 )
               : h(
                   'div',
@@ -15280,6 +15405,21 @@ ${tail}
                           ),
                         ),
                   ),
+              doc !== null && Array.isArray(doc.requirementLog) && doc.requirementLog.length > 0
+                ? h(
+                    'div',
+                    { className: 'ds-pipe-changes' },
+                    h('div', { className: 'ds-pipe-group-title' }, t('pipeline.requirementLog')),
+                    doc.requirementLog.slice(0, 6).map((entry, index) =>
+                      h(
+                        'div',
+                        { key: entry.id ?? String(index), className: 'ds-pipe-change-row' },
+                        h('span', { className: 'ds-pipe-change-round' }, t('workbench.reqType.' + entry.type) ?? String(entry.type ?? '')),
+                        h('span', { className: 'ds-pipe-change-title', title: String(entry.detail ?? '') }, String(entry.title ?? '') || String(entry.detail ?? '')),
+                      ),
+                    ),
+                  )
+                : null,
               h('div', { className: 'ds-hint ds-pipe-hint' }, t('pipeline.hint')),
               h('div', { className: 'ds-hint ds-pipe-hint' }, t('pipeline.roleHint')),
             ),
@@ -19692,6 +19832,16 @@ ${tail}
 .ds-pipe-round { padding: 1px 7px; border-radius: 9px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-caption); font-size: 9px; }
 .ds-wb-flow-round { padding: 1px 7px; border-radius: 9px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-caption); font-size: 9px; }
 .ds-wb-change { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; padding-top: 9px; border-top: 1px dashed var(--dsw-alias-border-l1); }
+.ds-wb-reqpanel { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; padding-top: 9px; border-top: 1px dashed var(--dsw-alias-border-l1); }
+.ds-wb-reqmodes { display: flex; flex-wrap: wrap; gap: 5px; }
+.ds-wb-reqmode { height: 24px; padding: 0 10px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 12px; background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-secondary); font-size: 10px; cursor: pointer; }
+.ds-wb-reqmode[data-active="true"] { border-color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 8%, var(--dsw-alias-bg-layer-1)); color: var(--dsw-alias-label-primary); font-weight: 600; }
+.ds-wb-reqtext { width: 100%; box-sizing: border-box; min-height: 64px; resize: vertical; }
+.ds-wb-reqlog { margin-top: 9px; padding-top: 8px; border-top: 1px dashed var(--dsw-alias-border-l1); }
+.ds-wb-reqlog-title { margin-bottom: 4px; color: var(--dsw-alias-label-caption); font-size: 9px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+.ds-wb-reqlog-row { display: flex; align-items: center; gap: 6px; padding: 1px 0; font-size: 10px; }
+.ds-wb-reqlog-type { flex: 0 0 auto; padding: 0 6px; border-radius: 8px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-caption); font-size: 9px; }
+.ds-wb-reqlog-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-primary); }
 .ds-wb-change-text { width: 100%; box-sizing: border-box; min-height: 64px; resize: vertical; }
 .ds-pipe-changes { margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--dsw-alias-border-l1); }
 .ds-pipe-change-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; font-size: 10px; }

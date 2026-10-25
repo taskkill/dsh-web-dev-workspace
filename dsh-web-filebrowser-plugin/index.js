@@ -353,6 +353,8 @@ async function dispatch(ctx, op, body) {
       return pipelineSetMode(ctx, body)
     case 'pipelineStartChange':
       return pipelineStartChange(ctx, body)
+    case 'pipelineUpdateRequirement':
+      return pipelineUpdateRequirement(ctx, body)
     case 'browserBookmarks':
       return listBrowserBookmarks(ctx, body)
     case 'browserBookmarkAdd':
@@ -1092,6 +1094,17 @@ async function pipelinePrompt(ctx, body) {
   const root = await pipelineRoot(ctx, body.root)
   const doc = await pipeline.readPipeline(root)
   return { prompt: pipeline.buildStagePrompt(doc, typeof body.stageId === 'string' ? body.stageId : '') }
+}
+
+/** Append to or replace the requirement and record the revision. */
+async function pipelineUpdateRequirement(ctx, body) {
+  const root = await pipelineRoot(ctx, body.root)
+  return pipeline.updateRequirement(root, {
+    mode: body.mode === 'replace' ? 'replace' : 'append',
+    type: body.type,
+    title: body.title,
+    detail: body.detail,
+  })
 }
 
 /** Start a new change round on a completed project (owner action). */
