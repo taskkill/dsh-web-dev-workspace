@@ -389,6 +389,12 @@ window.__ModuleLoader__.load({
       'pipeline.requirementDetail': '需求描述',
       'pipeline.requirementEmpty': '还没有需求。先写清目标、范围和验收标准，再启动产品经理阶段。',
       'pipeline.saveRequirement': '保存需求',
+      'pipeline.kickoff': '开工：保存需求并派发',
+      'pipeline.saveOnly': '仅保存',
+      'pipeline.reviewBanner': '第 {n} 关「{stage}」待你审批',
+      'pipeline.activeBanner': '「{stage}」进行中，agent 正在执行',
+      'pipeline.nextBanner': '下一步：启动「{stage}」',
+      'pipeline.bannerHint': '你只需要点通过 / 打回，其余交给团队。批准后会自动进入下一阶段。',
       'pipeline.editRequirement': '编辑需求',
       'pipeline.cancelEdit': '取消',
       'pipeline.requirementPlaceholder': '一句话目标…',
@@ -1118,6 +1124,12 @@ window.__ModuleLoader__.load({
       'pipeline.requirementDetail': 'Requirement detail',
       'pipeline.requirementEmpty': 'No requirement yet. Write the goal, scope and acceptance criteria, then start the product stage.',
       'pipeline.saveRequirement': 'Save requirement',
+      'pipeline.kickoff': 'Kick off: save and dispatch',
+      'pipeline.saveOnly': 'Save only',
+      'pipeline.reviewBanner': 'Stage {n} “{stage}” is waiting for your review',
+      'pipeline.activeBanner': '“{stage}” is in progress (agent working)',
+      'pipeline.nextBanner': 'Next: start “{stage}”',
+      'pipeline.bannerHint': 'You only approve or send back; the team handles the rest. Approval auto-advances to the next stage.',
       'pipeline.editRequirement': 'Edit requirement',
       'pipeline.cancelEdit': 'Cancel',
       'pipeline.requirementPlaceholder': 'One-line goal…',
@@ -8998,6 +9010,29 @@ ${tail}
           }
         }
 
+        /** One-click kickoff: save the requirement, start product and dispatch its prompt. */
+        async function kickoffPipeline() {
+          const targetRoot = store.get().root
+          if (targetRoot === null) return
+          const title = pipelineTitleDraft.trim()
+          const detail = pipelineDetailDraft.trim()
+          if (title.length === 0 || detail.length === 0) {
+            setPipelineError(t('pipeline.requirementNeeded'))
+            return
+          }
+          setPipelineBusy(true)
+          setPipelineError(null)
+          try {
+            await call('pipelineSetRequirement', { root: targetRoot, title, detail })
+            setPipelineEditing(false)
+            await startPipelineStage('product')
+          } catch (error) {
+            setPipelineError(t('pipeline.startFailed', { message: pipelineErrorText(error) }))
+          } finally {
+            setPipelineBusy(false)
+          }
+        }
+
         /** Start one stage and dispatch its role prompt to the conversation. */
         async function startPipelineStage(stageId) {
           const targetRoot = store.get().root
@@ -9049,6 +9084,23 @@ ${tail}
             })
             setPipelineReviewNote('')
             await loadPipeline({ silent: true })
+            // Owner approval is the only trigger the team needs: move to the next
+            // stage automatically (the human approval stage is started without a
+            // role prompt; release dispatches the ops prompt).
+            if (decision === 'approve') {
+              const snapshot = await call('pipelineList', { root: targetRoot })
+              const nextStages = Array.isArray(snapshot?.stages) ? snapshot.stages : Array.isArray(snapshot?.doc?.stages) ? snapshot.doc.stages : []
+              const index = nextStages.findIndex((stage) => stage !== null && typeof stage === 'object' && stage.id === stageId)
+              const next = index >= 0 ? nextStages[index + 1] : null
+              if (next !== null && (next.status === 'pending' || next.status === 'failed')) {
+                if (next.id === 'approval') {
+                  await call('pipelineStart', { root: targetRoot, stageId: 'approval' })
+                  await loadPipeline({ silent: true })
+                } else {
+                  await startPipelineStage(next.id)
+                }
+              }
+            }
           } catch (error) {
             setPipelineError(t('pipeline.reviewFailed', { message: pipelineErrorText(error) }))
           } finally {
@@ -13739,6 +13791,15 @@ ${tail}
           const requirementDetail = typeof requirement.detail === 'string' ? requirement.detail : ''
           const requirementReady = requirementTitle.trim().length > 0 && requirementDetail.trim().length > 0
           const releases = doc !== null && Array.isArray(doc.releases) ? doc.releases : []
+          const reviewStage = stages.find((stage) => stage !== null && typeof stage === 'object' && stage.status === 'review') ?? null
+          const activeStage = stages.find((stage) => stage !== null && typeof stage === 'object' && stage.status === 'active') ?? null
+          const actionableStage =
+            stages.find((stage, index) => {
+              if (stage === null || typeof stage !== 'object') return false
+              if (stage.status !== 'pending' && stage.status !== 'failed') return false
+              const previous = index === 0 ? null : stages[index - 1]
+              return index === 0 ? requirementReady : previous !== null && previous.status === 'approved'
+            }) ?? null
           const roleLabels = {
             product: t('pipeline.role.product'),
             design: t('pipeline.role.design'),
@@ -13950,6 +14011,63 @@ ${tail}
               ),
             ),
             pipelineError === null ? null : h('div', { className: 'ds-errorline' }, pipelineError),
+            reviewStage !== null || activeStage !== null || actionableStage !== null
+              ? h(
+                  'div',
+                  {
+                    className: 'ds-pipe-todo',
+                    'data-kind': reviewStage !== null ? 'review' : activeStage !== null ? 'active' : 'next',
+                  },
+                  h(
+                    'div',
+                    { className: 'ds-pipe-todo-text' },
+                    reviewStage !== null
+                      ? t('pipeline.reviewBanner', {
+                          n: String(stages.findIndex((stage) => stage !== null && stage.id === reviewStage.id) + 1),
+                          stage: stageTitles[reviewStage.id] ?? reviewStage.id,
+                        })
+                      : activeStage !== null
+                        ? t('pipeline.activeBanner', { stage: stageTitles[activeStage.id] ?? activeStage.id })
+                        : t('pipeline.nextBanner', { stage: stageTitles[actionableStage.id] ?? actionableStage.id }),
+                  ),
+                  h(
+                    'div',
+                    { className: 'ds-pipe-todo-actions' },
+                    reviewStage !== null
+                      ? h(
+                          React.Fragment,
+                          null,
+                          h(
+                            'button',
+                            { type: 'button', className: 'ds-btn', disabled: pipelineBusy, onClick: () => void reviewPipelineStage(reviewStage.id, 'approve') },
+                            t('pipeline.approve'),
+                          ),
+                          h(
+                            'button',
+                            { type: 'button', className: 'ds-btn ds-pipe-reject', disabled: pipelineBusy, onClick: () => void reviewPipelineStage(reviewStage.id, 'reject') },
+                            t('pipeline.reject'),
+                          ),
+                        )
+                      : activeStage === null && actionableStage !== null
+                        ? h(
+                            'button',
+                            { type: 'button', className: 'ds-btn', disabled: pipelineBusy, onClick: () => void startPipelineStage(actionableStage.id) },
+                            t('pipeline.start'),
+                          )
+                        : h('span', { className: 'ds-pipe-waiting' }, t('pipeline.waitingAgent')),
+                  ),
+                  reviewStage !== null
+                    ? h('input', {
+                        className: 'ds-pipe-input ds-pipe-todo-note',
+                        value: pipelineReviewNote,
+                        placeholder: t('pipeline.reviewNotePlaceholder'),
+                        spellCheck: false,
+                        onChange: (event) => setPipelineReviewNote(event.target.value),
+                      })
+                    : null,
+                  h('div', { className: 'ds-pipe-todo-hint' }, t('pipeline.bannerHint')),
+                )
+              : null,
             h('div', { className: 'ds-pipe-scroll' },
               h(
                 'div',
@@ -13980,11 +14098,24 @@ ${tail}
                           'button',
                           {
                             type: 'button',
-                            className: 'ds-btn',
+                            className: 'ds-btn ds-pipe-kickoff',
+                            disabled:
+                              pipelineBusy ||
+                              pipelineTitleDraft.trim().length === 0 ||
+                              pipelineDetailDraft.trim().length === 0,
+                            onClick: () => void kickoffPipeline(),
+                          },
+                          t('pipeline.kickoff'),
+                        ),
+                        h(
+                          'button',
+                          {
+                            type: 'button',
+                            className: 'ds-linkbtn',
                             disabled: pipelineBusy || pipelineTitleDraft.trim().length === 0,
                             onClick: () => void savePipelineRequirement(),
                           },
-                          t('pipeline.saveRequirement'),
+                          t('pipeline.saveOnly'),
                         ),
                         pipelineEditing
                           ? h(
@@ -14009,17 +14140,6 @@ ${tail}
                 requirementReady ? null : h('div', { className: 'ds-hint' }, t('pipeline.requirementEmpty')),
               ),
               requirementReady ? null : h('div', { className: 'ds-hint ds-pipe-seq-hint' }, t('pipeline.requirementNeeded')),
-              h(
-                'div',
-                { className: 'ds-pipe-review-note' },
-                h('input', {
-                  className: 'ds-pipe-input',
-                  value: pipelineReviewNote,
-                  placeholder: t('pipeline.reviewNotePlaceholder'),
-                  spellCheck: false,
-                  onChange: (event) => setPipelineReviewNote(event.target.value),
-                }),
-              ),
               stages.length === 0
                 ? h('div', { className: 'ds-hint' }, t('pipeline.loadFailed', { message: '—' }))
                 : stages.map((stage, index) => stageNode(stage, index)),
@@ -18347,6 +18467,15 @@ ${tail}
 .ds-acc-history-name { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-secondary); font-family: var(--ds-mono); }
 .ds-acc-history-meta { flex: 0 0 auto; color: var(--dsw-alias-label-caption); }
 .ds-pipeline-view { overflow: hidden; }
+.ds-pipe-todo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 7px 9px; border-bottom: 1px solid var(--dsw-alias-border-l1); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 7%, transparent); }
+.ds-pipe-todo[data-kind="review"] { background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 12%, transparent); }
+.ds-pipe-todo[data-kind="active"] { background: color-mix(in srgb, var(--dsw-alias-brand-primary) 5%, transparent); }
+.ds-pipe-todo-text { flex: 1 1 100%; font-size: 11.5px; font-weight: 600; color: var(--dsw-alias-label-primary); }
+.ds-pipe-todo-actions { display: flex; gap: 5px; }
+.ds-pipe-todo-actions .ds-btn { height: 24px; padding: 0 10px; font-size: 10.5px; }
+.ds-pipe-todo-note { width: 100%; box-sizing: border-box; }
+.ds-pipe-todo-hint { flex: 1 1 100%; color: var(--dsw-alias-label-caption); font-size: 9.5px; }
+.ds-pipe-kickoff { font-weight: 600; }
 .ds-pipe-toolbar { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
 .ds-pipe-heading { font-weight: 600; font-size: 11px; color: var(--dsw-alias-label-primary); }
 .ds-pipe-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 6px 8px 12px; }

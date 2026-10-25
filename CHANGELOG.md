@@ -4,6 +4,25 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Simpler owner flow: one-click kickoff, auto-advance, action banner
+
+- The pipeline panel now has a single primary action for the owner: **“Kick off:
+  save and dispatch”** saves the requirement and starts the product stage in one
+  click (the separate “save only” stays for later edits).
+- Approving a stage now **auto-starts the next stage and dispatches its role
+  prompt**, so the owner only clicks pass / request-changes instead of also
+  starting every stage by hand. The human approval stage is started without a
+  role prompt (it is the owner's gate), and release dispatches the ops prompt
+  after sign-off.
+- A single **“what needs you now”** banner sits at the top of the pipeline panel:
+  a pending review with pass/request-changes buttons and an optional note field,
+  an in-progress notice, or a next-step start button — the stage cards below stay
+  as advanced detail. The review note field only appears while a review is
+  pending.
+- PLAYBOOK gained a three-step “minimal usage” section, and the OPC README now
+  leads with the shortest path so the owner does not need to learn stages, tools
+  or prompts.
+
 ### OPC (one-person company) team charter and role handbooks
 
 - New `docs/opc/` team workspace: a company charter (`00-charter.md`) defining
