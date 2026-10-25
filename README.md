@@ -792,8 +792,9 @@ this plugin only: a run-and-diagnose loop, agent change review, session recovery
 Git completion, an editor foundation, LSP and browser verification. Priorities,
 integration points, costs and acceptance criteria live in
 [docs/ROADMAP.md](docs/ROADMAP.md); the batch 0–3 retest steps live in
-[docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) and the team pipeline in
-[docs/AGENT_TEAM.md](docs/AGENT_TEAM.md).
+[docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) the team pipeline in
+[docs/AGENT_TEAM.md](docs/AGENT_TEAM.md), and the end-to-end
+requirement-to-delivery runbook in [docs/PLAYBOOK.md](docs/PLAYBOOK.md).
 
 ## Repository layout
 

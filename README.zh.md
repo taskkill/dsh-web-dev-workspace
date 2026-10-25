@@ -549,7 +549,7 @@ flowchart TB
 
 ## 路线图
 
-下一阶段的目标是「只用 Harness 对话 + 本插件完成一个完整项目」：运行与诊断闭环、Agent 变更审阅、编辑现场恢复、Git 补全、编辑器地基、LSP 与浏览器验证。优先级、落点、成本与验收标准见 [docs/ROADMAP.md](docs/ROADMAP.md)；批次 0–3 的复测步骤见 [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md)，团队角色流水线见 [docs/AGENT_TEAM.md](docs/AGENT_TEAM.md)。
+下一阶段的目标是「只用 Harness 对话 + 本插件完成一个完整项目」：运行与诊断闭环、Agent 变更审阅、编辑现场恢复、Git 补全、编辑器地基、LSP 与浏览器验证。优先级、落点、成本与验收标准见 [docs/ROADMAP.md](docs/ROADMAP.md)；批次 0–3 的复测步骤见 [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md)，团队角色流水线见 [docs/AGENT_TEAM.md](docs/AGENT_TEAM.md)，从需求到交付的完整操作手册见 [docs/PLAYBOOK.md](docs/PLAYBOOK.md)。
 
 ## 目录结构
 

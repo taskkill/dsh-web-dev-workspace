@@ -4,6 +4,18 @@ All notable changes to this project are documented here.
 
 ## Unreleased
 
+### Requirement-to-delivery playbook
+
+- `docs/PLAYBOOK.md` walks a project manager through one full delivery with the
+  plugin: preparation and cleanup, issuing the requirement, all six pipeline
+  stages (who executes, what to produce, which panel/tool to use), both human
+  gates, the release record, and the client hand-off (report, evidence, delivery
+  zip, preview share link, delivery history). It includes a copy-paste prompt
+  template for dispatching a stage to the Lead/agent team, a per-stage checklist
+  for the owner, the client deliverable list, and the common pitfalls (restart,
+  no stage skipping, no model approvals, SSH limits, reusing a workspace).
+  README and AGENT_TEAM link it.
+
 ### Delivery pipeline with role-bounded agent team
 
 - New **Pipeline** sidebar view on top of `.dsh/pipeline.json`: a requirement moves
