@@ -66,18 +66,32 @@ export const PIPELINE_STATUSES = ['pending', 'active', 'review', 'approved', 'fa
 /** Gate modes: normal asks the owner for every stage; fast auto-approves intermediate ones. */
 export const PIPELINE_GATE_MODES = ['normal', 'fast']
 
-/** Scope of a change round: full pipeline, code/config only, or release only. */
-export const PIPELINE_CHANGE_SCOPES = ['full', 'development', 'release']
+/** Scope of a change round: full pipeline, requirement/design, code/config, or release. */
+export const PIPELINE_CHANGE_SCOPES = ['full', 'product-design', 'product', 'design', 'development', 'release']
 
-/** Stages skipped by each change scope. */
+/**
+ * Stages skipped by each change scope.
+ *
+ * The three prefix scopes (`development`, `release`) keep the historical meaning:
+ * the stages before the start are skipped and every stage from the start runs.
+ * The three document/design scopes (`product`, `design`, `product-design`) redo
+ * only those stages: the remaining stages are skipped, so the round finishes
+ * after the owner approves the reworked requirement/design without redeploying.
+ */
 const CHANGE_SKIP_STAGES = {
   full: [],
+  'product-design': ['development', 'testing', 'approval', 'release'],
+  product: ['design', 'development', 'testing', 'approval', 'release'],
+  design: ['product', 'development', 'testing', 'approval', 'release'],
   development: ['product', 'design'],
   release: ['product', 'design', 'development', 'testing'],
 }
 
 /** Human note written on skipped stages. */
 function skipNote(scope) {
+  if (scope === 'product') return '跳过：本次变更仅重做需求与验收项（设计/代码未改动）'
+  if (scope === 'design') return '跳过：本次变更仅重做设计（需求未变，代码未改动）'
+  if (scope === 'product-design') return '跳过：本次变更仅重做需求与设计（代码未改动）'
   if (scope === 'development') return '跳过：本次变更仅涉及代码/配置调整'
   if (scope === 'release') return '跳过：本次变更仅调整发布物'
   return ''

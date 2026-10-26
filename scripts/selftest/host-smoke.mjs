@@ -250,6 +250,44 @@ try {
     assert.equal(typeof result.spawn.name, 'string')
     assert.ok(result.prompt.includes('UI'))
   })
+
+  await test('change scopes can redo requirement/design only', async () => {
+    const root = await workspace('scopes')
+    await pipeline.setRequirement(root, { title: 'Scope smoke', detail: 'A requirement detail' })
+    const approve = async (stageId) => {
+      await pipeline.startStage(root, stageId)
+      await pipeline.submitStage(root, { stageId, summary: 'ok' })
+      await pipeline.reviewStage(root, { stageId, decision: 'approve' })
+    }
+    for (const stageId of ['product', 'design', 'development', 'testing', 'approval', 'release']) await approve(stageId)
+    const productChange = await pipeline.startChangeRound(root, {
+      title: 'Requirement only',
+      detail: 'new requirement detail',
+      scope: 'product',
+    })
+    assert.equal(productChange.nextStageId, 'product')
+    assert.deepEqual([...productChange.skippedStages].sort(), ['approval', 'design', 'development', 'release', 'testing'])
+    await approve('product')
+    const designChange = await pipeline.startChangeRound(root, {
+      title: 'Design only',
+      detail: 'new design detail',
+      scope: 'design',
+    })
+    assert.equal(designChange.nextStageId, 'design')
+    assert.ok(designChange.skippedStages.includes('product'))
+    await approve('design')
+    const bothChange = await pipeline.startChangeRound(root, {
+      title: 'Requirement + design',
+      detail: 'both detail',
+      scope: 'product-design',
+    })
+    assert.equal(bothChange.nextStageId, 'product')
+    assert.deepEqual([...bothChange.skippedStages].sort(), ['approval', 'development', 'release', 'testing'])
+    await approve('product')
+    await approve('design')
+    const finalDoc = await pipeline.readPipeline(root)
+    assert.ok(finalDoc.stages.every((stage) => stage.status === 'approved'))
+  })
 } finally {
   for (const root of roots) {
     await fsp.rm(root, { recursive: true, force: true }).catch(() => {})

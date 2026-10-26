@@ -2,6 +2,27 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.71 — 2026-10-26
+
+### Requirement/design-only change scopes
+
+- A new change round can now be limited to the documentation/design stages, not
+  only the full pipeline, code/config or release:
+  - **仅产品调整 / Requirement only** — redo the product requirement and
+    acceptance items, skip design/development/testing/sign-off/release; the round
+    completes after the owner approves the product stage.
+  - **仅设计调整 / Design only** — skip the requirement, redo design, skip
+    development/testing/sign-off/release.
+  - **产品与设计 / Requirement + design** — redo product then design, skip the
+    implementation and delivery stages.
+- The existing **仅开发调整** and **仅发布调整** scopes keep their meaning (skip
+  everything before the start, run the rest). Every skipped stage keeps a reason
+  note, and the round starts from the first applicable stage.
+- Host: `PIPELINE_CHANGE_SCOPES` / `CHANGE_SKIP_STAGES` / skip notes extended;
+  `startChangeRound` accepts the new scopes and still returns `nextStageId` and
+  `skippedStages`. `npm test` now covers requirement-only, design-only and
+  requirement+design rounds.
+
 ## 1.2.70 — 2026-10-26
 
 ### Acceptance board: select all, batch feedback, and no more silent clicks
