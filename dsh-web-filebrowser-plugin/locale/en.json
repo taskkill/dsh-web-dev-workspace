@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Dev Workspace",
-    "description": "A VS Code-style workspace: browse, create, rename, and delete files on the left, edit code with syntax highlighting and line numbers on the right, preview Markdown and PDF files, and keep workspace-scoped cross-session memory, plus a per-workspace todo board for tracking tasks."
+    "description": "A VS Code-style workspace plus a project delivery bench: files, editor, Git, terminal and preview browser; per-workspace memory, todos, an acceptance board (evidence, retest history, reports) and a six-stage delivery pipeline; the agent gets task, port, preview, status and acceptance tools while the owner verifies and delivers from the panels."
   }
 }

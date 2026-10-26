@@ -70,16 +70,28 @@
 | `pipeline_status` | 读取六阶段状态、当前阶段、需求与上游摘要 |
 | `pipeline_stage_prompt({stageId})` | 取该角色的完整提示词（边界/交付物/工具要求） |
 | `pipeline_set_requirement({title, detail})` | 产品经理补充/修订需求（owner 也可在面板改） |
+| `pipeline_update_requirement({mode, detail, title?, type?})` | 追加/修订需求并写入修订记录（append / replace / refine / edit） |
+| `pipeline_dispatch({stageId})` | 返回该阶段角色提示词 + 可直接用于 `spawn_teammate` / `team_task_create` 的参数（不实际启动） |
 | `pipeline_start_stage({stageId})` | 标记阶段开始（顺序校验；一般由面板触发） |
-| `pipeline_submit_stage({stageId, summary, artifacts})` | 提交本阶段评审（唯一正常的「完成」动作） |
+| `pipeline_submit_stage({stageId, summary, artifacts})` | 提交本阶段评审（唯一正常的「完成」动作）；返回非阻断的产物 `warnings[]` |
 | `pipeline_record_release({environment, url, notes})` | 运维在发布阶段实际发布后，记录环境、链接与说明（不会自己发布） |
+| `workspace_status({})` | 一次读取需求/六阶段/验收计数/运行中任务/项目文档（≤4KB）；systemPrompt 另有 ≤600 字简报 |
+| `task_detect / task_run / task_output / task_stop / task_list` | 用与面板相同的任务运行器跑 build/test/lint；只接受 detect 白名单命令；运行记录落 `.dsh/runs.json` |
+| `env_ports / preview_share / preview_list / preview_close / http_probe` | 查端口、创建/关闭预览分享链接、探测 loopback 服务 |
+| `acceptance_list / acceptance_add / acceptance_update / acceptance_delete / acceptance_clear_passed` | 读写验收清单（状态变化记 history/retestRound） |
+| `acceptance_evidence_add({id\|title, path, label?, kind?})` | 给验收项附加证据（截图/日志/报告/diff/链接） |
+| `acceptance_report({})` | 读取验收报告 Markdown（>8KB 截断） |
+| `evidence_list({limit?})` | 只读 `.dsh/evidence` 证据文件 |
+| `delivery_history({limit?})` | 只读 `.dsh/deliveries.json` 交付记录 |
+| `memory_* / todo_*` | 工作区记忆与待办（与面板共享同一份数据） |
 
-系统提示里还有一段流水线说明，让 agent 知道「不能自批、必须等项目经理闸门」。
+系统提示里还有流水线/验收/记忆/待办的说明与一段工作区状态简报，让 agent 知道「不能自批、必须等项目经理闸门」，并在每轮看到当前阶段与验收计数。
 
 ## 7. 已知限制
 
 - 同一工作区同一时间只允许一个阶段 `active`；顺序严格。
 - 审批只能由人在面板完成（没有模型工具能批准）。
-- SSH 远程工作区暂不支持流水线/验收（文件在远端）。
+- SSH 远程工作区暂不支持流水线/验收/证据/变更审阅/任务工具（文件与 `.dsh` 在本地）。
+- 任务/环境工具只接受 `task_detect` 的白名单命令，不提供任意 shell；`http_probe` 只允许 loopback。
 - 每个阶段建议用独立子代理或会话执行，避免上下文互相污染；角色提示词已包含边界，但最终约束靠工具与你的评审。
 - 自动化程度取决于团队编排：本仓库提供状态机与闸门，具体「谁来做」由 Lead 用原生团队工具决定。

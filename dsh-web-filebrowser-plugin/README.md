@@ -315,8 +315,11 @@ third-party runtime dependencies.
   [`@local/dsh-web-dev-workspace-git`](../dsh-web-filebrowser-git) at `/api/dsh-web-filebrowser-git`. It invokes `git`
   with `execFile`, requires the workspace to be the repository root, disables
   interactive prompts and never stores credentials.
-- Registers only the workspace-memory and todo tools with their prompt guides; no
-  general-purpose tools or session events.
+- Registers workspace-scoped model tools for memory, todos, the acceptance
+  board, the delivery pipeline, agent execution (task runner, ports, preview
+  shares, loopback HTTP probe), workspace status and change review. The tools
+  never approve a gate, never write Harness session records and never bypass the
+  owner-authenticated routes.
 
 ## Local data
 
@@ -346,6 +349,13 @@ file clears the workspace's memory; nothing is shared with another root.
 Todos are stored per workspace at `.dsh/todos.json` and are not in localStorage
 either. The same generated `.dsh/.gitignore` keeps them out of Git; deleting the
 JSON file clears the board.
+
+The project-delivery state lives under the workspace `.dsh/` directory as well:
+`.dsh/acceptance.json` (checklist, evidence, history), `.dsh/pipeline.json`
+(six stages, reviews, releases), `.dsh/deliveries.json`, `.dsh/runs.json` (task
+run ledger), `.dsh/review.json` (stage baseline + reviewed marks) and
+`.dsh/verifications/` (retest records). All are generated with a `.gitignore`
+that keeps them out of the repository.
 
 ## Limitations
 

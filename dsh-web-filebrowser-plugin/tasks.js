@@ -16,6 +16,7 @@ import { randomUUID } from 'node:crypto'
 import { promises as fsp } from 'node:fs'
 import { StringDecoder } from 'node:string_decoder'
 import path from 'node:path'
+import { parseProblems } from './problems.js'
 
 const IS_WINDOWS = process.platform === 'win32'
 /** Most tasks allowed to run at the same time inside one workspace. */
@@ -30,6 +31,14 @@ const TRIM_SLACK = 256 * 1024
 const MAX_POLL_WAIT = 1000
 /** Finished tasks stay pollable and listable for this long after they exit. */
 const TASK_RETENTION_MS = 5 * 60_000
+/** File (inside `<root>/.dsh/`) that keeps the durable run ledger. */
+const RUNS_FILENAME = 'runs.json'
+/** Most run records kept per workspace, newest first. */
+const MAX_RUNS = 100
+/** A runs file larger than this is ignored instead of parsed. */
+const MAX_RUNS_BYTES = 2 * 1024 * 1024
+/** Longest error text logged when a run-record write fails. */
+const MAX_RUN_WRITE_ERROR = 400
 /** Most tasks a single list call returns (running first by start time). */
 const MAX_LIST = 32
 /** Grace period between the polite signal and SIGKILL. */
@@ -130,6 +139,10 @@ class TaskError extends Error {
 export function createTaskManager({ resolveRoot }) {
   const tasks = new Map()
   const detectCache = new Map()
+  /** root -> { loaded, runs } durable ledger cache (records newest first). */
+  const runLedgers = new Map()
+  /** root -> serialized write chain, so concurrent settles cannot clobber. */
+  const runsChains = new Map()
 
   async function handle(request) {
     try {
@@ -205,6 +218,7 @@ export function createTaskManager({ resolveRoot }) {
       name,
       command,
       cwd,
+      source: body.source === 'tool' ? 'tool' : 'panel',
       child: shell,
       pid: Number.isInteger(shell.pid) ? shell.pid : null,
       startedAt,
@@ -313,6 +327,7 @@ export function createTaskManager({ resolveRoot }) {
         name: task.name,
         command: task.command,
         cwd: task.cwd,
+        source: task.source,
         running: !task.closed,
         exitCode: task.exitCode,
         signal: task.signal,
@@ -398,6 +413,13 @@ export function createTaskManager({ resolveRoot }) {
       task.killTimer = null
     }
     wake(task)
+    // Persist the finished run for the model/panel ledger. A failed write must
+    // never fail or delay the task itself, so the record path is best-effort.
+    try {
+      recordRun(task)
+    } catch (error) {
+      reportRunWriteError(task.root, error)
+    }
   }
 
   /** Release every poll waiting on this task (new output, exit or error). */
@@ -480,15 +502,250 @@ export function createTaskManager({ resolveRoot }) {
     for (const task of finished.slice(0, finished.length - MAX_LIST)) tasks.delete(task.id)
   }
 
+  /**
+   * Read a task's buffered output without long-polling.
+   *
+   * `since` returns the stream after that offset (a reset marker when the
+   * offset predates the trimmed ring); `tail` keeps only the last N characters.
+   * Both may be combined. The returned `truncated` flag says whether bytes were
+   * dropped from the front, so a tool can tell the model the tail is partial.
+   */
+  function read(id, options = {}) {
+    const task = requireTask(id)
+    const total = task.base + task.buffer.length
+    const tail = Number.isFinite(Number(options.tail)) ? Math.max(0, Math.floor(Number(options.tail))) : null
+    const since = Number.isFinite(Number(options.since)) ? Math.max(0, Math.floor(Number(options.since))) : null
+    let data = ''
+    let truncated = false
+    let reset = false
+    if (since !== null) {
+      const offset = since - task.base
+      if (offset < 0) {
+        reset = true
+        data = task.buffer
+      } else if (offset < task.buffer.length) {
+        data = task.buffer.slice(offset)
+      }
+      if (tail !== null && data.length > tail) {
+        data = data.slice(-tail)
+        truncated = true
+      }
+      if (reset && task.base > 0) truncated = true
+    } else {
+      const wanted = tail === null ? task.buffer.length : Math.min(tail, task.buffer.length)
+      data = wanted === task.buffer.length ? task.buffer : task.buffer.slice(-wanted)
+      truncated = task.base > 0 || wanted < total
+    }
+    return {
+      id: task.id,
+      name: task.name,
+      command: task.command,
+      cwd: task.cwd,
+      source: task.source,
+      data,
+      next: total,
+      reset,
+      closed: task.closed,
+      exitCode: task.exitCode,
+      signal: task.signal,
+      durationMs: (task.endedAt ?? Date.now()) - task.startedAt,
+      truncated,
+    }
+  }
+
+  /** Number of live tasks in one workspace (synchronous: used by prompt context). */
+  function runningCount(root) {
+    if (typeof root !== 'string' || root.length === 0) return 0
+    const key = path.resolve(root)
+    let count = 0
+    for (const task of tasks.values()) {
+      if (!task.closed && task.root === key) count += 1
+    }
+    return count
+  }
+
+  /** Persisted run records for one workspace, newest first. */
+  async function listRuns(root) {
+    if (!isDurableRoot(root)) return []
+    const key = path.resolve(root)
+    const pending = runsChains.get(key)
+    if (pending !== undefined) await pending
+    const runs = await loadLedger(key)
+    return runs.map((record) => ({ ...record }))
+  }
+
+  /** Record one settled task and queue a best-effort ledger write. */
+  function recordRun(task) {
+    const record = {
+      id: task.id,
+      name: task.name,
+      command: task.command,
+      cwd: task.cwd,
+      startedAt: task.startedAt,
+      endedAt: task.endedAt ?? Date.now(),
+      exitCode: typeof task.exitCode === 'number' ? task.exitCode : null,
+      signal: typeof task.signal === 'string' ? task.signal : null,
+      durationMs: typeof task.durationMs === 'number' ? Math.max(0, task.durationMs) : 0,
+      source: task.source === 'tool' ? 'tool' : 'panel',
+      problemCount: parseProblems(task.buffer, { limit: 500, root: task.root }).length,
+    }
+    const key = path.resolve(task.root)
+    const ledger = runLedgers.get(key) ?? { loaded: false, runs: [] }
+    ledger.runs = mergeRuns([record, ...ledger.runs])
+    runLedgers.set(key, ledger)
+    queueRunsWrite(key)
+  }
+
+  /** Load (once) and return the ledger for one workspace root. */
+  async function loadLedger(key) {
+    const ledger = runLedgers.get(key) ?? { loaded: false, runs: [] }
+    if (!ledger.loaded) {
+      const fromDisk = await readRunsFile(key)
+      ledger.runs = mergeRuns([...ledger.runs, ...fromDisk])
+      ledger.loaded = true
+      runLedgers.set(key, ledger)
+    }
+    return ledger.runs
+  }
+
+  /**
+   * Serialize ledger writes per workspace. Records appended before the first
+   * disk read survive because the write merges memory with the file.
+   */
+  function queueRunsWrite(key) {
+    const previous = runsChains.get(key) ?? Promise.resolve()
+    const current = previous
+      .catch(() => {})
+      .then(async () => {
+        const runs = await loadLedger(key)
+        await writeRunsFile(key, runs)
+      })
+      .catch((error) => {
+        reportRunWriteError(key, error)
+      })
+    runsChains.set(key, current)
+    current.finally(() => {
+      if (runsChains.get(key) === current) runsChains.delete(key)
+    })
+    return current
+  }
+
   function closeAll() {
     for (const task of tasks.values()) {
       if (!task.closed) requestKill(task)
     }
     tasks.clear()
     detectCache.clear()
+    runLedgers.clear()
+    runsChains.clear()
   }
 
-  return { handle, closeAll }
+  return { handle, closeAll, start, poll, list, kill, detect, read, listRuns, runningCount }
+}
+
+/** True when a root can carry a local `.dsh/runs.json` ledger. */
+function isDurableRoot(value) {
+  return typeof value === 'string' && value.length > 0 && !/^ssh:\/\//iu.test(value) && path.isAbsolute(value)
+}
+
+/** Absolute path of one workspace's durable run ledger. */
+function runsFile(root) {
+  return path.join(path.resolve(root), '.dsh', RUNS_FILENAME)
+}
+
+/** Read and normalize one runs file; missing or corrupt files read as empty. */
+async function readRunsFile(root) {
+  const file = runsFile(root)
+  let info
+  try {
+    info = await fsp.stat(file)
+  } catch (error) {
+    if (error !== null && typeof error === 'object' && error.code === 'ENOENT') return []
+    throw error
+  }
+  if (!info.isFile() || info.size > MAX_RUNS_BYTES) return []
+  let parsed
+  try {
+    parsed = JSON.parse(await fsp.readFile(file, 'utf8'))
+  } catch {
+    return []
+  }
+  const list = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.runs) ? parsed.runs : []
+  return mergeRuns(list)
+}
+
+/** Write one runs file atomically, creating `.dsh` and its ignore file. */
+async function writeRunsFile(root, runs) {
+  const directory = path.join(path.resolve(root), '.dsh')
+  await fsp.mkdir(directory, { recursive: true })
+  try {
+    await fsp.writeFile(path.join(directory, '.gitignore'), '*\n', { encoding: 'utf8', flag: 'wx', mode: 0o600 })
+  } catch (error) {
+    if (error === null || typeof error !== 'object' || error.code !== 'EEXIST') throw error
+  }
+  const file = path.join(directory, RUNS_FILENAME)
+  const text = `${JSON.stringify({ version: 1, updatedAt: Date.now(), runs }, null, 2)}\n`
+  const temporary = path.join(
+    directory,
+    `.runs-${String(process.pid)}-${String(Date.now())}-${randomUUID()}.tmp`,
+  )
+  await fsp.writeFile(temporary, text, { encoding: 'utf8', mode: 0o600 })
+  try {
+    await fsp.rename(temporary, file)
+  } catch {
+    // Windows can refuse to replace an existing target; the direct write still
+    // keeps the document complete and the temp file is removed either way.
+    try {
+      await fsp.writeFile(file, text, { encoding: 'utf8', mode: 0o600 })
+    } finally {
+      await fsp.rm(temporary, { force: true }).catch(() => {})
+    }
+  }
+}
+
+/** Normalize one stored/incoming run record; malformed entries are dropped. */
+function normalizeRunRecord(value) {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return null
+  const id = typeof value.id === 'string' ? value.id : ''
+  if (id.length === 0) return null
+  const startedAt = Number.isFinite(value.startedAt) ? Math.max(0, Math.floor(value.startedAt)) : 0
+  const endedAt = Number.isFinite(value.endedAt) ? Math.max(startedAt, Math.floor(value.endedAt)) : startedAt
+  const record = {
+    id,
+    name: typeof value.name === 'string' ? value.name.slice(0, MAX_NAME) : '',
+    command: typeof value.command === 'string' ? value.command.slice(0, MAX_COMMAND) : '',
+    cwd: typeof value.cwd === 'string' ? value.cwd : '',
+    startedAt,
+    endedAt,
+    exitCode: Number.isInteger(value.exitCode) ? value.exitCode : null,
+    signal: typeof value.signal === 'string' ? value.signal : null,
+    durationMs: Number.isFinite(value.durationMs)
+      ? Math.max(0, Math.floor(value.durationMs))
+      : Math.max(0, endedAt - startedAt),
+    source: value.source === 'tool' ? 'tool' : 'panel',
+  }
+  if (Number.isInteger(value.problemCount) && value.problemCount >= 0) record.problemCount = value.problemCount
+  return record
+}
+
+/** Deduplicate by id, newest first, capped to MAX_RUNS. */
+function mergeRuns(candidates) {
+  const seen = new Set()
+  const rows = []
+  for (const candidate of Array.isArray(candidates) ? candidates : []) {
+    const record = normalizeRunRecord(candidate)
+    if (record === null || seen.has(record.id)) continue
+    seen.add(record.id)
+    rows.push(record)
+  }
+  rows.sort((left, right) => right.startedAt - left.startedAt || right.endedAt - left.endedAt)
+  return rows.slice(0, MAX_RUNS)
+}
+
+/** Log one best-effort ledger failure without disrupting task settlement. */
+function reportRunWriteError(root, error) {
+  const message = error instanceof Error ? error.message : String(error)
+  console.error(`dsh-web-filebrowser-tasks: failed to persist runs for ${root}: ${message.slice(0, MAX_RUN_WRITE_ERROR)}`)
 }
 
 /** Reject roots this local process cannot run commands in (SSH remotes). */

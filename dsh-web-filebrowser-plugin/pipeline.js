@@ -10,10 +10,12 @@
  *
  * Two consumers share the store:
  * - Host tools (`pipeline_status` / `pipeline_stage_prompt` /
- *   `pipeline_set_requirement` / `pipeline_start_stage` /
- *   `pipeline_submit_stage`) let the model act inside one stage: read the
- *   current state, learn the role boundaries, write the requirement, start a
- *   stage and submit it for review.
+ *   `pipeline_set_requirement` / `pipeline_update_requirement` /
+ *   `pipeline_start_stage` / `pipeline_dispatch` / `pipeline_submit_stage` /
+ *   `pipeline_record_release`) let the model act inside one stage: read the
+ *   current state, learn the role boundaries, write or refine the requirement,
+ *   build dispatch payloads, start a stage, and submit it for review with
+ *   non-blocking artifact warnings.
  * - The Host file API exposes the same document to the browser panel, which
  *   performs the human approval gate (`reviewStage`) and records releases
  *   (`recordRelease`). The model deliberately has no review tool: it must not
@@ -32,6 +34,7 @@ import { randomUUID } from 'node:crypto'
 import { promises as fsp } from 'node:fs'
 import path from 'node:path'
 import { resolveAgentWorkspace } from './memory.js'
+import { captureStageBaseline } from './review.js'
 import { isSshRoot } from './ssh.js'
 
 /** Directory created inside a workspace for plugin-owned state. */
@@ -96,6 +99,26 @@ const PIPELINE_MAX_LABEL = 200
 /** Release environment name bound. */
 const PIPELINE_MAX_ENVIRONMENT = 200
 
+/** Max gate decisions kept per stage (`reviews[]`, oldest entries dropped). */
+export const PIPELINE_MAX_REVIEWS = 20
+
+/** Accepted gate decisions and their actors. */
+export const PIPELINE_REVIEW_DECISIONS = ['approve', 'reject']
+export const PIPELINE_REVIEW_ACTORS = ['owner', 'system']
+
+/**
+ * Role handbooks (workspace-relative) returned by `pipeline_dispatch` so a
+ * dispatched teammate can load the same boundaries the Owner reads in docs/opc.
+ */
+export const STAGE_HANDBOOKS = {
+  product: ['docs/opc/01-product.md', 'docs/opc/00-charter.md'],
+  design: ['docs/opc/02-design.md', 'docs/opc/00-charter.md'],
+  development: ['docs/opc/03-engineering.md', 'docs/opc/00-charter.md'],
+  testing: ['docs/opc/04-qa.md', 'docs/opc/00-charter.md'],
+  approval: ['docs/opc/00-charter.md'],
+  release: ['docs/opc/05-ops.md', 'docs/opc/00-charter.md'],
+}
+
 /** Prompt section name and ordering (right after the workspace-acceptance guide). */
 const SECTION_NAME = 'dsh-web-filebrowser:delivery-pipeline-guide'
 const SECTION_ORDER = 2387
@@ -129,7 +152,7 @@ export const PIPELINE_SECTION = `## 交付流水线（六阶段 + 人工闸门�
 
 本工作区把交付过程保存在 \`.dsh/pipeline.json\`，阶段顺序固定为：产品经理（需求分析）→ UI 设计师（UI 设计）→ 全栈开发（开发实现）→ 测试工程师（测试验收）→ 项目经理（人工确认）→ 运维（发布上线）。阶段状态为 pending / active / review / approved / failed。product 阶段开始前必须先有需求标题与详情；除 product 外，每个阶段开始前要求上一阶段 approved；提交评审后阶段通常变为 review，只有项目经理（owner）在 Dev Workspace 面板上 approve 后下一阶段才能开始，被 reject 会变成 failed，可修复后用 pipeline_start_stage 重新开始。如果 Owner 开启了「快速模式」（gateMode=fast），product/design/development/testing 四个中间阶段提交后会被自动通过：pipeline_submit_stage 的结果会带 autoApproved=true 与 nextStageId，此时不要等待人工审批，直接对 nextStageId 取 pipeline_stage_prompt、pipeline_start_stage 并继续工作；approval 与 release 永远保持人工闸门，快速模式也不会自动通过它们。approval 是人工闸门：模型只负责启动它，绝不允许自己审批；release 阶段必须在 approval approved 之后才能开始。
 
-工具用法：用 \`pipeline_status\` 查看需求、六个阶段、当前阶段与发布记录；进入某个阶段前先用 \`pipeline_stage_prompt\` 取该角色的中文提示词（需求、上游摘要与产物、本角色只做什么/不做什么、交付物要求、闸门规则），按提示词工作；用 \`pipeline_set_requirement\` 写入需求；用 \`pipeline_start_stage\` 开始阶段；完成后用 \`pipeline_submit_stage\` 提交 summary 与 artifacts 等待项目经理审批。不要编造审批结果，也不要在闸门未通过时开始下一阶段。验收标准请配合 \`acceptance_add\` / \`acceptance_update\` 维护，交付前逐项核对。
+工具用法：用 \`pipeline_status\` 查看需求、六个阶段、当前阶段与发布记录；进入某个阶段前先用 \`pipeline_stage_prompt\` 取该角色的中文提示词（需求、上游摘要与产物、本角色只做什么/不做什么、交付物要求、闸门规则），按提示词工作；用 \`pipeline_set_requirement\` 写入需求；用 \`pipeline_start_stage\` 开始阶段；完成后用 \`pipeline_submit_stage\` 提交 summary 与 artifacts 等待项目经理审批（返回的 warnings 只提示缺失/空产物，不阻断提交）；需求需要追加或修订时用 \`pipeline_update_requirement\`；要把角色派给队友时用 \`pipeline_dispatch\` 取 spawn/teamTask 参数。不要编造审批结果，也不要在闸门未通过时开始下一阶段。验收标准请配合 \`acceptance_add\` / \`acceptance_update\` 维护，交付前逐项核对。
 
 真正的多角色执行由 Lead 用 Harness 原生团队工具（\`spawn_teammate\` / \`team_task_*\`）组织：本插件只负责流水线状态与人工验收闸门，不替代团队通信。流水线状态只保存在本地工作区，SSH 远程工作区暂不支持。`
 
@@ -163,6 +186,7 @@ export function emptyPipeline() {
       summary: '',
       note: '',
       artifacts: [],
+      reviews: [],
     })),
     releases: [],
     settings: { gateMode: 'normal' },
@@ -300,6 +324,31 @@ function normalizeStoredArtifacts(value) {
   return artifacts
 }
 
+/** Normalize one stored gate decision; malformed entries are dropped. */
+function normalizeStoredReview(value) {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return null
+  const decision = PIPELINE_REVIEW_DECISIONS.includes(value.decision) ? value.decision : null
+  if (decision === null) return null
+  const actor = PIPELINE_REVIEW_ACTORS.includes(value.actor) ? value.actor : 'owner'
+  return {
+    at: timestampValue(value.at),
+    decision,
+    note: typeof value.note === 'string' ? value.note.trim().slice(0, PIPELINE_MAX_NOTE) : '',
+    actor,
+  }
+}
+
+/** Normalize the stored gate-decision history, keeping the newest entries. */
+function normalizeStoredReviews(value) {
+  if (!Array.isArray(value)) return []
+  const reviews = []
+  for (const candidate of value) {
+    const review = normalizeStoredReview(candidate)
+    if (review !== null) reviews.push(review)
+  }
+  return reviews.slice(-PIPELINE_MAX_REVIEWS)
+}
+
 /** Normalize one stored stage, falling back to an empty pending stage. */
 function normalizeStoredStage(value, definition) {
   const source = value !== null && typeof value === 'object' && !Array.isArray(value) ? value : {}
@@ -312,6 +361,7 @@ function normalizeStoredStage(value, definition) {
     summary: typeof source.summary === 'string' ? source.summary.trim().slice(0, PIPELINE_MAX_SUMMARY) : '',
     note: typeof source.note === 'string' ? source.note.trim().slice(0, PIPELINE_MAX_NOTE) : '',
     artifacts: normalizeStoredArtifacts(source.artifacts),
+    reviews: normalizeStoredReviews(source.reviews),
   }
 }
 
@@ -656,6 +706,101 @@ function validateArtifacts(value) {
   return value.map((candidate, index) => validateArtifact(candidate, index))
 }
 
+/** Image extensions that satisfy the design-stage screenshot requirement. */
+const ARTIFACT_IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif', '.bmp', '.svg', '.ico'])
+
+/** Normalize an artifact path to a safe workspace-relative POSIX path, or null. */
+function artifactRelativePath(value) {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim().replaceAll('\\', '/')
+  if (trimmed.length === 0) return null
+  if (path.posix.isAbsolute(trimmed) || /^[A-Za-z]:\//u.test(trimmed)) return null
+  const segments = trimmed.split('/')
+  if (segments.some((segment) => segment === '..')) return null
+  const cleaned = segments.filter((segment) => segment !== '.' && segment !== '').join('/')
+  return cleaned.length === 0 ? null : cleaned
+}
+
+/**
+ * Inspect submitted artifacts without blocking the submission.
+ *
+ * A gate review is much cheaper when every path is known to resolve inside the
+ * workspace and to point at a non-empty file (or a non-empty directory). Broken
+ * paths are reported as warnings and the stage still moves to review, because a
+ * missing artifact is a review finding, not a reason to keep the agent blocked.
+ *
+ * @param root - absolute workspace root.
+ * @param artifacts - validated artifacts (`{ path, label }`).
+ * @param definition - stage definition (used for the design screenshot check).
+ * @returns array of `{ path, code, message }` warnings.
+ */
+async function collectArtifactWarnings(root, artifacts, definition) {
+  const warnings = []
+  for (const artifact of artifacts) {
+    const relative = artifactRelativePath(artifact.path)
+    if (relative === null) {
+      warnings.push({
+        path: artifact.path,
+        code: 'outside-root',
+        message: '产物路径不是工作区内的相对路径，已跳过检查',
+      })
+      continue
+    }
+    const absolute = path.resolve(root, ...relative.split('/'))
+    if (!isInsideRoot(root, absolute)) {
+      warnings.push({ path: artifact.path, code: 'outside-root', message: '产物路径超出工作区范围' })
+      continue
+    }
+    let info
+    try {
+      info = await fsp.stat(absolute)
+    } catch (error) {
+      if (error !== null && typeof error === 'object' && error.code === 'ENOENT') {
+        warnings.push({ path: artifact.path, code: 'missing', message: '产物文件不存在' })
+      } else {
+        warnings.push({ path: artifact.path, code: 'unreadable', message: '产物无法读取' })
+      }
+      continue
+    }
+    try {
+      const real = await fsp.realpath(absolute)
+      if (!isInsideRoot(root, real)) {
+        warnings.push({ path: artifact.path, code: 'outside-root', message: '产物经符号链接指向工作区之外' })
+        continue
+      }
+    } catch {
+      warnings.push({ path: artifact.path, code: 'unreadable', message: '产物路径无法解析' })
+      continue
+    }
+    if (info.isDirectory()) {
+      let entries = []
+      try {
+        entries = await fsp.readdir(absolute)
+      } catch {
+        warnings.push({ path: artifact.path, code: 'unreadable', message: '产物目录无法读取' })
+        continue
+      }
+      if (entries.length === 0) warnings.push({ path: artifact.path, code: 'empty', message: '产物目录为空' })
+      continue
+    }
+    if (info.size === 0) warnings.push({ path: artifact.path, code: 'empty', message: '产物文件为空' })
+  }
+  if (definition.id === 'design') {
+    const hasImage = artifacts.some((artifact) => {
+      const relative = artifactRelativePath(artifact.path)
+      return relative !== null && ARTIFACT_IMAGE_EXTENSIONS.has(path.posix.extname(relative).toLowerCase())
+    })
+    if (!hasImage) {
+      warnings.push({
+        path: '',
+        code: 'design-no-image',
+        message: '设计阶段未提交图片产物（PNG/JPG/SVG/HTML 截图）；涉及 UI 时项目经理无法直接看图评审',
+      })
+    }
+  }
+  return warnings
+}
+
 /** Validate the shape of one release record. */
 function validateReleaseInput(input) {
   const source = input !== null && typeof input === 'object' ? input : {}
@@ -705,6 +850,14 @@ function publicStage(stage, definition) {
     summary: stage.summary,
     note: stage.note,
     artifacts: stage.artifacts.map((artifact) => ({ path: artifact.path, label: artifact.label })),
+    reviews: Array.isArray(stage.reviews)
+      ? stage.reviews.map((review) => ({
+          at: review.at,
+          decision: review.decision,
+          note: review.note,
+          actor: review.actor,
+        }))
+      : [],
   }
 }
 
@@ -882,6 +1035,14 @@ export async function startStage(root, stageId) {
     stage.artifacts = []
     doc.updatedAt = now
     await writePipeline(workspace, doc)
+    // A stage start is the natural change-review baseline. Both the panel route
+    // and the model tool go through this function, so the capture lives here.
+    try {
+      const round = Number.isInteger(doc.round) && doc.round > 0 ? doc.round : 1
+      await captureStageBaseline(workspace, { stageId: definition.id, round })
+    } catch (error) {
+      console.error('dsh-web-filebrowser: failed to capture the review baseline', error)
+    }
     return publicStage(stage, definition)
   })
 }
@@ -892,7 +1053,8 @@ export async function startStage(root, stageId) {
  *
  * @param root - absolute workspace root.
  * @param input - `{ stageId, summary, artifacts? }`.
- * @returns the submitted stage.
+ * @returns the submitted stage plus non-blocking `warnings[]` (missing, empty,
+ *   escaping or design-without-image artifacts).
  */
 export async function submitStage(root, input) {
   const workspace = assertRoot(root)
@@ -908,6 +1070,7 @@ export async function submitStage(root, input) {
         `阶段「${definition.title}」当前状态是 ${stage.status}，只有 active 状态才能提交评审`,
       )
     }
+    const warnings = await collectArtifactWarnings(workspace, artifacts, definition)
     const now = Date.now()
     const fastApproval =
       doc.settings?.gateMode === 'fast' && definition.id !== 'approval' && definition.id !== 'release'
@@ -925,7 +1088,12 @@ export async function submitStage(root, input) {
       await writePipeline(workspace, doc)
       const index = PIPELINE_STAGES.findIndex((candidate) => candidate.id === definition.id)
       const next = index >= 0 ? PIPELINE_STAGES[index + 1] : null
-      return { stage: publicStage(stage, definition), autoApproved: true, nextStageId: next === null ? '' : next.id }
+      return {
+        stage: publicStage(stage, definition),
+        autoApproved: true,
+        nextStageId: next === null ? '' : next.id,
+        warnings,
+      }
     }
     stage.status = 'review'
     stage.summary = summary
@@ -934,7 +1102,7 @@ export async function submitStage(root, input) {
     stage.reviewedAt = 0
     doc.updatedAt = now
     await writePipeline(workspace, doc)
-    return publicStage(stage, definition)
+    return { ...publicStage(stage, definition), warnings }
   })
 }
 
@@ -981,6 +1149,8 @@ export async function reviewStage(root, input) {
       stage.status = 'failed'
       stage.note = note
     }
+    const actor = input?.actor === 'system' ? 'system' : 'owner'
+    stage.reviews = [...(stage.reviews ?? []), { at: now, decision, note, actor }].slice(-PIPELINE_MAX_REVIEWS)
     doc.updatedAt = now
     await writePipeline(workspace, doc)
     return publicStage(stage, definition)
@@ -1108,6 +1278,7 @@ export async function startChangeRound(root, input) {
       summary: skipped.has(stage.id) ? skipText : '',
       note: skipped.has(stage.id) ? skipText : '',
       artifacts: [],
+      reviews: [],
     }))
     doc.updatedAt = now
     await writePipeline(workspace, doc)
@@ -1162,7 +1333,7 @@ export async function restartStage(root, input) {
   })
 }
 
-45213/**
+/**
  * Append one release record (newest first, newest 100 kept).
  *
  * The caller decides how the record relates to the release stage: it can be
@@ -1427,7 +1598,7 @@ export function buildStagePrompt(doc, stageId) {
     )
   } else {
     lines.push(
-      `2. 完成后必须调用 \`pipeline_submit_stage({ stageId: "${definition.id}", summary: "<本阶段结论：做了什么、验证方式、遗留风险>", artifacts: [{ path: "<工作区相对路径>", label: "<说明>" }] })\` 提交评审。summary 最多 ${String(PIPELINE_MAX_SUMMARY)} 字符；artifacts 最多 ${String(PIPELINE_MAX_ARTIFACTS)} 个，每个 path 最多 ${String(PIPELINE_MAX_PATH)} 字符。`,
+      `2. 完成后必须调用 \`pipeline_submit_stage({ stageId: "${definition.id}", summary: "<本阶段结论：做了什么、验证方式、遗留风险>", artifacts: [{ path: "<工作区相对路径>", label: "<说明>" }] })\` 提交评审。summary 最多 ${String(PIPELINE_MAX_SUMMARY)} 字符；artifacts 最多 ${String(PIPELINE_MAX_ARTIFACTS)} 个，每个 path 最多 ${String(PIPELINE_MAX_PATH)} 字符；Host 会检查产物是否存在/非空并返回 warnings（只提示，不阻断提交）。`,
     )
   }
   lines.push(
@@ -1459,6 +1630,19 @@ function promptReviewedAt(doc, stageId) {
   return source !== null && typeof source === 'object' ? timestampValue(source.reviewedAt) : 0
 }
 
+/** A registry-ready output schema for one recorded gate decision. */
+const REVIEW_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    at: { type: 'integer', description: '0 when the decision was recorded by an older document.' },
+    decision: { type: 'string', enum: PIPELINE_REVIEW_DECISIONS },
+    note: { type: 'string' },
+    actor: { type: 'string', enum: PIPELINE_REVIEW_ACTORS },
+  },
+  required: ['at', 'decision', 'note', 'actor'],
+}
+
 /** A registry-ready output schema for one artifact. */
 const ARTIFACT_SCHEMA = {
   type: 'object',
@@ -1486,6 +1670,7 @@ const STAGE_SCHEMA = {
     summary: { type: 'string' },
     note: { type: 'string' },
     artifacts: { type: 'array', items: ARTIFACT_SCHEMA },
+    reviews: { type: 'array', items: REVIEW_SCHEMA },
   },
   required: [
     'id',
@@ -1499,6 +1684,7 @@ const STAGE_SCHEMA = {
     'summary',
     'note',
     'artifacts',
+    'reviews',
   ],
 }
 
@@ -1525,6 +1711,35 @@ const RELEASE_SCHEMA = {
     createdAt: { type: 'integer' },
   },
   required: ['environment', 'url', 'notes', 'createdAt'],
+}
+
+/** A registry-ready output schema for one non-blocking artifact warning. */
+const WARNING_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    path: { type: 'string', description: 'Artifact path as submitted (empty for stage-level warnings).' },
+    code: {
+      type: 'string',
+      enum: ['outside-root', 'missing', 'empty', 'unreadable', 'design-no-image'],
+    },
+    message: { type: 'string' },
+  },
+  required: ['path', 'code', 'message'],
+}
+
+/** A registry-ready output schema for one requirement revision entry. */
+const REVISION_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    id: { type: 'string' },
+    type: { type: 'string', enum: ['initial', 'append', 'refine', 'change', 'edit'] },
+    title: { type: 'string' },
+    detail: { type: 'string' },
+    createdAt: { type: 'integer' },
+  },
+  required: ['id', 'type', 'title', 'detail', 'createdAt'],
 }
 
 /** Cap the rendered status response even when summaries are long. */
@@ -1562,6 +1777,13 @@ function renderPipelineStatus(value) {
   return lines.join('\n')
 }
 
+/** Append non-blocking artifact warnings to the submit tool text. */
+function renderWarnings(warnings) {
+  if (!Array.isArray(warnings) || warnings.length === 0) return ''
+  const parts = warnings.map((warning) => `${warning.code}${warning.path.length === 0 ? '' : `:${warning.path}`}`)
+  return `\nWarnings (not blocking): ${parts.join(', ')}.`
+}
+
 /** Throw when a tool call has no agent/workspace, or has an SSH workspace. */
 function toolWorkspace(ctx, exec) {
   const root = resolveAgentWorkspace(ctx, exec.agent)
@@ -1585,8 +1807,65 @@ function requiredString(value, name) {
   return value
 }
 
+/** Project one stage tool result (normal or fast-mode shape) onto STAGE_SCHEMA. */
+function stageFromResult(value) {
+  const source = value !== null && typeof value === 'object' && value.stage !== undefined ? value.stage : value
+  const stage = source !== null && typeof source === 'object' ? source : {}
+  return {
+    id: typeof stage.id === 'string' ? stage.id : '',
+    role: typeof stage.role === 'string' ? stage.role : '',
+    roleTitle: typeof stage.roleTitle === 'string' ? stage.roleTitle : '',
+    title: typeof stage.title === 'string' ? stage.title : '',
+    status: PIPELINE_STATUSES.includes(stage.status) ? stage.status : 'pending',
+    startedAt: timestampValue(stage.startedAt),
+    submittedAt: timestampValue(stage.submittedAt),
+    reviewedAt: timestampValue(stage.reviewedAt),
+    summary: typeof stage.summary === 'string' ? stage.summary : '',
+    note: typeof stage.note === 'string' ? stage.note : '',
+    artifacts: normalizeStoredArtifacts(stage.artifacts),
+    reviews: normalizeStoredReviews(stage.reviews),
+  }
+}
+
 /**
- * Register the five model-facing pipeline tools. Registration is skipped per
+ * Compose the stage prompt plus the extra dispatch details returned by
+ * `pipeline_dispatch`. The Host never spawns anyone: the Lead passes these
+ * strings to the native team tools.
+ *
+ * @param doc - normalized pipeline document.
+ * @param definition - stage definition.
+ * @param root - absolute workspace root.
+ * @param handbooks - workspace-relative handbook paths.
+ * @returns Chinese Markdown prompt for the dispatched teammate.
+ */
+function buildDispatchPrompt(doc, definition, root, handbooks) {
+  const stagePrompt = buildStagePrompt(doc, definition.id)
+  const stageState = promptStageState(doc, definition)
+  const lines = [
+    stagePrompt.trimEnd(),
+    '',
+    '### 派发信息（Host 只返回参数，不执行 spawn）',
+    '',
+    `- 工作区根目录（绝对路径）：\`${root}\``,
+    `- 当前轮次：第 ${String(doc.round ?? 1)} 轮；阶段状态：${STAGE_STATUS_LABELS[stageState.status]}`,
+    '- 角色手册（工作区相对路径，建议作为队友的初始阅读清单）：',
+  ]
+  if (handbooks.length === 0) lines.push('  - （无）')
+  for (const handbook of handbooks) lines.push(`  - \`${handbook}\``)
+  lines.push(
+    '',
+    '派发方式（二选一，由 Lead 执行）：',
+    '1. `spawn_teammate({ name, description, prompt })`：把本 prompt 作为队友的初始任务；也可以直接使用返回的 `spawn` 字段。',
+    '2. `team_task_create({ subject, description })` 并用 `team_task_update` 认领：适合把本阶段拆成多个可并行任务；可以直接使用返回的 `teamTask` 字段。',
+    '',
+    '闸门提醒：队友完成后只能调用 `pipeline_submit_stage` 提交评审；只有项目经理（Owner）能在 Dev Workspace 面板通过或打回，模型不能自批，也不要在闸门未通过时开始下一阶段。',
+    '',
+  )
+  return lines.join('\n')
+}
+
+/**
+ * Register the eight model-facing pipeline tools. Registration is skipped per
  * tool on failure so one schema problem cannot remove the rest.
  * @param ctx - context providing `tools`.
  * @returns disposer for every registered tool.
@@ -1763,6 +2042,67 @@ export function registerPipelineTools(ctx) {
   })
 
   register({
+    name: 'pipeline_update_requirement',
+    description:
+      'Append to or replace the delivery requirement without overwriting the whole document. mode="append" adds the detail after the existing requirement and logs an append/refine revision; mode="replace" updates the title and/or detail and logs an edit revision. Use pipeline_set_requirement for the first, complete requirement and this tool for later refinements, so the revision log keeps append/edit semantics.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        mode: {
+          type: 'string',
+          enum: ['append', 'replace'],
+          description: 'append (default) appends the detail; replace updates the title/detail.',
+        },
+        title: {
+          type: 'string',
+          description: `Optional requirement title (at most ${String(PIPELINE_MAX_TITLE)} characters); omit to keep the current title.`,
+        },
+        detail: {
+          type: 'string',
+          description: `Requirement content to append or replace with (at most ${String(PIPELINE_MAX_DETAIL)} characters).`,
+        },
+        type: {
+          type: 'string',
+          enum: ['append', 'refine', 'edit'],
+          description: 'Revision log type; defaults to append for append mode and edit for replace mode.',
+        },
+      },
+      required: ['detail'],
+    },
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          requirement: REQUIREMENT_SCHEMA,
+          revision: REVISION_SCHEMA,
+          scope: { type: 'string' },
+        },
+        required: ['requirement', 'revision', 'scope'],
+      },
+      render: (_args, value) => [
+        {
+          type: 'text',
+          text: `Requirement updated (revision type: ${value.revision.type}): ${value.requirement.title}. Ask the product manager to absorb it into requirements.md and the acceptance items.`,
+        },
+      ],
+    },
+    async execute(args, exec) {
+      exec.signal.throwIfAborted()
+      const root = toolWorkspace(ctx, exec)
+      const result = await updateRequirement(root, {
+        mode: args?.mode === 'replace' ? 'replace' : 'append',
+        type: typeof args?.type === 'string' ? args.type : undefined,
+        title: typeof args?.title === 'string' ? args.title : undefined,
+        detail: requiredString(args?.detail, 'detail'),
+      })
+      exec.signal.throwIfAborted()
+      return { requirement: result.requirement, revision: result.entry, scope: root }
+    },
+  })
+
+  register({
     name: 'pipeline_start_stage',
     description:
       'Start one delivery stage (status becomes active). The product stage needs a requirement title and detail; every other stage needs the previous stage approved. A failed stage can be restarted after fixing the rejection note. Starting a stage does not approve it: only the project manager approves in the browser panel.',
@@ -1807,9 +2147,89 @@ export function registerPipelineTools(ctx) {
   })
 
   register({
+    name: 'pipeline_dispatch',
+    description:
+      'Build the dispatch payload for one delivery stage: the full role prompt (requirement, upstream artifacts, "only do / never do", deliverables and gate rules) plus ready-to-use spawn_teammate and team_task_create arguments and the workspace-relative role handbooks. It does not start the stage and does not spawn anyone: call pipeline_start_stage first when needed, then pass spawn.{name,description,prompt} to spawn_teammate or teamTask.{subject,description} to team_task_create. The dispatched teammate submits with pipeline_submit_stage; only the owner approves.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        stageId: {
+          type: 'string',
+          enum: PIPELINE_STAGE_IDS,
+          description: 'Stage id: product, design, development, testing, approval or release.',
+        },
+      },
+      required: ['stageId'],
+    },
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          stageId: { type: 'string' },
+          role: { type: 'string' },
+          roleTitle: { type: 'string' },
+          title: { type: 'string' },
+          prompt: { type: 'string' },
+          workspace: { type: 'string' },
+          handbooks: { type: 'array', items: { type: 'string' } },
+          spawn: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+              name: { type: 'string' },
+              description: { type: 'string' },
+              prompt: { type: 'string' },
+            },
+            required: ['name', 'description', 'prompt'],
+          },
+          teamTask: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+              subject: { type: 'string' },
+              description: { type: 'string' },
+            },
+            required: ['subject', 'description'],
+          },
+        },
+        required: ['stageId', 'role', 'roleTitle', 'title', 'prompt', 'workspace', 'handbooks', 'spawn', 'teamTask'],
+      },
+      render: (_args, value) => [{ type: 'text', text: value.prompt }],
+    },
+    async execute(args, exec) {
+      exec.signal.throwIfAborted()
+      const root = toolWorkspace(ctx, exec)
+      const definition = stageDefinition(requiredString(args?.stageId, 'stageId'))
+      const doc = await readPipeline(root)
+      exec.signal.throwIfAborted()
+      const handbooks = [...(STAGE_HANDBOOKS[definition.id] ?? [])]
+      const round = doc.round ?? 1
+      const requirementTitle = doc.requirement.title.trim()
+      const prompt = buildDispatchPrompt(doc, definition, root, handbooks)
+      const description = `${definition.roleTitle} · 第 ${String(definition.index + 1)}/${String(PIPELINE_STAGES.length)} 阶段「${definition.title}」（第 ${String(round)} 轮）`
+      return {
+        stageId: definition.id,
+        role: definition.role,
+        roleTitle: definition.roleTitle,
+        title: definition.title,
+        prompt,
+        workspace: root,
+        handbooks,
+        spawn: { name: definition.role, description, prompt },
+        teamTask: {
+          subject: `[${definition.title}] ${requirementTitle.length === 0 ? '（未设置需求）' : requirementTitle}（第 ${String(round)} 轮）`,
+          description: prompt,
+        },
+      }
+    },
+  })
+
+  register({
     name: 'pipeline_submit_stage',
     description:
-      'Submit the active stage for review with a summary and artifacts. Normally the stage moves to review and waits for the project manager (owner) to approve or reject it in the Dev Workspace panel — the model cannot approve its own work. In fast mode the four intermediate stages (product/design/development/testing) are auto-approved by the owner\'s pre-authorization; the result then reports autoApproved and nextStageId and you should continue with that stage. Artifacts are workspace-relative paths with optional labels.',
+      'Submit the active stage for review with a summary and artifacts. Normally the stage moves to review and waits for the project manager (owner) to approve or reject it in the Dev Workspace panel — the model cannot approve its own work. In fast mode the four intermediate stages (product/design/development/testing) are auto-approved by the owner\'s pre-authorization; the result then reports autoApproved and nextStageId and you should continue with that stage. Artifacts are workspace-relative paths with optional labels; the Host checks each one (workspace containment, existence, non-empty) and returns non-blocking warnings.',
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -1839,16 +2259,23 @@ export function registerPipelineTools(ctx) {
           stage: STAGE_SCHEMA,
           autoApproved: { type: 'boolean' },
           nextStageId: { type: 'string' },
+          warnings: {
+            type: 'array',
+            items: WARNING_SCHEMA,
+            description: 'Non-blocking findings about the submitted artifacts.',
+          },
           scope: { type: 'string' },
         },
-        required: ['stage', 'autoApproved', 'nextStageId', 'scope'],
+        required: ['stage', 'autoApproved', 'nextStageId', 'warnings', 'scope'],
       },
       render: (_args, value) => [
         {
           type: 'text',
-          text: value.autoApproved === true
-            ? `Stage "${value.stage.id}" was auto-approved by the owner's fast mode (summary and artifacts recorded). Continue with the next stage "${value.nextStageId}": call pipeline_stage_prompt({stageId:"${value.nextStageId}"}), then pipeline_start_stage({stageId:"${value.nextStageId}"}) and do the work. The human approval and release gates remain manual.`
-            : `Submitted stage "${value.stage.id}" for review (${String(value.stage.artifacts.length)} artifact(s)). Waiting for the project manager to approve it in the Dev Workspace panel; the model must not approve its own work.`,
+          text:
+            (value.autoApproved === true
+              ? `Stage "${value.stage.id}" was auto-approved by the owner's fast mode (summary and artifacts recorded). Continue with the next stage "${value.nextStageId}": call pipeline_stage_prompt({stageId:"${value.nextStageId}"}), then pipeline_start_stage({stageId:"${value.nextStageId}"}) and do the work. The human approval and release gates remain manual.`
+              : `Submitted stage "${value.stage.id}" for review (${String(value.stage.artifacts.length)} artifact(s)). Waiting for the project manager to approve it in the Dev Workspace panel; the model must not approve its own work.`) +
+            renderWarnings(value.warnings),
         },
       ],
     },
@@ -1861,10 +2288,17 @@ export function registerPipelineTools(ctx) {
         artifacts: args?.artifacts,
       })
       exec.signal.throwIfAborted()
+      const warnings = Array.isArray(result?.warnings) ? result.warnings : []
       if (result !== null && typeof result === 'object' && result.autoApproved === true) {
-        return { stage: result.stage, autoApproved: true, nextStageId: result.nextStageId, scope: root }
+        return {
+          stage: stageFromResult(result.stage),
+          autoApproved: true,
+          nextStageId: result.nextStageId,
+          warnings,
+          scope: root,
+        }
       }
-      return { stage: result, autoApproved: false, nextStageId: '', scope: root }
+      return { stage: stageFromResult(result), autoApproved: false, nextStageId: '', warnings, scope: root }
     },
   })
 

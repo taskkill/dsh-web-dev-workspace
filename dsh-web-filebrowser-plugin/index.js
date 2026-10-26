@@ -24,15 +24,18 @@ import { Readable } from 'node:stream'
 import { fileURLToPath } from 'node:url'
 import * as bookmarks from './bookmarks.js'
 import * as acceptance from './acceptance.js'
+import * as agentTools from './agent-tools.js'
 import * as delivery from './delivery.js'
 import * as memory from './memory.js'
 import * as pipeline from './pipeline.js'
+import * as review from './review.js'
 import * as ssh from './ssh.js'
 import { createTaskManager } from './tasks.js'
 import { createPreviewManager } from './preview.js'
 import { createWatchManager } from './watcher.js'
 import { createTerminalManager } from './terminal.js'
 import * as todo from './todo.js'
+import * as workspaceState from './workspace-state.js'
 
 /** Exact URL below `/api` that this plugin owns. */
 const ROUTE = '/api/dsh-web-filebrowser'
@@ -160,6 +163,22 @@ const CONTENT_TYPES = new Map([
  * @param ctx - Host context carrying the connection service.
  */
 export function apply(ctx) {
+  // Long-lived managers are created before the browser route effect so the
+  // model tools (task runner, preview shares, workspace status) and the
+  // browser routes share exactly one instance per plugin lifetime.
+  const services = {
+    ctx,
+    resolveRoot: (requested) => resolveRoot(ctx, requested),
+    terminals: createTerminalManager({
+      resolveRoot: (requested) => resolveRoot(ctx, requested),
+      vendorDir: VENDOR_DIR,
+      openSshShell: (spec, options) => ssh.openShell(spec, options),
+    }),
+    tasks: createTaskManager({ resolveRoot: (requested) => resolveRoot(ctx, requested) }),
+    watcher: createWatchManager({ resolveRoot: (requested) => resolveRoot(ctx, requested) }),
+    previews: createPreviewManager({}),
+    listPorts: () => listListeningPorts(),
+  }
   // Cross-session memory is optional: a deployment without the tools and
   // system-prompt services keeps the file browser fully usable.
   ctx.inject(['tools', 'systemPrompt'], (toolsCtx) => {
@@ -171,18 +190,18 @@ export function apply(ctx) {
     toolsCtx.effect(() => acceptance.registerAcceptancePrompt(toolsCtx), 'dsh-web-filebrowser: workspace acceptance prompt')
     toolsCtx.effect(() => pipeline.registerPipelineTools(toolsCtx), 'dsh-web-filebrowser: delivery pipeline tools')
     toolsCtx.effect(() => pipeline.registerPipelinePrompt(toolsCtx), 'dsh-web-filebrowser: delivery pipeline prompt')
+    toolsCtx.effect(() => agentTools.registerAgentTools(toolsCtx, services), 'dsh-web-filebrowser: agent execution tools')
+    toolsCtx.effect(() => workspaceState.registerWorkspaceStateTools(toolsCtx, services), 'dsh-web-filebrowser: workspace status tool')
+    toolsCtx.effect(() => workspaceState.registerWorkspaceStatePrompt(toolsCtx, services), 'dsh-web-filebrowser: workspace status prompt')
+    toolsCtx.effect(() => delivery.registerDeliveryTools(toolsCtx), 'dsh-web-filebrowser: delivery tools')
   })
   ctx.effect(() => {
     let disposed = false
     const disposers = []
-    const terminals = createTerminalManager({
-      resolveRoot: (requested) => resolveRoot(ctx, requested),
-      vendorDir: VENDOR_DIR,
-      openSshShell: (spec, options) => ssh.openShell(spec, options),
-    })
-    const tasks = createTaskManager({ resolveRoot: (requested) => resolveRoot(ctx, requested) })
-    const watcher = createWatchManager({ resolveRoot: (requested) => resolveRoot(ctx, requested) })
-    const previews = createPreviewManager({})
+    const terminals = services.terminals
+    const tasks = services.tasks
+    const watcher = services.watcher
+    const previews = services.previews
     const register = (route, methods, handler, label) => {
       const registration = ctx.connection.fetch.register({
         path: route,
@@ -337,6 +356,16 @@ async function dispatch(ctx, op, body) {
       return clearPassedAcceptance(ctx, body)
     case 'acceptanceReport':
       return acceptanceReport(ctx, body)
+    case 'acceptanceEvidenceAdd':
+      return acceptanceEvidenceAdd(ctx, body)
+    case 'acceptanceEvidenceRemove':
+      return acceptanceEvidenceRemove(ctx, body)
+    case 'reviewState':
+      return reviewState(ctx, body)
+    case 'reviewMark':
+      return reviewMark(ctx, body)
+    case 'reviewClear':
+      return reviewClear(ctx, body)
     case 'pipelineList':
       return pipelineList(ctx, body)
     case 'pipelineSetRequirement':
@@ -990,7 +1019,22 @@ async function addAcceptance(ctx, body) {
     note: body.note,
     category: body.category,
     requirement: body.requirement,
+    by: 'owner',
   })
+}
+
+/**
+ * Current delivery round for acceptance history, 1 when no pipeline exists.
+ * @param root - absolute workspace root.
+ * @returns positive round number.
+ */
+async function currentPipelineRound(root) {
+  try {
+    const doc = await pipeline.readPipeline(root)
+    return Number.isInteger(doc?.round) && doc.round > 0 ? doc.round : 1
+  } catch {
+    return 1
+  }
 }
 
 /**
@@ -1001,7 +1045,7 @@ async function addAcceptance(ctx, body) {
  */
 async function updateAcceptance(ctx, body) {
   const root = await acceptanceRoot(ctx, body.root)
-  const patch = { id: body.id }
+  const patch = { id: body.id, by: 'owner', round: await currentPipelineRound(root) }
   for (const key of ['title', 'note', 'status', 'category', 'requirement']) {
     if (Object.prototype.hasOwnProperty.call(body, key)) patch[key] = body[key]
   }
@@ -1039,6 +1083,97 @@ async function clearPassedAcceptance(ctx, body) {
 async function acceptanceReport(ctx, body) {
   const root = await acceptanceRoot(ctx, body.root)
   return { markdown: await acceptance.buildAcceptanceMarkdown(root) }
+}
+
+/**
+ * Attach one evidence file or URL to an acceptance item.
+ * @param ctx - Host context.
+ * @param body - `{ root, id, path, label?, kind?, by? }`.
+ * @returns the updated item.
+ */
+async function acceptanceEvidenceAdd(ctx, body) {
+  const root = await acceptanceRoot(ctx, body.root)
+  return acceptance.addAcceptanceEvidence(root, {
+    id: typeof body.id === 'string' ? body.id : '',
+    path: body.path,
+    label: body.label,
+    kind: body.kind,
+    by: 'owner',
+  })
+}
+
+/**
+ * Remove one evidence entry from an acceptance item.
+ * @param ctx - Host context.
+ * @param body - `{ root, id, path? | index? }`.
+ * @returns the updated item.
+ */
+async function acceptanceEvidenceRemove(ctx, body) {
+  const root = await acceptanceRoot(ctx, body.root)
+  return acceptance.removeAcceptanceEvidence(root, {
+    id: typeof body.id === 'string' ? body.id : '',
+    path: body.path,
+    index: body.index,
+    by: 'owner',
+  })
+}
+
+/**
+ * Resolve a local workspace root for a review operation.
+ * @param ctx - Host context.
+ * @param requested - root path sent by the browser.
+ * @returns canonical local root.
+ */
+async function reviewRoot(ctx, requested) {
+  const root = await resolveRoot(ctx, requested)
+  if (ssh.isSshRoot(root)) throw new SideError('ssh-unsupported', 'SSH 远程工作区暂不支持变更审阅')
+  return root
+}
+
+/**
+ * Read the persisted review state and current changed files.
+ * @param ctx - Host context.
+ * @param body - `{ root, stageId?, round? }`.
+ * @returns review state with files and counters.
+ */
+async function reviewState(ctx, body) {
+  const root = await reviewRoot(ctx, body.root)
+  return review.readReviewState(root, {
+    stageId: typeof body.stageId === 'string' ? body.stageId : undefined,
+    round: Number.isInteger(body.round) ? body.round : undefined,
+  })
+}
+
+/**
+ * Mark one changed file reviewed (or forget a mark).
+ * @param ctx - Host context.
+ * @param body - `{ root, path, sig?, stageId?, round? }`.
+ * @returns the updated review state.
+ */
+async function reviewMark(ctx, body) {
+  const root = await reviewRoot(ctx, body.root)
+  await review.markReviewed(root, {
+    path: typeof body.path === 'string' ? body.path : '',
+    sig: typeof body.sig === 'string' ? body.sig : undefined,
+    stageId: typeof body.stageId === 'string' ? body.stageId : undefined,
+    round: Number.isInteger(body.round) ? body.round : undefined,
+  })
+  return review.readReviewState(root, {
+    stageId: typeof body.stageId === 'string' ? body.stageId : undefined,
+    round: Number.isInteger(body.round) ? body.round : undefined,
+  })
+}
+
+/**
+ * Clear one reviewed mark, or every mark when no path is given.
+ * @param ctx - Host context.
+ * @param body - `{ root, path? }`.
+ * @returns the updated review state.
+ */
+async function reviewClear(ctx, body) {
+  const root = await reviewRoot(ctx, body.root)
+  await review.clearReviewed(root, { path: typeof body.path === 'string' ? body.path : undefined })
+  return review.readReviewState(root)
 }
 
 /**
@@ -1745,11 +1880,28 @@ async function handleDelivery(ctx, request) {
       if (body.op !== 'bundle') throw new SideError('bad-op', `未知的交付操作：${body.op}`)
       const root = await resolveRoot(ctx, body.root)
       if (ssh.isSshRoot(root)) throw new SideError('ssh-unsupported', 'SSH 远程工作区暂不支持交付打包')
+      // Referenced evidence travels with the bundle under `evidence/` so the
+      // client receives a self-contained acceptance record.
+      let extraFiles
+      try {
+        const acceptanceDoc = await acceptance.readAcceptance(root)
+        const items = Array.isArray(acceptanceDoc?.items) ? acceptanceDoc.items : []
+        const collected = await delivery.collectEvidenceEntries(root, items)
+        extraFiles = collected.entries.map((entry) => ({
+          path: `evidence/${path.posix.basename(entry.path)}`,
+          data: entry.data,
+          size: entry.size,
+          mtime: entry.mtime,
+        }))
+      } catch (error) {
+        console.error('dsh-web-filebrowser: failed to collect acceptance evidence', error)
+      }
       const result = await delivery.writeDeliveryBundle(root, {
         reportMarkdown: typeof body.reportMarkdown === 'string' ? body.reportMarkdown : undefined,
         targets: Array.isArray(body.targets) ? body.targets : undefined,
         include: typeof body.include === 'string' ? body.include : undefined,
         exclude: typeof body.exclude === 'string' ? body.exclude : undefined,
+        extraFiles,
       })
       await appendDeliveryHistory(root, {
         id: `${String(Date.now())}-${String(result.fileCount)}`,

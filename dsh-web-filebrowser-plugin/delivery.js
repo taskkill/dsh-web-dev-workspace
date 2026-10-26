@@ -43,6 +43,8 @@ import path from 'node:path'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import { createDeflateRaw } from 'node:zlib'
+import { resolveAgentWorkspace } from './memory.js'
+import { isSshRoot } from './ssh.js'
 
 /** Build-output directories packaged by default, in preference order. */
 export const DELIVERY_DEFAULT_TARGETS = ['dist', 'build', 'out', '.output', 'public']
@@ -58,6 +60,27 @@ const DELIVERY_BUNDLE_DIRNAME = 'deliveries'
 
 /** Report file name used when an acceptance report is supplied. */
 const REPORT_FILENAME = 'ACCEPTANCE.md'
+
+/** Delivery history file written by the acceptance panel (index.js). */
+const DELIVERY_HISTORY_FILENAME = 'deliveries.json'
+
+/** Newest delivery records kept by the panel and the read-only tool. */
+const DELIVERY_HISTORY_MAX = 100
+
+/** Workspace-relative evidence directory used by acceptance items. */
+export const EVIDENCE_DIR_RELATIVE = '.dsh/evidence'
+
+/** Largest single evidence file packaged into a delivery bundle. */
+export const EVIDENCE_FILE_MAX_BYTES = 20 * 1024 * 1024
+
+/** Largest total evidence payload packaged into a delivery bundle. */
+export const EVIDENCE_TOTAL_MAX_BYTES = 200 * 1024 * 1024
+
+/** Largest single in-memory extra file accepted by `writeDeliveryBundle`. */
+const MAX_EXTRA_FILE_BYTES = 128 * 1024 * 1024
+
+/** Largest total in-memory extra payload accepted by `writeDeliveryBundle`. */
+const MAX_EXTRA_TOTAL_BYTES = 256 * 1024 * 1024
 
 /** File count cap (ZIP64 would be needed above the classic limits). */
 const DEFAULT_MAX_FILES = 50000
@@ -375,15 +398,18 @@ export async function buildDeliveryZip(root, options = {}) {
  * Write a downloadable delivery bundle to disk.
  *
  * The optional `reportMarkdown` becomes `ACCEPTANCE.md` at the archive root.
- * Without `outputPath` the bundle is written to
+ * `extraFiles` appends in-memory files (for example acceptance evidence read by
+ * the caller) at their workspace-relative archive paths; the acceptance report
+ * can therefore link `.dsh/evidence/<name>` and the same path exists inside the
+ * archive. Without `outputPath` the bundle is written to
  * `<root>/.dsh/deliveries/<basename>-delivery-<yyyyMMdd-HHmm>.zip`; an explicit
  * `outputPath` may name the deliveries directory or a file inside it (a
  * directory gets an automatic file name), and it can never escape that
  * directory so an export cannot overwrite workspace sources.
  *
  * @param root - absolute workspace root.
- * @param options - `{ outputPath, reportMarkdown, targets, include, exclude,
- *   maxFiles, maxBytes }`.
+ * @param options - `{ outputPath, reportMarkdown, extraFiles, targets, include,
+ *   exclude, maxFiles, maxBytes }`.
  * @returns `{ path, bytes, fileCount }`.
  */
 export async function writeDeliveryBundle(root, options = {}) {
@@ -407,6 +433,12 @@ export async function writeDeliveryBundle(root, options = {}) {
   if (hasReport) {
     const report = Buffer.from(settings.reportMarkdown, 'utf8')
     entries.push({ path: REPORT_FILENAME, data: report, size: report.length, mtime: new Date() })
+  }
+  for (const extra of normalizeExtraFiles(settings.extraFiles)) {
+    if (extra.path === REPORT_FILENAME) {
+      throw new DeliveryError('bad-entries', `extraFiles may not override ${REPORT_FILENAME}`)
+    }
+    entries.push(extra)
   }
   const target = await resolveBundlePath(workspace, settings.outputPath)
   try {
@@ -454,6 +486,321 @@ export async function sha256File(filename) {
   const hash = createHash('sha256')
   await pipeline(createReadStream(filename), hash)
   return hash.digest('hex')
+}
+
+/** Normalise one in-memory archive entry appended by `writeDeliveryBundle`. */
+function normalizeExtraFiles(value) {
+  if (value === undefined || value === null) return []
+  if (!Array.isArray(value)) throw new DeliveryError('bad-option', 'extraFiles must be an array')
+  const files = []
+  const seen = new Set()
+  let totalBytes = 0
+  for (const item of value) {
+    if (item === null || typeof item !== 'object' || Array.isArray(item)) {
+      throw new DeliveryError('bad-entries', 'Every extra file must be an object')
+    }
+    const name = normalizeZipName(item.path)
+    if (name.endsWith(POSIX_SEPARATOR)) {
+      throw new DeliveryError('bad-entries', `extraFiles entries must name files: ${name}`)
+    }
+    if (seen.has(name)) continue
+    let data
+    if (Buffer.isBuffer(item.data)) data = item.data
+    else if (item.data instanceof Uint8Array) data = Buffer.from(item.data)
+    else throw new DeliveryError('bad-entries', `extraFiles entry needs a Buffer: ${name}`)
+    if (data.length > MAX_EXTRA_FILE_BYTES) {
+      throw new DeliveryError('too-large', `Extra file exceeds ${MAX_EXTRA_FILE_BYTES} bytes: ${name}`)
+    }
+    totalBytes += data.length
+    if (totalBytes > MAX_EXTRA_TOTAL_BYTES) {
+      throw new DeliveryError('too-large', `Extra files exceed ${MAX_EXTRA_TOTAL_BYTES} bytes in total`)
+    }
+    seen.add(name)
+    files.push({ path: name, data, size: data.length, mtime: item.mtime instanceof Date ? item.mtime : new Date() })
+  }
+  return files
+}
+
+/** Normalise one evidence path stored on an acceptance item, refusing escapes. */
+function normalizeEvidenceRelativePath(value) {
+  if (typeof value !== 'string') return null
+  const text = value.trim()
+  if (text.length === 0 || text.length > 500 || text.includes('\u0000') || text.includes('\\')) return null
+  if (text.startsWith('/') || /^[A-Za-z]:\//u.test(text)) return null
+  const segments = text.replace(/^\.\//u, '').split(POSIX_SEPARATOR)
+  for (const segment of segments) {
+    if (segment.length === 0 || segment === '.' || segment === '..') return null
+  }
+  return segments.join(POSIX_SEPARATOR)
+}
+
+/** Extract the evidence array from one acceptance item or document. */
+function evidenceItemsFrom(value) {
+  const source = Array.isArray(value) ? value : Array.isArray(value?.items) ? value.items : []
+  const items = []
+  for (const item of source) {
+    if (item === null || typeof item !== 'object' || Array.isArray(item)) continue
+    if (!Array.isArray(item.evidence)) continue
+    items.push(item)
+  }
+  return items
+}
+
+/**
+ * Read the evidence files referenced by acceptance items so they can be passed
+ * to `writeDeliveryBundle({ extraFiles })`.
+ *
+ * Evidence entries whose kind is `url` (or whose path is an http(s) URL) are
+ * skipped; workspace paths are confined to the root, symlinks and missing files
+ * are reported in `skipped`, and per-file / total byte caps protect the archive.
+ * Entries are flattened into the bundle `evidence/` directory, so the returned
+ * `path` is archive-ready and matches the links in the generated acceptance
+ * report (`evidence/<name>`); two sources with the same base name are reported
+ * as `duplicate` instead of overwriting each other.
+ *
+ * @param root - absolute workspace root.
+ * @param items - acceptance items or the acceptance document.
+ * @param options - `{ maxFileBytes?, maxTotalBytes? }`.
+ * @returns `{ entries, skipped, totalBytes }` where entries are extra-file
+ *   records ready for `writeDeliveryBundle`.
+ */
+export async function collectEvidenceEntries(root, items, options = {}) {
+  const workspace = await assertRoot(root)
+  const settings = options ?? {}
+  const maxFileBytes = readPositiveInteger(settings.maxFileBytes, EVIDENCE_FILE_MAX_BYTES, 'maxFileBytes')
+  const maxTotalBytes = readPositiveInteger(settings.maxTotalBytes, EVIDENCE_TOTAL_MAX_BYTES, 'maxTotalBytes')
+  const entries = []
+  const skipped = []
+  const seen = new Set()
+  let totalBytes = 0
+  for (const item of evidenceItemsFrom(items)) {
+    for (const candidate of item.evidence) {
+      if (candidate === null || typeof candidate !== 'object' || Array.isArray(candidate)) continue
+      if (candidate.kind === 'url') continue
+      if (typeof candidate.path !== 'string' || /^https?:\/\//iu.test(candidate.path.trim())) continue
+      const relativePath = normalizeEvidenceRelativePath(candidate.path)
+      if (relativePath === null) {
+        addSkip(skipped, typeof candidate.path === 'string' ? candidate.path : '?', 'bad-path')
+        continue
+      }
+      const archivePath = `evidence/${relativePath.split(POSIX_SEPARATOR).at(-1) ?? relativePath}`
+      if (seen.has(archivePath)) {
+        addSkip(skipped, relativePath, 'duplicate')
+        continue
+      }
+      const absolute = path.join(workspace, ...relativePath.split(POSIX_SEPARATOR))
+      if (!isInside(workspace, absolute)) {
+        addSkip(skipped, relativePath, 'outside-root')
+        continue
+      }
+      let info
+      try {
+        info = await fsp.lstat(absolute)
+      } catch (error) {
+        addSkip(skipped, relativePath, error?.code === 'ENOENT' ? 'missing' : 'unreadable')
+        continue
+      }
+      if (info.isSymbolicLink()) {
+        addSkip(skipped, relativePath, 'symlink')
+        continue
+      }
+      if (!info.isFile()) {
+        addSkip(skipped, relativePath, 'not-file')
+        continue
+      }
+      let real
+      try {
+        real = await fsp.realpath(absolute)
+      } catch {
+        addSkip(skipped, relativePath, 'unreadable')
+        continue
+      }
+      if (!isInside(workspace, real)) {
+        addSkip(skipped, relativePath, 'outside-root')
+        continue
+      }
+      let stat
+      try {
+        stat = await fsp.stat(real)
+      } catch {
+        addSkip(skipped, relativePath, 'unreadable')
+        continue
+      }
+      if (stat.size > maxFileBytes) {
+        addSkip(skipped, relativePath, 'too-large')
+        continue
+      }
+      if (totalBytes + stat.size > maxTotalBytes) {
+        addSkip(skipped, relativePath, 'total-too-large')
+        continue
+      }
+      let data
+      try {
+        data = await fsp.readFile(real)
+      } catch {
+        addSkip(skipped, relativePath, 'unreadable')
+        continue
+      }
+      entries.push({ path: archivePath, data, size: data.length, mtime: stat.mtime })
+      seen.add(archivePath)
+      totalBytes += data.length
+    }
+  }
+  return { entries, skipped, totalBytes }
+}
+
+/** Normalise one delivery history record read from `.dsh/deliveries.json`. */
+function normalizeDeliveryRecord(value) {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return null
+  const name = typeof value.name === 'string' ? value.name.trim() : ''
+  if (name.length === 0) return null
+  return {
+    id: typeof value.id === 'string' ? value.id : '',
+    name,
+    relative: typeof value.relative === 'string' ? value.relative : '',
+    bytes: Number.isFinite(value.bytes) ? Math.floor(value.bytes) : 0,
+    fileCount: Number.isFinite(value.fileCount) ? Math.floor(value.fileCount) : 0,
+    createdAt: Number.isFinite(value.createdAt) ? Math.floor(value.createdAt) : 0,
+    hasReport: value.hasReport === true,
+  }
+}
+
+/**
+ * Read the workspace delivery history (newest first), tolerating a missing or
+ * corrupt `.dsh/deliveries.json` by returning an empty list.
+ *
+ * @param root - absolute workspace root.
+ * @param options - `{ limit? }` newest records to return (default 20, max 100).
+ * @returns `{ deliveries, total }`.
+ */
+export async function listDeliveryHistory(root, options = {}) {
+  const workspace = await assertRoot(root)
+  const limit = readHistoryLimit(options?.limit)
+  const file = path.join(workspace, DELIVERY_DIRNAME, DELIVERY_HISTORY_FILENAME)
+  let parsed
+  try {
+    parsed = JSON.parse(await fsp.readFile(file, 'utf8'))
+  } catch {
+    return { deliveries: [], total: 0 }
+  }
+  const source = Array.isArray(parsed?.deliveries) ? parsed.deliveries : []
+  const deliveries = []
+  for (const candidate of source) {
+    const record = normalizeDeliveryRecord(candidate)
+    if (record !== null) deliveries.push(record)
+  }
+  return { deliveries: deliveries.slice(0, limit), total: deliveries.length }
+}
+
+/** Read one history `limit` option for the read-only tool. */
+function readHistoryLimit(value) {
+  if (value === undefined || value === null) return 20
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new DeliveryError('bad-option', 'limit must be a positive integer')
+  }
+  return Math.min(value, DELIVERY_HISTORY_MAX)
+}
+
+/** Resolve the workspace for a delivery tool call, with SSH/no-workspace errors. */
+function deliveryToolWorkspace(ctx, exec) {
+  const root = resolveAgentWorkspace(ctx, exec.agent)
+  if (root === null) {
+    throw new Error('The workspace delivery history is unavailable because this session has no workspace directory.')
+  }
+  if (isSshRoot(root) || isSshRoot(exec.agent?.session?.meta?.cwd)) {
+    throw new DeliveryError(
+      'ssh-unsupported',
+      'SSH remote workspaces have no local delivery history (.dsh/deliveries.json); use a local workspace instead.',
+    )
+  }
+  return root
+}
+
+/** Render the delivery history for one tool result. */
+function renderDeliveryHistory(value) {
+  if (value.total === 0) return `No delivery bundles recorded for ${value.scope}.`
+  const lines = value.deliveries.map((record) => {
+    const when = record.createdAt > 0 ? new Date(record.createdAt).toISOString() : '—'
+    const report = record.hasReport ? 'with report' : 'no report'
+    return `- ${record.name} · ${String(record.bytes)} bytes · ${String(record.fileCount)} files · ${when} · ${report}`
+  })
+  const omitted = value.total - value.deliveries.length
+  const suffix = omitted > 0 ? `\n(${String(omitted)} older records are not shown; raise limit to list more.)` : ''
+  return `Delivery bundles recorded for ${value.scope}: ${String(value.total)} total\n${lines.join('\n')}${suffix}`
+}
+
+/** Registry-ready schema for one delivery history record. */
+const DELIVERY_RECORD_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    id: { type: 'string' },
+    name: { type: 'string' },
+    relative: { type: 'string' },
+    bytes: { type: 'integer' },
+    fileCount: { type: 'integer' },
+    createdAt: { type: 'integer' },
+    hasReport: { type: 'boolean' },
+  },
+  required: ['name', 'bytes', 'fileCount', 'createdAt', 'hasReport'],
+}
+
+/**
+ * Register the read-only delivery tool. Registration is skipped when the Host
+ * context has no tool registry, so the module still works for plain bundling.
+ *
+ * @param ctx - context providing `tools`.
+ * @returns disposer for the registered tool.
+ */
+export function registerDeliveryTools(ctx) {
+  const disposers = []
+  const register = (definition) => {
+    try {
+      const dispose = ctx.tools.register(definition)
+      if (typeof dispose === 'function') disposers.push(dispose)
+    } catch (error) {
+      ctx.logger?.warn?.('dsh-web-filebrowser: failed to register a delivery tool', error)
+    }
+  }
+
+  register({
+    name: 'delivery_history',
+    description:
+      'List the delivery bundles recorded for this workspace in .dsh/deliveries.json (newest first) — name, size, file count, timestamp and whether the acceptance report was included. Read-only: use it before re-sending a client hand-off, not to create a bundle.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        limit: { type: 'integer', description: 'Newest records to return (default 20, maximum 100).' },
+      },
+      required: [],
+    },
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          deliveries: { type: 'array', items: DELIVERY_RECORD_SCHEMA },
+          total: { type: 'integer' },
+          scope: { type: 'string' },
+        },
+        required: ['deliveries', 'total', 'scope'],
+      },
+      render: (_args, value) => [{ type: 'text', text: renderDeliveryHistory(value) }],
+    },
+    async execute(args, exec) {
+      exec.signal.throwIfAborted()
+      const root = deliveryToolWorkspace(ctx, exec)
+      const limit = readHistoryLimit(args?.limit)
+      const result = await listDeliveryHistory(root, { limit })
+      exec.signal.throwIfAborted()
+      return { deliveries: result.deliveries, total: result.total, scope: root }
+    },
+  })
+
+  return () => {
+    for (const dispose of disposers.splice(0)) dispose()
+  }
 }
 
 /** Canonicalise and validate one absolute workspace root. */

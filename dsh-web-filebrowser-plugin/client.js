@@ -48,6 +48,10 @@ window.__ModuleLoader__.load({
     const VIEW_KEY = 'dsh-web-filebrowser:view'
     /** Per-workspace review marks keyed by file path + change signature. */
     const REVIEWED_KEY = 'dsh-web-filebrowser:reviewed'
+    /** Browser notifications for stage review, rejections and failed tasks. */
+    const NOTIFY_KEY = 'dsh-web-filebrowser:notify'
+    /** How often the always-on reminder poll refreshes pipeline/acceptance state. */
+    const REMINDER_POLL_MS = 15000
     const SESSION_MAX_TABS = 24
     const SESSION_MAX_BYTES = 512 * 1024
     const SESSION_SAVE_DELAY = 600
@@ -375,6 +379,9 @@ window.__ModuleLoader__.load({
       'tasks.waiting': '等待输出…',
       'tasks.problems': '问题 ({count})',
       'tasks.noProblems': '没有解析到可点击的问题',
+      'tasks.ledger': '运行账本（agent 与面板）',
+      'tasks.sourceTool': 'agent 工具',
+      'tasks.sourcePanel': '面板',
       'tasks.unavailable': '任务服务不可用：请重启 Harness 以加载新的 Host 路由',
       'tasks.needRoot': '请先选择工作区',
       'tasks.hint': '运行 build / test / lint 等命令；输出里的错误可直接跳到文件和行号。',
@@ -511,6 +518,43 @@ window.__ModuleLoader__.load({
       'workbench.noRunning': '没有运行中的任务',
       'workbench.checklist': '查看全部验收项',
       'workbench.loadFailed': '读取工作台数据失败：{message}',
+      'workbench.preflight': '交付前体检',
+      'workbench.preflightReady': '可以交付',
+      'workbench.preflightWarn': '建议先处理 {count} 项',
+      'workbench.preflightAcceptance': '验收：通过 {pass} · 失败 {fail} · 未完成 {pending}',
+      'workbench.preflightEvidence': '证据缺口 {count} 项',
+      'workbench.preflightReview': '变更审阅 {done}/{total}',
+      'workbench.preflightTests': '最近测试：{status}',
+      'workbench.preflightRelease': '发布记录：{status}',
+      'workbench.preflightPreview': '预览分享：{status}',
+      'workbench.preflightDelivery': '交付包：{status}',
+      'workbench.preflightNote': '把结论写入评审备注',
+      'workbench.preflightOk': '通过',
+      'workbench.preflightMissing': '缺失',
+      'workbench.preflightNa': '不适用',
+      'workbench.notifyEnable': '开启提醒',
+      'workbench.notifyOn': '提醒已开启',
+      'workbench.notifyDenied': '通知权限被拒绝，仍会用标题与角标提醒',
+      'workbench.reviewWarning': '还有 {count} 个文件未审',
+      'workbench.changes': '本轮变更',
+      'workbench.changesHint': '从当前阶段开始计算；「已审」会保存到工作区。',
+      'workbench.changesEmpty': '本阶段还没有文件变化。',
+      'workbench.reviewed': '已审',
+      'workbench.unreviewed': '未审',
+      'workbench.reviewAll': '全部已审',
+      'workbench.reviewProgress': '已审 {done}/{total}',
+      'workbench.reviewUnavailable': '此工作区没有 Git，无法显示本轮变更。',
+      'workbench.openGit': '打开 Git',
+      'notify.stageReviewTitle': '阶段待审批',
+      'notify.stageReviewBody': '{stage} 已提交，等待你通过或打回',
+      'notify.stageRejectedTitle': '阶段被打回',
+      'notify.stageRejectedBody': '{stage} 被打回：{note}',
+      'notify.taskFailedTitle': '任务失败',
+      'notify.taskFailedBody': '{name} 退出码 {code}',
+      'notify.deliveryTitle': '交付包已生成',
+      'notify.deliveryBody': '{name}',
+      'side.pipelineCount': '流水线 · {count} 项待处理',
+      'side.acceptanceCount': '验收 · 不通过 {fail} · 缺证据 {gap}',
       'side.pipeline': '流水线',
       'pipeline.title': '交付流水线',
       'pipeline.hint': '需求由你下发；产品经理→UI 设计→开发→测试→你确认→运维发布。每个阶段的角色边界写在派发提示词里，评审由你在面板上把关。',
@@ -619,7 +663,7 @@ window.__ModuleLoader__.load({
       'acceptance.evidence': '证据',
       'acceptance.evidenceAdd': '添加截图 / 证据',
       'acceptance.evidenceEmpty': '还没有证据文件。可以把截图或产物放进验收记录。',
-      'acceptance.evidenceHint': '上传后会自动附到当前选中的验收项备注里；点击文件可在编辑区预览。',
+      'acceptance.evidenceHint': '上传后会绑定到当前选中的验收项，并进入报告与交付包。',
       'acceptance.evidenceUploading': '上传中…',
       'acceptance.evidenceFailed': '证据上传失败：{message}',
       'acceptance.evidenceNoItem': '已上传 1 个证据；先选中一条验收项即可自动附到备注。',
@@ -635,6 +679,71 @@ window.__ModuleLoader__.load({
       'acceptance.previewFailed': '预览分享失败：{message}',
       'acceptance.previewHint': '链接指向当前 Harness 主机的预览端口，局域网/手机可直接打开；公网访问需要该端口可达。',
       'acceptance.historyEmpty': '还没有交付包。点「打包交付」会记录在这里。',
+      'acceptance.evidenceCount': '{count} 条证据',
+      'acceptance.evidenceGap': '缺证据',
+      'acceptance.evidenceGapConfirmTitle': '这条验收没有证据',
+      'acceptance.evidenceGapConfirm': '仍要标记为通过？建议先上传截图、日志或测试结果作为证据。',
+      'acceptance.evidenceGapContinue': '仍然通过',
+      'acceptance.evidenceRemove': '移除',
+      'acceptance.evidenceBind': '附加到当前项',
+      'acceptance.evidenceUnassigned': '未归类证据',
+      'acceptance.evidenceSelected': '已附加到「{title}」',
+      'acceptance.evidenceNeedItem': '先选中一条验收项，再上传证据。',
+      'acceptance.evidenceKind.screenshot': '截图',
+      'acceptance.evidenceKind.log': '日志',
+      'acceptance.evidenceKind.report': '报告',
+      'acceptance.evidenceKind.diff': '差异',
+      'acceptance.evidenceKind.url': '链接',
+      'acceptance.categoryLabel': '分类',
+      'acceptance.requirementLabel': '验收条件',
+      'acceptance.groupOther': '未分类',
+      'acceptance.filterAll': '全部',
+      'acceptance.filterIncomplete': '未完成',
+      'acceptance.filterFail': '不通过',
+      'acceptance.filterGap': '缺证据',
+      'acceptance.batchSelected': '已选 {count} 项',
+      'acceptance.batchPass': '批量通过',
+      'acceptance.batchFail': '批量不通过',
+      'acceptance.batchPending': '重置待验收',
+      'acceptance.batchClear': '取消选择',
+      'acceptance.templates': '验收模板',
+      'acceptance.templateApplied': '已应用模板，新增 {count} 项',
+      'acceptance.templateExists': '模板项已存在，未重复添加',
+      'acceptance.templateWeb': 'Web 交付基础',
+      'acceptance.templateMobile': '移动端可用性',
+      'acceptance.templateInternal': '内部工具',
+      'acceptance.historyTitle': '状态历史',
+      'acceptance.historyEmptyState': '还没有状态变化。',
+      'acceptance.retestRound': '复测 {round} 轮',
+      'acceptance.retest': '复测',
+      'acceptance.retestTitle': '复测中心',
+      'acceptance.retestHint': '选择要跑的命令；结果会写入 .dsh/verifications 并生成证据。',
+      'acceptance.retestRunning': '复测中…',
+      'acceptance.retestDone': '复测完成：{pass} 通过 / {fail} 失败',
+      'acceptance.retestEmpty': '还没有复测记录。',
+      'acceptance.retestLatest': '最近复测',
+      'acceptance.retestChoose': '至少选择一个命令',
+      'acceptance.retestProblem': '{count} 个问题',
+      'acceptance.retestResult': '{command} · 退出码 {code} · {duration}s',
+      'acceptance.retestSend': '把失败发给 agent',
+      'acceptance.retestNoCommands': '还没有检测到可运行命令，请先在任务面板检测。',
+      'acceptance.evidenceLibrary': '证据库',
+      'acceptance.emptyFiltered': '没有符合筛选的验收项。',
+      'acceptance.tpl.web.0': '首页与主流程可打开',
+      'acceptance.tpl.web.1': '主要链接与按钮可点击',
+      'acceptance.tpl.web.2': '表单提交有成功与失败反馈',
+      'acceptance.tpl.web.3': '错误提示清晰可见',
+      'acceptance.tpl.web.4': '移动端布局不破',
+      'acceptance.tpl.mobile.0': '小屏无横向滚动',
+      'acceptance.tpl.mobile.1': '触控目标可点且不重叠',
+      'acceptance.tpl.mobile.2': '键盘不遮挡输入框',
+      'acceptance.tpl.mobile.3': '返回与关闭可用',
+      'acceptance.tpl.mobile.4': '横竖屏切换不破版',
+      'acceptance.tpl.internal.0': '登录与权限符合预期',
+      'acceptance.tpl.internal.1': '关键业务流程可跑通',
+      'acceptance.tpl.internal.2': '错误信息可读且可定位',
+      'acceptance.tpl.internal.3': '数据可导出或可备份',
+      'acceptance.tpl.internal.4': '使用说明可找到',
       'todo.title': '待办清单',
       'todo.hint': '随工作区保存，面板、会话工具和 DeepSeek 共享同一份任务',
       'todo.loading': '正在读取待办…',
@@ -698,6 +807,29 @@ window.__ModuleLoader__.load({
       'todo.justNow': '刚刚',
       'todo.updatedAt': '更新于 {time}',
       'todo.completedAt': '完成于 {time}',
+      'todo.dispatch': '交给产品',
+      'todo.dispatching': '派发中…',
+      'todo.dispatchHint': '把这条待办作为需求，启动产品经理阶段并派发角色提示',
+      'todo.dispatchIntro': '「交给产品」会把待办标题与备注写成需求，启动产品经理阶段并把角色提示发到当前对话。',
+      'todo.dispatchTag': '已派发',
+      'todo.dispatchTagsPrefix': '标签：',
+      'todo.dispatchNoteLine': '已派发到产品经理：{time}（第 {round} 轮）',
+      'todo.dispatchNewTitle': '把这条待办立项？',
+      'todo.dispatchNewMessage': '将把「{title}」设为当前项目需求，启动产品经理阶段并把角色提示发到当前对话。',
+      'todo.dispatchNew': '立项并派发',
+      'todo.dispatchReplaceTitle': '替换当前需求？',
+      'todo.dispatchReplaceMessage': '当前已有需求但还没有阶段开始。将用「{title}」替换需求，并从产品经理阶段开始。',
+      'todo.dispatchReplace': '替换并派发',
+      'todo.dispatchChangeTitle': '发起新一轮变更？',
+      'todo.dispatchChangeMessage': '当前项目已完成。将用「{title}」发起完整六关的新一轮变更，并从产品经理阶段开始。',
+      'todo.dispatchChange': '发起变更并派发',
+      'todo.dispatchBusyTitle': '当前项目进行中',
+      'todo.dispatchBusyMessage': '阶段「{stage}」正在进行或待审批。请先在工作台完成/打回该阶段，或用「需求与调整」把这条待办追加到当前需求。',
+      'todo.dispatchBusyAction': '打开工作台',
+      'todo.dispatchStartedMessage': '当前项目已有进行过的阶段。请先在流水线面板处理（通过/打回/重跑），或把这条待办作为需求修订追加。',
+      'todo.dispatchFailed': '派发失败：{message}',
+      'todo.dispatchSendFailed': '产品阶段已启动，但角色提示发送失败；请到工作台重新派发。',
+      'todo.dispatchDone': '已派发「{title}」到产品经理（第 {round} 轮）',
       'side.moveLeft': '资源管理器移到左侧',
       'side.moveRight': '资源管理器移到右侧',
       'search.placeholder': '在工作区中搜索',
@@ -1284,6 +1416,9 @@ window.__ModuleLoader__.load({
       'tasks.waiting': 'Waiting for output…',
       'tasks.problems': 'Problems ({count})',
       'tasks.noProblems': 'No clickable problems parsed from the output',
+      'tasks.ledger': 'Run ledger (agent and panel)',
+      'tasks.sourceTool': 'agent tool',
+      'tasks.sourcePanel': 'panel',
       'tasks.unavailable': 'Task service unavailable: restart Harness to load the new Host route',
       'tasks.needRoot': 'Select a workspace first',
       'tasks.hint': 'Run build / test / lint; errors in the output jump straight to file and line.',
@@ -1420,6 +1555,43 @@ window.__ModuleLoader__.load({
       'workbench.noRunning': 'Nothing is running',
       'workbench.checklist': 'View all acceptance items',
       'workbench.loadFailed': 'Could not read the workbench data: {message}',
+      'workbench.preflight': 'Delivery preflight',
+      'workbench.preflightReady': 'Ready to deliver',
+      'workbench.preflightWarn': 'Address {count} item(s) first',
+      'workbench.preflightAcceptance': 'Acceptance: {pass} passed · {fail} failed · {pending} open',
+      'workbench.preflightEvidence': '{count} evidence gap(s)',
+      'workbench.preflightReview': 'Change review {done}/{total}',
+      'workbench.preflightTests': 'Last test: {status}',
+      'workbench.preflightRelease': 'Release: {status}',
+      'workbench.preflightPreview': 'Preview share: {status}',
+      'workbench.preflightDelivery': 'Delivery bundle: {status}',
+      'workbench.preflightNote': 'Put the verdict in the review note',
+      'workbench.preflightOk': 'OK',
+      'workbench.preflightMissing': 'Missing',
+      'workbench.preflightNa': 'N/A',
+      'workbench.notifyEnable': 'Enable alerts',
+      'workbench.notifyOn': 'Alerts on',
+      'workbench.notifyDenied': 'Notification permission denied; title and badges still work',
+      'workbench.reviewWarning': '{count} file(s) not reviewed',
+      'workbench.changes': 'Changes this round',
+      'workbench.changesHint': 'Counted from the current stage start; review marks persist in the workspace.',
+      'workbench.changesEmpty': 'No file changes yet in this stage.',
+      'workbench.reviewed': 'Reviewed',
+      'workbench.unreviewed': 'Unreviewed',
+      'workbench.reviewAll': 'Mark all reviewed',
+      'workbench.reviewProgress': 'Reviewed {done}/{total}',
+      'workbench.reviewUnavailable': 'No Git repository; change review is unavailable.',
+      'workbench.openGit': 'Open Git',
+      'notify.stageReviewTitle': 'Stage needs review',
+      'notify.stageReviewBody': '{stage} was submitted; approve or reject it',
+      'notify.stageRejectedTitle': 'Stage rejected',
+      'notify.stageRejectedBody': '{stage} was rejected: {note}',
+      'notify.taskFailedTitle': 'Task failed',
+      'notify.taskFailedBody': '{name} exited with {code}',
+      'notify.deliveryTitle': 'Delivery bundle ready',
+      'notify.deliveryBody': '{name}',
+      'side.pipelineCount': 'Pipeline · {count} need attention',
+      'side.acceptanceCount': 'Acceptance · {fail} failed · {gap} no evidence',
       'side.pipeline': 'Pipeline',
       'pipeline.title': 'Delivery pipeline',
       'pipeline.hint': 'You issue the requirement; product → design → development → testing → your sign-off → ops release. Role boundaries live in the dispatched prompts; every gate is yours to approve.',
@@ -1528,7 +1700,7 @@ window.__ModuleLoader__.load({
       'acceptance.evidence': 'Evidence',
       'acceptance.evidenceAdd': 'Add screenshot / evidence',
       'acceptance.evidenceEmpty': 'No evidence files yet. Screenshots and artefacts can live in the acceptance record.',
-      'acceptance.evidenceHint': 'Uploads are attached to the selected item note; click a file to preview it in the editor.',
+      'acceptance.evidenceHint': 'Uploads are bound to the selected acceptance item and included in reports and delivery bundles.',
       'acceptance.evidenceUploading': 'Uploading…',
       'acceptance.evidenceFailed': 'Evidence upload failed: {message}',
       'acceptance.evidenceNoItem': 'Uploaded 1 evidence file; select an acceptance item to attach it to the note.',
@@ -1544,6 +1716,71 @@ window.__ModuleLoader__.load({
       'acceptance.previewFailed': 'Preview sharing failed: {message}',
       'acceptance.previewHint': 'The link points at this Harness host on the preview port; phones on the same network can open it. Public access needs that port reachable.',
       'acceptance.historyEmpty': 'No delivery bundles yet. Pack one and it shows up here.',
+      'acceptance.evidenceCount': '{count} evidence',
+      'acceptance.evidenceGap': 'No evidence',
+      'acceptance.evidenceGapConfirmTitle': 'No evidence on this item',
+      'acceptance.evidenceGapConfirm': 'Mark it passed anyway? Consider attaching a screenshot, log or test result first.',
+      'acceptance.evidenceGapContinue': 'Pass anyway',
+      'acceptance.evidenceRemove': 'Remove',
+      'acceptance.evidenceBind': 'Attach to selected item',
+      'acceptance.evidenceUnassigned': 'Unassigned evidence',
+      'acceptance.evidenceSelected': 'Attached to “{title}”',
+      'acceptance.evidenceNeedItem': 'Select an acceptance item before uploading evidence.',
+      'acceptance.evidenceKind.screenshot': 'Screenshot',
+      'acceptance.evidenceKind.log': 'Log',
+      'acceptance.evidenceKind.report': 'Report',
+      'acceptance.evidenceKind.diff': 'Diff',
+      'acceptance.evidenceKind.url': 'Link',
+      'acceptance.categoryLabel': 'Category',
+      'acceptance.requirementLabel': 'Acceptance requirement',
+      'acceptance.groupOther': 'Uncategorized',
+      'acceptance.filterAll': 'All',
+      'acceptance.filterIncomplete': 'Open',
+      'acceptance.filterFail': 'Failed',
+      'acceptance.filterGap': 'No evidence',
+      'acceptance.batchSelected': '{count} selected',
+      'acceptance.batchPass': 'Pass selected',
+      'acceptance.batchFail': 'Fail selected',
+      'acceptance.batchPending': 'Reset to pending',
+      'acceptance.batchClear': 'Clear selection',
+      'acceptance.templates': 'Templates',
+      'acceptance.templateApplied': 'Template applied: {count} items added',
+      'acceptance.templateExists': 'Template items already exist',
+      'acceptance.templateWeb': 'Web delivery basics',
+      'acceptance.templateMobile': 'Mobile usability',
+      'acceptance.templateInternal': 'Internal tool',
+      'acceptance.historyTitle': 'Status history',
+      'acceptance.historyEmptyState': 'No status changes yet.',
+      'acceptance.retestRound': 'Retest {round}',
+      'acceptance.retest': 'Retest',
+      'acceptance.retestTitle': 'Verification center',
+      'acceptance.retestHint': 'Pick commands to run; results are saved to .dsh/verifications as evidence.',
+      'acceptance.retestRunning': 'Running verification…',
+      'acceptance.retestDone': 'Verification done: {pass} passed / {fail} failed',
+      'acceptance.retestEmpty': 'No verification runs yet.',
+      'acceptance.retestLatest': 'Latest verification',
+      'acceptance.retestChoose': 'Select at least one command',
+      'acceptance.retestProblem': '{count} problems',
+      'acceptance.retestResult': '{command} · exit {code} · {duration}s',
+      'acceptance.retestSend': 'Send failures to agent',
+      'acceptance.retestNoCommands': 'No commands detected; detect them in the Tasks panel first.',
+      'acceptance.evidenceLibrary': 'Evidence library',
+      'acceptance.emptyFiltered': 'No acceptance items match this filter.',
+      'acceptance.tpl.web.0': 'Home page and main flow open',
+      'acceptance.tpl.web.1': 'Primary links and buttons work',
+      'acceptance.tpl.web.2': 'Forms report success and failure',
+      'acceptance.tpl.web.3': 'Errors are visible and clear',
+      'acceptance.tpl.web.4': 'Mobile layout is not broken',
+      'acceptance.tpl.mobile.0': 'No horizontal scroll on small screens',
+      'acceptance.tpl.mobile.1': 'Touch targets are tappable and do not overlap',
+      'acceptance.tpl.mobile.2': 'The keyboard does not cover inputs',
+      'acceptance.tpl.mobile.3': 'Back and close actions work',
+      'acceptance.tpl.mobile.4': 'Portrait/landscape rotation keeps the layout',
+      'acceptance.tpl.internal.0': 'Login and permissions match expectations',
+      'acceptance.tpl.internal.1': 'Critical business flow works end to end',
+      'acceptance.tpl.internal.2': 'Errors are readable and locatable',
+      'acceptance.tpl.internal.3': 'Data can be exported or backed up',
+      'acceptance.tpl.internal.4': 'Usage documentation is findable',
       'todo.title': 'Workspace todos',
       'todo.hint': 'Saved with the workspace; the panel, chat tools and DeepSeek share one task board',
       'todo.loading': 'Reading todos…',
@@ -1607,6 +1844,29 @@ window.__ModuleLoader__.load({
       'todo.justNow': 'just now',
       'todo.updatedAt': 'Updated {time}',
       'todo.completedAt': 'Completed {time}',
+      'todo.dispatch': 'Send to product',
+      'todo.dispatching': 'Dispatching…',
+      'todo.dispatchHint': 'Use this todo as the requirement, start the product stage and dispatch its role prompt',
+      'todo.dispatchIntro': '“Send to product” turns the todo title and note into the requirement, starts the product stage and sends its role prompt to the current conversation.',
+      'todo.dispatchTag': 'dispatched',
+      'todo.dispatchTagsPrefix': 'Tags: ',
+      'todo.dispatchNoteLine': 'Dispatched to the product manager: {time} (round {round})',
+      'todo.dispatchNewTitle': 'Start a project from this todo?',
+      'todo.dispatchNewMessage': 'Set “{title}” as the current requirement, start the product stage and send its role prompt to the current conversation.',
+      'todo.dispatchNew': 'Start and dispatch',
+      'todo.dispatchReplaceTitle': 'Replace the current requirement?',
+      'todo.dispatchReplaceMessage': 'A requirement already exists but no stage has started. Replace it with “{title}” and start from the product stage.',
+      'todo.dispatchReplace': 'Replace and dispatch',
+      'todo.dispatchChangeTitle': 'Start a new change round?',
+      'todo.dispatchChangeMessage': 'The current project is complete. Start a full six-stage change round with “{title}” and begin at the product stage.',
+      'todo.dispatchChange': 'Start change and dispatch',
+      'todo.dispatchBusyTitle': 'A project is in progress',
+      'todo.dispatchBusyMessage': 'Stage “{stage}” is active or awaiting review. Finish or reject it in the Workbench first, or append this todo through Requirement adjustments.',
+      'todo.dispatchBusyAction': 'Open Workbench',
+      'todo.dispatchStartedMessage': 'This project already has started stages. Resolve them in the Pipeline panel (approve / reject / restart) first, or append this todo as a requirement revision.',
+      'todo.dispatchFailed': 'Dispatch failed: {message}',
+      'todo.dispatchSendFailed': 'The product stage started, but the role prompt could not be sent; dispatch again from the Workbench.',
+      'todo.dispatchDone': 'Dispatched “{title}” to the product manager (round {round})',
       'side.moveLeft': 'Move explorer to the left',
       'side.moveRight': 'Move explorer to the right',
       'search.placeholder': 'Search the workspace',
@@ -4777,7 +5037,7 @@ window.__ModuleLoader__.load({
       )
     }
 
-    function GitPanel({ root, t, onOpenDiff, showToast, onFilesChanged, onStatusChange }) {
+    function GitPanel({ root, t, onOpenDiff, showToast, onFilesChanged, onStatusChange, onReviewPersist, externalReviewMarks }) {
       const [status, setStatus] = useState(null)
       const [loading, setLoading] = useState(root !== null)
       const [error, setError] = useState(null)
@@ -4811,6 +5071,22 @@ window.__ModuleLoader__.load({
       const [confirmState, setConfirmState] = useState(null)
       // Per-file review marks survive a reload; a changed signature clears them.
       const [reviewed, setReviewed] = useState(() => readReviewMarks(root))
+      // Host-persisted marks (`.dsh/review.json`) win over a fresh browser: merge
+      // them into the local map so another device sees the same review state.
+      useEffect(() => {
+        if (externalReviewMarks === null || typeof externalReviewMarks !== 'object') return
+        setReviewed((current) => {
+          let changed = false
+          const next = { ...current }
+          for (const [filePath, signature] of Object.entries(externalReviewMarks)) {
+            if (typeof signature !== 'string' || next[filePath] === signature) continue
+            next[filePath] = signature
+            changed = true
+          }
+          if (changed) writeReviewMarks(root, next)
+          return changed ? next : current
+        })
+      }, [externalReviewMarks, root])
       const onStatusChangeRef = useRef(onStatusChange)
       onStatusChangeRef.current = onStatusChange
 
@@ -5303,9 +5579,11 @@ window.__ModuleLoader__.load({
       function toggleReviewed(entry) {
         setReviewed((current) => {
           const next = { ...current }
-          if (next[entry.path] === reviewSignature(entry)) delete next[entry.path]
-          else next[entry.path] = reviewSignature(entry)
+          const nowReviewed = next[entry.path] !== reviewSignature(entry)
+          if (nowReviewed) next[entry.path] = reviewSignature(entry)
+          else delete next[entry.path]
           writeReviewMarks(root, next)
+          if (typeof onReviewPersist === 'function') onReviewPersist(entry, nowReviewed)
           return next
         })
       }
@@ -7678,10 +7956,12 @@ window.__ModuleLoader__.load({
         const [todoQuery, setTodoQuery] = useState('')
         const [todoEditing, setTodoEditing] = useState(null)
         const [todoSaving, setTodoSaving] = useState(false)
+        const [todoDispatching, setTodoDispatching] = useState(null)
         const [taskSuggestions, setTaskSuggestions] = useState([])
         const [taskDetectBusy, setTaskDetectBusy] = useState(false)
         const [taskDetectError, setTaskDetectError] = useState(null)
         const [taskRuns, setTaskRuns] = useState([])
+        const [taskLedger, setTaskLedger] = useState([])
         const [taskActiveId, setTaskActiveId] = useState(null)
         const [taskError, setTaskError] = useState(null)
         const taskRunsRef = useRef([])
@@ -7731,6 +8011,18 @@ window.__ModuleLoader__.load({
         const [releaseNotesDraft, setReleaseNotesDraft] = useState('')
         const evidenceInputRef = useRef(null)
         const [deliveryBundle, setDeliveryBundle] = useState(null)
+        const [notifyEnabled, setNotifyEnabled] = useState(() => readStorage(NOTIFY_KEY) === '1')
+        const notifyRef = useRef({ stages: null, failedTaskIds: null, deliveryIds: null, ready: false })
+        const [acceptanceFilter, setAcceptanceFilter] = useState('all')
+        const [acceptanceTemplatesOpen, setAcceptanceTemplatesOpen] = useState(false)
+        const [acceptanceSelection, setAcceptanceSelection] = useState([])
+        const [verifications, setVerifications] = useState([])
+        const [verificationBusy, setVerificationBusy] = useState(false)
+        const [verificationSelection, setVerificationSelection] = useState([])
+        const [verificationOpen, setVerificationOpen] = useState(false)
+        const [reviewState, setReviewState] = useState(null)
+        const [reviewBusy, setReviewBusy] = useState(false)
+        const [preflightOpen, setPreflightOpen] = useState(false)
         const [paneView, setPaneView] = useState('files')
         const [sideTabsWidth, setSideTabsWidth] = useState(0)
         const [sideViewsOpen, setSideViewsOpen] = useState(false)
@@ -8018,15 +8310,27 @@ window.__ModuleLoader__.load({
           if (paneView === 'harness') void loadHarness()
           if (paneView === 'memory') void loadMemory()
           if (paneView === 'todo') void loadTodo()
-          if (paneView === 'tasks') void loadTasks()
+          if (paneView === 'tasks') {
+            void loadTasks()
+            void loadTaskLedger()
+          }
           if (paneView === 'acceptance') {
             void loadAcceptance()
             void loadEvidence()
             void loadDeliveryHistory()
             void loadPreviewShares()
+            void loadVerifications()
+            void loadReviewState()
+            if (taskSuggestions.length === 0) void loadTasks({ silent: true })
           }
+          if (paneView === 'git') void loadReviewState()
           if (paneView === 'pipeline') void loadPipeline()
-          if (workbenchTabActive) void loadWorkbench()
+          if (workbenchTabActive) {
+            void loadWorkbench()
+            void loadVerifications()
+            void loadReviewState()
+            if (taskSuggestions.length === 0) void loadTasks({ silent: true })
+          }
           return undefined
         }, [paneView, state.root, workbenchTabActive])
 
@@ -8136,6 +8440,104 @@ window.__ModuleLoader__.load({
           return () => window.clearInterval(timer)
           // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [paneView, pipelineBusy])
+
+        // Always-on reminder poll: keep the pipeline and acceptance state fresh
+        // so the sidebar badge and the page title can flag pending work even
+        // while the owner is reading the conversation or editing a file.
+        useEffect(() => {
+          if (state.root === null) return undefined
+          const tick = () => {
+            if (document.hidden) return
+            if (!pipelineBusy) void loadPipeline({ silent: true })
+            if (!acceptanceBusy) void loadAcceptance({ silent: true })
+          }
+          const timer = window.setInterval(tick, REMINDER_POLL_MS)
+          window.addEventListener('focus', tick)
+          tick()
+          return () => {
+            window.clearInterval(timer)
+            window.removeEventListener('focus', tick)
+          }
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [state.root])
+
+        // Prefix the page title with the number of items that wait for the owner.
+        useEffect(() => {
+          const base = stripAttentionTitle(document.title)
+          if (base.length === 0) return
+          const count = totalAttentionCount()
+          document.title = count > 0 ? `(${String(count)}) ${base}` : base
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [pipelineDoc, acceptanceItems])
+
+        // Keep the stage-scoped change review fresh while a review surface is open.
+        useEffect(() => {
+          if (!workbenchTabActive && paneView !== 'git' && paneView !== 'acceptance') return undefined
+          void loadReviewState()
+          return undefined
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [pipelineDoc, workbenchTabActive, paneView, state.root])
+
+        // Tell the owner when a stage starts waiting for review or gets rejected.
+        useEffect(() => {
+          const stages = pipelineDoc !== null && typeof pipelineDoc === 'object' && Array.isArray(pipelineDoc.stages) ? pipelineDoc.stages : []
+          const current = new Map()
+          for (const stage of stages) {
+            if (stage === null || typeof stage !== 'object' || typeof stage.id !== 'string') continue
+            current.set(stage.id, stage.status)
+          }
+          const previous = notifyRef.current.stages
+          if (previous !== null) {
+            for (const stage of stages) {
+              if (stage === null || typeof stage !== 'object' || typeof stage.id !== 'string') continue
+              const before = previous.get(stage.id)
+              if (before === stage.status) continue
+              const label = t('pipeline.stage.' + String(stage.id))
+              if (stage.status === 'review') {
+                showBrowserNotification(t('notify.stageReviewTitle'), t('notify.stageReviewBody', { stage: label }), 'pipeline')
+              } else if (stage.status === 'failed') {
+                const note = typeof stage.note === 'string' && stage.note.trim().length > 0 ? stage.note.trim() : ''
+                showBrowserNotification(t('notify.stageRejectedTitle'), t('notify.stageRejectedBody', { stage: label, note }), 'pipeline')
+              }
+            }
+          }
+          notifyRef.current.stages = current
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [pipelineDoc])
+
+        // Failed task runs become a notification once (while the page is hidden).
+        useEffect(() => {
+          const failed = taskRuns.filter((run) => run !== null && typeof run === 'object' && run.status === 'failed')
+          const current = new Set(failed.map((run) => run.id))
+          const previous = notifyRef.current.failedTaskIds
+          if (previous !== null) {
+            for (const run of failed) {
+              if (previous.has(run.id)) continue
+              const name = typeof run.name === 'string' && run.name.length > 0 ? run.name : String(run.command ?? '')
+              showBrowserNotification(
+                t('notify.taskFailedTitle'),
+                t('notify.taskFailedBody', { name, code: String(run.exitCode ?? '?') }),
+                'tasks',
+              )
+            }
+          }
+          notifyRef.current.failedTaskIds = current
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [taskRuns])
+
+        // New delivery bundles are worth a notification during a release.
+        useEffect(() => {
+          const current = new Set(deliveryHistory.map((record) => String(record?.id ?? '')))
+          const previous = notifyRef.current.deliveryIds
+          if (previous !== null) {
+            const latest = deliveryHistory[0]
+            if (latest !== undefined && !previous.has(String(latest?.id ?? ''))) {
+              showBrowserNotification(t('notify.deliveryTitle'), t('notify.deliveryBody', { name: String(latest?.name ?? '') }), 'acceptance')
+            }
+          }
+          notifyRef.current.deliveryIds = current
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [deliveryHistory])
 
         // Keep the requirement form in sync with the Host document unless the
         // owner is editing it.
@@ -9287,6 +9689,7 @@ window.__ModuleLoader__.load({
               const latest = taskRunsRef.current.find((entry) => entry.id === id)
               if (latest === undefined || latest.running !== true) {
                 stopTaskPolling(id)
+                void loadTaskLedger()
                 return
               }
               taskPollTimersRef.current.set(id, window.setTimeout(() => void step(), TASK_POLL_GAP_MS))
@@ -9340,6 +9743,24 @@ window.__ModuleLoader__.load({
             setTaskDetectError(errorText(error))
           } finally {
             setTaskDetectBusy(false)
+          }
+        }
+
+        /** Read the Host task ledger (`.dsh/runs.json`) for agent/panel runs. */
+        async function loadTaskLedger() {
+          const targetRoot = store.get().root
+          if (targetRoot === null) {
+            setTaskLedger([])
+            return
+          }
+          try {
+            const read = await call('read', { root: targetRoot, path: '.dsh/runs.json' })
+            const text = typeof read?.content === 'string' ? read.content : ''
+            const parsed = JSON.parse(text)
+            if (store.get().root !== targetRoot) return
+            setTaskLedger(Array.isArray(parsed?.runs) ? parsed.runs.slice(0, 20) : [])
+          } catch {
+            if (store.get().root === targetRoot) setTaskLedger([])
           }
         }
 
@@ -10052,6 +10473,18 @@ ${tail}
         /** Move one item to a new acceptance status. */
         function setAcceptanceStatus(item, status) {
           if (item === null || typeof item !== 'object' || item.status === status) return
+          if (status === 'pass' && itemEvidence(item).length === 0) {
+            setModal({
+              title: t('acceptance.evidenceGapConfirmTitle'),
+              message: t('acceptance.evidenceGapConfirm'),
+              confirmLabel: t('acceptance.evidenceGapContinue'),
+              onConfirm: () => {
+                setModal(null)
+                void mutateAcceptance('acceptanceUpdate', { id: item.id, status })
+              },
+            })
+            return
+          }
           void mutateAcceptance('acceptanceUpdate', { id: item.id, status })
         }
 
@@ -10249,6 +10682,427 @@ ${tail}
           if (sent) setChatOpen(true)
         }
 
+        /* ------------------------------------------------------------------ *
+         * Evidence helpers, reminder counters and browser notifications
+         * ------------------------------------------------------------------ */
+
+        /** Evidence rows of one acceptance item (always an array). */
+        function itemEvidence(item) {
+          return item !== null && typeof item === 'object' && Array.isArray(item.evidence) ? item.evidence : []
+        }
+
+        /** A pass item without any attached evidence is an evidence gap. */
+        function itemHasEvidenceGap(item) {
+          return item !== null && typeof item === 'object' && item.status === 'pass' && itemEvidence(item).length === 0
+        }
+
+        /** Number of pass items that no evidence backs. */
+        function evidenceGapCount(items) {
+          return (Array.isArray(items) ? items : []).filter(itemHasEvidenceGap).length
+        }
+
+        /** Stages that wait for the owner: submitted for review or rejected. */
+        function pipelineAttentionStages() {
+          const stages = pipelineDoc !== null && typeof pipelineDoc === 'object' && Array.isArray(pipelineDoc.stages) ? pipelineDoc.stages : []
+          return stages.filter((stage) => stage !== null && typeof stage === 'object' && (stage.status === 'review' || stage.status === 'failed'))
+        }
+
+        /** One number behind the title badge and the reminder poll. */
+        function totalAttentionCount() {
+          const failed = acceptanceItems.filter((item) => item !== null && typeof item === 'object' && item.status === 'fail').length
+          return pipelineAttentionStages().length + failed + evidenceGapCount(acceptanceItems)
+        }
+
+        /** Page-title prefix so a background tab still shows pending work. */
+        function stripAttentionTitle(value) {
+          return typeof value === 'string' ? value.replace(/^\(\d+\)\s*/u, '') : ''
+        }
+
+        /** Whether the current browser can show system notifications. */
+        function notificationsAvailable() {
+          return typeof window !== 'undefined' && typeof window.Notification === 'function'
+        }
+
+        /** Enable browser notifications after an explicit owner gesture. */
+        async function enableNotifications() {
+          if (!notificationsAvailable()) {
+            showToast(t('workbench.notifyDenied'))
+            return
+          }
+          try {
+            const permission = await window.Notification.requestPermission()
+            if (permission === 'granted') {
+              setNotifyEnabled(true)
+              writeStorage(NOTIFY_KEY, '1')
+              showToast(t('workbench.notifyOn'))
+              if (typeof window.Notification === 'function') {
+                const note = new window.Notification(t('notify.deliveryTitle'), { body: t('workbench.notifyOn'), tag: 'dshwfb-enabled' })
+                note.onclick = () => window.focus()
+              }
+            } else {
+              setNotifyEnabled(false)
+              writeStorage(NOTIFY_KEY, '0')
+              showToast(t('workbench.notifyDenied'))
+            }
+          } catch {
+            setNotifyEnabled(false)
+            writeStorage(NOTIFY_KEY, '0')
+            showToast(t('workbench.notifyDenied'))
+          }
+        }
+
+        /** One notification, only while the page is hidden and permission exists. */
+        function showBrowserNotification(title, body, view) {
+          if (!notifyEnabled || !notificationsAvailable()) return
+          if (window.Notification.permission !== 'granted') return
+          if (!document.hidden) return
+          try {
+            const note = new window.Notification(title, { body, tag: 'dshwfb-' + String(view ?? 'project') })
+            note.onclick = () => {
+              window.focus()
+              if (view === 'pipeline') openPipeline()
+              else if (view === 'acceptance') openAcceptance()
+            }
+          } catch {
+            /* notifications are best effort */
+          }
+        }
+
+        /** The most recently started pipeline stage, used as the review baseline. */
+        function reviewStageContext() {
+          const stages = pipelineDoc !== null && typeof pipelineDoc === 'object' && Array.isArray(pipelineDoc.stages) ? pipelineDoc.stages : []
+          const started = stages
+            .filter((stage) => stage !== null && typeof stage === 'object' && Number.isFinite(stage.startedAt) && stage.startedAt > 0)
+            .sort((left, right) => right.startedAt - left.startedAt)[0]
+          if (started === undefined) return {}
+          return {
+            stageId: String(started.id ?? ''),
+            round: Number.isInteger(pipelineDoc.round) && pipelineDoc.round > 0 ? pipelineDoc.round : undefined,
+          }
+        }
+
+        /** Read the persisted review state (falls back to null on older Hosts). */
+        async function loadReviewState(options = {}) {
+          const targetRoot = store.get().root
+          if (targetRoot === null) {
+            setReviewState(null)
+            return
+          }
+          const context = reviewStageContext()
+          const stageId = typeof options?.stageId === 'string' ? options.stageId : context.stageId
+          const round = Number.isInteger(options?.round) ? options.round : context.round
+          try {
+            const value = await call('reviewState', { root: targetRoot, stageId, round })
+            if (store.get().root !== targetRoot) return
+            setReviewState(value === null || typeof value !== 'object' ? null : value)
+          } catch {
+            if (store.get().root === targetRoot) setReviewState(null)
+          }
+        }
+
+        /** Mark one changed file reviewed and refresh the counters. */
+        async function markReviewFile(file, reviewed) {
+          const targetRoot = store.get().root
+          if (targetRoot === null || file === null || typeof file !== 'object') return
+          setReviewBusy(true)
+          try {
+            if (reviewed) {
+              await call('reviewMark', { root: targetRoot, path: file.path, sig: file.sig })
+            } else {
+              await call('reviewClear', { root: targetRoot, path: file.path })
+            }
+            await loadReviewState()
+          } catch (error) {
+            showToast(errorText(error))
+          } finally {
+            setReviewBusy(false)
+          }
+        }
+
+        /** Mark every visible change reviewed in one call (kept as a loop for compat). */
+        async function markAllChangesReviewed() {
+          const files = reviewState !== null && Array.isArray(reviewState.files) ? reviewState.files.filter((file) => file.reviewed !== true) : []
+          for (const file of files) await markReviewFile(file, true)
+        }
+
+        /** Read saved verification records (newest first). */
+        async function loadVerifications() {
+          const targetRoot = store.get().root
+          if (targetRoot === null) {
+            setVerifications([])
+            return
+          }
+          try {
+            const value = await call('list', { root: targetRoot, path: '.dsh/verifications' })
+            const entries = Array.isArray(value?.entries) ? value.entries : []
+            const files = entries
+              .filter((entry) => entry !== null && typeof entry === 'object' && typeof entry.name === 'string' && entry.name.endsWith('.json'))
+              .map((entry) => `.dsh/verifications/${entry.name}`)
+              .sort()
+              .reverse()
+              .slice(0, 20)
+            const records = []
+            for (const path of files) {
+              try {
+                const read = await call('read', { root: targetRoot, path })
+                const text = typeof read?.content === 'string' ? read.content : ''
+                const parsed = JSON.parse(text)
+                if (parsed !== null && typeof parsed === 'object') records.push({ path, ...parsed })
+              } catch {
+                /* skip a corrupt record */
+              }
+            }
+            if (store.get().root === targetRoot) setVerifications(records)
+          } catch {
+            if (store.get().root === targetRoot) setVerifications([])
+          }
+        }
+
+        /** Newest verification record, or null. */
+        function latestVerification() {
+          return verifications.length > 0 ? verifications[0] : null
+        }
+
+        /** Toggle one detected command in the verification plan. */
+        function toggleVerificationCommand(command) {
+          if (typeof command !== 'string' || command.length === 0) return
+          setVerificationSelection((current) =>
+            current.includes(command) ? current.filter((entry) => entry !== command) : [...current, command],
+          )
+        }
+
+        /** Follow one Host task until it exits (bounded to 30 minutes). */
+        async function pollVerificationTask(taskId) {
+          let since = 0
+          let output = ''
+          let closed = false
+          let exitCode = null
+          let signal = null
+          let durationMs = 0
+          const deadline = Date.now() + 30 * 60_000
+          while (!closed && Date.now() < deadline) {
+            const chunk = await callTasks('poll', { id: taskId, since, wait: 1000 })
+            if (chunk === null || typeof chunk !== 'object') break
+            if (typeof chunk.data === 'string') output += chunk.data
+            if (Number.isFinite(chunk.next)) since = chunk.next
+            if (chunk.closed === true) {
+              closed = true
+              exitCode = Number.isInteger(chunk.exitCode) ? chunk.exitCode : null
+              signal = typeof chunk.signal === 'string' ? chunk.signal : null
+              durationMs = Number.isFinite(chunk.durationMs) ? chunk.durationMs : 0
+            }
+          }
+          return { output: output.slice(-200_000), closed, exitCode, signal, durationMs }
+        }
+
+        /** Run the selected detected commands and record a verification snapshot. */
+        async function runVerification() {
+          const targetRoot = store.get().root
+          if (targetRoot === null) return
+          const suggestions = Array.isArray(taskSuggestions) ? taskSuggestions : []
+          const chosen = suggestions.filter((suggestion) => suggestion !== null && typeof suggestion === 'object' && verificationSelection.includes(suggestion.id))
+          if (chosen.length === 0) {
+            showToast(t('acceptance.retestChoose'))
+            return
+          }
+          setVerificationBusy(true)
+          setVerificationOpen(true)
+          setAcceptanceError(null)
+          try {
+            try {
+              await call('createDir', { root: targetRoot, path: '.dsh' })
+            } catch {
+              /* exists */
+            }
+            try {
+              await call('createDir', { root: targetRoot, path: '.dsh/verifications' })
+            } catch {
+              /* exists */
+            }
+            const startedAt = Date.now()
+            const stamp = `${timestampSlug()}-${startedAt.toString(36)}`
+            const runs = []
+            for (const [index, suggestion] of chosen.entries()) {
+              const started = Date.now()
+              let result
+              try {
+                const task = await callTasks('start', {
+                  root: targetRoot,
+                  command: suggestion.command,
+                  name: typeof suggestion.label === 'string' && suggestion.label.length > 0 ? suggestion.label : suggestion.command,
+                  source: 'verify',
+                })
+                result = await pollVerificationTask(task.id)
+              } catch (error) {
+                result = { output: errorText(error), closed: true, exitCode: null, signal: null, durationMs: Date.now() - started }
+              }
+              const problems = extractTaskProblems(result.output)
+              const logPath = `.dsh/verifications/${stamp}-${String(index + 1)}.log`
+              try {
+                await call('write', {
+                  root: targetRoot,
+                  path: logPath,
+                  content: `# ${suggestion.command}\nexit=${String(result.exitCode)}\n\n${result.output}`,
+                })
+              } catch {
+                /* a missing log is acceptable */
+              }
+              runs.push({
+                command: suggestion.command,
+                label: typeof suggestion.label === 'string' ? suggestion.label : suggestion.command,
+                exitCode: result.exitCode,
+                signal: result.signal,
+                durationMs: Number.isFinite(result.durationMs) && result.durationMs > 0 ? result.durationMs : Date.now() - started,
+                problems,
+                logPath,
+              })
+            }
+            const passed = runs.filter((run) => run.exitCode === 0).length
+            const failed = runs.filter((run) => run.exitCode !== 0).length
+            const recordPath = `.dsh/verifications/${stamp}.json`
+            const record = { id: stamp, createdAt: startedAt, passed, failed, runs }
+            await call('write', { root: targetRoot, path: recordPath, content: JSON.stringify(record, null, 2) })
+            const selectedItem = acceptanceItemById(acceptanceSelected)
+            if (selectedItem !== null) {
+              await attachEvidence(selectedItem, recordPath)
+              for (const run of runs.slice(0, 2)) await attachEvidence(selectedItem, run.logPath)
+            }
+            await loadVerifications()
+            await loadEvidence({ silent: true })
+            showToast(t('acceptance.retestDone', { pass: String(passed), fail: String(failed) }))
+          } catch (error) {
+            setAcceptanceError(acceptanceErrorText(error))
+          } finally {
+            setVerificationBusy(false)
+          }
+        }
+
+        /** Send the failed commands of one verification record to the agent. */
+        async function sendVerificationToAgent(record) {
+          const runs = record !== null && typeof record === 'object' && Array.isArray(record.runs) ? record.runs : []
+          const failed = runs.filter((run) => run !== null && typeof run === 'object' && run.exitCode !== 0)
+          if (failed.length === 0) {
+            showToast(t('acceptance.noFailures'))
+            return
+          }
+          const lines = failed.map((run, index) => {
+            const problems = (Array.isArray(run.problems) ? run.problems : [])
+              .slice(0, 5)
+              .map((problem) => `   ${String(problem.path ?? '')}:${String(problem.line ?? '')} ${String(problem.message ?? '')}`)
+            return `${String(index + 1)}. ${String(run.command ?? '')}（exit ${String(run.exitCode ?? '?')}）${problems.length > 0 ? '\n' + problems.join('\n') : ''}`
+          })
+          const prompt = `复测失败。请修复下面这些命令暴露的问题，修好后重新运行并说明结果：\n\n${lines.join('\n')}`
+          await sendPromptText(prompt)
+        }
+
+        /** Items matching the acceptance filter chip. */
+        function acceptanceFilteredItems() {
+          return acceptanceItems.filter((item) => {
+            if (item === null || typeof item !== 'object') return false
+            if (acceptanceFilter === 'incomplete') return item.status === 'pending' || item.status === 'blocked'
+            if (acceptanceFilter === 'fail') return item.status === 'fail'
+            if (acceptanceFilter === 'gap') return itemHasEvidenceGap(item)
+            return true
+          })
+        }
+
+        /** Toggle one acceptance row in the batch selection. */
+        function toggleAcceptanceSelection(id) {
+          if (typeof id !== 'string') return
+          setAcceptanceSelection((current) => (current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id]))
+        }
+
+        /** Batch-update every selected acceptance item. */
+        async function batchSetAcceptanceStatus(status) {
+          const targetRoot = store.get().root
+          if (targetRoot === null) return
+          const ids = acceptanceSelection.filter((id) => acceptanceItemById(id) !== null)
+          if (ids.length === 0) return
+          const gaps = ids.filter((id) => itemHasEvidenceGap(acceptanceItemById(id)))
+          const run = async () => {
+            setAcceptanceSaving(true)
+            setAcceptanceError(null)
+            try {
+              for (const id of ids) {
+                try {
+                  await call('acceptanceUpdate', { root: targetRoot, id, status })
+                } catch (error) {
+                  setAcceptanceError(acceptanceErrorText(error))
+                  break
+                }
+              }
+              await loadAcceptance({ silent: true })
+              setAcceptanceSelection([])
+            } finally {
+              setAcceptanceSaving(false)
+            }
+          }
+          if (status === 'pass' && gaps.length > 0) {
+            setModal({
+              title: t('acceptance.evidenceGapConfirmTitle'),
+              message: t('acceptance.evidenceGapConfirm'),
+              confirmLabel: t('acceptance.evidenceGapContinue'),
+              onConfirm: () => {
+                setModal(null)
+                void run()
+              },
+            })
+            return
+          }
+          await run()
+        }
+
+        /** The built-in acceptance templates shown in the panel. */
+        function acceptanceTemplates() {
+          return [
+            {
+              id: 'web',
+              label: t('acceptance.templateWeb'),
+              category: t('acceptance.templateWeb'),
+              items: [0, 1, 2, 3, 4].map((index) => t('acceptance.tpl.web.' + String(index))),
+            },
+            {
+              id: 'mobile',
+              label: t('acceptance.templateMobile'),
+              category: t('acceptance.templateMobile'),
+              items: [0, 1, 2, 3, 4].map((index) => t('acceptance.tpl.mobile.' + String(index))),
+            },
+            {
+              id: 'internal',
+              label: t('acceptance.templateInternal'),
+              category: t('acceptance.templateInternal'),
+              items: [0, 1, 2, 3, 4].map((index) => t('acceptance.tpl.internal.' + String(index))),
+            },
+          ]
+        }
+
+        /** Append one template's items, skipping titles that already exist. */
+        async function applyAcceptanceTemplate(template) {
+          const targetRoot = store.get().root
+          if (targetRoot === null || template === null || typeof template !== 'object') return
+          const existing = new Set(acceptanceItems.map((item) => String(item.title ?? '')))
+          let added = 0
+          setAcceptanceSaving(true)
+          setAcceptanceError(null)
+          try {
+            for (const title of Array.isArray(template.items) ? template.items : []) {
+              if (existing.has(title)) continue
+              try {
+                await call('acceptanceAdd', { root: targetRoot, title, category: template.category })
+                existing.add(title)
+                added += 1
+              } catch (error) {
+                setAcceptanceError(acceptanceErrorText(error))
+                break
+              }
+            }
+            await loadAcceptance({ silent: true })
+            showToast(added > 0 ? t('acceptance.templateApplied', { count: String(added) }) : t('acceptance.templateExists'))
+          } finally {
+            setAcceptanceSaving(false)
+          }
+        }
+
         /** Read the workspace delivery history. */
         async function loadDeliveryHistory() {
           const targetRoot = store.get().root
@@ -10385,19 +11239,90 @@ ${tail}
           }
         }
 
-        /** Append one evidence path to the selected acceptance item note. */
-        async function attachEvidenceNote(relativePath) {
-          if (acceptanceSelected === null) {
-            showToast(t('acceptance.evidenceNoItem'))
+        /** Pick an evidence kind from the file extension. */
+        function evidenceKindForPath(relativePath) {
+          const value = String(relativePath ?? '').toLowerCase()
+          if (/^https?:\/\//u.test(value)) return 'url'
+          if (/\.(?:png|jpe?g|gif|webp|avif|bmp|svg)$/u.test(value)) return 'screenshot'
+          if (/\.(?:diff|patch)$/u.test(value)) return 'diff'
+          if (/\.(?:pdf|md|markdown)$/u.test(value)) return 'report'
+          return 'log'
+        }
+
+        /** Open one evidence entry: links go to the browser, files to the editor. */
+        function openEvidenceEntry(entry) {
+          const relative = typeof entry?.path === 'string' ? entry.path : ''
+          if (relative.length === 0) return
+          if (/^https?:\/\//u.test(relative)) {
+            window.open(relative, '_blank', 'noopener,noreferrer')
             return
           }
-          const item = acceptanceItems.find((entry) => entry.id === acceptanceSelected)
-          if (item === undefined) return
-          const previous = typeof item.note === 'string' ? item.note.trim() : ''
-          const line = `证据：${relativePath}`
-          const note = previous.length === 0 ? line : `${previous}\n${line}`
-          const ok = await mutateAcceptance('acceptanceUpdate', { id: item.id, note })
-          if (ok) setAcceptanceNoteDraft(note)
+          void openFileAt(relative, 1, 1)
+        }
+
+        /** Human label of one evidence entry. */
+        function evidenceLabel(entry) {
+          if (entry !== null && typeof entry === 'object' && typeof entry.label === 'string' && entry.label.length > 0) return entry.label
+          const relative = typeof entry?.path === 'string' ? entry.path : ''
+          return relative.split('/').pop() ?? relative
+        }
+
+        /** Whether one evidence path is an image rendered as a thumbnail. */
+        function isImageEvidence(relativePath) {
+          return /\.(?:png|jpe?g|gif|webp|avif|bmp|svg)$/iu.test(String(relativePath ?? ''))
+        }
+
+        /** Get one acceptance item by id. */
+        function acceptanceItemById(id) {
+          return acceptanceItems.find((entry) => entry !== null && typeof entry === 'object' && entry.id === id) ?? null
+        }
+
+        /** Attach one uploaded file (or URL) to an acceptance item. */
+        async function attachEvidence(item, relativePath) {
+          if (item === null || typeof item !== 'object') {
+            showToast(t('acceptance.evidenceNoItem'))
+            return false
+          }
+          const targetRoot = store.get().root
+          if (targetRoot === null) return false
+          const kind = evidenceKindForPath(relativePath)
+          try {
+            await call('acceptanceEvidenceAdd', {
+              root: targetRoot,
+              id: item.id,
+              path: relativePath,
+              kind,
+              label: t('acceptance.evidenceKind.' + kind),
+            })
+            await loadAcceptance({ silent: true })
+            showToast(t('acceptance.evidenceSelected', { title: String(item.title ?? '') }))
+            return true
+          } catch (error) {
+            if (errorCode(error) === 'bad-op') {
+              // Older Host: fall back to the note text the panel used before.
+              const previous = typeof item.note === 'string' ? item.note.trim() : ''
+              const line = `证据：${relativePath}`
+              const note = previous.length === 0 ? line : `${previous}\n${line}`
+              const ok = await mutateAcceptance('acceptanceUpdate', { id: item.id, note })
+              if (ok) setAcceptanceNoteDraft(note)
+              return ok
+            }
+            setAcceptanceError(t('acceptance.evidenceFailed', { message: acceptanceErrorText(error) }))
+            return false
+          }
+        }
+
+        /** Remove one evidence entry from the selected acceptance item. */
+        async function removeEvidence(item, relativePath) {
+          if (item === null || typeof item !== 'object') return
+          const targetRoot = store.get().root
+          if (targetRoot === null) return
+          try {
+            await call('acceptanceEvidenceRemove', { root: targetRoot, id: item.id, path: relativePath })
+            await loadAcceptance({ silent: true })
+          } catch (error) {
+            setAcceptanceError(t('acceptance.evidenceFailed', { message: acceptanceErrorText(error) }))
+          }
         }
 
         /** Upload one screenshot / artefact into the workspace evidence folder. */
@@ -10440,9 +11365,13 @@ ${tail}
               }
             }
             if (uploaded.length > 0) {
-              if (uploaded.length === 1) await attachEvidenceNote(uploaded[0].path)
+              const item = acceptanceItemById(acceptanceSelected)
+              if (item === null) {
+                showToast(t('acceptance.evidenceNeedItem'))
+              } else {
+                for (const entry of uploaded) await attachEvidence(item, entry.path)
+              }
               await loadEvidence({ silent: true })
-              if (uploaded.length > 1) showToast(t('acceptance.evidenceNoItem'))
             }
           } finally {
             setEvidenceBusy(false)
@@ -10675,6 +11604,208 @@ ${tail}
               void deleteTodoTask(task.id)
             },
           })
+        }
+
+        /** Requirement title/detail built from one backlog item. */
+        function todoRequirementPayload(task) {
+          const title = String(task?.title ?? '').trim().slice(0, 500)
+          const note = typeof task?.note === 'string' ? task.note.trim() : ''
+          const dispatchTag = t('todo.dispatchTag')
+          const tags = (Array.isArray(task?.tags) ? task.tags : []).filter(
+            (tag) => typeof tag === 'string' && tag.trim().length > 0 && tag.trim() !== dispatchTag,
+          )
+          const parts = []
+          if (note.length > 0) parts.push(note)
+          if (tags.length > 0) parts.push(t('todo.dispatchTagsPrefix') + tags.join(', '))
+          parts.push('来源：工作区待办「' + title + '」')
+          return { title, detail: parts.join('\n\n').slice(0, 20_000) }
+        }
+
+        /** Tag the backlog item as dispatched and append one note line. */
+        async function markTodoDispatched(task, round) {
+          const root = store.get().root
+          if (root === null || task === null || typeof task !== 'object') return
+          const dispatchTag = t('todo.dispatchTag')
+          const tags = (Array.isArray(task.tags) ? task.tags : []).filter((entry) => entry !== dispatchTag)
+          tags.push(dispatchTag)
+          const previous = typeof task.note === 'string' ? task.note.trim() : ''
+          const line = t('todo.dispatchNoteLine', { time: new Date().toLocaleString(), round: String(round) })
+          const note = previous.length === 0 ? line : `${previous}\n${line}`
+          try {
+            const value = await call('todoUpdate', {
+              root,
+              id: task.id,
+              tags: tags.slice(0, 8),
+              note: note.slice(0, 4000),
+            })
+            applyTodoSnapshot(value)
+          } catch (error) {
+            setTodoError(t('todo.dispatchFailed', { message: todoErrorText(error) }))
+          }
+        }
+
+        /**
+         * Start the pipeline from a backlog item and dispatch the product prompt.
+         * `mode` is `new` (write the requirement), `replace` (same, replacing a
+         * requirement whose stages never started) or `change` (start a new round
+         * on a completed project). The actual product start/prompt is shared.
+         */
+        async function dispatchTodoRun(task, mode) {
+          const root = store.get().root
+          if (root === null) {
+            setTodoError(t('todo.noRoot'))
+            return
+          }
+          if (isSshRootPath(root)) {
+            setTodoError(t('todo.sshUnsupported'))
+            return
+          }
+          const payload = todoRequirementPayload(task)
+          if (payload.title.length === 0) {
+            setTodoError(t('todo.titleRequired'))
+            return
+          }
+          setTodoDispatching(task.id)
+          setTodoError(null)
+          try {
+            let round = pipelineDoc !== null && Number.isInteger(pipelineDoc.round) && pipelineDoc.round > 0 ? pipelineDoc.round : 1
+            if (mode === 'change') {
+              const value = await call('pipelineStartChange', {
+                root,
+                title: payload.title,
+                detail: payload.detail,
+                scope: 'full',
+              })
+              round = value !== null && typeof value === 'object' && Number.isInteger(value.round) ? value.round : round + 1
+            } else {
+              await call('pipelineSetRequirement', { root, title: payload.title, detail: payload.detail })
+            }
+            await call('pipelineStart', { root, stageId: 'product' })
+            const promptValue = await call('pipelinePrompt', { root, stageId: 'product' })
+            await loadPipeline({ silent: true })
+            const prompt = typeof promptValue?.prompt === 'string' ? promptValue.prompt : ''
+            const sent = prompt.length > 0 ? await sendPromptText(prompt) : false
+            if (sent) {
+              await markTodoDispatched(task, round)
+              showToast(t('todo.dispatchDone', { title: payload.title, round: String(round) }))
+              openWorkbench()
+            } else {
+              setTodoError(t('todo.dispatchSendFailed'))
+            }
+            await loadWorkbench({ silent: true })
+          } catch (error) {
+            setTodoError(t('todo.dispatchFailed', { message: pipelineErrorText(error) }))
+            await loadPipeline({ silent: true })
+          } finally {
+            setTodoDispatching(null)
+          }
+        }
+
+        /** One-click dispatch: confirm how this todo enters the pipeline. */
+        async function requestDispatchTodo(task) {
+          const root = store.get().root
+          if (root === null) {
+            setTodoError(t('todo.noRoot'))
+            return
+          }
+          if (isSshRootPath(root)) {
+            setTodoError(t('todo.sshUnsupported'))
+            return
+          }
+          if (todoDispatching !== null) return
+          const payload = todoRequirementPayload(task)
+          if (payload.title.length === 0) {
+            setTodoError(t('todo.titleRequired'))
+            return
+          }
+          setTodoDispatching(task.id)
+          setTodoError(null)
+          try {
+            const snapshot = await call('pipelineList', { root })
+            const doc = snapshot !== null && typeof snapshot === 'object' && snapshot.doc !== undefined ? snapshot.doc : snapshot
+            const stages =
+              doc !== null && typeof doc === 'object' && Array.isArray(doc.stages) ? doc.stages : []
+            const requirement =
+              doc !== null && typeof doc === 'object' && doc.requirement !== null && typeof doc.requirement === 'object'
+                ? doc.requirement
+                : {}
+            const hasRequirement = typeof requirement.title === 'string' && requirement.title.trim().length > 0
+            const complete =
+              stages.length > 0 &&
+              stages.every((stage) => stage !== null && typeof stage === 'object' && stage.status === 'approved')
+            const active =
+              stages.find(
+                (stage) =>
+                  stage !== null && typeof stage === 'object' && (stage.status === 'active' || stage.status === 'review'),
+              ) ?? null
+            const started = stages.some(
+              (stage) =>
+                stage !== null &&
+                typeof stage === 'object' &&
+                (stage.status !== 'pending' || (Number.isFinite(stage.startedAt) && stage.startedAt > 0)),
+            )
+            if (active !== null) {
+              setModal({
+                title: t('todo.dispatchBusyTitle'),
+                message: t('todo.dispatchBusyMessage', { stage: t('pipeline.stage.' + String(active.id)) }),
+                confirmLabel: t('todo.dispatchBusyAction'),
+                onConfirm: () => {
+                  setModal(null)
+                  openWorkbench()
+                },
+              })
+              return
+            }
+            if (complete) {
+              setModal({
+                title: t('todo.dispatchChangeTitle'),
+                message: t('todo.dispatchChangeMessage', { title: payload.title }),
+                confirmLabel: t('todo.dispatchChange'),
+                onConfirm: () => {
+                  setModal(null)
+                  void dispatchTodoRun(task, 'change')
+                },
+              })
+              return
+            }
+            if (started) {
+              setModal({
+                title: t('todo.dispatchBusyTitle'),
+                message: t('todo.dispatchStartedMessage'),
+                confirmLabel: t('todo.dispatchBusyAction'),
+                onConfirm: () => {
+                  setModal(null)
+                  openWorkbench()
+                },
+              })
+              return
+            }
+            if (hasRequirement) {
+              setModal({
+                title: t('todo.dispatchReplaceTitle'),
+                message: t('todo.dispatchReplaceMessage', { title: payload.title }),
+                confirmLabel: t('todo.dispatchReplace'),
+                onConfirm: () => {
+                  setModal(null)
+                  void dispatchTodoRun(task, 'replace')
+                },
+              })
+              return
+            }
+            setModal({
+              title: t('todo.dispatchNewTitle'),
+              message: t('todo.dispatchNewMessage', { title: payload.title }),
+              confirmLabel: t('todo.dispatchNew'),
+              onConfirm: () => {
+                setModal(null)
+                void dispatchTodoRun(task, 'new')
+              },
+            })
+          } catch (error) {
+            setTodoError(t('todo.dispatchFailed', { message: pipelineErrorText(error) }))
+          } finally {
+            setTodoDispatching(null)
+          }
         }
 
         /** Remove every completed task after confirmation. */
@@ -14332,6 +15463,31 @@ ${tail}
                 ),
             taskDetectError === null ? null : h('div', { className: 'ds-errorline' }, taskDetectError),
             taskError === null ? null : h('div', { className: 'ds-errorline' }, taskError),
+            taskLedger.length === 0
+              ? null
+              : h(
+                  'div',
+                  { className: 'ds-task-ledger' },
+                  h('div', { className: 'ds-task-runs-head' }, t('tasks.ledger')),
+                  taskLedger.slice(0, 6).map((entry) =>
+                    h(
+                      'div',
+                      { key: String(entry.id ?? entry.startedAt), className: 'ds-task-run-row' },
+                      h('span', { className: 'ds-task-run-dot', 'data-status': entry.exitCode === 0 ? 'passed' : entry.exitCode === null ? 'running' : 'failed' }),
+                      h('span', { className: 'ds-task-run-name', title: String(entry.command ?? '') }, String(entry.name ?? entry.command ?? '')),
+                      h(
+                        'span',
+                        { className: 'ds-task-run-exit' },
+                        entry.exitCode === null ? t('tasks.failed') : t('tasks.exit', { code: String(entry.exitCode) }),
+                      ),
+                      h(
+                        'span',
+                        { className: 'ds-task-run-time' },
+                        entry.source === 'tool' ? t('tasks.sourceTool') : t('tasks.sourcePanel'),
+                      ),
+                    ),
+                  ),
+                ),
             h(
               'div',
               { className: 'ds-task-scroll' },
@@ -14448,6 +15604,62 @@ ${tail}
           }
           const statuses = ['pending', 'pass', 'fail', 'blocked']
           const selected = items.find((item) => item.id === acceptanceSelected) ?? null
+          const gapCount = evidenceGapCount(items)
+          const filtered = acceptanceFilteredItems()
+          const groups = []
+          for (const item of filtered) {
+            const category = typeof item.category === 'string' && item.category.trim().length > 0 ? item.category.trim() : t('acceptance.groupOther')
+            let bucket = groups.find((entry) => entry.category === category)
+            if (bucket === undefined) {
+              bucket = { category, items: [] }
+              groups.push(bucket)
+            }
+            bucket.items.push(item)
+          }
+          const filterChips = [
+            { id: 'all', label: t('acceptance.filterAll') },
+            { id: 'incomplete', label: t('acceptance.filterIncomplete') },
+            { id: 'fail', label: t('acceptance.filterFail') },
+            { id: 'gap', label: t('acceptance.filterGap') },
+          ]
+          const templates = acceptanceTemplates()
+          const latestVerify = latestVerification()
+          const selectedEvidence = selected === null ? [] : itemEvidence(selected)
+          const selectedHistory = selected !== null && Array.isArray(selected.history) ? selected.history : []
+          const verifySuggestions = Array.isArray(taskSuggestions) ? taskSuggestions : []
+          const renderEvidenceChip = (entry, removable = false) =>
+            h(
+              'div',
+              { key: String(entry.path ?? entry.name ?? ''), className: 'ds-acc-evidence-item' },
+              h(
+                'button',
+                { type: 'button', className: 'ds-acc-evidence-open', title: String(entry.path ?? ''), onClick: () => openEvidenceEntry(entry) },
+                isImageEvidence(entry.path)
+                  ? h('img', {
+                      className: 'ds-acc-evidence-thumb',
+                      src: new URL(
+                        `${API_PATH}?op=raw&root=${encodeURIComponent(state.root ?? '')}&path=${encodeURIComponent(String(entry.path ?? ''))}`,
+                        document.baseURI,
+                      ).href,
+                      alt: String(entry.label ?? entry.path ?? ''),
+                      loading: 'lazy',
+                    })
+                  : h(FileGlyph, { name: String(entry.path ?? entry.name ?? ''), size: 18 }),
+                h('span', { className: 'ds-acc-evidence-name' }, evidenceLabel(entry)),
+              ),
+              removable && selected !== null
+                ? h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-acc-evidence-remove',
+                      title: t('acceptance.evidenceRemove'),
+                      onClick: () => void removeEvidence(selected, String(entry.path ?? '')),
+                    },
+                    '×',
+                  )
+                : null,
+            )
           const renderStatusButton = (item, status) =>
             h(
               'button',
@@ -14528,45 +15740,179 @@ ${tail}
             ),
             h(
               'div',
+              { className: 'ds-acc-filters' },
+              filterChips.map((chip) =>
+                h(
+                  'button',
+                  {
+                    key: chip.id,
+                    type: 'button',
+                    className: 'ds-acc-filter',
+                    'data-active': acceptanceFilter === chip.id ? 'true' : undefined,
+                    onClick: () => setAcceptanceFilter(chip.id),
+                  },
+                  chip.label,
+                ),
+              ),
+              h('span', { className: 'ds-spacer' }),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-linkbtn ds-acc-template-toggle',
+                  'data-active': acceptanceTemplatesOpen ? 'true' : undefined,
+                  onClick: () => setAcceptanceTemplatesOpen((open) => !open),
+                },
+                t('acceptance.templates'),
+              ),
+            ),
+            acceptanceTemplatesOpen
+              ? h(
+                  'div',
+                  { className: 'ds-acc-templates' },
+                  templates.map((template) =>
+                    h(
+                      'button',
+                      {
+                        key: template.id,
+                        type: 'button',
+                        className: 'ds-btn ds-acc-template',
+                        disabled: acceptanceSaving,
+                        onClick: () => void applyAcceptanceTemplate(template),
+                      },
+                      template.label,
+                    ),
+                  ),
+                )
+              : null,
+            acceptanceSelection.length === 0
+              ? null
+              : h(
+                  'div',
+                  { className: 'ds-acc-batch' },
+                  h('span', { className: 'ds-acc-batch-count' }, t('acceptance.batchSelected', { count: String(acceptanceSelection.length) })),
+                  h(
+                    'button',
+                    { type: 'button', className: 'ds-btn', disabled: acceptanceSaving, onClick: () => void batchSetAcceptanceStatus('pass') },
+                    t('acceptance.batchPass'),
+                  ),
+                  h(
+                    'button',
+                    { type: 'button', className: 'ds-btn', disabled: acceptanceSaving, onClick: () => void batchSetAcceptanceStatus('fail') },
+                    t('acceptance.batchFail'),
+                  ),
+                  h(
+                    'button',
+                    { type: 'button', className: 'ds-btn', disabled: acceptanceSaving, onClick: () => void batchSetAcceptanceStatus('pending') },
+                    t('acceptance.batchPending'),
+                  ),
+                  h(
+                    'button',
+                    { type: 'button', className: 'ds-linkbtn', onClick: () => setAcceptanceSelection([]) },
+                    t('acceptance.batchClear'),
+                  ),
+                ),
+            h(
+              'div',
               { className: 'ds-acc-list' },
               items.length === 0
                 ? h('div', { className: 'ds-hint' }, t('acceptance.empty'))
-                : items.map((item) =>
-                    h(
-                      'div',
-                      {
-                        key: item.id,
-                        className: 'ds-acc-row',
-                        'data-status': item.status,
-                        'data-selected': item.id === acceptanceSelected ? 'true' : undefined,
-                      },
+                : groups.length === 0
+                  ? h('div', { className: 'ds-hint' }, t('acceptance.emptyFiltered'))
+                  : groups.map((bucket) =>
                       h(
-                        'button',
-                        { type: 'button', className: 'ds-acc-row-main', onClick: () => selectAcceptanceItem(item) },
-                        h('span', { className: 'ds-acc-title' }, String(item.title ?? '')),
-                        typeof item.note === 'string' && item.note.trim().length > 0
-                          ? h('span', { className: 'ds-acc-note-pre' }, item.note.trim())
-                          : null,
-                      ),
-                      h('div', { className: 'ds-acc-row-status' }, statuses.map((status) => renderStatusButton(item, status))),
-                      h(
-                        'button',
-                        {
-                          type: 'button',
-                          className: 'ds-acc-delete',
-                          title: t('acceptance.delete'),
-                          onClick: () => deleteAcceptanceItem(item),
-                        },
-                        h(TrashIcon),
+                        'div',
+                        { key: bucket.category, className: 'ds-acc-group' },
+                        h(
+                          'div',
+                          { className: 'ds-acc-group-head' },
+                          h('span', { className: 'ds-acc-group-name' }, bucket.category),
+                          h('span', { className: 'ds-acc-group-count' }, String(bucket.items.length)),
+                        ),
+                        bucket.items.map((item) =>
+                          h(
+                            'div',
+                            {
+                              key: item.id,
+                              className: 'ds-acc-row',
+                              'data-status': item.status,
+                              'data-selected': item.id === acceptanceSelected ? 'true' : undefined,
+                            },
+                            h('input', {
+                              type: 'checkbox',
+                              className: 'ds-acc-check',
+                              checked: acceptanceSelection.includes(item.id),
+                              'aria-label': String(item.title ?? ''),
+                              onChange: () => toggleAcceptanceSelection(item.id),
+                            }),
+                            h(
+                              'button',
+                              { type: 'button', className: 'ds-acc-row-main', onClick: () => selectAcceptanceItem(item) },
+                              h('span', { className: 'ds-acc-title' }, String(item.title ?? '')),
+                              typeof item.note === 'string' && item.note.trim().length > 0
+                                ? h('span', { className: 'ds-acc-note-pre' }, item.note.trim())
+                                : null,
+                              h(
+                                'span',
+                                { className: 'ds-acc-badges' },
+                                typeof item.category === 'string' && item.category.trim().length > 0 ? h('span', { className: 'ds-acc-cat' }, item.category.trim()) : null,
+                                itemHasEvidenceGap(item)
+                                  ? h('span', { className: 'ds-acc-badge', 'data-kind': 'gap' }, t('acceptance.evidenceGap'))
+                                  : itemEvidence(item).length > 0
+                                    ? h('span', { className: 'ds-acc-badge' }, t('acceptance.evidenceCount', { count: String(itemEvidence(item).length) }))
+                                    : null,
+                                Number.isInteger(item.retestRound) && item.retestRound > 0
+                                  ? h('span', { className: 'ds-acc-badge', 'data-kind': 'retest' }, t('acceptance.retestRound', { round: String(item.retestRound) }))
+                                  : null,
+                              ),
+                            ),
+                            h('div', { className: 'ds-acc-row-status' }, statuses.map((status) => renderStatusButton(item, status))),
+                            h(
+                              'button',
+                              {
+                                type: 'button',
+                                className: 'ds-acc-delete',
+                                title: t('acceptance.delete'),
+                                onClick: () => deleteAcceptanceItem(item),
+                              },
+                              h(TrashIcon),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
             ),
             selected === null
               ? null
               : h(
                   'div',
                   { className: 'ds-acc-detail' },
+                  h(
+                    'div',
+                    { className: 'ds-acc-detail-meta' },
+                    typeof selected.category === 'string' && selected.category.trim().length > 0
+                      ? h(
+                          'span',
+                          { className: 'ds-acc-meta-item' },
+                          h('span', { className: 'ds-acc-detail-label' }, t('acceptance.categoryLabel')),
+                          h('span', { className: 'ds-acc-meta-value' }, selected.category.trim()),
+                        )
+                      : null,
+                    Number.isInteger(selected.retestRound) && selected.retestRound > 0
+                      ? h('span', { className: 'ds-acc-meta-item' }, t('acceptance.retestRound', { round: String(selected.retestRound) }))
+                      : null,
+                    selected.status === 'pass' && selectedEvidence.length === 0
+                      ? h('span', { className: 'ds-acc-badge', 'data-kind': 'gap' }, t('acceptance.evidenceGap'))
+                      : null,
+                  ),
+                  typeof selected.requirement === 'string' && selected.requirement.trim().length > 0
+                    ? h(
+                        'div',
+                        { className: 'ds-acc-requirement' },
+                        h('div', { className: 'ds-acc-detail-label' }, t('acceptance.requirementLabel')),
+                        h('div', { className: 'ds-acc-requirement-text' }, selected.requirement.trim()),
+                      )
+                    : null,
                   h('div', { className: 'ds-acc-detail-label' }, t('acceptance.note')),
                   h('textarea', {
                     className: 'ds-acc-note',
@@ -14586,6 +15932,50 @@ ${tail}
                     h('span', { className: 'ds-spacer' }),
                     h('button', { type: 'button', className: 'ds-linkbtn', onClick: () => selectAcceptanceItem(null) }, t('action.cancel')),
                   ),
+                  h(
+                    'div',
+                    { className: 'ds-acc-detail-head' },
+                    h('span', { className: 'ds-acc-detail-label' }, t('acceptance.evidence')),
+                    h(
+                      'button',
+                      { type: 'button', className: 'ds-linkbtn', disabled: evidenceBusy, onClick: () => evidenceInputRef.current?.click() },
+                      evidenceBusy ? t('acceptance.evidenceUploading') : t('acceptance.evidenceAdd'),
+                    ),
+                  ),
+                  selectedEvidence.length === 0
+                    ? h('div', { className: 'ds-hint ds-acc-evidence-empty' }, t('acceptance.evidenceEmpty'))
+                    : h(
+                        'div',
+                        { className: 'ds-acc-evidence-list' },
+                        selectedEvidence.map((entry) => renderEvidenceChip(entry, true)),
+                      ),
+                  h('div', { className: 'ds-acc-detail-label' }, t('acceptance.historyTitle')),
+                  selectedHistory.length === 0
+                    ? h('div', { className: 'ds-hint ds-acc-evidence-empty' }, t('acceptance.historyEmptyState'))
+                    : h(
+                        'div',
+                        { className: 'ds-acc-history ds-acc-item-history' },
+                        selectedHistory
+                          .slice()
+                          .reverse()
+                          .map((entry, index) =>
+                            h(
+                              'div',
+                              { key: String(entry.at ?? index) + ':' + String(index), className: 'ds-acc-history-row' },
+                              h(
+                                'span',
+                                { className: 'ds-acc-history-status', 'data-status': entry.status },
+                                statusLabels[entry.status] ?? String(entry.status ?? ''),
+                              ),
+                              h('span', { className: 'ds-acc-history-note' }, typeof entry.note === 'string' ? entry.note : ''),
+                              h(
+                                'span',
+                                { className: 'ds-acc-history-meta' },
+                                Number.isFinite(entry.at) ? new Date(entry.at).toLocaleString() : '',
+                              ),
+                            ),
+                          ),
+                      ),
                 ),
             h(
               'div',
@@ -14593,7 +15983,7 @@ ${tail}
               h(
                 'div',
                 { className: 'ds-acc-evidence-head' },
-                h('span', { className: 'ds-acc-detail-label' }, t('acceptance.evidence')),
+                h('span', { className: 'ds-acc-detail-label' }, t('acceptance.evidenceLibrary')),
                 h(
                   'button',
                   {
@@ -14604,6 +15994,11 @@ ${tail}
                   },
                   evidenceBusy ? t('acceptance.evidenceUploading') : t('acceptance.evidenceAdd'),
                 ),
+              ),
+              h(
+                'div',
+                { className: 'ds-hint ds-acc-evidence-empty' },
+                selected === null ? t('acceptance.evidenceNeedItem') : t('acceptance.evidenceHint'),
               ),
               h('input', {
                 ref: evidenceInputRef,
@@ -14643,6 +16038,109 @@ ${tail}
                       ),
                     ),
                   ),
+            ),
+            h(
+              'div',
+              { className: 'ds-acc-verify' },
+              h(
+                'div',
+                { className: 'ds-acc-evidence-head' },
+                h('span', { className: 'ds-acc-detail-label' }, t('acceptance.retestTitle')),
+                h('span', { className: 'ds-spacer' }),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-linkbtn ds-acc-verify-toggle',
+                    onClick: () =>
+                      setVerificationOpen((open) => {
+                        const next = !open
+                        if (next && verificationSelection.length === 0) {
+                          setVerificationSelection(
+                            verifySuggestions
+                              .filter((suggestion) => suggestion !== null && typeof suggestion === 'object' && ['test', 'build', 'lint'].includes(suggestion.group))
+                              .slice(0, 3)
+                              .map((suggestion) => suggestion.id),
+                          )
+                        }
+                        return next
+                      }),
+                  },
+                  verificationOpen ? t('action.cancel') : t('acceptance.retest'),
+                ),
+              ),
+              latestVerify === null
+                ? h('div', { className: 'ds-hint ds-acc-evidence-empty' }, t('acceptance.retestEmpty'))
+                : h(
+                    'div',
+                    { className: 'ds-acc-verify-latest' },
+                    h(
+                      'span',
+                      { className: 'ds-acc-history-meta' },
+                      t('acceptance.retestLatest') + ' · ' + new Date(Number(latestVerify.createdAt) || Date.now()).toLocaleString(),
+                    ),
+                    h(
+                      'span',
+                      { className: 'ds-acc-badge', 'data-kind': Number(latestVerify.failed ?? 0) > 0 ? 'gap' : undefined },
+                      t('acceptance.retestDone', { pass: String(latestVerify.passed ?? 0), fail: String(latestVerify.failed ?? 0) }),
+                    ),
+                    Number(latestVerify.failed ?? 0) > 0
+                      ? h(
+                          'button',
+                          { type: 'button', className: 'ds-linkbtn', onClick: () => void sendVerificationToAgent(latestVerify) },
+                          t('acceptance.retestSend'),
+                        )
+                      : null,
+                  ),
+              verificationOpen
+                ? h(
+                    'div',
+                    { className: 'ds-acc-verify-body' },
+                    verifySuggestions.length === 0
+                      ? h(
+                          React.Fragment,
+                          null,
+                          h('div', { className: 'ds-hint ds-acc-evidence-empty' }, t('acceptance.retestNoCommands')),
+                          h('button', { type: 'button', className: 'ds-linkbtn', onClick: () => void loadTasks() }, t('tasks.detect')),
+                        )
+                      : h(
+                          React.Fragment,
+                          null,
+                          h(
+                            'div',
+                            { className: 'ds-acc-verify-list' },
+                            verifySuggestions.slice(0, 24).map((suggestion) =>
+                              h(
+                                'label',
+                                { key: suggestion.id, className: 'ds-acc-verify-item' },
+                                h('input', {
+                                  type: 'checkbox',
+                                  checked: verificationSelection.includes(suggestion.id),
+                                  onChange: () => toggleVerificationCommand(suggestion.id),
+                                }),
+                                h('span', null, String(suggestion.label ?? suggestion.command ?? '')),
+                              ),
+                            ),
+                          ),
+                          h(
+                            'div',
+                            { className: 'ds-acc-detail-actions' },
+                            h(
+                              'button',
+                              {
+                                type: 'button',
+                                className: 'ds-btn ds-btn-primary',
+                                disabled: verificationBusy || verificationSelection.length === 0,
+                                onClick: () => void runVerification(),
+                              },
+                              verificationBusy ? t('acceptance.retestRunning') : t('acceptance.retest'),
+                            ),
+                            h('span', { className: 'ds-spacer' }),
+                            h('button', { type: 'button', className: 'ds-linkbtn', onClick: () => void loadTasks() }, t('tasks.detect')),
+                          ),
+                        ),
+                  )
+                : null,
             ),
             h(
               'div',
@@ -15225,6 +16723,136 @@ ${tail}
                   intakeNotice.length === 0 ? null : h('div', { className: 'ds-wb-notice' }, intakeNotice),
                 ),
           )
+          const latestTestRun =
+            taskRuns
+              .filter((run) => run !== null && typeof run === 'object' && (run.status === 'passed' || run.status === 'failed') && Number.isFinite(run.startedAt))
+              .sort((left, right) => right.startedAt - left.startedAt)[0] ?? null
+          const preflightChecks = [
+            {
+              id: 'acceptance',
+              level: failCount > 0 ? 'fail' : pendingCount > 0 ? 'warn' : 'ok',
+              label: t('workbench.preflightAcceptance', {
+                pass: String(passCount),
+                fail: String(failCount),
+                pending: String(pendingCount),
+              }),
+              action: openAcceptance,
+              actionLabel: t('workbench.openAcceptance'),
+            },
+            {
+              id: 'evidence',
+              level: evidenceGapCount(items) > 0 ? 'warn' : 'ok',
+              label: t('workbench.preflightEvidence', { count: String(evidenceGapCount(items)) }),
+              action: openAcceptance,
+              actionLabel: t('workbench.openAcceptance'),
+            },
+            {
+              id: 'review',
+              level:
+                reviewState === null || reviewState.available === false
+                  ? 'na'
+                  : Number(reviewState.total ?? 0) > Number(reviewState.reviewed ?? 0)
+                    ? 'warn'
+                    : 'ok',
+              label:
+                reviewState === null || reviewState.available === false
+                  ? t('workbench.reviewUnavailable')
+                  : t('workbench.preflightReview', {
+                      done: String(reviewState.reviewed ?? 0),
+                      total: String(reviewState.total ?? 0),
+                    }),
+              action: gitAvailable ? () => setPaneView('git') : null,
+              actionLabel: t('workbench.openGit'),
+            },
+            {
+              id: 'tests',
+              level: latestTestRun === null ? 'warn' : latestTestRun.status === 'failed' ? 'fail' : 'ok',
+              label: t('workbench.preflightTests', {
+                status:
+                  latestTestRun === null
+                    ? t('workbench.preflightMissing')
+                    : latestTestRun.status === 'failed'
+                      ? t('tasks.failed')
+                      : t('tasks.passed'),
+              }),
+              action: openTasks,
+              actionLabel: t('workbench.openTasks'),
+            },
+            {
+              id: 'release',
+              level: releases.length > 0 ? 'ok' : 'warn',
+              label: t('workbench.preflightRelease', {
+                status:
+                  releases.length === 0
+                    ? t('workbench.preflightMissing')
+                    : String(releases[0]?.environment ?? releases[0]?.url ?? t('workbench.preflightOk')),
+              }),
+              action: openPipeline,
+              actionLabel: t('workbench.openPipeline'),
+            },
+            {
+              id: 'preview',
+              level: previewShare === null ? 'warn' : 'ok',
+              label: t('workbench.preflightPreview', {
+                status: previewShare === null ? t('workbench.preflightMissing') : t('workbench.preflightOk'),
+              }),
+              action: openAcceptance,
+              actionLabel: t('workbench.openAcceptance'),
+            },
+            {
+              id: 'delivery',
+              level: latestDelivery === null ? 'warn' : 'ok',
+              label: t('workbench.preflightDelivery', {
+                status: latestDelivery === null ? t('workbench.preflightMissing') : String(latestDelivery.name ?? t('workbench.preflightOk')),
+              }),
+              action: openAcceptance,
+              actionLabel: t('workbench.openAcceptance'),
+            },
+          ]
+          const preflightIssues = preflightChecks.filter((check) => check.level === 'warn' || check.level === 'fail')
+          const preflightCard = h(
+            'div',
+            { className: 'ds-wb-card ds-wb-preflight', 'data-kind': preflightIssues.length === 0 ? 'ok' : 'warn' },
+            h(
+              'div',
+              { className: 'ds-wb-card-head' },
+              h('div', { className: 'ds-wb-card-title ds-wb-card-title-inline' }, t('workbench.preflight')),
+              h(
+                'span',
+                { className: 'ds-wb-preflight-verdict', 'data-kind': preflightIssues.length === 0 ? 'ok' : 'warn' },
+                preflightIssues.length === 0
+                  ? t('workbench.preflightReady')
+                  : t('workbench.preflightWarn', { count: String(preflightIssues.length) }),
+              ),
+              h('span', { className: 'ds-spacer' }),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-linkbtn ds-wb-link',
+                  onClick: () => {
+                    const lines = preflightChecks.map(
+                      (check) => `- [${check.level === 'ok' ? 'x' : check.level === 'na' ? '-' : ' '}] ${check.label}`,
+                    )
+                    setPipelineReviewNote(lines.join('\n'))
+                    showToast(t('toast.saved'))
+                  },
+                },
+                t('workbench.preflightNote'),
+              ),
+            ),
+            preflightChecks.map((check) =>
+              h(
+                'div',
+                { key: check.id, className: 'ds-wb-preflight-row', 'data-level': check.level },
+                h('span', { className: 'ds-wb-issue-dot', 'data-kind': check.level === 'ok' ? 'ok' : check.level === 'na' ? 'na' : 'warn', 'aria-hidden': true }),
+                h('span', { className: 'ds-wb-preflight-text' }, check.label),
+                check.action === null || check.action === undefined
+                  ? null
+                  : h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: check.action }, check.actionLabel),
+              ),
+            ),
+          )
           const attentionCard = !attention
             ? null
             : h(
@@ -15341,6 +16969,77 @@ ${tail}
             ),
             h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: openAcceptance }, t('workbench.checklist')),
           )
+          const reviewFiles = reviewState !== null && Array.isArray(reviewState.files) ? reviewState.files : []
+          const reviewAvailable = reviewState !== null && reviewState.available !== false
+          const reviewCard =
+            reviewState === null
+              ? null
+              : h(
+                  'div',
+                  {
+                    className: 'ds-wb-card ds-wb-changes',
+                    'data-kind': reviewAvailable && Number(reviewState.total ?? 0) > Number(reviewState.reviewed ?? 0) ? 'warn' : 'ok',
+                  },
+                  h(
+                    'div',
+                    { className: 'ds-wb-card-head' },
+                    h('div', { className: 'ds-wb-card-title ds-wb-card-title-inline' }, t('workbench.changes')),
+                    h('span', { className: 'ds-wb-issue-time' }, t('workbench.changesHint')),
+                    h('span', { className: 'ds-spacer' }),
+                    reviewAvailable
+                      ? h(
+                          'span',
+                          { className: 'ds-wb-review-progress' },
+                          t('workbench.reviewProgress', {
+                            done: String(reviewState.reviewed ?? 0),
+                            total: String(reviewState.total ?? 0),
+                          }),
+                        )
+                      : null,
+                    reviewAvailable && Number(reviewState.total ?? 0) > Number(reviewState.reviewed ?? 0)
+                      ? h(
+                          'button',
+                          { type: 'button', className: 'ds-linkbtn ds-wb-link', disabled: reviewBusy, onClick: () => void markAllChangesReviewed() },
+                          t('workbench.reviewAll'),
+                        )
+                      : null,
+                    gitAvailable ? h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: () => setPaneView('git') }, t('workbench.openGit')) : null,
+                  ),
+                  !reviewAvailable
+                    ? h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.reviewUnavailable'))
+                    : reviewFiles.length === 0
+                      ? h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.changesEmpty'))
+                      : h(
+                          'div',
+                          { className: 'ds-wb-change-list' },
+                          reviewFiles.slice(0, 30).map((file) =>
+                            h(
+                              'div',
+                              {
+                                key: String(file.path ?? '') + ':' + String(file.sig ?? ''),
+                                className: 'ds-wb-change-row',
+                                'data-reviewed': file.reviewed === true ? 'true' : undefined,
+                              },
+                              h('span', { className: 'ds-wb-change-status', 'data-status': String(file.status ?? '') }, String(file.status ?? '')),
+                              h(
+                                'button',
+                                { type: 'button', className: 'ds-wb-change-path', title: String(file.path ?? ''), onClick: () => void openFile(String(file.path ?? '')) },
+                                String(file.path ?? ''),
+                              ),
+                              h(
+                                'button',
+                                {
+                                  type: 'button',
+                                  className: 'ds-linkbtn ds-wb-review-toggle',
+                                  disabled: reviewBusy,
+                                  onClick: () => void markReviewFile(file, file.reviewed !== true),
+                                },
+                                file.reviewed === true ? t('workbench.reviewed') : t('workbench.unreviewed'),
+                              ),
+                            ),
+                          ),
+                        ),
+                )
           const issuesCard = h(
             'div',
             { className: 'ds-wb-card ds-wb-issues', 'data-kind': issueRows.length === 0 ? 'ok' : 'warn' },
@@ -15612,6 +17311,17 @@ ${tail}
                 'button',
                 {
                   type: 'button',
+                  className: 'ds-linkbtn ds-wb-notify',
+                  'data-on': notifyEnabled ? 'true' : undefined,
+                  title: t('workbench.notifyEnable'),
+                  onClick: () => void enableNotifications(),
+                },
+                notifyEnabled ? t('workbench.notifyOn') : t('workbench.notifyEnable'),
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
                   className: 'ds-iconbtn',
                   title: t('action.close'),
                   'aria-label': t('action.close'),
@@ -15628,6 +17338,8 @@ ${tail}
                 { className: 'ds-wb-page-inner' },
                 issuesCard,
                 attention ? attentionCard : null,
+                preflightCard,
+                reviewCard,
                 adjustCard,
                 requirementCard,
                 flowCard,
@@ -16454,6 +18166,19 @@ ${tail}
                   h(
                     'span',
                     { className: 'ds-todo-actions' },
+                    done
+                      ? null
+                      : h(
+                          'button',
+                          {
+                            type: 'button',
+                            className: 'ds-todo-action ds-todo-action-dispatch',
+                            title: t('todo.dispatchHint'),
+                            disabled: todoSaving || todoDispatching !== null,
+                            onClick: () => void requestDispatchTodo(task),
+                          },
+                          todoDispatching === task.id ? t('todo.dispatching') : t('todo.dispatch'),
+                        ),
                     h(
                       'button',
                       {
@@ -16636,6 +18361,7 @@ ${tail}
                 ),
               ),
               h('div', { className: 'ds-todo-hint' }, t('todo.hint')),
+              local ? h('div', { className: 'ds-todo-dispatch-intro' }, t('todo.dispatchIntro')) : null,
               h(
                 'div',
                 { className: 'ds-todo-progress' },
@@ -16920,6 +18646,10 @@ h(
           // Owner-first information architecture: the strip keeps only three
           // entries (workbench, files, search) plus "more"; project and
           // development views live in that grouped menu.
+          const pipelineWaiting = pipelineAttentionStages().length
+          const acceptanceFail = acceptanceItems.filter((item) => item !== null && typeof item === 'object' && item.status === 'fail').length
+          const acceptanceGap = evidenceGapCount(acceptanceItems)
+          const acceptanceAttention = acceptanceFail + acceptanceGap
           const primaryViews = [
             {
               id: 'files',
@@ -16954,6 +18684,9 @@ h(
               label: t('side.pipeline'),
               icon: h(PipelineIcon),
               active: showPipeline,
+              count: pipelineWaiting,
+              countTone: 'warn',
+              title: pipelineWaiting > 0 ? t('side.pipelineCount', { count: String(pipelineWaiting) }) : t('pipeline.title'),
               select: openPipeline,
             },
             {
@@ -16961,11 +18694,12 @@ h(
               label: t('side.acceptance'),
               icon: h(AcceptanceIcon),
               active: showAcceptance,
-              count: acceptanceItems.filter((item) => item.status === 'fail').length,
+              count: acceptanceAttention,
               countTone: 'warn',
-              title: acceptanceItems.some((item) => item.status === 'fail')
-                ? t('acceptance.failCount', { count: String(acceptanceItems.filter((item) => item.status === 'fail').length) })
-                : t('acceptance.title'),
+              title:
+                acceptanceAttention > 0
+                  ? t('side.acceptanceCount', { fail: String(acceptanceFail), gap: String(acceptanceGap) })
+                  : t('acceptance.title'),
               select: openAcceptance,
             },
             {
@@ -17968,6 +19702,22 @@ h(
                       showToast,
                       onFilesChanged: () => void refreshTree(),
                       onStatusChange: updateGitStatus,
+                      onReviewPersist: (entry, nowReviewed) => {
+                        const targetRoot = store.get().root
+                        if (targetRoot === null) return
+                        const operation = nowReviewed ? 'reviewMark' : 'reviewClear'
+                        void call(operation, { root: targetRoot, path: entry.path, sig: reviewSignature(entry) })
+                          .then(() => loadReviewState({ silent: true }))
+                          .catch(() => {})
+                      },
+                      externalReviewMarks:
+                        reviewState !== null && Array.isArray(reviewState.files)
+                          ? Object.fromEntries(
+                              reviewState.files
+                                .filter((file) => file !== null && typeof file === 'object' && file.reviewed === true)
+                                .map((file) => [String(file.path ?? ''), String(file.sig ?? '')]),
+                            )
+                          : null,
                     }),
                   )
                 : null,
@@ -20186,6 +21936,7 @@ h(
   white-space: nowrap;
 }
 .ds-todo-hint { margin-top: 3px; color: var(--dsw-alias-label-secondary); font-size: 10.5px; }
+.ds-todo-dispatch-intro { margin-top: 3px; color: var(--dsw-alias-label-caption); font-size: 10px; }
 .ds-todo-progress { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
 .ds-todo-progress-bar {
   flex: 1 1 auto;
@@ -20365,6 +22116,7 @@ h(
 }
 .ds-todo-action:hover { color: var(--dsw-alias-label-primary); text-decoration: underline; }
 .ds-todo-action-danger:hover { color: var(--dsw-alias-state-error-primary); }
+.ds-todo-action-dispatch { color: var(--dsw-alias-brand-primary); font-weight: 600; }
 .ds-todo-note {
   display: -webkit-box;
   margin-top: 3px;
@@ -20440,6 +22192,7 @@ h(
 .ds-task-chip-glyph { color: var(--dsw-alias-brand-primary); font-size: 8px; }
 .ds-task-chip-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ds-task-runs-head { padding: 6px 8px 3px; color: var(--dsw-alias-label-caption); font-size: 9px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+.ds-task-ledger { flex: 0 0 auto; border-top: 1px solid var(--dsw-alias-border-l1); padding-bottom: 2px; max-height: 90px; overflow: auto; }
 .ds-task-run-time { color: var(--dsw-alias-label-caption); font-size: 9.5px; }
 .ds-task-detail-head { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
 .ds-task-detail-title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; font-weight: 600; color: var(--dsw-alias-label-primary); }
@@ -20521,6 +22274,63 @@ h(
 .ds-acc-actions .ds-btn { height: 24px; padding: 0 7px; font-size: 10px; }
 .ds-acc-bundle { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
 .ds-acc-bundle-path { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-caption); font-family: var(--ds-mono); font-size: 9.5px; }
+.ds-acc-filters { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 4px 8px 2px; }
+.ds-acc-filter { height: 22px; padding: 0 8px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 11px; background: transparent; color: var(--dsw-alias-label-caption); font: inherit; font-size: 9.5px; cursor: pointer; }
+.ds-acc-filter:hover { color: var(--dsw-alias-label-primary); border-color: var(--dsw-alias-border-l2); }
+.ds-acc-filter[data-active="true"] { color: var(--dsw-alias-brand-primary); border-color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent); }
+.ds-acc-template-toggle[data-active="true"] { color: var(--dsw-alias-brand-primary); }
+.ds-acc-templates { display: flex; flex-wrap: wrap; gap: 5px; padding: 2px 8px 4px; }
+.ds-acc-template { font-size: 9.5px; }
+.ds-acc-batch { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 2px 8px 4px; padding: 4px 6px; border: 1px solid color-mix(in srgb, var(--dsw-alias-brand-primary) 40%, transparent); border-radius: 6px; background: color-mix(in srgb, var(--dsw-alias-brand-primary) 8%, transparent); }
+.ds-acc-batch-count { font-size: 9.5px; color: var(--dsw-alias-label-secondary); }
+.ds-acc-check { flex: 0 0 auto; margin: 0 0 0 2px; accent-color: var(--dsw-alias-brand-primary); }
+.ds-acc-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.ds-acc-cat { padding: 0 5px; border-radius: 6px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-caption); font-size: 8.5px; }
+.ds-acc-badge { padding: 0 5px; border-radius: 6px; background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent); color: var(--dsw-alias-brand-primary); font-size: 8.5px; }
+.ds-acc-badge[data-kind="gap"] { background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 16%, transparent); color: var(--dsw-alias-state-warn-primary); }
+.ds-acc-badge[data-kind="retest"] { background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-caption); }
+.ds-acc-group { display: flex; flex-direction: column; }
+.ds-acc-group-head { display: flex; align-items: center; gap: 6px; padding: 4px 8px 2px; color: var(--dsw-alias-label-caption); font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+.ds-acc-group-count { padding: 0 5px; border-radius: 6px; background: var(--dsw-alias-bg-layer-2); font-size: 8.5px; }
+.ds-acc-detail-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+.ds-acc-meta-item { display: flex; align-items: center; gap: 4px; font-size: 9.5px; color: var(--dsw-alias-label-secondary); }
+.ds-acc-meta-value { color: var(--dsw-alias-label-primary); }
+.ds-acc-requirement { margin-bottom: 4px; }
+.ds-acc-requirement-text { color: var(--dsw-alias-label-secondary); font-size: 10px; line-height: 1.5; white-space: pre-wrap; }
+.ds-acc-detail-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 6px; }
+.ds-acc-evidence-open { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0; border: none; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.ds-acc-evidence-remove { align-self: stretch; height: 14px; border: none; border-radius: 4px; background: transparent; color: var(--dsw-alias-label-caption); font: inherit; font-size: 10px; line-height: 1; cursor: pointer; }
+.ds-acc-evidence-remove:hover { color: var(--dsw-alias-state-error-primary); background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent); }
+.ds-acc-history-status { flex: 0 0 auto; padding: 0 5px; border-radius: 6px; font-size: 8.5px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-caption); }
+.ds-acc-history-status[data-status="pass"] { color: var(--dsw-alias-state-success-primary); }
+.ds-acc-history-status[data-status="fail"] { color: var(--dsw-alias-state-error-primary); }
+.ds-acc-history-status[data-status="blocked"] { color: var(--dsw-alias-state-warn-primary); }
+.ds-acc-history-note { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; color: var(--dsw-alias-label-secondary); }
+.ds-acc-item-history { max-height: 120px; overflow: auto; }
+.ds-acc-verify { flex: 0 0 auto; border-top: 1px solid var(--dsw-alias-border-l1); padding: 6px 8px; }
+.ds-acc-verify-latest { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin-bottom: 3px; }
+.ds-acc-verify-body { margin-top: 4px; }
+.ds-acc-verify-list { display: flex; flex-direction: column; gap: 2px; max-height: 150px; overflow: auto; margin-bottom: 4px; }
+.ds-acc-verify-item { display: flex; align-items: center; gap: 5px; font-size: 9.5px; color: var(--dsw-alias-label-secondary); }
+.ds-acc-verify-item input { accent-color: var(--dsw-alias-brand-primary); }
+.ds-wb-preflight { border-left: 2px solid var(--dsw-alias-border-l2); }
+.ds-wb-preflight[data-kind="warn"] { border-left-color: var(--dsw-alias-state-warn-primary); }
+.ds-wb-preflight-verdict { font-size: 9px; color: var(--dsw-alias-label-caption); }
+.ds-wb-preflight-verdict[data-kind="ok"] { color: var(--dsw-alias-state-success-primary); }
+.ds-wb-preflight-verdict[data-kind="warn"] { color: var(--dsw-alias-state-warn-primary); }
+.ds-wb-preflight-row { display: flex; align-items: center; gap: 6px; padding: 1px 0; font-size: 9.5px; color: var(--dsw-alias-label-secondary); }
+.ds-wb-preflight-text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-wb-notify { font-size: 9.5px; }
+.ds-wb-notify[data-on="true"] { color: var(--dsw-alias-state-success-primary); }
+.ds-wb-changes[data-kind="warn"] { border-left: 2px solid var(--dsw-alias-state-warn-primary); }
+.ds-wb-review-progress { font-size: 9px; color: var(--dsw-alias-label-caption); }
+.ds-wb-change-list { display: flex; flex-direction: column; gap: 1px; max-height: 190px; overflow: auto; }
+.ds-wb-change-row { display: flex; align-items: center; gap: 6px; padding: 1px 0; font-size: 9.5px; }
+.ds-wb-change-row[data-reviewed="true"] { opacity: 0.62; }
+.ds-wb-change-status { flex: 0 0 auto; width: 16px; text-align: center; font-family: ui-monospace, monospace; font-size: 9px; color: var(--dsw-alias-label-caption); }
+.ds-wb-change-path { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: none; background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 9.5px; text-align: left; cursor: pointer; padding: 0; }
+.ds-wb-change-path:hover { color: var(--dsw-alias-brand-primary); text-decoration: underline; }
+.ds-wb-review-toggle { flex: 0 0 auto; font-size: 9px; }
 .ds-acc-evidence { flex: 0 0 auto; max-height: 32%; overflow: auto; border-top: 1px solid var(--dsw-alias-border-l1); padding: 6px 8px; }
 .ds-acc-evidence-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 4px; }
 .ds-acc-evidence-add { flex: 0 0 auto; font-size: 9.5px; }

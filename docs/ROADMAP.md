@@ -2,6 +2,8 @@
 
 > 基线：v1.2.21（2026-10-25）。目标：**只用 Harness 对话 + Dev Workspace 插件完成一个完整项目**，不切回本地 IDE。
 >
+> **更新（v1.2.68）**：agent-first 批次 10 项（P1/P2/P3/P4/P8/P9/P10/P11/P12/P13）已完成，实施状态、后续候选与验收方式见 [FEATURE_PROPOSAL.md](FEATURE_PROPOSAL.md) §7 与 [ACCEPTANCE.md](ACCEPTANCE.md) 批次 5；本文件 P0/P1 的旧现状描述以该批次为准。
+>
 > 调研方式：3 个智能体并行（源码能力审计 / Harness 集成面测绘 / 浏览器 IDE 与 Agent 工作流基准），Lead 汇总并复核关键 API 与代码证据。原始调研记录保留在本地 `.dsh/tmp/team/`（不随仓库发布）：
 > `capability-audit.md`（插件现状与 17 条内部缺口）、`harness-integration.md`（Harness 内置能力与 slot/service）、`workflow-gaps.md`（12 阶段基准与 Top-10）。
 >

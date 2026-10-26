@@ -2,6 +2,110 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.69 — 2026-10-25
+
+### One-click dispatch from the workspace todo board
+
+- Every open todo row in the Todo sidebar view now has a **Send to product**
+  (`交给产品`) action. It turns the todo title and note into the delivery
+  requirement, starts the **product manager** stage and sends the product role
+  prompt to the current conversation, so the backlog item goes from "idea" to
+  "the team is working on it" without retyping it in the Workbench.
+- The action is pipeline-aware and never silently destroys an active project:
+  - no project yet → confirm, write the requirement, start `product`;
+  - requirement saved but no stage started → confirm and replace it;
+  - project completed → confirm and start a full six-stage **change round** first;
+  - stage active / awaiting review / project already started → it does not
+    mutate the pipeline; it explains the state and opens the Workbench so the
+    owner can finish, reject or append the todo through Requirement adjustments.
+- After a successful dispatch the todo gets the `已派发` (`dispatched`) tag and a
+  note line with the round and timestamp, so the same backlog item is not
+  dispatched twice by accident. The Workbench opens to show the new stage.
+
+## 1.2.68 — 2026-10-25
+
+The agent-first feature batch from `docs/FEATURE_PROPOSAL.md`: ten items that
+close the loop between "the agent works" and "the owner can verify and deliver".
+Host changes (model tools, routes, `.dsh` documents) require one Harness restart;
+client changes take effect on page refresh.
+
+### Agent execution, environment and state
+
+- **Task tools** (`task_detect`, `task_run`, `task_output`, `task_stop`,
+  `task_list`): the agent now runs build/test/lint through the same task runner
+  the panel uses. Results are structured (exit code, duration, parsed problems,
+  output tail) instead of a raw log in the context. Only commands reported by
+  `task_detect` are accepted, so the tools cannot be used as an arbitrary shell.
+- **Run ledger** (`.dsh/runs.json`): completed runs are persisted (newest 100)
+  with `source: tool|panel`; the Tasks panel shows a "run ledger" section so the
+  owner can see what the agent ran. Writing the ledger can never fail a task.
+- **Environment and preview tools** (`env_ports`, `preview_share`,
+  `preview_list`, `preview_close`, `http_probe`): the agent can discover local
+  dev-server ports, create/close the same token preview links the panel uses, and
+  probe a loopback URL (5 s, loopback only).
+- **Workspace status bus** (`workspace_status`): one call returns requirement,
+  pipeline stage/counts, acceptance counters and failing items, running/recent
+  tasks and project documents (bounded to 4 KB). A ≤600-character
+  `systemPrompt` context injects the low-frequency summary so an owner approval
+  is visible on the next request without another tool call.
+- **Pipeline tools completed** (`pipeline_update_requirement`,
+  `pipeline_dispatch`): append/refine the requirement and get ready-to-use
+  `spawn_teammate` / `team_task_create` arguments per stage. `pipeline_submit_stage`
+  now reports non-blocking `warnings` for missing/empty/escaping artefacts and a
+  design stage without screenshots. Stage `reviews[]` keeps every approve/reject
+  decision instead of overwriting the last one.
+
+### Owner verification
+
+- **Evidence chain** (`P8`): acceptance items carry structured `evidence[]`
+  (path or URL, kind, label, author, time, max 10/item). The panel shows per-item
+  thumbnails, removes entries, warns when a pass has no evidence, and the
+  report/zip include an evidence appendix plus `evidence/` files. Legacy
+  `证据：<path>` note lines migrate on read (idempotent; note text kept). New
+  tools: `acceptance_evidence_add`, `acceptance_report`, `evidence_list`,
+  `delivery_history`.
+- **Evidence gaps and history** (`P11`): acceptance items gain an append-only
+  `history[]` (max 50) and `retestRound` (incremented on pass↔fail). The panel
+  groups items by category, filters (open/failed/no-evidence), multi-selects and
+  batch-updates, shows the acceptance requirement + history timeline, and offers
+  three built-in templates. The report adds per-item evidence count, retest round
+  and an "evidence gap" section.
+- **Verification centre** (`P9`): a Retest button runs selected detected
+  commands, records `.dsh/verifications/<stamp>.json` + per-command logs, shows
+  the latest result and can send failing commands/problems back to the agent.
+- **Delivery preflight** (`P10`): one workbench card checks acceptance state,
+  evidence gaps, change review, last test, release, preview share and delivery
+  bundle, marks each OK/warn/fail with a jump action, and can write the verdict
+  into the review note.
+- **Reminders** (`P12`): a 15-second background poll keeps pipeline/acceptance
+  state fresh outside their panels; the Pipeline tab gets a waiting/rejected
+  badge, the Acceptance badge counts failures + evidence gaps, the page title is
+  prefixed with `(N)`, and an opt-in browser notification fires for stage review,
+  rejection, failed tasks and new delivery bundles (hidden page only, graceful
+  without permission).
+- **Change review** (`P13`): `.dsh/review.json` stores a git baseline captured
+  when a stage starts plus persisted per-file review marks (signature-based, so a
+  further staged change lapses the mark). The workbench gains a "Changes this
+  round" card with reviewed counters and a Git shortcut; the Git panel's
+  "reviewed" marks now persist through the workspace and sync across browsers.
+  Non-git and SSH workspaces degrade to "unavailable" without errors.
+
+### Delivery
+
+- Delivery bundles append the evidence files referenced by acceptance items
+  under `evidence/`, 1:1 with the report links. `writeDeliveryBundle` accepts
+  `extraFiles` with path/size/count guards (no absolute or `..` entries, no
+  overriding `ACCEPTANCE.md`).
+
+### Housekeeping
+
+- New host modules: `agent-tools.js`, `workspace-state.js`, `review.js`,
+  `problems.js`; the task manager exposes `start/poll/list/kill/detect/read/
+  listRuns/runningCount` to tool layers.
+- `npm test` runs a dependency-free host smoke test
+  (`scripts/selftest/host-smoke.mjs`); `npm run check` covers every host module.
+- Owner GUI steps for this batch are in `docs/ACCEPTANCE.md` (batch 5).
+
 ## Unreleased
 
 ### Confirmation before packing a delivery bundle

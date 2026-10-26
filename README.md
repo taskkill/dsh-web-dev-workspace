@@ -86,11 +86,36 @@ it for you.
   exports a Markdown acceptance report, and sends failed items back to the agent;
   the Git changes list gains per-file **reviewed** marks; for delivery you can
   download a build-output ZIP or pack the report plus build output into
-  `.dsh/deliveries/`; screenshots and other evidence upload to `.dsh/evidence/`
-  and attach to the selected acceptance item note; each packed bundle is recorded
-  in `.dsh/deliveries.json` and can be downloaded again from the panel; a
-  running dev-server port can be shared as a tokenised preview link for phones
-  and clients on the same network.
+  `.dsh/deliveries/`; each packed bundle is recorded in `.dsh/deliveries.json` and
+  can be downloaded again from the panel; a running dev-server port can be shared
+  as a tokenised preview link for phones and clients on the same network.
+- **Evidence chain** — every acceptance item can own multiple evidence entries
+  (screenshot / log / report / diff / link) shown as per-item thumbnails with a
+  remove action; passing an item without evidence asks for confirmation; the
+  exported report and the delivery ZIP include an evidence appendix plus an
+  `evidence/` directory (legacy note-based evidence migrates automatically).
+- **Retest and acceptance history** — the acceptance board groups items by
+  category, filters (open / failed / no evidence), multi-selects and batch-updates,
+  offers three checklist templates, and keeps an append-only status history plus a
+  retest round per item. A Retest button runs selected detected build/test/lint
+  commands, saves `.dsh/verifications/` records and can send failures back to the
+  agent.
+- **Delivery preflight and reminders** — one workbench card checks acceptance,
+  evidence gaps, change review, last test, release, preview and delivery bundle and
+  can copy its verdict into the review note; sidebar badges, a `(N)` page title and
+  optional browser notifications flag stage review, rejections, failed tasks and
+  new bundles.
+- **Change review** — a Git baseline is captured when a stage starts; the
+  workbench lists the files changed this round with inserted/deleted lines and
+  per-file **reviewed** marks persisted in `.dsh/review.json` (visible across
+  browsers and lapsing when the git status changes).
+- **Agent execution tools** — the agent can run detected build/test commands
+  through the same task runner (structured exit code, duration, problems and output
+  tail), inspect dev-server ports and create the same preview shares the panel
+  uses, and read the whole project state with one `workspace_status` call. A run
+  ledger (`.dsh/runs.json`) shows agent runs in the Tasks panel; stage prompts can
+  be fetched as ready-to-use team arguments (`pipeline_dispatch`) and the
+  requirement can be appended/refined (`pipeline_update_requirement`).
 - **Fits the host** — theme-token styling, English/Chinese copy, a compact
   single-column layout in narrow sidebars, a right-sidebar Start card, and a
   mobile/tablet layout.
@@ -191,6 +216,13 @@ it for you.
 - The model gets `todo_list`, `todo_add`, `todo_update` and `todo_delete` tools
   plus a short prompt guide. These are separate from Harness's session-scoped
   `todo_write` plan tool: they manage the user's persistent workspace board.
+- **Send to product**: each open todo row has a one-click action that turns its
+  title and note into the delivery requirement, starts the **product manager**
+  stage and sends the product role prompt to the current conversation. A missing
+  project is started after confirmation; a completed project first starts a full
+  six-stage change round; an active stage never gets overwritten — the action
+  explains the state and opens the Workbench instead. A successful dispatch tags
+  the todo `dispatched` and appends the round and timestamp to its note.
 - While the panel is visible it re-reads the document every eight seconds and on
   window focus (not during an inline edit), so model or external edits appear
   promptly. Writes use a temp-file rename under a per-root lock so the panel and
