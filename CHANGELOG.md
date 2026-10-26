@@ -2,6 +2,26 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.70 — 2026-10-26
+
+### Acceptance board: select all, batch feedback, and no more silent clicks
+
+- The status buttons now always answer: clicking a status that is already active
+  shows **Already “…”**, and a successful single click shows **Marked as “…”**
+  (a pass without evidence keeps its confirmation dialog). Previously an already
+  passed item looked unresponsive because the click was a silent no-op.
+- A **Select all** checkbox sits next to the filter chips. It selects every item
+  matching the current filter (all / open / failed / no evidence), supports the
+  indeterminate state, and clicking it again clears those items. Selected rows
+  reveal the existing batch bar, so **Select all → Pass selected** now updates
+  the whole filtered list in one action.
+- Batch updates report the result: **Updated N item(s)** or
+  **Updated done/total; the rest failed**, and the evidence-gap confirmation now
+  also covers *pending* items that have no evidence (previously only items that
+  were already pass were counted).
+- Batch pass skips items that already have the target status instead of calling
+  the Host again, so selecting everything is safe.
+
 ## 1.2.69 — 2026-10-25
 
 ### One-click dispatch from the workspace todo board

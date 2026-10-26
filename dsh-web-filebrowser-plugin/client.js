@@ -701,6 +701,12 @@ window.__ModuleLoader__.load({
       'acceptance.filterIncomplete': '未完成',
       'acceptance.filterFail': '不通过',
       'acceptance.filterGap': '缺证据',
+      'acceptance.selectAll': '全选',
+      'acceptance.statusSaved': '已标记为「{status}」',
+      'acceptance.alreadyStatus': '已经是「{status}」',
+      'acceptance.batchDone': '已更新 {count} 项',
+      'acceptance.batchPartial': '已更新 {done}/{total} 项，其余失败',
+      'acceptance.batchEvidenceWarning': '选中的 {count} 项没有证据；批量通过后仍可补充证据。仍要通过？',
       'acceptance.batchSelected': '已选 {count} 项',
       'acceptance.batchPass': '批量通过',
       'acceptance.batchFail': '批量不通过',
@@ -1738,6 +1744,12 @@ window.__ModuleLoader__.load({
       'acceptance.filterIncomplete': 'Open',
       'acceptance.filterFail': 'Failed',
       'acceptance.filterGap': 'No evidence',
+      'acceptance.selectAll': 'Select all',
+      'acceptance.statusSaved': 'Marked as “{status}”',
+      'acceptance.alreadyStatus': 'Already “{status}”',
+      'acceptance.batchDone': 'Updated {count} item(s)',
+      'acceptance.batchPartial': 'Updated {done}/{total}; the rest failed',
+      'acceptance.batchEvidenceWarning': '{count} selected item(s) have no evidence; you can attach evidence later. Pass them anyway?',
       'acceptance.batchSelected': '{count} selected',
       'acceptance.batchPass': 'Pass selected',
       'acceptance.batchFail': 'Fail selected',
@@ -10472,7 +10484,16 @@ ${tail}
 
         /** Move one item to a new acceptance status. */
         function setAcceptanceStatus(item, status) {
-          if (item === null || typeof item !== 'object' || item.status === status) return
+          if (item === null || typeof item !== 'object') return
+          const statusLabel = t('acceptance.' + status)
+          if (item.status === status) {
+            showToast(t('acceptance.alreadyStatus', { status: statusLabel }))
+            return
+          }
+          const apply = async () => {
+            const ok = await mutateAcceptance('acceptanceUpdate', { id: item.id, status })
+            if (ok) showToast(t('acceptance.statusSaved', { status: statusLabel }))
+          }
           if (status === 'pass' && itemEvidence(item).length === 0) {
             setModal({
               title: t('acceptance.evidenceGapConfirmTitle'),
@@ -10480,12 +10501,24 @@ ${tail}
               confirmLabel: t('acceptance.evidenceGapContinue'),
               onConfirm: () => {
                 setModal(null)
-                void mutateAcceptance('acceptanceUpdate', { id: item.id, status })
+                void apply()
               },
             })
             return
           }
-          void mutateAcceptance('acceptanceUpdate', { id: item.id, status })
+          void apply()
+        }
+
+        /** Select every item matching the current filter, or clear them. */
+        function toggleAcceptanceSelectAll() {
+          const ids = acceptanceFilteredItems().map((item) => item.id)
+          if (ids.length === 0) return
+          const allSelected = ids.every((id) => acceptanceSelection.includes(id))
+          if (allSelected) {
+            setAcceptanceSelection((current) => current.filter((id) => !ids.includes(id)))
+          } else {
+            setAcceptanceSelection((current) => Array.from(new Set([...current, ...ids])))
+          }
         }
 
         /** Select one item for note editing. */
@@ -11016,31 +11049,51 @@ ${tail}
         async function batchSetAcceptanceStatus(status) {
           const targetRoot = store.get().root
           if (targetRoot === null) return
-          const ids = acceptanceSelection.filter((id) => acceptanceItemById(id) !== null)
-          if (ids.length === 0) return
-          const gaps = ids.filter((id) => itemHasEvidenceGap(acceptanceItemById(id)))
+          const statusLabel = t('acceptance.' + status)
+          const ids = acceptanceSelection.filter((id) => {
+            const item = acceptanceItemById(id)
+            return item !== null && item.status !== status
+          })
+          if (ids.length === 0) {
+            showToast(t('acceptance.alreadyStatus', { status: statusLabel }))
+            return
+          }
+          const missingEvidence =
+            status === 'pass'
+              ? ids.filter((id) => {
+                  const item = acceptanceItemById(id)
+                  return item !== null && itemEvidence(item).length === 0
+                })
+              : []
           const run = async () => {
             setAcceptanceSaving(true)
             setAcceptanceError(null)
+            let done = 0
             try {
               for (const id of ids) {
                 try {
                   await call('acceptanceUpdate', { root: targetRoot, id, status })
+                  done += 1
                 } catch (error) {
                   setAcceptanceError(acceptanceErrorText(error))
                   break
                 }
               }
+            } finally {
               await loadAcceptance({ silent: true })
               setAcceptanceSelection([])
-            } finally {
+              showToast(
+                done === ids.length
+                  ? t('acceptance.batchDone', { count: String(done) })
+                  : t('acceptance.batchPartial', { done: String(done), total: String(ids.length) }),
+              )
               setAcceptanceSaving(false)
             }
           }
-          if (status === 'pass' && gaps.length > 0) {
+          if (missingEvidence.length > 0) {
             setModal({
               title: t('acceptance.evidenceGapConfirmTitle'),
-              message: t('acceptance.evidenceGapConfirm'),
+              message: t('acceptance.batchEvidenceWarning', { count: String(missingEvidence.length) }),
               confirmLabel: t('acceptance.evidenceGapContinue'),
               onConfirm: () => {
                 setModal(null)
@@ -15622,6 +15675,10 @@ ${tail}
             { id: 'fail', label: t('acceptance.filterFail') },
             { id: 'gap', label: t('acceptance.filterGap') },
           ]
+          const visibleIds = filtered.map((item) => item.id)
+          const selectedVisible = visibleIds.filter((id) => acceptanceSelection.includes(id))
+          const allVisibleSelected = visibleIds.length > 0 && selectedVisible.length === visibleIds.length
+          const someVisibleSelected = selectedVisible.length > 0 && !allVisibleSelected
           const templates = acceptanceTemplates()
           const latestVerify = latestVerification()
           const selectedEvidence = selected === null ? [] : itemEvidence(selected)
@@ -15741,6 +15798,22 @@ ${tail}
             h(
               'div',
               { className: 'ds-acc-filters' },
+              h(
+                'label',
+                { className: 'ds-acc-selectall', title: t('acceptance.selectAll') },
+                h('input', {
+                  type: 'checkbox',
+                  className: 'ds-acc-check',
+                  checked: allVisibleSelected,
+                  disabled: visibleIds.length === 0,
+                  ref: (node) => {
+                    if (node !== null) node.indeterminate = someVisibleSelected
+                  },
+                  onChange: toggleAcceptanceSelectAll,
+                  'aria-label': t('acceptance.selectAll'),
+                }),
+                h('span', null, t('acceptance.selectAll')),
+              ),
               filterChips.map((chip) =>
                 h(
                   'button',
@@ -22275,6 +22348,8 @@ h(
 .ds-acc-bundle { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
 .ds-acc-bundle-path { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-caption); font-family: var(--ds-mono); font-size: 9.5px; }
 .ds-acc-filters { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 4px 8px 2px; }
+.ds-acc-selectall { display: inline-flex; align-items: center; gap: 3px; padding-right: 2px; color: var(--dsw-alias-label-caption); font-size: 9.5px; cursor: pointer; user-select: none; }
+.ds-acc-selectall .ds-acc-check { margin: 0; }
 .ds-acc-filter { height: 22px; padding: 0 8px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 11px; background: transparent; color: var(--dsw-alias-label-caption); font: inherit; font-size: 9.5px; cursor: pointer; }
 .ds-acc-filter:hover { color: var(--dsw-alias-label-primary); border-color: var(--dsw-alias-border-l2); }
 .ds-acc-filter[data-active="true"] { color: var(--dsw-alias-brand-primary); border-color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent); }
