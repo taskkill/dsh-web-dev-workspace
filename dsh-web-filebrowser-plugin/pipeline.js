@@ -2,8 +2,11 @@
  * Per-workspace delivery pipeline state.
  *
  * The delivery flow is: 产品经理（product）→ UI 设计师（design）→ 全栈开发
- * （development）→ 测试工程师（testing）→ 项目经理人工确认（approval）→
- * 运维发布（release）. This module owns one small JSON document inside each
+ * （development）→ 测试工程师（testing）→ 项目经理 Agent 验收复核（acceptance）
+ * → 项目经理人工确认（approval）→ 运维发布（release）. The two review gates
+ * （acceptance + approval）form the dual-review model: the AI project-manager
+ * agent reviews and recommends, the owner confirms. This module owns one small
+ * JSON document inside each
  * workspace root (`.dsh/pipeline.json`) so the browser panel, the generated
  * delivery report and the model tools all read the same state — and no
  * workspace can see another workspace's pipeline.
@@ -50,13 +53,17 @@ export const PIPELINE_VERSION = 1
  * The fixed delivery stages, in execution order. `role` is the machine role
  * key, `roleTitle` the Chinese role name shown to the owner and `title` the
  * stage name.
+ *
+ * The seven stages form the dual-review model: `acceptance` is the AI
+ * project-manager-agent review gate and `approval` the owner's human sign-off.
  */
 export const PIPELINE_STAGES = [
   { id: 'product', role: 'product-manager', roleTitle: '产品经理', title: '需求分析' },
   { id: 'design', role: 'ui-designer', roleTitle: 'UI 设计师', title: 'UI 设计' },
   { id: 'development', role: 'fullstack-developer', roleTitle: '全栈开发', title: '开发实现' },
   { id: 'testing', role: 'qa-engineer', roleTitle: '测试工程师', title: '测试验收' },
-  { id: 'approval', role: 'project-manager', roleTitle: '项目经理', title: '人工确认' },
+  { id: 'acceptance', role: 'project-manager-agent', roleTitle: '项目经理 Agent', title: '验收复核' },
+  { id: 'approval', role: 'project-manager', roleTitle: '项目经理（你）', title: '人工确认' },
   { id: 'release', role: 'devops', roleTitle: '运维', title: '发布上线' },
 ]
 
@@ -77,17 +84,26 @@ export const PIPELINE_CHANGE_SCOPES = ['full', 'product-design', 'product', 'des
  * The three document/design scopes (`product`, `design`, `product-design`) redo
  * only those stages: the remaining stages are skipped, so the round finishes
  * after the owner approves the reworked requirement/design without redeploying.
+ *
+ * `acceptance` belongs to the "run" side for `full`/`development` and to the
+ * "skipped" side for the document/design/release scopes: a change round that
+ * does not redeploy anything has nothing for the acceptance review to re-check
+ * beyond the already-completed approval gate.
  */
 const CHANGE_SKIP_STAGES = {
   full: [],
-  'product-design': ['development', 'testing', 'approval', 'release'],
-  product: ['design', 'development', 'testing', 'approval', 'release'],
-  design: ['product', 'development', 'testing', 'approval', 'release'],
+  'product-design': ['development', 'testing', 'acceptance', 'approval', 'release'],
+  product: ['design', 'development', 'testing', 'acceptance', 'approval', 'release'],
+  design: ['product', 'development', 'testing', 'acceptance', 'approval', 'release'],
   development: ['product', 'design'],
-  release: ['product', 'design', 'development', 'testing'],
+  release: ['product', 'design', 'development', 'testing', 'acceptance'],
 }
 
-/** Human note written on skipped stages. */
+/**
+ * Human note written on stages skipped by a change round. `acceptance` is only
+ * skipped by the scopes that stop before a full redeploy, so the note keeps the
+ * existing scope wording and simply tells the owner why this gate did not run.
+ */
 function skipNote(scope) {
   if (scope === 'product') return '跳过：本次变更仅重做需求与验收项（设计/代码未改动）'
   if (scope === 'design') return '跳过：本次变更仅重做设计（需求未变，代码未改动）'
@@ -129,9 +145,18 @@ export const STAGE_HANDBOOKS = {
   design: ['docs/opc/02-design.md', 'docs/opc/00-charter.md'],
   development: ['docs/opc/03-engineering.md', 'docs/opc/00-charter.md'],
   testing: ['docs/opc/04-qa.md', 'docs/opc/00-charter.md'],
+  acceptance: ['docs/opc/05-review.md', 'docs/opc/00-charter.md'],
   approval: ['docs/opc/00-charter.md'],
-  release: ['docs/opc/05-ops.md', 'docs/opc/00-charter.md'],
+  release: ['docs/opc/06-ops.md', 'docs/opc/00-charter.md'],
 }
+
+/**
+ * Note written onto the acceptance stage when a document written before
+ * v1.2.72 (the dual-review upgrade) is read: the gate did not exist then, so a
+ * project that had already been approved/released under the old flow counts as
+ * done without claiming that the new AI review actually ran.
+ */
+export const ACCEPTANCE_MIGRATION_NOTE = '升级迁移：验收复核为更新新增，旧流程已完成'
 
 /** Prompt section name and ordering (right after the workspace-acceptance guide). */
 const SECTION_NAME = 'dsh-web-filebrowser:delivery-pipeline-guide'
@@ -162,11 +187,15 @@ const STAGE_STATUS_MARKS = {
 }
 
 /** Model-facing guidance folded into the system prompt for workspace sessions. */
-export const PIPELINE_SECTION = `## 交付流水线（六阶段 + 人工闸门）
+export const PIPELINE_SECTION = `## 交付流水线（七阶段 + 双复核）
 
-本工作区把交付过程保存在 \`.dsh/pipeline.json\`，阶段顺序固定为：产品经理（需求分析）→ UI 设计师（UI 设计）→ 全栈开发（开发实现）→ 测试工程师（测试验收）→ 项目经理（人工确认）→ 运维（发布上线）。阶段状态为 pending / active / review / approved / failed。product 阶段开始前必须先有需求标题与详情；除 product 外，每个阶段开始前要求上一阶段 approved；提交评审后阶段通常变为 review，只有项目经理（owner）在 Dev Workspace 面板上 approve 后下一阶段才能开始，被 reject 会变成 failed，可修复后用 pipeline_start_stage 重新开始。如果 Owner 开启了「快速模式」（gateMode=fast），product/design/development/testing 四个中间阶段提交后会被自动通过：pipeline_submit_stage 的结果会带 autoApproved=true 与 nextStageId，此时不要等待人工审批，直接对 nextStageId 取 pipeline_stage_prompt、pipeline_start_stage 并继续工作；approval 与 release 永远保持人工闸门，快速模式也不会自动通过它们。approval 是人工闸门：模型只负责启动它，绝不允许自己审批；release 阶段必须在 approval approved 之后才能开始。
+本工作区把交付过程保存在 \`.dsh/pipeline.json\`，阶段顺序固定为七关：产品经理（需求分析）→ UI 设计师（UI 设计）→ 全栈开发（开发实现）→ 测试工程师（测试验收）→ 项目经理 Agent（验收复核）→ 项目经理（人工确认）→ 运维（发布上线）。阶段状态为 pending / active / review / approved / failed。product 阶段开始前必须先有需求标题与详情；除 product 外，每个阶段开始前要求上一阶段 approved；提交评审后阶段通常变为 review，只有项目经理（owner）在 Dev Workspace 面板上 approve 后下一阶段才能开始，被 reject 会变成 failed，可修复后用 pipeline_start_stage 重新开始。
 
-工具用法：用 \`pipeline_status\` 查看需求、六个阶段、当前阶段与发布记录；进入某个阶段前先用 \`pipeline_stage_prompt\` 取该角色的中文提示词（需求、上游摘要与产物、本角色只做什么/不做什么、交付物要求、闸门规则），按提示词工作；用 \`pipeline_set_requirement\` 写入需求；用 \`pipeline_start_stage\` 开始阶段；完成后用 \`pipeline_submit_stage\` 提交 summary 与 artifacts 等待项目经理审批（返回的 warnings 只提示缺失/空产物，不阻断提交）；需求需要追加或修订时用 \`pipeline_update_requirement\`；要把角色派给队友时用 \`pipeline_dispatch\` 取 spawn/teamTask 参数。不要编造审批结果，也不要在闸门未通过时开始下一阶段。验收标准请配合 \`acceptance_add\` / \`acceptance_update\` 维护，交付前逐项核对。
+双复核（acceptance + approval）：第 5 关「验收复核」由项目经理 Agent 做项目级复核——需求覆盖、验收清单与证据、测试报告与复测、Git 变更与已审、DoD——产出 docs/pipeline/acceptance-review.md 并提交「建议放行 / 建议打回」；它只是建议，不能替代第 6 关 Owner 的人工确认。第 6 关「人工确认」是人工闸门：模型只负责用 pipeline_start_stage 启动并提醒 Owner 审批，绝不允许自己审批；第 7 关 release 必须在 approval approved 之后才能开始。
+
+如果 Owner 开启了「快速模式」（gateMode=fast），五个中间阶段（product/design/development/testing/acceptance）提交后会被自动通过：pipeline_submit_stage 的结果会带 autoApproved=true 与 nextStageId，此时不要等待人工审批，直接对 nextStageId 取 pipeline_stage_prompt、pipeline_start_stage 并继续工作；approval 与 release 永远保持人工闸门，快速模式也不会自动通过它们。任何模式下模型都没有审批工具。
+
+工具用法：用 \`pipeline_status\` 查看需求、七个阶段、当前阶段与发布记录；进入某个阶段前先用 \`pipeline_stage_prompt\` 取该角色的中文提示词（需求、上游摘要与产物、本角色只做什么/不做什么、交付物要求、闸门规则），按提示词工作；用 \`pipeline_set_requirement\` 写入需求；用 \`pipeline_start_stage\` 开始阶段；完成后用 \`pipeline_submit_stage\` 提交 summary 与 artifacts 等待项目经理审批（返回的 warnings 只提示缺失/空产物，不阻断提交）；需求需要追加或修订时用 \`pipeline_update_requirement\`；要把角色派给队友时用 \`pipeline_dispatch\` 取 spawn/teamTask 参数。不要编造审批结果，也不要在闸门未通过时开始下一阶段。验收标准请配合 \`acceptance_add\` / \`acceptance_update\` 维护，交付前逐项核对。
 
 真正的多角色执行由 Lead 用 Harness 原生团队工具（\`spawn_teammate\` / \`team_task_*\`）组织：本插件只负责流水线状态与人工验收闸门，不替代团队通信。流水线状态只保存在本地工作区，SSH 远程工作区暂不支持。`
 
@@ -185,7 +214,7 @@ export class PipelineError extends Error {
   }
 }
 
-/** An empty delivery pipeline document with all six stages pending. */
+/** An empty delivery pipeline document with all seven stages pending. */
 export function emptyPipeline() {
   return {
     version: PIPELINE_VERSION,
@@ -425,6 +454,22 @@ function normalizeStoredState(value) {
     byId.set(candidate.id, candidate)
   }
   const stages = PIPELINE_STAGES.map((definition) => normalizeStoredStage(byId.get(definition.id), definition))
+  // Backward compatibility with documents written before v1.2.72 (dual-review upgrade).
+  // A document that never had the acceptance stage is "old flow": if it had
+  // already reached the owner sign-off/release, mark the new gate as completed
+  // (with a migration note) instead of making a finished project look unfinished.
+  // In-progress and untouched documents keep acceptance pending, so the new gate
+  // still runs before approval when the team continues the round.
+  const wasApproved = (id) => {
+    const candidate = byId.get(id)
+    return candidate !== null && typeof candidate === 'object' && candidate.status === 'approved'
+  }
+  if (!byId.has('acceptance') && (wasApproved('approval') || wasApproved('release'))) {
+    const acceptance = stages[STAGE_INDEX.get('acceptance').index]
+    acceptance.status = 'approved'
+    acceptance.reviewedAt = timestampValue(value.updatedAt)
+    acceptance.note = appendStageNote(acceptance.note, ACCEPTANCE_MIGRATION_NOTE)
+  }
   const releases = []
   for (const candidate of Array.isArray(value.releases) ? value.releases : []) {
     const release = normalizeStoredRelease(candidate)
@@ -973,11 +1018,11 @@ export async function setRequirement(root, input) {
 }
 
 /**
- * Set the pipeline gate mode. `fast` lets the owner pre-authorize the four
- * intermediate stages (product/design/development/testing): submitting one of
- * them approves it automatically and reports the next stage id, so the agent can
- * continue without a human round-trip. The approval and release gates always
- * stay manual.
+ * Set the pipeline gate mode. `fast` lets the owner pre-authorize the five
+ * intermediate stages (product/design/development/testing/acceptance):
+ * submitting one of them approves it automatically and reports the next stage
+ * id, so the agent can continue without a human round-trip. The approval and
+ * release gates always stay manual.
  *
  * @param root - absolute workspace root.
  * @param mode - 'normal' | 'fast'.
@@ -1086,6 +1131,9 @@ export async function submitStage(root, input) {
     }
     const warnings = await collectArtifactWarnings(workspace, artifacts, definition)
     const now = Date.now()
+    // Fast mode auto-approves the five intermediate stages (product / design /
+    // development / testing / acceptance). The two review gates that need a
+    // person — the owner's sign-off (approval) and the release — are excluded.
     const fastApproval =
       doc.settings?.gateMode === 'fast' && definition.id !== 'approval' && definition.id !== 'release'
     if (fastApproval) {
@@ -1123,8 +1171,10 @@ export async function submitStage(root, input) {
 /**
  * Approve or reject one submitted stage. This is the human gate: only the
  * browser panel (owner) calls it, and the model has no tool for it. The
- * `approval` stage may be reviewed directly while active — it is the owner's
- * confirmation step, not a work product to submit.
+ * `acceptance` stage (AI project-manager-agent review) goes through the normal
+ * submit → review cycle; the `approval` stage (owner sign-off) may be reviewed
+ * directly while active — it is the owner's confirmation step, not a work
+ * product to submit.
  *
  * @param root - absolute workspace root.
  * @param input - `{ stageId, decision: 'approve' | 'reject', note? }`.
@@ -1225,9 +1275,10 @@ export async function updateRequirement(root, input) {
  * Start a new change round on a completed project. Only allowed once every
  * stage is approved: the current round is archived into `history` (last ten
  * kept), the round counter increments, the requirement is replaced with the
- * change request, and all six stages return to pending so the team can run the
- * change through requirement → design → development → testing → sign-off →
- * release. Acceptance items and the release history are kept for traceability.
+ * change request, and all seven stages return to pending so the team can run the
+ * change through requirement → design → development → testing → acceptance
+ * review → owner sign-off → release. Acceptance items and the release history
+ * are kept for traceability.
  *
  * @param root - absolute workspace root.
  * @param input - `{ title, detail, note? }`.
@@ -1243,7 +1294,7 @@ export async function startChangeRound(root, input) {
     const doc = await readPipeline(workspace)
     const complete = doc.stages.every((stage) => stage.status === 'approved')
     if (!complete) {
-      throw new PipelineError('bad-status', '只有全部六个阶段都通过后才能发起变更；请先完成当前项目')
+      throw new PipelineError('bad-status', '只有全部七个阶段都通过后才能发起变更；请先完成当前项目')
     }
     const now = Date.now()
     const snapshot = {
@@ -1465,19 +1516,45 @@ const STAGE_GUIDES = {
       '验收项回填：acceptance_update 的 pass / fail / blocked 结果。',
     ],
   },
-  approval: {
-    mission: '这是人工闸门：由项目经理核对需求、验收清单与测试结论后给出确认结论。',
+  acceptance: {
+    mission:
+      '在测试通过之后、Owner 人工确认之前，独立做一次项目级验收复核：逐项核对需求覆盖、验收清单与证据、测试报告与复测、Git 变更与已审、DoD，产出复核报告并给出「建议放行 / 建议打回」。你是复核者，不是开发者，也不是最终审批人。',
     does: [
-      '项目经理（owner）在 Dev Workspace 面板上审阅需求、验收清单与测试报告，并 approve 或 reject 本阶段。',
-      '模型只负责用 pipeline_start_stage 启动本阶段并提醒 owner 审批；若需补充说明，用 summary 写清待确认点。',
+      '逐项核对需求覆盖：把需求目标/范围点映射到验收项或测试用例，标出覆盖 / 部分覆盖 / 未覆盖 / 超范围改动。',
+      '核对验收清单：用 acceptance_list / acceptance_report 检查每条 title、requirement、status、note、evidence、retestRound；统计 pass/fail/blocked/pending/缺证据，列出所有阻断项。',
+      '核对测试报告与复测：读取 docs/pipeline/test-report.md 与 testing 阶段 summary/artifacts，用 task_detect / task_run 重跑与测试阶段一致的关键命令，记录命令、退出码、耗时与输出末尾；复测失败必须写进报告，不得沿用旧结论。',
+      '核对 Git 变更与已审：确认变更文件清单与「已审 n/N」（.dsh/review.json），关键文件（入口/配置/依赖/发布脚本）逐一看 diff；未审关键文件、调试代码、临时文件或密钥风险即列为阻断。',
+      '核对 DoD：对照 docs/opc/00-charter.md §6 七项（验收清单、测试报告、变更审阅、文档、发布、交付、Owner 最终确认）逐项打勾，写明未完成项及应由哪一关补齐。',
+      '产出 docs/pipeline/acceptance-review.md：① 基线与复核人；② 需求覆盖表；③ 验收清单逐项核对表 + 统计；④ 复测记录（命令/退出码/耗时）；⑤ 变更与审阅；⑥ DoD 检查；⑦ 放行建议（建议放行 / 建议打回 + 阻断项 + 建议回退阶段）。',
+      '需要时为关键验收项用 acceptance_evidence_add 追加证据路径（只追加，不改进度与历史）。',
+      '发现阻断问题时，在提交评审的 summary 中明确写「建议打回」、阻断项、复现步骤与建议回退阶段（development 或 testing），供 Owner 在面板决定。',
     ],
     doesNot: [
-      '模型不能自己审批本阶段，也不能用任何工具代替 owner 的确认。',
-      '不写代码、不做设计、不修改验收结论。',
+      '不改业务代码、不改需求/设计/验收标准、不重写测试用例；不回填 acceptance 的 pass/fail（状态由测试阶段维护）。',
+      '不审批任何阶段、不自批、不代替 Owner 在 approval 关做决定、不发布上线。',
+      '不伪造或挪用证据；不得在未复测或存在 fail/blocked 的情况下建议放行（「带病放行」即失败）。',
+      '不删除或篡改已有验收项、证据与历史记录；不跳过复测直接沿用旧结论。',
+    ],
+    deliverables: [
+      '验收复核报告 docs/pipeline/acceptance-review.md（必需，固定结构见上）。',
+      '提交评审：pipeline_submit_stage({ stageId: "acceptance", summary, artifacts })；summary 必须含结论（建议放行 / 建议打回）、阻断项数量与复测结果。',
+      '关键验收项证据路径（可选，用 acceptance_evidence_add 追加）。',
+    ],
+  },
+  approval: {
+    mission:
+      '这是人工闸门：在 AI 验收复核（acceptance）完成之后，由项目经理（Owner）做最终确认——看复核报告结论与关键证据，决定通过或打回；模型不能审批。',
+    does: [
+      '项目经理（owner）在 Dev Workspace 面板上审阅 acceptance 复核报告、需求、验收清单与测试报告，并 approve 或 reject 本阶段。',
+      '模型只负责用 pipeline_start_stage 启动本阶段并提醒 owner 审批；若需补充说明，用 summary 写清待确认点，不能代替 owner 提交或审批。',
+    ],
+    doesNot: [
+      '模型不能自己审批本阶段，也不能用任何工具代替 owner 的确认；approval 与 release 在任何模式下都不自动通过。',
+      '不写代码、不做设计、不修改验收结论、不发布上线。',
     ],
     deliverables: [
       '项目经理的人工确认结论（approve 或 reject + 备注）。',
-      '若 reject，按备注回到对应阶段修复后重新走闸门。',
+      '若 reject，按备注（复核报告的建议回退阶段）回到 acceptance / development / testing 修复后重新走闸门。',
     ],
   },
   release: {
@@ -1580,7 +1657,12 @@ export function buildStagePrompt(doc, stageId) {
   if (definition.id === 'release') {
     const approvalPosition = PIPELINE_STAGES.findIndex((candidate) => candidate.id === 'approval')
     const approval = promptStageState(source, PIPELINE_STAGES[approvalPosition])
+    const acceptancePosition = PIPELINE_STAGES.findIndex((candidate) => candidate.id === 'acceptance')
+    const acceptance = promptStageState(source, PIPELINE_STAGES[acceptancePosition])
     lines.push('', '### 发布前提')
+    lines.push(
+      `- 双复核前提：AI 验收复核（acceptance）当前状态 ${STAGE_STATUS_LABELS[acceptance.status]}，Owner 人工确认（approval）当前状态 ${STAGE_STATUS_LABELS[approval.status]}；release 不能绕过任何一关。`,
+    )
     if (approval.status === 'approved') {
       lines.push(
         `- approval 阶段（项目经理人工闸门）已通过（approved，审批时间：${formatTimestamp(promptReviewedAt(source, 'approval'))}），可以发布。`,
@@ -1608,7 +1690,11 @@ export function buildStagePrompt(doc, stageId) {
   lines.push('1. 先用 `pipeline_stage_prompt` 读取本阶段提示（也就是本段文字），按角色边界执行。')
   if (definition.id === 'approval') {
     lines.push(
-      '2. approval 是人工闸门：用 `pipeline_start_stage` 启动后，由项目经理直接在 Dev Workspace 面板上 approve 或 reject；其余阶段的完成必须调用 `pipeline_submit_stage` 提交评审，而本阶段不需要（也不允许）模型代替提交或审批。',
+      '2. approval 是人工闸门，位于 AI 验收复核（acceptance）之后：用 `pipeline_start_stage` 启动后，由项目经理（Owner）阅读 acceptance 复核报告与关键证据，直接在 Dev Workspace 面板上 approve 或 reject；其余阶段的完成必须调用 `pipeline_submit_stage` 提交评审，而本阶段不需要（也不允许）模型代替提交或审批。',
+    )
+  } else if (definition.id === 'acceptance') {
+    lines.push(
+      `2. 完成后必须调用 \`pipeline_submit_stage({ stageId: "acceptance", summary: "<建议放行/建议打回 + 阻断项数量 + 复测结果>", artifacts: [{ path: "docs/pipeline/acceptance-review.md", label: "验收复核报告" }, ...关键证据] })\` 提交评审。summary 最多 ${String(PIPELINE_MAX_SUMMARY)} 字符；artifacts 最多 ${String(PIPELINE_MAX_ARTIFACTS)} 个，每个 path 最多 ${String(PIPELINE_MAX_PATH)} 字符；Host 会检查产物是否存在/非空并返回 warnings（只提示，不阻断提交）。`,
     )
   } else {
     lines.push(
@@ -1898,7 +1984,7 @@ export function registerPipelineTools(ctx) {
   register({
     name: 'pipeline_status',
     description:
-      'Read the six-stage delivery pipeline stored in .dsh/pipeline.json: the requirement, every stage (status, summary, artifacts), the current stage and the recorded releases. Use it before deciding which role should act next. This module only owns pipeline state and the human approval gates; multi-role execution is organized by the Lead with the Harness team tools (spawn_teammate / team_task_*).',
+      'Read the seven-stage delivery pipeline stored in .dsh/pipeline.json: the requirement, every stage (status, summary, artifacts), the current stage and the recorded releases. The seven stages are product → design → development → testing → acceptance (AI project-manager acceptance review) → approval (owner sign-off) → release; acceptance + approval form the dual-review model. Use it before deciding which role should act next. This module only owns pipeline state and the human approval gates; multi-role execution is organized by the Lead with the Harness team tools (spawn_teammate / team_task_*).',
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -1975,7 +2061,7 @@ export function registerPipelineTools(ctx) {
         stageId: {
           type: 'string',
           enum: PIPELINE_STAGE_IDS,
-          description: 'Stage id: product, design, development, testing, approval or release.',
+          description: 'Stage id: product, design, development, testing, acceptance, approval or release.',
         },
       },
       required: ['stageId'],
@@ -2016,7 +2102,7 @@ export function registerPipelineTools(ctx) {
   register({
     name: 'pipeline_set_requirement',
     description:
-      'Set the delivery requirement (title and detail) stored in .dsh/pipeline.json. The product stage cannot start until both are non-empty; write a requirement that the six roles can work from and that acceptance_add can turn into checkable acceptance items.',
+      'Set the delivery requirement (title and detail) stored in .dsh/pipeline.json. The product stage cannot start until both are non-empty; write a requirement that the seven roles can work from and that acceptance_add can turn into checkable acceptance items.',
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -2119,7 +2205,7 @@ export function registerPipelineTools(ctx) {
   register({
     name: 'pipeline_start_stage',
     description:
-      'Start one delivery stage (status becomes active). The product stage needs a requirement title and detail; every other stage needs the previous stage approved. A failed stage can be restarted after fixing the rejection note. Starting a stage does not approve it: only the project manager approves in the browser panel.',
+      'Start one delivery stage (status becomes active). The product stage needs a requirement title and detail; every other stage needs the previous stage approved. Release can never start before the approval (owner sign-off) stage is approved, and approval itself needs the acceptance (AI review) stage approved. A failed stage can be restarted after fixing the rejection note. Starting a stage does not approve it: only the project manager approves in the browser panel.',
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -2127,7 +2213,7 @@ export function registerPipelineTools(ctx) {
         stageId: {
           type: 'string',
           enum: PIPELINE_STAGE_IDS,
-          description: 'Stage id: product, design, development, testing, approval or release.',
+          description: 'Stage id: product, design, development, testing, acceptance, approval or release.',
         },
       },
       required: ['stageId'],
@@ -2163,7 +2249,7 @@ export function registerPipelineTools(ctx) {
   register({
     name: 'pipeline_dispatch',
     description:
-      'Build the dispatch payload for one delivery stage: the full role prompt (requirement, upstream artifacts, "only do / never do", deliverables and gate rules) plus ready-to-use spawn_teammate and team_task_create arguments and the workspace-relative role handbooks. It does not start the stage and does not spawn anyone: call pipeline_start_stage first when needed, then pass spawn.{name,description,prompt} to spawn_teammate or teamTask.{subject,description} to team_task_create. The dispatched teammate submits with pipeline_submit_stage; only the owner approves.',
+      'Build the dispatch payload for one delivery stage: the full role prompt (requirement, upstream artifacts, "only do / never do", deliverables and gate rules) plus ready-to-use spawn_teammate and team_task_create arguments and the workspace-relative role handbooks. The seven stages are product → design → development → testing → acceptance (AI project-manager acceptance review) → approval (owner sign-off) → release. It does not start the stage and does not spawn anyone: call pipeline_start_stage first when needed, then pass spawn.{name,description,prompt} to spawn_teammate or teamTask.{subject,description} to team_task_create. The dispatched teammate submits with pipeline_submit_stage; only the owner approves.',
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -2171,7 +2257,7 @@ export function registerPipelineTools(ctx) {
         stageId: {
           type: 'string',
           enum: PIPELINE_STAGE_IDS,
-          description: 'Stage id: product, design, development, testing, approval or release.',
+          description: 'Stage id: product, design, development, testing, acceptance, approval or release.',
         },
       },
       required: ['stageId'],
@@ -2243,7 +2329,7 @@ export function registerPipelineTools(ctx) {
   register({
     name: 'pipeline_submit_stage',
     description:
-      'Submit the active stage for review with a summary and artifacts. Normally the stage moves to review and waits for the project manager (owner) to approve or reject it in the Dev Workspace panel — the model cannot approve its own work. In fast mode the four intermediate stages (product/design/development/testing) are auto-approved by the owner\'s pre-authorization; the result then reports autoApproved and nextStageId and you should continue with that stage. Artifacts are workspace-relative paths with optional labels; the Host checks each one (workspace containment, existence, non-empty) and returns non-blocking warnings.',
+      'Submit the active stage for review with a summary and artifacts. Normally the stage moves to review and waits for the project manager (owner) to approve or reject it in the Dev Workspace panel — the model cannot approve its own work; the acceptance stage only submits the AI review report and recommendation. In fast mode the five intermediate stages (product/design/development/testing/acceptance) are auto-approved by the owner\'s pre-authorization; the result then reports autoApproved and nextStageId and you should continue with that stage. The approval (owner sign-off) and release gates always stay manual in both modes. Artifacts are workspace-relative paths with optional labels; the Host checks each one (workspace containment, existence, non-empty) and returns non-blocking warnings.',
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -2251,7 +2337,7 @@ export function registerPipelineTools(ctx) {
         stageId: {
           type: 'string',
           enum: PIPELINE_STAGE_IDS,
-          description: 'Stage id: product, design, development, testing, approval or release.',
+          description: 'Stage id: product, design, development, testing, acceptance, approval or release.',
         },
         summary: {
           type: 'string',

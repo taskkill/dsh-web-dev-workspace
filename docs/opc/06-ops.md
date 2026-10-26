@@ -22,7 +22,7 @@
 
 - 需求/设计/实现说明：`docs/pipeline/requirements.md`、`docs/pipeline/design.md`、
   开发提交的构建命令与运行说明（运行时依赖、环境变量）。
-- 验收结论：`acceptance_list` 全部 `pass`；`docs/pipeline/test-report.md` 与 `.dsh/evidence/` 证据路径。
+- 验收结论：`acceptance_list` 全部 `pass`；`docs/pipeline/test-report.md` 与 `.dsh/evidence/` 证据路径；**验收复核报告 `docs/pipeline/acceptance-review.md`（项目经理 Agent 的「建议放行」结论）**。
 - 发布目标：环境（staging/production）、访问 URL/域名/端口、服务器或平台、凭据**存放位置**（不读明文）。
 - 版本与回滚线索：版本号或 `git rev-parse --short HEAD`、上一版本产物位置与回滚命令。
 - 限制：SSH 远程工作区不支持流水线/交付，需退回本地工作区；预览分享公网访问要求端口可达（否则用隧道）。

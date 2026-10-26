@@ -60,8 +60,12 @@ export const REVIEW_MAX_PATH = 500
 export const REVIEW_MAX_SIG = 200
 export const REVIEW_MAX_BYTES = 1024 * 1024
 
-/** Gate stages accepted by the review baseline (mirrors pipeline stage ids). */
-export const REVIEW_STAGE_IDS = ['product', 'design', 'development', 'testing', 'approval', 'release']
+/**
+ * Gate stages accepted by the review baseline. Must mirror `PIPELINE_STAGES` in
+ * pipeline.js (including the v1.2.72 acceptance / AI-review gate): the review
+ * view is only meaningful when every stage start can capture a baseline.
+ */
+export const REVIEW_STAGE_IDS = ['product', 'design', 'development', 'testing', 'acceptance', 'approval', 'release']
 
 /** Bound on the git status snapshot taken at stage start (and on reads). */
 const MAX_STATUS_ENTRIES = 2000

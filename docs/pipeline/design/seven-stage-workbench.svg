@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="820" viewBox="0 0 1100 820" role="img" aria-labelledby="title desc">
+  <title id="title">工作台项目流程 7 步设计稿</title>
+  <desc id="desc">工作台项目流程卡：7 个阶段横向排布，第 5 关验收复核待评审、第 6 关人工确认待开始、第 7 关发布锁定；含项目状态 4/7 与需要你处理卡片。</desc>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif; }
+    .h1 { font-size: 18px; font-weight: 700; fill: #0f1115; }
+    .h2 { font-size: 11.5px; fill: #4e5561; }
+    .sec { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; fill: #8a919c; }
+    .stage { font-size: 11px; font-weight: 600; fill: #0f1115; }
+    .role { font-size: 9px; fill: #8a919c; }
+    .sum { font-size: 10.5px; fill: #4e5561; }
+    .hint { font-size: 9.5px; fill: #8a919c; }
+    .tiny { font-size: 8.5px; fill: #8a919c; }
+    .pill { font-size: 9px; font-weight: 500; }
+    .btn { font-size: 10.5px; font-weight: 600; }
+    .link { font-size: 9.5px; fill: #4176e6; }
+    .check { font-size: 10px; fill: #1a9e4b; }
+    .note { font-size: 10.5px; fill: #4e5561; }
+    .white { fill: #ffffff; }
+  </style>
+
+  <rect width="1100" height="820" fill="#f7f8fa"/>
+
+  <text x="48" y="56" class="h1">设计稿 D · 工作台：项目流程 7 步（当前第 5 关验收复核待评审）</text>
+  <text x="48" y="82" class="h2">7 步横向排布、可横向滚动、不折行；角色名区分「项目经理 Agent」与「项目经理（你）」，不新增标签；进度总数 = stages.length（7）。</text>
+
+  <!-- ================= PROJECT FLOW CARD ================= -->
+  <rect x="48" y="106" width="1004" height="212" rx="10" fill="#ffffff" stroke="#e3e8ef"/>
+  <text x="64" y="130" style="font-size:10.5px;font-weight:700;letter-spacing:0.05em;fill:#8a919c">项目流程</text>
+  <rect x="132" y="116" width="48" height="16" rx="8" fill="#f1f3f5"/>
+  <text x="156" y="127" text-anchor="middle" class="tiny" fill="#8a919c">第 1 轮</text>
+  <text x="1036" y="130" text-anchor="end" class="link">查看流水线</text>
+
+  <!-- steps -->
+  <g>
+    <rect x="64" y="146" width="128" height="98" rx="8" fill="#f6fbf7" stroke="#bfe6cc"/>
+    <circle cx="80" cy="164" r="7.5" fill="#e6faed"/>
+    <text x="80" y="167" text-anchor="middle" class="tiny" style="fill:#1a9e4b;font-weight:700">✓</text>
+    <text x="96" y="167" class="stage">需求分析</text>
+    <text x="76" y="190" class="role">产品经理</text>
+    <rect x="76" y="200" width="54" height="15" rx="7.5" fill="#e6faed"/>
+    <text x="103" y="211" text-anchor="middle" class="pill" style="fill:#1a9e4b;font-size:8.5px">已通过</text>
+  </g>
+  <line x1="196" y1="194" x2="200" y2="194" stroke="#d5dae1" stroke-width="1.5"/>
+  <g>
+    <rect x="200" y="146" width="128" height="98" rx="8" fill="#f6fbf7" stroke="#bfe6cc"/>
+    <circle cx="216" cy="164" r="7.5" fill="#e6faed"/>
+    <text x="216" y="167" text-anchor="middle" class="tiny" style="fill:#1a9e4b;font-weight:700">✓</text>
+    <text x="232" y="167" class="stage">UI 设计</text>
+    <text x="212" y="190" class="role">UI 设计师</text>
+    <rect x="212" y="200" width="54" height="15" rx="7.5" fill="#e6faed"/>
+    <text x="239" y="211" text-anchor="middle" class="pill" style="fill:#1a9e4b;font-size:8.5px">已通过</text>
+  </g>
+  <line x1="332" y1="194" x2="336" y2="194" stroke="#d5dae1" stroke-width="1.5"/>
+  <g>
+    <rect x="336" y="146" width="128" height="98" rx="8" fill="#f6fbf7" stroke="#bfe6cc"/>
+    <circle cx="352" cy="164" r="7.5" fill="#e6faed"/>
+    <text x="352" y="167" text-anchor="middle" class="tiny" style="fill:#1a9e4b;font-weight:700">✓</text>
+    <text x="368" y="167" class="stage">开发实现</text>
+    <text x="348" y="190" class="role">全栈开发</text>
+    <rect x="348" y="200" width="54" height="15" rx="7.5" fill="#e6faed"/>
+    <text x="375" y="211" text-anchor="middle" class="pill" style="fill:#1a9e4b;font-size:8.5px">已通过</text>
+  </g>
+  <line x1="468" y1="194" x2="472" y2="194" stroke="#d5dae1" stroke-width="1.5"/>
+  <g>
+    <rect x="472" y="146" width="128" height="98" rx="8" fill="#f6fbf7" stroke="#bfe6cc"/>
+    <circle cx="488" cy="164" r="7.5" fill="#e6faed"/>
+    <text x="488" y="167" text-anchor="middle" class="tiny" style="fill:#1a9e4b;font-weight:700">✓</text>
+    <text x="504" y="167" class="stage">测试验收</text>
+    <text x="484" y="190" class="role">测试工程师</text>
+    <rect x="484" y="200" width="54" height="15" rx="7.5" fill="#e6faed"/>
+    <text x="511" y="211" text-anchor="middle" class="pill" style="fill:#1a9e4b;font-size:8.5px">已通过</text>
+  </g>
+  <line x1="604" y1="194" x2="608" y2="194" stroke="#d5dae1" stroke-width="1.5"/>
+  <!-- current : acceptance review -->
+  <g>
+    <rect x="608" y="146" width="128" height="98" rx="8" fill="#fffaf0" stroke="#f0b74a" stroke-width="1.5"/>
+    <circle cx="624" cy="164" r="7.5" fill="#f1f3f5"/>
+    <text x="624" y="167" text-anchor="middle" class="tiny" style="fill:#61666b">5</text>
+    <text x="640" y="167" class="stage">验收复核</text>
+    <text x="620" y="190" class="role">项目经理 Agent</text>
+    <rect x="620" y="200" width="54" height="15" rx="7.5" fill="#f1f3f5"/>
+    <text x="647" y="211" text-anchor="middle" class="pill" style="fill:#b7791f;font-size:8.5px">待评审</text>
+    <text x="680" y="211" class="tiny" style="fill:#b7791f">● 当前</text>
+  </g>
+  <line x1="740" y1="194" x2="744" y2="194" stroke="#d5dae1" stroke-width="1.5"/>
+  <g>
+    <rect x="744" y="146" width="128" height="98" rx="8" fill="#ffffff" stroke="#e3e8ef"/>
+    <circle cx="760" cy="164" r="7.5" fill="#f1f3f5"/>
+    <text x="760" y="167" text-anchor="middle" class="tiny" style="fill:#61666b">6</text>
+    <text x="776" y="167" class="stage">人工确认</text>
+    <text x="756" y="190" class="role">项目经理（你）</text>
+    <rect x="756" y="200" width="54" height="15" rx="7.5" fill="#f1f3f5"/>
+    <text x="783" y="211" text-anchor="middle" class="pill" style="fill:#8a919c;font-size:8.5px">待开始</text>
+  </g>
+  <line x1="876" y1="194" x2="880" y2="194" stroke="#d5dae1" stroke-width="1.5"/>
+  <g>
+    <rect x="880" y="146" width="128" height="98" rx="8" fill="#ffffff" stroke="#e3e8ef"/>
+    <circle cx="896" cy="164" r="7.5" fill="#f1f3f5"/>
+    <text x="896" y="167" text-anchor="middle" class="tiny" style="fill:#61666b">7</text>
+    <text x="912" y="167" class="stage">发布上线</text>
+    <text x="892" y="190" class="role">运维</text>
+    <rect x="892" y="200" width="54" height="15" rx="7.5" fill="#f1f3f5"/>
+    <text x="919" y="211" text-anchor="middle" class="pill" style="fill:#8a919c;font-size:8.5px">待开始</text>
+  </g>
+
+  <!-- flow now -->
+  <line x1="64" y1="260" x2="1036" y2="260" stroke="#eceef1" stroke-dasharray="4 4"/>
+  <circle cx="70" cy="288" r="3.5" fill="#f59e0b"/>
+  <text x="82" y="292" style="font-size:11px;font-weight:600;fill:#0f1115">当前：验收复核</text>
+  <text x="216" y="292" class="hint">·</text>
+  <text x="226" y="292" class="hint">待评审</text>
+  <text x="280" y="292" class="hint">·</text>
+  <text x="290" y="292" class="hint">负责：项目经理 Agent</text>
+  <text x="1036" y="292" text-anchor="end" class="hint">实际 7×116 + 6×20 = 932px · 滚动兜底</text>
+
+  <!-- ================= STATUS + ATTENTION CARDS ================= -->
+  <rect x="48" y="340" width="490" height="150" rx="10" fill="#ffffff" stroke="#e3e8ef"/>
+  <text x="64" y="366" style="font-size:10.5px;font-weight:700;letter-spacing:0.05em;fill:#8a919c">项目状态</text>
+  <text x="64" y="394" class="sum">第 1 轮 · 已完成 4/7 · 当前：验收复核</text>
+  <rect x="64" y="408" width="12" height="12" rx="2" fill="#ffffff" stroke="#b6bdc7"/>
+  <text x="82" y="418" class="tiny">快速模式</text>
+  <text x="128" y="418" class="link">查看流水线</text>
+  <text x="64" y="444" class="hint">验收复核待评审：通过后进入第 6 关人工确认；第 7 关发布仍锁定。</text>
+  <text x="64" y="460" class="hint">进度总数取 stages.length（默认 7），不要写死六关。</text>
+  <rect x="64" y="470" width="86" height="22" rx="5" fill="#0f1115"/>
+  <text x="107" y="485" text-anchor="middle" class="btn white">打开流水线</text>
+
+  <rect x="558" y="340" width="494" height="150" rx="10" fill="#fffaf0" stroke="#f0b74a"/>
+  <text x="574" y="366" style="font-size:10.5px;font-weight:700;letter-spacing:0.05em;fill:#8a919c">需要你处理</text>
+  <rect x="992" y="352" width="46" height="16" rx="8" fill="#f1f3f5"/>
+  <text x="1015" y="363" text-anchor="middle" class="tiny" fill="#b7791f">1 项</text>
+  <text x="574" y="392" style="font-size:11.5px;font-weight:600;fill:#0f1115">第 5 关「验收复核」待你审批</text>
+  <rect x="574" y="402" width="376" height="26" rx="5" fill="#ffffff" stroke="#e3e8ef"/>
+  <text x="582" y="419" class="hint">写清打回原因或补充要求（可建议回退阶段）…</text>
+  <rect x="574" y="438" width="52" height="24" rx="5" fill="#0f1115"/>
+  <text x="600" y="454" text-anchor="middle" class="btn white">通过</text>
+  <rect x="632" y="438" width="52" height="24" rx="5" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="658" y="454" text-anchor="middle" class="btn" fill="#0f1115">打回</text>
+  <text x="696" y="453" class="hint">通过 → 第 6 关；打回 → 按备注回退修复</text>
+  <text x="574" y="480" class="hint">fast 模式下这里只会在第 6 关（人工确认）出现；第 7 关仍需通过后发布。</text>
+
+  <!-- ================= NOTES ================= -->
+  <text x="48" y="536" class="sec">实现与视觉要点</text>
+  <text x="48" y="562" class="note">· 流程条复用 .ds-wb-step / .ds-wb-steps：7 步 min-width 116px，容器 overflow-x:auto，不折行；compact 单列页面同样横向滚动。</text>
+  <text x="48" y="584" class="note">· 第 5 步角色「项目经理 Agent」、第 6 步「项目经理（你）」；标签只在流水线卡出现，流程条不重复。</text>
+  <text x="48" y="606" class="note">· 状态色沿用 data-status：已通过绿、待评审警示、进行中品牌色；当前步骤加 ● 当前，不只靠颜色。</text>
+  <text x="48" y="628" class="note">· 工作台「需要你处理」卡沿用现有 reviewGate 文案（第 {n} 关动态计算），第 5/6 关自动正确，无需硬编码。</text>
+
+  <text x="48" y="680" class="sec">响应式与无障碍</text>
+  <text x="48" y="706" class="note">· ≤700px 或 data-compact：页面单列、按钮 34px；流程条保持横向滑动，可看到 1–3 步并滑到第 7 步。</text>
+  <text x="48" y="728" class="note">· 每个步骤是 button，title 含「阶段 · 状态 · 摘要」；键盘可 Tab 到达，禁用仅用于不可点步骤。</text>
+  <text x="48" y="750" class="note">· 颜色不单独表意：序号、✓、状态文字并存；深色主题走 token 自动适配。</text>
+
+  <text x="48" y="792" class="hint">SVG 步宽 128px 为放大展示；实际 .ds-wb-step min-width 116px + 连接线 20px，7 步约 932px，1080px 内容宽可完整显示，窄屏由横向滚动兜底。</text>
+</svg>

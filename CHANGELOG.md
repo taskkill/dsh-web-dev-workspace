@@ -2,6 +2,48 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.72 — 2026-10-26
+
+### Dual-review mode: project-manager agent acceptance gate
+
+- The delivery pipeline now has **seven stages**: product → design → development →
+  testing → **acceptance** (project-manager agent review) → **approval** (owner
+  human sign-off) → release. The new stage sits between testing and the human
+  gate, so the agent team performs a project-level acceptance review before the
+  owner is asked to sign off — **AI review + human confirmation = dual review**.
+- **acceptance** is a first-class role: id `project-manager-agent`, role title
+  「项目经理 Agent」, stage title 「验收复核」. Its prompt and handbook
+  (`docs/opc/05-review.md`) require reviewing requirement coverage, the
+  acceptance checklist and evidence, the test report and retests, the Git review
+  state and the charter DoD, then writing `docs/pipeline/acceptance-review.md`
+  with a ship / send-back recommendation and blocking items. The agent cannot
+  approve its own stage and cannot release. The human approval stage is now
+  explicitly the Owner's second review.
+- Gate rules: in **normal** mode submission moves the stage to review and the
+  owner approves or rejects; in **fast** mode the five intermediate stages
+  (product/design/development/testing/acceptance) auto-approve on submit and
+  report the next stage, while **approval and release always stay manual**.
+  Release still cannot start before the owner's sign-off.
+- **Legacy migration**: six-stage `.dsh/pipeline.json` documents are normalized
+  on read. A missing `acceptance` stage is inserted as pending; when an old
+  document already has approval or release approved, the new stage is migrated as
+  approved with a 「升级迁移」 note, so completed projects stay complete and
+  in-flight projects continue in the new order without bypassing the review.
+- Change rounds know about the new stage: full/development rounds run it;
+  release-only rounds skip it; requirement/design-only scopes skip it together
+  with the delivery stages. Skipped stages keep their reason note.
+- Client: pipeline view and workbench render all seven stages with the new
+  role/title pair and updated zh/en copy (fast-mode hint, approval readiness,
+  requirement/adjustment scope hints); the acceptance card can start/dispatch and
+  be approved or rejected in normal mode; stage-count fallbacks are 7.
+- Docs: `docs/AGENT_TEAM.md`, `docs/PLAYBOOK.md`, the OPC charter/roster (new
+  `05-review.md`, ops renamed to `06-ops.md`), the plugin README and acceptance
+  test batch 10 describe the dual-review flow; both package versions are 1.2.72.
+- Tests: `npm run check` and `npm test` cover seven-stage order, jump rejection,
+  normal/fast gates, migration of pending/in-flight/completed documents, change
+  scopes and acceptance dispatch; `pipeline-selftest` is extended accordingly.
+  Host changes require a Harness restart; client changes need a page refresh.
+
 ## 1.2.71 — 2026-10-26
 
 ### Requirement/design-only change scopes

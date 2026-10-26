@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Dev Workspace",
-    "description": "A VS Code-style workspace plus a project delivery bench: files, editor, Git, terminal and preview browser; per-workspace memory, todos, an acceptance board (evidence, retest history, reports) and a six-stage delivery pipeline; the agent gets task, port, preview, status and acceptance tools while the owner verifies and delivers from the panels."
+    "description": "A VS Code-style workspace plus a project delivery bench: files, editor, Git, terminal and preview browser; per-workspace memory, todos, an acceptance board (evidence, retest history, reports) and a seven-stage dual-review delivery pipeline (AI project-manager acceptance review plus owner sign-off); the agent gets task, port, preview, status and acceptance tools while the owner verifies and delivers from the panels."
   }
 }

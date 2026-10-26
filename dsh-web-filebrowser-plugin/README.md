@@ -352,7 +352,8 @@ JSON file clears the board.
 
 The project-delivery state lives under the workspace `.dsh/` directory as well:
 `.dsh/acceptance.json` (checklist, evidence, history), `.dsh/pipeline.json`
-(six stages, reviews, releases), `.dsh/deliveries.json`, `.dsh/runs.json` (task
+(seven stages incl. the project-manager agent acceptance review, reviews,
+releases), `.dsh/deliveries.json`, `.dsh/runs.json` (task
 run ledger), `.dsh/review.json` (stage baseline + reviewed marks) and
 `.dsh/verifications/` (retest records). All are generated with a `.gitignore`
 that keeps them out of the repository.

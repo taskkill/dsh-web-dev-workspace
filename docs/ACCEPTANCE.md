@@ -1,6 +1,6 @@
-# 验收清单（批次 0–5）
+# 验收清单（批次 0–10）
 
-> 面向项目经理的复测步骤。代码版本 **v1.2.68**（批次 0–4 写于 v1.2.30，步骤仍然有效）。**首次测试前请重启一次 Harness**（Host 路由/模型工具/`.dsh` 文档只在重启后生效；浏览器刷新只更新客户端）。
+> 面向项目经理的复测步骤。当前代码版本 **v1.2.72**（批次 0–4 写于 v1.2.30、批次 5 写于 v1.2.68、批次 6–9 写于 v1.2.69–v1.2.71；旧批次里的「六阶段/六关」是当时行为，现行**七阶段双复核**见批次 10）。**首次测试前请重启一次 Harness**（Host 路由/模型工具/`.dsh` 文档只在重启后生效；浏览器刷新只更新客户端）。
 >
 > 预置：任选一个本地工作区；`node_modules` 已安装的项目体验最好。打开侧栏确认能看到 **任务**、**验收**、**流水线** 与 **工作台**。
 
@@ -37,9 +37,10 @@
 - [ ] **构建产物 zip**：点「下载构建产物」→ 下载 `dist`/`build`/`out` 打包 zip；没有产物目录时应报错提示。
 - [ ] **交付包 + 记录**：点「打包交付（zip）」→ 生成 `.dsh/deliveries/…zip`（含 `ACCEPTANCE.md` 与 `evidence/`），面板出现交付记录并可再次下载；`.dsh/deliveries.json` 中有记录。
 
-## 批次 4 · 交付流水线（智能体团队）
+## 批次 4 · 交付流水线（智能体团队，v1.2.68 六阶段基线）
 
 > 需要重启 Harness 以加载 `pipeline.js` 的 Host 路由与工具；完成后刷新页面，侧栏应出现 **流水线** 标签。
+> **历史批次**：本批写于六阶段时期（product → design → development → testing → approval → release）。v1.2.72 起为七阶段双复核，新增第 5 关「验收复核」；当前行为与复测步骤以**批次 10** 为准，下文阶段数按历史理解，流程与闸门仍然有效。
 
 - [ ] **需求下发**：流水线视图填「需求标题 + 需求描述」→ 保存；清空标题时产品经理阶段应无法启动。
 - [ ] **顺序校验**：未通过产品经理阶段时，「UI 设计」的启动按钮不可用；用 agent 调 `pipeline_start_stage({stageId:'design'})` 应失败。
@@ -47,7 +48,7 @@
 - [ ] **提交与人工闸门**：让 agent 用 `pipeline_submit_stage` 提交 → 阶段变「待评审」；你在面板「通过」→ 下一阶段解锁；「打回」→ 变「已打回」并可重新派发（模型没有审批工具）。
 - [ ] **发布闸门**：approval 阶段未通过前，发布阶段无法启动；通过后才能启动发布。
 - [ ] **发布记录**：发布阶段填环境/URL/说明并保存，或让运维 agent 调 `pipeline_record_release` → 面板显示发布记录，`.dsh/pipeline.json` 中 `releases` 有记录。
-- [ ] **持久化**：刷新页面后六阶段状态、摘要、产物与发布记录仍在；`.dsh/pipeline.json` 原子写、SSH 工作区提示不支持。
+- [ ] **持久化**：刷新页面后各阶段状态（v1.2.68 为六关；v1.2.72 起为七关）、摘要、产物与发布记录仍在；`.dsh/pipeline.json` 原子写、SSH 工作区提示不支持。
 - [ ] **团队编排**：按 [docs/AGENT_TEAM.md](AGENT_TEAM.md) 用 `spawn_teammate` / `team_task_*` 让角色各司其职；插件只负责状态与闸门。
 
 ## 批次 5 · Agent-first 功能批（v1.2.68）
@@ -73,7 +74,7 @@
 > 纯客户端改动，**不需要重启 Harness**，刷新页面即可。用任意本地工作区、准备 2–3 条待办复测。
 
 - [ ] **无项目 → 立项**：待办里有 1 条未完成任务 → 点该行「交给产品」→ 确认「立项并派发」→ 工作台产品阶段变为进行中，当前对话收到产品经理角色提示；待办出现「已派发」标签和带轮次的备注。
-- [ ] **完成后 → 新一轮**：六关全部完成的项目 → 点另一条待办「交给产品」→ 确认「发起变更并派发」→ 项目进入第 N+1 轮，产品阶段启动并派发提示；上一轮历史仍可在流水线查看。
+- [ ] **完成后 → 新一轮**：全部阶段完成的项目 → 点另一条待办「交给产品」→ 确认「发起变更并派发」→ 项目进入第 N+1 轮，产品阶段启动并派发提示；上一轮历史仍可在流水线查看。（本批写于六关时期；v1.2.72 起为七关，见批次 10。）
 - [ ] **进行中 → 不覆盖**：让一个阶段处于进行中或待审批 → 点待办「交给产品」→ 弹出「当前项目进行中」提示，不改变流水线；点「打开工作台」跳到工作台。
 - [ ] **边界**：已完成的待办不显示「交给产品」按钮；SSH 工作区点按钮提示不支持；没有标题的待办不会派发。
 
@@ -95,23 +96,43 @@
 
 ## 批次 9 · 产品/设计单独变更（v1.2.71）
 
-> Host 新增 scope 枚举；升级后**重启一次 Harness**，再刷新页面。用已完成六关的项目复测。
+> Host 新增 scope 枚举；升级后**重启一次 Harness**，再刷新页面。用已完成全部阶段的项目复测（本批写于六关时期，v1.2.72 起为七关；见批次 10）。
 
-- [ ] **仅产品调整**：工作台 → 需求与调整 → 新轮变更 → 选「仅产品调整」→ 填变更内容发起 → 产品阶段启动、角色提示派发；产品通过后本轮直接完成，设计/开发/测试/确认/发布显示「跳过」及原因。
-- [ ] **仅设计调整**：选「仅设计调整」→ 跳过需求，直接从设计阶段派发；设计通过后本轮完成，开发/测试/确认/发布跳过。
-- [ ] **产品与设计**：选「产品与设计」→ 需求 → 设计依次启动；设计通过后完成，开发/测试/确认/发布跳过。
-- [ ] **原有范围不回退**：「完整六关」「仅开发调整」「仅发布调整」行为与之前一致；变更记录里能看到本轮 scope 标签。
+- [ ] **仅产品调整**：工作台 → 需求与调整 → 新轮变更 → 选「仅产品调整」→ 填变更内容发起 → 产品阶段启动、角色提示派发；产品通过后本轮直接完成，设计/开发/测试/验收复核/确认/发布显示「跳过」及原因。
+- [ ] **仅设计调整**：选「仅设计调整」→ 跳过需求，直接从设计阶段派发；设计通过后本轮完成，开发/测试/验收复核/确认/发布跳过。
+- [ ] **产品与设计**：选「产品与设计」→ 需求 → 设计依次启动；设计通过后完成，开发/测试/验收复核/确认/发布跳过。
+- [ ] **原有范围不回退**：「完整七关」（当时称「完整六关」）、「仅开发调整」「仅发布调整」行为与之前一致；变更记录里能看到本轮 scope 标签（release scope 跳过验收复核，见批次 10）。
+
+## 批次 10 · 双复核模式（v1.2.72）
+
+> 本批把交付流水线从六阶段升级为**七阶段双复核**：product → design → development → testing → **acceptance（验收复核，项目经理 Agent）** → **approval（人工确认，项目经理/你）** → release。
+> 升级后**先重启一次 Harness**（Host 新增 acceptance 阶段、迁移逻辑与 prompt/工具文案），再**强制刷新/清缓存**（客户端 7 关与中英文文案）。用任意本地工作区复测；建议另备一份旧 6 阶段 `.dsh/pipeline.json` 样本验证迁移。
+
+- [ ] **7 关显示**：打开「流水线」→ 依次显示 (1) 需求分析 → (2) UI 设计 → (3) 开发实现 → (4) 测试验收 → (5) **验收复核**（角色「项目经理 Agent」，标签「AI 复核」）→ (6) **人工确认**（角色「项目经理（你）」，标签「人工确认」）→ (7) 发布上线；工作台「项目流程」也是 7 步、进度显示 `x/7`。
+- [ ] **normal 模式通过**：完成 product/design/development/testing 后，第 5 关「启动并派发」→ 用 `pipeline_dispatch({stageId:'acceptance'})` 派给项目经理 Agent → Agent 产出 `docs/pipeline/acceptance-review.md` 并提交评审 → 卡片变「待评审」→ 你在面板「通过」→ 第 6 关才解锁；第 6 关人工确认通过后第 7 关发布才解锁。
+- [ ] **normal 模式打回**：让 acceptance 提交一份「建议打回」的复核报告 → 你在第 5 关点「打回」并写原因/建议回退阶段 → 阶段变「已打回」，approval/release 仍锁定；修复后「重新派发」可用。
+- [ ] **跳关拒绝**：testing 未通过时启动 acceptance、acceptance 未通过时启动 approval、approval 未通过时启动 release，均应失败（`bad-order`）；模型工具里没有审批工具，acceptance 只能提交评审。
+- [ ] **fast 模式五阶段自动**：打开「快速模式」→ 依次提交 product/design/development/testing/**acceptance**，每次返回 `autoApproved=true`，acceptance 的 `nextStageId='approval'`；acceptance 卡备注「快速模式自动通过」为说明灰；**approval 与 release 仍必须人工**（approval 不会自动通过，release 在 approval 通过前不能启动）。
+- [ ] **旧文档迁移 · 全 pending**：用一份旧 6 阶段（无 acceptance）全 pending 的 `.dsh/pipeline.json` → 重启/刷新后显示 7 关，acceptance 为「待开始」，其余状态不变。
+- [ ] **旧文档迁移 · 进行中**：旧文档 product..testing 已 approved → 刷新后 acceptance 为「待开始」且位于 approval 之前；此时不能启动 approval；启动 acceptance 后才继续新流程。
+- [ ] **旧文档迁移 · 旧已完成**：旧文档六关全 approved → 刷新后 acceptance 显示「已通过」且备注含「升级迁移：验收复核为更新新增，旧流程已完成」；项目仍显示完成，可正常发起新一轮变更。
+- [ ] **变更轮 scope**：完成七关后发起变更轮 → `full` 与 `development` 仍执行 acceptance；`release`、`product`、`design`、`product-design` 跳过 acceptance 并在备注写明「跳过：…」；release scope 仍要求 approval 已通过。
+- [ ] **中英文文案**：切 en/zh → 第 5 关「验收复核 / Acceptance review」「项目经理 Agent / Project manager agent」、第 6 关「人工确认 / Human sign-off」「项目经理（你）/ Project manager (you)」正确；快速模式提示为「中间五阶段（含验收复核）」；界面无「六阶段 / six-stage」残留（历史 CHANGELOG 除外）。
+- [ ] **systemPrompt 与工具**：新开一个工作区会话 → 注入的流水线说明为「七阶段 + 双复核」；`pipeline_status` 返回 7 行阶段与计数；`pipeline_stage_prompt({stageId:'acceptance'})` 与 `pipeline_dispatch({stageId:'acceptance'})` 含项目经理 Agent 边界、`docs/opc/05-review.md` 手册与 `docs/pipeline/acceptance-review.md` 交付物；运维手册为 `docs/opc/06-ops.md`（原 05-ops 已改名）。
+- [ ] **自动化全绿**：`npm run check`（全部模块语法）、`npm test`（host smoke）、`node .dsh/tmp/team/pipeline-selftest.mjs`（7 阶段/跳关/迁移/scope/fast/prompt）均 exit 0；`node --check dsh-web-filebrowser-plugin/client.js` 通过；`grep -n "六阶段\|六关\|six stages\|six-stage" dsh-web-filebrowser-plugin/client.js dsh-web-filebrowser-plugin/pipeline.js` 除历史注释外应为 0。
+- [ ] **回归检查**：批次 0–9 抽查不回退——任务运行/预览分享/验收证据/交付包/变更审阅/待办派发照旧可用；流水线发布记录与历史轮次仍可查看。
 
 ## 已知限制（不是缺陷）
 
 - **预览分享**：只改写 HTML；前端在 JS 里拼接的绝对路径需要 dev server 配置 `base`；公网访问要求预览端口可达（否则用隧道）。
 - **自动截图**：目前证据为手动上传（系统/手机截图、PDF、日志）；Host 侧无头浏览器截图需要额外安装 Playwright/Chromium，未内置。
 - **watcher**：只监听根目录与已展开目录，SSH 工作区不监听（仍可手动/轮询刷新）。
-- **重启依赖**：Host 路由（任务/验收/交付/预览/watcher/terminal list/review）与新增模型工具需要重启 Harness；仅刷新页面时旧 Host 会提示不可用或走降级路径。
+- **重启依赖**：Host 路由（任务/验收/交付/预览/watcher/terminal list/review）与新增模型工具需要重启 Harness；仅刷新页面时旧 Host 会提示不可用或走降级路径。v1.2.72 的 acceptance 阶段、迁移逻辑与七阶段 prompt/工具文案同样必须重启 Host 才生效（客户端 7 关文案刷新即可）。
+- **双复核迁移**：旧 6 阶段 `.dsh/pipeline.json` 在读取时按 id 归一化补 acceptance（首次写回后落盘）；旧已完成项目的 acceptance 迁移备注仅代表「升级前旧流程已完成」，不代表新流程重新复核过，不能作为新交付的放行依据。
 - **变更审阅签名**：`已审` 只在文件的 Git 状态（staged/unstaged/untracked/status）变化时失效；同一未暂存文件继续编辑不会自动失效（与现有 Git 面板一致）。
 - **验收历史上限**：每项 history 最多 50 条、文件 1 MB；极端 300 项 × 长历史可能触顶，届时可先清理已通过项。
 
 ## 回滚与恢复
 
-- 代码层：`git log --oneline` 查看批次提交（v1.2.23 → v1.2.68），可按批次 revert。
+- 代码层：`git log --oneline` 查看批次提交（v1.2.23 → v1.2.72），可按批次 revert。
 - 数据层：验收清单 `.dsh/acceptance.json`、交付记录 `.dsh/deliveries.json`、证据 `.dsh/evidence/`、运行账本 `.dsh/runs.json`、复测记录 `.dsh/verifications/`、变更审阅 `.dsh/review.json`、审阅标记（浏览器 localStorage）。这些都在 `.dsh/` 下且已被 `.gitignore` 忽略。

@@ -1,0 +1,261 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1060" viewBox="0 0 1280 1060" role="img" aria-labelledby="title desc">
+  <title id="title">设计稿 A · normal 模式：流水线视图 7 关，第 5 关验收复核待评审</title>
+  <desc id="desc">七阶段双复核流水线侧栏视图：第 1–4 关已通过，第 5 关验收复核待评审并显示 AI 复核标签与复核报告，第 6 关人工确认与第 7 关发布上线锁定；右侧标注双复核关系与卡片要点。</desc>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif; }
+    .h1 { font-size: 18px; font-weight: 700; fill: #0f1115; }
+    .h2 { font-size: 11.5px; fill: #4e5561; }
+    .sec { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; fill: #8a919c; }
+    .stage { font-size: 11px; font-weight: 600; fill: #0f1115; }
+    .role { font-size: 9px; fill: #8a919c; }
+    .sum { font-size: 10px; fill: #4e5561; }
+    .hint { font-size: 9px; fill: #8a919c; }
+    .tiny { font-size: 8.5px; fill: #8a919c; }
+    .pill { font-size: 9px; font-weight: 500; }
+    .btn { font-size: 10.5px; font-weight: 600; }
+    .link { font-size: 9.5px; fill: #4176e6; }
+    .check { font-size: 9.5px; fill: #1a9e4b; }
+    .tag { font-size: 8.5px; font-weight: 600; }
+    .anno { font-size: 10.5px; fill: #4e5561; }
+    .annob { font-size: 10.5px; font-weight: 600; fill: #0f1115; }
+    .legend { font-size: 9.5px; fill: #4e5561; }
+    .white { fill: #ffffff; }
+  </style>
+
+  <rect width="1280" height="1060" fill="#f7f8fa"/>
+  <text x="48" y="64" class="sec">DEV WORKSPACE · 右侧栏 · 流水线视图（390px 典型宽度）</text>
+
+  <!-- ======================= PANEL ======================= -->
+  <rect x="48" y="84" width="392" height="920" rx="10" fill="#ffffff" stroke="#e3e8ef"/>
+
+  <!-- toolbar -->
+  <text x="58" y="108" class="stage">交付流水线</text>
+  <rect x="132" y="95" width="48" height="16" rx="8" fill="#f1f3f5"/>
+  <text x="156" y="106" text-anchor="middle" class="pill" fill="#8a919c">第 1 轮</text>
+  <rect x="274" y="99" width="12" height="12" rx="2" fill="#ffffff" stroke="#b6bdc7"/>
+  <text x="292" y="109" class="tiny">快速模式</text>
+  <text x="398" y="109" class="link">刷新</text>
+  <line x1="48" y1="120" x2="440" y2="120" stroke="#e3e8ef"/>
+
+  <!-- todo banner (review) -->
+  <rect x="48" y="120" width="392" height="112" fill="#fdf6ea"/>
+  <line x1="48" y1="232" x2="440" y2="232" stroke="#f0e3cc"/>
+  <text x="58" y="142" style="font-size:11.5px;font-weight:600;fill:#0f1115">第 5 关「验收复核」待你审批</text>
+  <rect x="58" y="152" width="52" height="24" rx="5" fill="#0f1115"/>
+  <text x="84" y="168" text-anchor="middle" class="btn white">通过</text>
+  <rect x="116" y="152" width="52" height="24" rx="5" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="142" y="168" text-anchor="middle" class="btn" fill="#0f1115">打回</text>
+  <rect x="58" y="183" width="366" height="26" rx="5" fill="#ffffff" stroke="#e3e8ef"/>
+  <text x="66" y="200" class="hint">写清打回原因或补充要求…</text>
+  <text x="58" y="223" class="hint">你只需要点通过 / 打回，其余交给团队。批准后会自动进入下一阶段。</text>
+
+  <!-- requirement card -->
+  <rect x="56" y="240" width="376" height="94" rx="7" fill="#ffffff" stroke="#e3e8ef"/>
+  <text x="64" y="256" class="tiny" style="letter-spacing:0.06em">需求标题</text>
+  <text x="64" y="275" style="font-size:12px;font-weight:600;fill:#0f1115">七阶段双复核模式 v1.2.72</text>
+  <text x="64" y="291" class="sum">把六阶段升级为七阶段：测试通过后新增</text>
+  <text x="64" y="305" class="sum">项目经理 Agent 的「验收复核」，再由你人工确认。</text>
+  <text x="64" y="319" class="sum">AI 复核给建议、你拍板；确认后才解锁发布。</text>
+  <text x="64" y="332" class="link">编辑需求</text>
+
+  <!-- stage 1 -->
+  <rect x="56" y="346" width="376" height="60" rx="7" fill="#ffffff" stroke="#e3e8ef"/>
+  <circle cx="71" cy="363" r="8" fill="#f1f3f5"/>
+  <text x="71" y="366" text-anchor="middle" class="tiny" style="fill:#61666b">1</text>
+  <text x="85" y="364" class="stage">需求分析</text>
+  <text x="85" y="376" class="role">产品经理</text>
+  <rect x="368" y="355" width="56" height="15" rx="7.5" fill="#f1f3f5"/>
+  <text x="396" y="366" text-anchor="middle" class="pill" fill="#1a9e4b">已通过</text>
+  <text x="64" y="391" class="sum">七阶段双复核需求说明，9 条验收点，范围与不做清晰</text>
+  <text x="64" y="402" class="check">✓ 已通过</text>
+
+  <!-- stage 2 -->
+  <rect x="56" y="412" width="376" height="60" rx="7" fill="#ffffff" stroke="#e3e8ef"/>
+  <circle cx="71" cy="429" r="8" fill="#f1f3f5"/>
+  <text x="71" y="432" text-anchor="middle" class="tiny" style="fill:#61666b">2</text>
+  <text x="85" y="430" class="stage">UI 设计</text>
+  <text x="85" y="442" class="role">UI 设计师</text>
+  <rect x="368" y="421" width="56" height="15" rx="7.5" fill="#f1f3f5"/>
+  <text x="396" y="432" text-anchor="middle" class="pill" fill="#1a9e4b">已通过</text>
+  <text x="64" y="457" class="sum">设计说明 + 3 张高保真 SVG，复用 ds-pipe-* / ds-wb-* 样式</text>
+  <text x="64" y="468" class="check">✓ 已通过</text>
+
+  <!-- stage 3 -->
+  <rect x="56" y="478" width="376" height="60" rx="7" fill="#ffffff" stroke="#e3e8ef"/>
+  <circle cx="71" cy="495" r="8" fill="#f1f3f5"/>
+  <text x="71" y="498" text-anchor="middle" class="tiny" style="fill:#61666b">3</text>
+  <text x="85" y="496" class="stage">开发实现</text>
+  <text x="85" y="508" class="role">全栈开发</text>
+  <rect x="368" y="487" width="56" height="15" rx="7.5" fill="#f1f3f5"/>
+  <text x="396" y="498" text-anchor="middle" class="pill" fill="#1a9e4b">已通过</text>
+  <text x="64" y="523" class="sum">7 阶段常量、迁移与闸门逻辑；npm test 全绿</text>
+  <text x="64" y="534" class="check">✓ 已通过</text>
+
+  <!-- stage 4 -->
+  <rect x="56" y="544" width="376" height="60" rx="7" fill="#ffffff" stroke="#e3e8ef"/>
+  <circle cx="71" cy="561" r="8" fill="#f1f3f5"/>
+  <text x="71" y="564" text-anchor="middle" class="tiny" style="fill:#61666b">4</text>
+  <text x="85" y="562" class="stage">测试验收</text>
+  <text x="85" y="574" class="role">测试工程师</text>
+  <rect x="368" y="553" width="56" height="15" rx="7.5" fill="#f1f3f5"/>
+  <text x="396" y="564" text-anchor="middle" class="pill" fill="#1a9e4b">已通过</text>
+  <text x="64" y="589" class="sum">42 项验收全 pass，无 fail/blocked；测试报告已出</text>
+  <text x="64" y="600" class="check">✓ 已通过</text>
+
+  <!-- stage 5 : acceptance review -->
+  <rect x="56" y="610" width="376" height="128" rx="7" fill="#ffffff" stroke="#f0b74a" stroke-width="1.5"/>
+  <circle cx="71" cy="627" r="8" fill="#f1f3f5"/>
+  <text x="71" y="630" text-anchor="middle" class="tiny" style="fill:#61666b">5</text>
+  <text x="85" y="629" class="stage">验收复核</text>
+  <text x="85" y="641" class="role">项目经理 Agent</text>
+  <rect x="157" y="632" width="44" height="14" rx="7" fill="#eaf1fd"/>
+  <text x="179" y="642" text-anchor="middle" class="tag" fill="#4176e6">AI 复核</text>
+  <rect x="360" y="619" width="64" height="15" rx="7.5" fill="#f1f3f5"/>
+  <text x="392" y="630" text-anchor="middle" class="pill" fill="#b7791f">待评审</text>
+  <text x="64" y="660" class="sum">建议放行 · 阻断项 0 · 复测 3/3 通过（npm test）</text>
+  <text x="64" y="675" class="sum">需求覆盖 9/9，验收清单 42 项 pass，DoD 七项已核对。</text>
+  <text x="64" y="695" class="link">验收复核报告</text>
+  <text x="124" y="695" class="tiny" style="font-size:9px">docs/pipeline/acceptance-review.md</text>
+  <rect x="64" y="704" width="52" height="22" rx="5" fill="#0f1115"/>
+  <text x="90" y="719" text-anchor="middle" style="font-size:10px;font-weight:600;fill:#ffffff">通过</text>
+  <rect x="122" y="704" width="52" height="22" rx="5" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="148" y="719" text-anchor="middle" style="font-size:10px;font-weight:600;fill:#0f1115">打回</text>
+
+  <!-- stage 6 : human sign-off (locked) -->
+  <rect x="56" y="744" width="376" height="84" rx="7" fill="#ffffff" stroke="#e3e8ef"/>
+  <circle cx="71" cy="761" r="8" fill="#f1f3f5"/>
+  <text x="71" y="764" text-anchor="middle" class="tiny" style="fill:#61666b">6</text>
+  <text x="85" y="763" class="stage">人工确认</text>
+  <text x="85" y="775" class="role">项目经理（你）</text>
+  <rect x="169" y="766" width="48" height="14" rx="7" fill="#eceef1"/>
+  <text x="193" y="776" text-anchor="middle" class="tag" fill="#0f1115">人工确认</text>
+  <rect x="370" y="753" width="54" height="15" rx="7.5" fill="#f1f3f5"/>
+  <text x="397" y="764" text-anchor="middle" class="pill" fill="#8a919c">待开始</text>
+  <rect x="64" y="784" width="82" height="22" rx="5" fill="#f6f7f9" stroke="#e3e8ef"/>
+  <text x="105" y="799" text-anchor="middle" style="font-size:10px;font-weight:600;fill:#b6bdc7">启动并派发</text>
+  <text x="154" y="799" class="hint">需上一阶段通过后才能启动。</text>
+
+  <!-- stage 7 : release (locked) -->
+  <rect x="56" y="834" width="376" height="66" rx="7" fill="#ffffff" stroke="#e3e8ef"/>
+  <circle cx="71" cy="851" r="8" fill="#f1f3f5"/>
+  <text x="71" y="854" text-anchor="middle" class="tiny" style="fill:#61666b">7</text>
+  <text x="85" y="853" class="stage">发布上线</text>
+  <text x="85" y="865" class="role">运维</text>
+  <rect x="370" y="843" width="54" height="15" rx="7.5" fill="#f1f3f5"/>
+  <text x="397" y="854" text-anchor="middle" class="pill" fill="#8a919c">待开始</text>
+  <rect x="64" y="874" width="82" height="22" rx="5" fill="#f6f7f9" stroke="#e3e8ef"/>
+  <text x="105" y="889" text-anchor="middle" style="font-size:10px;font-weight:600;fill:#b6bdc7">启动并派发</text>
+  <text x="154" y="889" class="hint">需上一阶段通过后才能启动。</text>
+
+  <!-- footer -->
+  <text x="58" y="919" class="hint">需求由你下发；产品经理→UI 设计→开发→测试→AI 验收复核→你确认→运维发布。</text>
+  <text x="58" y="933" class="hint">每个阶段的角色边界写在派发提示词里，评审由你在面板上把关。</text>
+  <text x="58" y="952" class="hint" style="fill:#a2a8b3">真正的多角色执行由 Lead 用 spawn_teammate / team_task_* 组织；</text>
+  <text x="58" y="966" class="hint" style="fill:#a2a8b3">本面板只维护阶段状态、产物与人工闸门。</text>
+  <text x="58" y="990" class="tiny" style="fill:#b6bdc7">normal 模式 · 第 1 轮 · 验收复核卡的「AI 复核」标签为信息蓝</text>
+
+  <!-- ======================= ANNOTATION ======================= -->
+  <text x="470" y="122" class="h1">设计稿 A · normal 模式：验收复核待评审</text>
+  <text x="470" y="148" class="h2">AI 复核给建议、你拍板；第 5 关待评审时，第 6/7 关保持锁定。</text>
+
+  <text x="470" y="184" class="sec">双复核关系 · ACCEPTANCE → APPROVAL → RELEASE</text>
+
+  <!-- dual review diagram -->
+  <rect x="470" y="196" width="210" height="112" rx="8" fill="#f4f8ff" stroke="#cfdcf5"/>
+  <text x="486" y="220" style="font-size:10.5px;font-weight:700;fill:#0f1115">第 5 关 · 验收复核</text>
+  <text x="486" y="238" style="font-size:9px;font-weight:600;fill:#4176e6">项目经理 Agent · AI 复核</text>
+  <text x="486" y="257" class="anno" style="font-size:9.5px">查全 / 查实 / 留证据</text>
+  <text x="486" y="271" class="anno" style="font-size:9.5px">给建议（建议放行 / 打回）</text>
+  <rect x="486" y="281" width="46" height="15" rx="7.5" fill="#fef5e7"/>
+  <text x="509" y="292" text-anchor="middle" class="pill" style="font-size:8.5px" fill="#b7791f">待评审</text>
+
+  <rect x="750" y="196" width="210" height="112" rx="8" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="766" y="220" style="font-size:10.5px;font-weight:700;fill:#0f1115">第 6 关 · 人工确认</text>
+  <text x="766" y="238" style="font-size:9px;font-weight:600;fill:#0f1115">项目经理（你）· 人工确认</text>
+  <text x="766" y="257" class="anno" style="font-size:9.5px">拍板：通过 / 打回</text>
+  <text x="766" y="271" class="anno" style="font-size:9.5px">AI 报告是输入，不替代你</text>
+  <rect x="766" y="281" width="54" height="15" rx="7.5" fill="#f1f3f5"/>
+  <text x="793" y="292" text-anchor="middle" class="pill" style="font-size:8.5px" fill="#8a919c">锁定中</text>
+
+  <rect x="1030" y="196" width="210" height="112" rx="8" fill="#ffffff" stroke="#e3e8ef"/>
+  <text x="1046" y="220" style="font-size:10.5px;font-weight:700;fill:#0f1115">第 7 关 · 发布上线</text>
+  <text x="1046" y="238" style="font-size:9px;fill:#8a919c">运维</text>
+  <text x="1046" y="257" class="anno" style="font-size:9.5px">仅人工确认通过后启动</text>
+  <text x="1046" y="271" class="anno" style="font-size:9.5px">发布记录 + 回滚方案</text>
+  <rect x="1046" y="281" width="46" height="15" rx="7.5" fill="#f1f3f5"/>
+  <text x="1069" y="292" text-anchor="middle" class="pill" style="font-size:8.5px" fill="#8a919c">锁定</text>
+
+  <line x1="684" y1="252" x2="742" y2="252" stroke="#b6bdc7" stroke-width="1.5"/>
+  <polygon points="750,252 741,247 741,257" fill="#b6bdc7"/>
+  <text x="714" y="230" text-anchor="middle" class="tiny">建议</text>
+  <text x="714" y="243" text-anchor="middle" class="tiny">放行 / 打回</text>
+  <line x1="964" y1="252" x2="1022" y2="252" stroke="#b6bdc7" stroke-width="1.5"/>
+  <polygon points="1030,252 1021,247 1021,257" fill="#b6bdc7"/>
+  <text x="994" y="230" text-anchor="middle" class="tiny">通过后</text>
+  <text x="994" y="243" text-anchor="middle" class="tiny">解锁</text>
+  <text x="470" y="330" class="sum">两道关都过，release 才能启动；normal 与 fast 下 approval / release 都不会自动通过。</text>
+
+  <text x="470" y="366" class="sec">验收复核卡要点</text>
+  <text x="470" y="392" class="anno">① 标签「AI 复核」+ 角色「项目经理 Agent」：与第 6 关「人工确认 + 项目经理（你）」成对，冷蓝 vs 中性深色。</text>
+  <text x="470" y="414" class="anno">② 摘要三要素：结论（建议放行/打回）· 阻断项数量 · 复测结果，先看结论再看报告。</text>
+  <text x="470" y="436" class="anno">③ 产物固定第一项「验收复核报告」docs/pipeline/acceptance-review.md，点开即读；证据缩略图随后。</text>
+  <text x="470" y="458" class="anno">④ 动作随状态：待开始→启动并派发；进行中→发送角色提示；待评审→通过/打回；已打回→重新派发。</text>
+  <text x="470" y="480" class="anno">⑤ 锁定：acceptance 未通过时 approval 启动禁用、release 更远一层；fast 也不自动通过这两关。</text>
+
+  <text x="470" y="520" class="sec">NORMAL 主路径</text>
+  <rect x="470" y="536" width="160" height="54" rx="6" fill="#ffffff" stroke="#e3e8ef"/>
+  <text x="482" y="557" class="stage" style="font-size:10px">testing 已通过</text>
+  <text x="482" y="574" class="tiny">第 4 关 approved</text>
+  <line x1="634" y1="563" x2="662" y2="563" stroke="#b6bdc7" stroke-width="1.5"/>
+  <polygon points="670,563 661,558 661,568" fill="#b6bdc7"/>
+  <rect x="674" y="536" width="170" height="54" rx="6" fill="#ffffff" stroke="#e3e8ef"/>
+  <text x="686" y="557" class="stage" style="font-size:10px">acceptance 进行中</text>
+  <text x="686" y="574" class="tiny">项目经理 Agent 复核</text>
+  <line x1="848" y1="563" x2="876" y2="563" stroke="#b6bdc7" stroke-width="1.5"/>
+  <polygon points="884,563 875,558 875,568" fill="#b6bdc7"/>
+  <rect x="888" y="536" width="190" height="54" rx="6" fill="#ffffff" stroke="#f0b74a"/>
+  <text x="900" y="557" class="stage" style="font-size:10px">待评审 → 你审批</text>
+  <text x="900" y="574" class="tiny">通过解锁 approval；打回变 failed</text>
+  <text x="470" y="612" class="anno">通过 → approval 解锁 → 你人工确认 → release 解锁；打回 → failed（红备注）→ 重新派发 → 修复后重走。</text>
+
+  <!-- callouts aligned with card rows -->
+  <text x="470" y="648" class="annob">① 标签 + 角色：AI 复核 / 项目经理 Agent</text>
+  <line x1="444" y1="644" x2="462" y2="644" stroke="#4176e6" stroke-width="1"/>
+  <circle cx="444" cy="644" r="2.5" fill="#4176e6"/>
+
+  <text x="470" y="674" class="annob">② 摘要：建议放行 · 阻断项 0 · 复测 3/3</text>
+  <line x1="444" y1="670" x2="462" y2="670" stroke="#8a919c" stroke-width="1"/>
+  <circle cx="444" cy="670" r="2.5" fill="#8a919c"/>
+
+  <text x="470" y="702" class="annob">③ 产物：验收复核报告可点开</text>
+  <line x1="444" y1="698" x2="462" y2="698" stroke="#8a919c" stroke-width="1"/>
+  <circle cx="444" cy="698" r="2.5" fill="#8a919c"/>
+
+  <text x="470" y="730" class="annob">④ 通过 / 打回（normal 待评审才出现）</text>
+  <line x1="444" y1="726" x2="462" y2="726" stroke="#8a919c" stroke-width="1"/>
+  <circle cx="444" cy="726" r="2.5" fill="#8a919c"/>
+
+  <text x="470" y="784" class="annob">⑤ approval 未解锁：启动按钮禁用 + 序列提示</text>
+  <line x1="444" y1="780" x2="462" y2="780" stroke="#8a919c" stroke-width="1"/>
+  <circle cx="444" cy="780" r="2.5" fill="#8a919c"/>
+
+  <text x="470" y="872" class="annob">⑥ release 锁定：approval 通过后才解锁</text>
+  <line x1="444" y1="868" x2="462" y2="868" stroke="#8a919c" stroke-width="1"/>
+  <circle cx="444" cy="868" r="2.5" fill="#8a919c"/>
+
+  <!-- legend -->
+  <text x="470" y="922" class="sec">颜色与语义</text>
+  <rect x="470" y="936" width="10" height="10" rx="2" fill="#4176e6"/>
+  <text x="486" y="945" class="legend">AI 复核（信息蓝）</text>
+  <rect x="630" y="936" width="10" height="10" rx="2" fill="#0f1115"/>
+  <text x="646" y="945" class="legend">人工确认（中性深色）</text>
+  <rect x="810" y="936" width="10" height="10" rx="2" fill="#f59e0b"/>
+  <text x="826" y="945" class="legend">待评审</text>
+  <rect x="900" y="936" width="10" height="10" rx="2" fill="#22c55e"/>
+  <text x="916" y="945" class="legend">已通过</text>
+  <rect x="990" y="936" width="10" height="10" rx="2" fill="#ec1313"/>
+  <text x="1006" y="945" class="legend">已打回</text>
+
+  <text x="470" y="990" class="tiny">SVG 为浅色主题 token 近似色（为静态稿可读性略带加深）；实现必须使用 --dsw-alias-* 变量。</text>
+  <text x="470" y="1006" class="tiny">状态色不单独表意：状态 pill 均有文字，序号 1–7 可见；深色主题需实现后自查。</text>
+</svg>
