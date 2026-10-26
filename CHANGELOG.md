@@ -22,6 +22,21 @@ All notable changes to this project are documented here.
 - Batch pass skips items that already have the target status instead of calling
   the Host again, so selecting everything is safe.
 
+### Workbench layout polish
+
+- The Workbench now uses a proper two-column grid (max 1080 px): the **delivery
+  preflight** and **changes this round** cards sit **side by side**, each with
+  half the width, instead of being squeezed into 300-pixel columns or stacked
+  full-width (which made the page unnecessarily long). Card headers wrap and
+  action links stay on one line, so “Open pipeline” / “Open Git” no longer render
+  one character per line.
+- Card padding and page padding are slightly tighter to shorten the dashboard.
+- Preflight rows only show the **Fix** action for warning/failure rows, so the
+  card reads as a checklist instead of repeating “Open acceptance” on every line.
+- The change-review hint sits under the card title and is hidden entirely when the
+  workspace has no Git; the unavailable state also no longer offers a pointless
+  **Open Git** action.
+
 ## 1.2.69 — 2026-10-25
 
 ### One-click dispatch from the workspace todo board

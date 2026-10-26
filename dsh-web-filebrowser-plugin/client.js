@@ -529,6 +529,7 @@ window.__ModuleLoader__.load({
       'workbench.preflightPreview': '预览分享：{status}',
       'workbench.preflightDelivery': '交付包：{status}',
       'workbench.preflightNote': '把结论写入评审备注',
+      'workbench.preflightAction': '去处理',
       'workbench.preflightOk': '通过',
       'workbench.preflightMissing': '缺失',
       'workbench.preflightNa': '不适用',
@@ -1572,6 +1573,7 @@ window.__ModuleLoader__.load({
       'workbench.preflightPreview': 'Preview share: {status}',
       'workbench.preflightDelivery': 'Delivery bundle: {status}',
       'workbench.preflightNote': 'Put the verdict in the review note',
+      'workbench.preflightAction': 'Fix',
       'workbench.preflightOk': 'OK',
       'workbench.preflightMissing': 'Missing',
       'workbench.preflightNa': 'N/A',
@@ -16650,7 +16652,7 @@ ${tail}
                 )
           const requirementCard = h(
             'div',
-            { className: 'ds-wb-card' + (requirementTitle.length > 0 ? '' : ' ds-wb-intake') },
+            { className: 'ds-wb-card' + (requirementTitle.length > 0 ? ' ds-wb-status' : ' ds-wb-intake') },
             h('div', { className: 'ds-wb-card-title' }, requirementTitle.length > 0 ? t('workbench.status') : t('workbench.intake')),
             workbenchBusy ? h('div', { className: 'ds-hint ds-wb-hint' }, t('acceptance.saving')) : null,
             requirementTitle.length > 0
@@ -16920,9 +16922,13 @@ ${tail}
                 { key: check.id, className: 'ds-wb-preflight-row', 'data-level': check.level },
                 h('span', { className: 'ds-wb-issue-dot', 'data-kind': check.level === 'ok' ? 'ok' : check.level === 'na' ? 'na' : 'warn', 'aria-hidden': true }),
                 h('span', { className: 'ds-wb-preflight-text' }, check.label),
-                check.action === null || check.action === undefined
-                  ? null
-                  : h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: check.action }, check.actionLabel),
+                (check.level === 'warn' || check.level === 'fail') && check.action !== null && check.action !== undefined
+                  ? h(
+                      'button',
+                      { type: 'button', className: 'ds-linkbtn ds-wb-link ds-wb-preflight-action', onClick: check.action },
+                      t('workbench.preflightAction'),
+                    )
+                  : null,
               ),
             ),
           )
@@ -17057,7 +17063,6 @@ ${tail}
                     'div',
                     { className: 'ds-wb-card-head' },
                     h('div', { className: 'ds-wb-card-title ds-wb-card-title-inline' }, t('workbench.changes')),
-                    h('span', { className: 'ds-wb-issue-time' }, t('workbench.changesHint')),
                     h('span', { className: 'ds-spacer' }),
                     reviewAvailable
                       ? h(
@@ -17076,8 +17081,11 @@ ${tail}
                           t('workbench.reviewAll'),
                         )
                       : null,
-                    gitAvailable ? h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: () => setPaneView('git') }, t('workbench.openGit')) : null,
+                    reviewAvailable && gitAvailable
+                      ? h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: () => setPaneView('git') }, t('workbench.openGit'))
+                      : null,
                   ),
+                  reviewAvailable ? h('div', { className: 'ds-wb-changes-hint' }, t('workbench.changesHint')) : null,
                   !reviewAvailable
                     ? h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.reviewUnavailable'))
                     : reviewFiles.length === 0
@@ -22394,10 +22402,12 @@ h(
 .ds-wb-preflight-verdict[data-kind="ok"] { color: var(--dsw-alias-state-success-primary); }
 .ds-wb-preflight-verdict[data-kind="warn"] { color: var(--dsw-alias-state-warn-primary); }
 .ds-wb-preflight-row { display: flex; align-items: center; gap: 6px; padding: 1px 0; font-size: 9.5px; color: var(--dsw-alias-label-secondary); }
-.ds-wb-preflight-text { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-wb-preflight-text { flex: 1 1 auto; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+.ds-wb-preflight-action { flex: 0 0 auto; }
 .ds-wb-notify { font-size: 9.5px; }
 .ds-wb-notify[data-on="true"] { color: var(--dsw-alias-state-success-primary); }
 .ds-wb-changes[data-kind="warn"] { border-left: 2px solid var(--dsw-alias-state-warn-primary); }
+.ds-wb-changes-hint { margin: -3px 0 6px; color: var(--dsw-alias-label-caption); font-size: 9.5px; }
 .ds-wb-review-progress { font-size: 9px; color: var(--dsw-alias-label-caption); }
 .ds-wb-change-list { display: flex; flex-direction: column; gap: 1px; max-height: 190px; overflow: auto; }
 .ds-wb-change-row { display: flex; align-items: center; gap: 6px; padding: 1px 0; font-size: 9.5px; }
@@ -22540,16 +22550,17 @@ h(
 .ds-wb-page { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow: hidden; background: var(--dsw-alias-bg-base); }
 .ds-wb-page-head { display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
 .ds-wb-page-title { font-size: 12.5px; font-weight: 600; color: var(--dsw-alias-label-primary); }
-.ds-wb-page-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 14px; }
-.ds-wb-page-inner { max-width: 980px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; align-items: start; }
-.ds-wb-page-inner > .ds-wb-attention { grid-column: 1 / -1; }
-.ds-wb-page .ds-wb-card { padding: 12px 14px; border-radius: 10px; }
+.ds-wb-page-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 12px; }
+.ds-wb-page-inner { max-width: 1080px; margin: 0 auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: start; }
+.ds-wb-page-inner > .ds-wb-attention,
+.ds-wb-page-inner > .ds-wb-status { grid-column: 1 / -1; }
+.ds-wb-page .ds-wb-card { padding: 10px 12px; border-radius: 10px; }
 .ds-wb-page .ds-wb-card-title { margin-bottom: 7px; font-size: 10.5px; }
 .ds-wb-page .ds-wb-project-title { font-size: 15px; }
 .ds-wb-page .ds-wb-progress { margin-top: 4px; font-size: 11px; }
 .ds-wb-page .ds-wb-actions { gap: 7px; margin-top: 9px; }
 .ds-wb-page .ds-wb-btn { height: 28px; padding: 0 12px; font-size: 11.5px; }
-.ds-wb-page .ds-wb-link { font-size: 10.5px; }
+.ds-wb-page .ds-wb-link { font-size: 10.5px; white-space: nowrap; }
 .ds-wb-page .ds-wb-hint { font-size: 10.5px; }
 .ds-wb-page .ds-wb-dot { height: 5px; }
 .ds-wb-page .ds-wb-need-text { font-size: 12px; }
@@ -22622,7 +22633,7 @@ h(
 .ds-wb-status-pill[data-status="approved"] { color: var(--dsw-alias-state-success-primary); background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 12%, transparent); }
 .ds-wb-start-hint { margin-top: 5px; color: var(--dsw-alias-label-caption); font-size: 9.5px; }
 .ds-wb-flow { grid-column: 1 / -1; }
-.ds-wb-card-head { display: flex; align-items: center; gap: 6px; margin-bottom: 7px; }
+.ds-wb-card-head { display: flex; align-items: center; flex-wrap: wrap; row-gap: 4px; gap: 6px; margin-bottom: 7px; }
 .ds-wb-card-title-inline { margin-bottom: 0; }
 .ds-wb-steps { display: flex; align-items: stretch; margin: 0; padding: 0; list-style: none; overflow-x: auto; }
 .ds-wb-step { display: flex; align-items: center; flex: 1 0 auto; min-width: 116px; }
