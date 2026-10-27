@@ -1,116 +1,101 @@
-# 发布说明：工作台 UI 全面重构 —— 指挥舱（v1.2.79）
+# 发布说明：工作台完成态与细节修正（v1.2.80）
 
-- 阶段：release（第 7 轮，运维 `opc-ops`）
-- 环境：**local workspace / 自托管插件**（本工作区即发布产物；无公网 URL、无服务器上传、无 Docker 镜像、无数据迁移）
-- 本地访问入口：Dev Workspace GUI `http://127.0.0.1:3080`（本机回环地址，仅供本机验收，不是公网发布）
-- 版本：`v1.2.79`（根 `package.json` 与 `dsh-web-filebrowser-plugin/package.json` 均为 1.2.79；`CHANGELOG.md` 顶部 `## 1.2.79 — 2026-10-27`）
-- 发布基线：git HEAD `e794ff9`（`chore: 根 package.json 版本 +1 至 1.2.79（工作区硬性规定；插件保持发布版 1.2.78）`；上一发布版 `a2797dc` = v1.2.78）；本次改动为工作区未提交改动 + 新建文档/效果图，**Git 提交由 Lead 执行**，提交后的 commit hash 以 `pipeline_record_release` 记录为准
-- 发布时间 / 发布人：2026-10-27 16:23（Asia/Shanghai，`2026-10-27T08:23Z`） / 运维 agent `opc-ops`
-- 前置闸门（硬闸门，已满足）：
-  - `acceptance`（双复核第一关，项目经理 Agent）= **approved**，`reviewedAt = 2026-10-27T08:19:44.442Z`，报告 `docs/pipeline/acceptance-review.md`（第 7 轮）：**建议放行（附条件）、阻断 0**；
-  - `approval`（双复核第二关，Owner 人工确认）= **approved**，`reviewedAt = 2026-10-27T08:22:17.354Z`，`reviews[0] = {decision:'approve', actor:'owner'}` —— **Owner 在 Dev Workspace 面板人工确认，模型未审批、未代批**；
-  - `release` = **active**，`startedAt = 2026-10-27T08:22:18.018Z`；`gateMode = fast`、第 7 轮（`round=7`）、`roundScope=full`。
+- 阶段：release（第 8 轮，运维 `opc-ops`）
+- 环境：**local workspace / 自托管插件**（本工作区即发布产物；无公网 URL、无服务器上传、无数据迁移）
+- 本地访问入口：Dev Workspace GUI `http://127.0.0.1:3080`（本机回环，仅供本机验收）
+- 版本：`v1.2.80`（插件与根 `package.json` 均 1.2.80；`CHANGELOG.md` 顶部 `## 1.2.80 — 2026-10-27`）
+- 发布基线：git HEAD `2ada4a4`（v1.2.79 交付后根版本 chore；上一发布 commit `50cbc34` = v1.2.79）；本轮改动为工作区未提交修改 + 3 个 v1.2.79 归档文档，**Git 提交由 Lead 执行**，实际 commit 以 `pipeline_record_release` 为准
+- 发布时间 / 发布人：2026-10-27 16:51（Asia/Shanghai，`2026-10-27T08:51Z`） / 运维 agent `opc-ops`
+- 前置闸门（已满足）：
+  - `acceptance` = **approved**，`reviewedAt = 2026-10-27T08:40:20.584Z`，报告 `docs/pipeline/acceptance-review.md`（第 8 轮）：**建议放行（附条件）、阻断 0**；
+  - `approval` = **approved**，`reviewedAt = 2026-10-27T08:50:21.840Z`，`reviews[0] = {decision:'approve', actor:'owner'}` —— **Owner 面板人工确认，模型未审批**；
+  - `release` = **active**，`startedAt = 2026-10-27T08:50:22.250Z`；`gateMode=fast`、`round=8`、`roundScope=development`（product/design 按变更范围跳过）。
 
-> 验收状态如实记录：当前验收清单 **20 条 = 6 pass / 0 fail / 0 pending / 14 blocked**。本轮新增 10 条 = **3 pass / 7 blocked**（7 条为纯 GUI/视觉/真实视口项，环境限制：模型无浏览器、不能重启 Host），历史遗留 7 条 blocked 为 v1.2.76/v1.2.77 的 GUI 项。**在 Owner 按 `docs/ACCEPTANCE.md` 批次 16 复测回填前，不得视为视觉/响应式/点击已验收通过**；模型未伪造 pass。
+> 验收状态如实记录：清单 **28 条 = 13 pass / 0 fail / 15 blocked**（本轮 8 条 = 7 pass / 1 blocked，唯一 blocked 为实机视觉复测；历史 14 条为 v1.2.79 及以前 GUI/视口项）。**Owner 按 `docs/ACCEPTANCE.md` 批次 17 复测回填前，不得视为实机视觉已验收通过**；模型未伪造 pass。
 
-## 1. 发布内容（变更摘要）
+## 1. 发布内容（Owner 实机截图反馈的 10 项修正）
 
-**纯客户端工作台 UI 全面重构（指挥舱 / Command Deck）**：`dsh-web-filebrowser-plugin/client.js` **+848 / −77**（含工作台 JSX、`.ds-wb-v1279` CSS ≈34KB、i18n +19 键 ×2、删 2 个死键；client.js 1,223,438 → 1,246,554 B，+1.9%），无 Host/依赖/数据改动。
+- `client.js` **+120/−55**（纯客户端 CSS/JSX/i18n）：
+  1) **团队与指派**：项目网格内 6 个角色 chips 改 **2 列**（≤700 仍 2 列），chip 内边距/字号/status pill 微调，名称与状态完整，不再只剩 1 个字。
+  2) **完成态 hero**：eyebrow「全部 7 关已完成」、标题「本轮交付完成」、隐藏重复状态 pill、侧栏「第 N 轮 · 全部通过」、门禁「全部阶段已完成 · 可发布或发起新轮变更」并隐藏复核链接；完成态 meta 去重。
+  3) **需求摘要**：去掉「背景/目标/范围…」前缀；最新变更标题与需求标题同轮相同时隐藏重复 changeLine。
+  4) **验收计数**：blocked 独立成「阻塞 N」pill，待验收只计 pending，零值 pill 不渲染；无交付包/预览分享时不渲染空「交付物」小节。
+  5) **完成态体检**：verdict 改「提示 N 项」+ 中性色；任务记录/预览分享/交付包缺失降级 N/A（暂无记录/未分享/未打包），「最近测试」改「最近任务」。
+  6) **变更卡**：提交后隐藏「已审 0/0」，显示「本轮变更已提交，无未提交改动。」。
+  7) **运行中**：统计顺序改 运行中 / 最近一次（宽列）/ 最近结果 / 上次失败。
+  8) **进度条**：使用 `--dsw-alias-state-business-primary` 强调色（原 brand 在本主题为墨黑）。
+  9) **Now 区**：完成态 hint 改「全部完成 · 暂无待处理」，去掉重复空态行。
+  10) **项目状态卡**：完成态隐藏重复状态 pill、caption「全部通过」、行「第 N 轮 · 全部阶段已完成」。
+- **i18n**：新增 12 键 zh/en 成对、删除 1 个死键（`hero.remainingDone`）。
+- **文档/版本**：CHANGELOG 1.2.80、ACCEPTANCE **批次 17**、design.md **§13** 修正表、test-report/acceptance-review 本轮同步；v1.2.79 的 test-report/acceptance-review/release 归档至 `docs/pipeline/archive/`。
+- **范围边界**：无 Host 改动、无新增依赖/字体/图标/CDN、无数据迁移；保留 v1.2.79 全部结构/功能/handler。
 
-1. **页面头**：eyebrow（工作区 · 项目 · 第 N 轮）+ `h1` 30px display + 轮次/快速模式/进度 chips + 当前阶段 meta + 动作组（刷新 / 打开流水线 / 团队 / 提醒 / 关闭）；sticky、compact 回退、icon 按钮 aria-label。
-2. **深色指挥舱 hero**：brand→#0b1220 渐变 + 内光晕；STAGE 05/07 eyebrow；30px 阶段名 + 五态状态 pill；摘要（clamp 2、tooltip ≤80 字）；负责角色/剩余阶段/快速模式；7 段 stage rail（五态色 + sr-only 文字）；SVG 环形进度（4/7、rotate -90）；主/次 CTA 44px（通过/打回 或 启动并派发/查看流水线）；review note；门禁说明 + 查看复核报告。
-3. **Now 区**：hero 在前；失败告警卡（左 `!` 圆标、计数、发给团队、查看验收）；问题卡；空态轻提示。
-4. **项目区**：状态卡（大数字 `4/7` + 进度条 + 状态 pill + 启动）+ 团队与指派（角色 chips / 指派任务 / 团队面板入口）+ 需求与调整（标题/chips/2 行摘要/查看·追加·修改·新轮/修订记录 disclosure）；≥1280 三列、≥768 两列（需求全宽）、≤700 单列。
-5. **交付区**：7 步连接线时间轴（当前 tint、✓、角色、状态、事件记录）+ 5 卡 bento（设计稿/验收/交付前体检/本轮变更/运行中，第 5 卡全宽 + 4 项统计）；≥1024 两列、≤1023 单列；原卡按钮/入口全部保留。
-6. **设计系统**：间距 4–32、字号 11–30、圆角 10/14/18、三级阴影、160ms 动效；全部 `--dsw-alias-*` + `color-mix`；focus-visible 2px 环、44px 主操作、`prefers-reduced-motion` 全关、sr-only/aria。
-7. **响应式**：360/768/1024/1280/1440；≤700 页面头非 sticky、hero 单列、按钮 44px；compact 模式单独覆盖；无横向溢出规则（`minmax(0,1fr)` / `min-width:0` / `overflow-wrap`）。
-8. **外壳 CSS 轻量统一**：顶栏 48px、侧栏更安静、pane 头、活动标签指示条；**不改交互/快捷键/路由**。
-9. **保留全部功能**：通过/打回、启动并派发、review note、指派器、需求四操作、验收/体检/变更审阅/运行中、通知/刷新/关闭/compact，`pipelineBusy`/`assignmentSsh` 禁用逻辑不变。
-10. **文档/记录**：`CHANGELOG.md` 1.2.79；`docs/ACCEPTANCE.md` 批次 16；`requirements.md` / `design.md` / `engineering-research.md` / `test-report.md` / `acceptance-review.md` 本轮同步；旧轮归档 `docs/pipeline/archive/v1.2.78-*.md`（6 文档，相对链接已按新目录重算，0 失效）；5 套设计效果图（SVG+PNG，10 文件）。
-
-- **范围边界**：**无 Host 改动**（`index.js`/`pipeline.js`/`review.js`/`acceptance.js`/`assignments.js`/`delivery.js` 等零改动）、**无新增运行时依赖**（根/插件 `dependencies` 与 HEAD 逐字一致）、**无数据格式/迁移改动**、无新增模型工具/路由。
-- **第三方**：零新增依赖/字体/图标/CDN；engineering-research 记录 5 个候选（shadcn/ui MIT、Radix MIT、Carbon Apache-2.0、Lucide ISC、Tailwind MIT），只借鉴模式、不复制代码。
-
-## 2. 发布前自测 gate（发布前最后一次执行，2026-10-27 16:23 CST）
+## 2. 发布前自测 gate（2026-10-27 16:50 CST）
 
 | # | 命令 | 退出码 | 耗时 | 结果 |
 |---|---|---|---|---|
-| 1 | `npm run check` | **0** | 0.55s | 21 个模块 `node --check` 全过（含 client.js） |
-| 2 | `npm run check:json` | **0** | 0.11s | JSON OK |
-| 3 | `npm test`（`node scripts/selftest/host-smoke.mjs`） | **0** | 0.60s | **PASS: 31/31** |
-| 4 | `node .dsh/tmp/team/pipeline-selftest.mjs` | **0** | 0.63s | **38/38** |
-| 5 | `node .dsh/tmp/team/review-selftest.mjs` | **0** | 0.76s | **22/22** |
-| 6 | `node .dsh/tmp/team/assignments-selftest.mjs` | **0** | 0.17s | **27/27** |
-| 7 | `node .dsh/tmp/qa-static-v1279.mjs` | **0** | 0.13s | **STATIC PASS（121 断言）** |
-| 8 | `git diff --check` | **0** | — | 无空白/冲突标记 |
+| 1 | `npm run check` | **0** | 571 ms | 21 个模块通过（含 client.js） |
+| 2 | `npm run check:json` | **0** | 116 ms | JSON OK |
+| 3 | `npm test` | **0** | 628 ms | PASS: 31/31 |
+| 4 | `node .dsh/tmp/team/pipeline-selftest.mjs` | **0** | 672 ms | 38/38 |
+| 5 | `node .dsh/tmp/team/review-selftest.mjs` | **0** | 802 ms | 22/22 |
+| 6 | `node .dsh/tmp/team/assignments-selftest.mjs` | **0** | 162 ms | 27/27 |
+| 7 | `node .dsh/tmp/qa-static-v1280.mjs` | **0** | 144 ms | STATIC PASS（143 断言） |
+| 8 | `git diff --check` | **0** | — | 干净 |
 
-- 工具版本：Node **v24.22.0**、npm **11.19.1**；**无安装/构建步骤**（纯 JS 插件）；无锁文件改动；`.dsh/` 运行状态不进 Git。
-- 验收复核（PM 第 7 轮）结论「建议放行（附条件）、阻断 0」；QA 测试报告 7 套全绿、121 静态断言；证据日志 `.dsh/evidence/acceptance-retest-v1.2.79.log`。
+- 证据日志：`.dsh/evidence/acceptance-retest-v1.2.80.log`；**无安装/构建步骤**（纯 JS 插件），无锁文件改动。
 
 ## 3. 产物清单与校验
 
-发布产物 = 工作区文件快照（无 zip / 无独立构建产物）。
-
-- **Git 现状（本报告写入前）**：`git status --short` = **9 个已跟踪修改 + 15 个未跟踪条目**；`git diff --numstat` 合计 **+1683 / −968**（9 文件：client.js +848/−77、插件 package 1/1、CHANGELOG +31、ACCEPTANCE +21/−2、acceptance-review +107/−113、design +319/−413、engineering-research +77/−72、requirements +270/−295、test-report +116/−108）；未跟踪 = archive 6 文档 + 10 效果图 + 生成脚本；本报告加入后再 +1 文件。
-- **客户端代码（1）**：`dsh-web-filebrowser-plugin/client.js`（+848/−77：页面头/hero/Now/Project/Delivery JSX + `.ds-wb-v1279` CSS + i18n）
-- **版本（1）**：`dsh-web-filebrowser-plugin/package.json`（1.2.78→1.2.79，仅 1 行，`dependencies`/`files` 未动）；根 `package.json` 在 HEAD 已为 1.2.79（交付后 +1 至 1.2.80，chore commit）
-- **文档（7）**：`CHANGELOG.md`、`docs/ACCEPTANCE.md`、`docs/pipeline/requirements.md`、`design.md`、`engineering-research.md`、`test-report.md`、`acceptance-review.md`
-- **设计资产（10 + 1 脚本）**：`docs/pipeline/design/workbench-v1279-{overview-light,overview-dark,full-light,mobile-light,overview-light-r1}*.{svg,png}` + `gen-workbench-v1279-mockups.mjs`
-- **归档（6）**：`docs/pipeline/archive/v1.2.78-*.md`（requirements/design/engineering-research/test-report/acceptance-review/release）
-- **本报告（1）**：`docs/pipeline/release.md`
-- **依赖/边界核对**：根 `dependencies` = `{"ssh2":"^1.17.0"}`；插件 `dependencies` = `{"@xterm/addon-fit":"^0.10.0","@xterm/xterm":"^5.5.0","ssh2":"^1.17.0"}`；与 HEAD `e794ff9` 逐字一致；无 `package-lock.json`；**git diff 不含任何 Host 模块**；无新增模型工具/路由；无 `.dsh/` 数据改动。
-- **关键文件 SHA256**（发布前，可复现）：
+- **Git 现状**（本报告前）：**6 个已跟踪修改 + 3 个未跟踪归档**；`git diff --numstat` = **+274 / −161**；本报告加入后 7 个已跟踪修改。
+  - `client.js` +120/−55；插件 `package.json` 1/1（1.2.79→1.2.80）；`CHANGELOG.md` +29；`docs/ACCEPTANCE.md` +20/−2；`docs/pipeline/design.md` +21；`docs/pipeline/test-report.md` +83/−103；`docs/pipeline/acceptance-review.md` +96/−124（本轮重写）。
+  - 未跟踪：`docs/pipeline/archive/v1.2.79-{test-report,acceptance-review,release}.md`（3 文档，链接已重算）。
+- **依赖/边界**：根 `dependencies` = `{"ssh2":"^1.17.0"}`；插件 `dependencies` = `{"@xterm/addon-fit":"^0.10.0","@xterm/xterm":"^5.5.0","ssh2":"^1.17.0"}`；与 HEAD 一致；无 Host 模块/模型工具/路由改动；无数据文件改动。
+- **关键文件 SHA256（发布前）**：
 
 ```text
-20ff91f65bc90c07a0f0e87b1cdb15c253485b1d46cc3256372b60c18c8377f6  dsh-web-filebrowser-plugin/client.js
-7fa7591d19729b0cec07122614167bc2f3fdbe63681dd9ffb1cc81e28ce3017e  dsh-web-filebrowser-plugin/package.json
-1a8434150236503ba572e5e37e5acdf0b8ae09d786923f8299142c3117ad89df  package.json
-3c201a308922d9bb722d09a676bdced4ff13769d6844b022b8e5f06c88089719  CHANGELOG.md
-358af96bddaf7326e0af56539912f4c0856c4478cc52d5750f6e09a67bf7ae86  docs/ACCEPTANCE.md
-e9f3cc5b58ea11b31e5f97c425a28112362985d9259b2c2458d1bab13f10ba61  docs/pipeline/test-report.md
-a5784a5545754bd29e4d63d08040175fd6e38437a13b4875832724a5939a8be3  docs/pipeline/acceptance-review.md
-d2d14a90eaafc9f24113b347864c08db9477002784bdee4eee7d9273f678300f  docs/pipeline/requirements.md
-542c0f6c09bd19236dab9b16b259d93264f648a41d4e577a0877ec9b915cc819  docs/pipeline/design.md
-4b28f270ba77c617028608575d6840ddb7248309776eca84ddc260f5dfacfe56  docs/pipeline/engineering-research.md
+221d6423a03dee0a0c41ca819448988dd8ac625fea20580d168f4260078618f3  dsh-web-filebrowser-plugin/client.js
+8ee01c75fe756e7a8ee25a95b63ac682692d13e1dfd98d653eba49939954625b  dsh-web-filebrowser-plugin/package.json
+0fdc51bbc408c3faa15fee477a53fe5d0b8ffd479e2d9d0e3eaf2f39ee3438d0  package.json
+f85185872939cd4c252056654fd0150aa0ad483fc7eaec4dd1df1232b7156f8f  CHANGELOG.md
+5623ba1aa6481972303748968ba1f8ea04e6268de325cc9221b433edd020a994  docs/ACCEPTANCE.md
+7f90f7fb721a2031c558bd9c5c9b1f87c01bdd02b5cb9c0784ec84360d6637fa  docs/pipeline/test-report.md
+b8cc60d6b8d7aa439a6064983717204ce9a3d2b4398cb11427fd796898dbcb42  docs/pipeline/acceptance-review.md
+c8222791b86ba1f8b65bf5871891afe995a12ef94e8a8fdf585584f08e7330b0  docs/pipeline/design.md
 ```
 
-## 4. 生效方式与发布后 smoke 验证
+## 4. 生效方式与发布后 smoke
 
-- **生效条件（纯客户端）**：重启 Harness（或按现有方式重建客户端 bundle）→ 浏览器**强刷/无缓存刷新** → 打开工作台。Host 无新模块/无数据迁移，无需迁移脚本。
-- **发布后 smoke（本机回环）**：
-  1. `curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3080/` → 期望 200（GUI 可打开）。
-  2. `node .dsh/tmp/qa-static-v1279.mjs` → STATIC PASS（121 断言，发布前已跑）。
-  3. Owner 按 `docs/ACCEPTANCE.md` **批次 16** 在浅/深主题、360/768/1024/1280/1440 视口逐项复测；回填 7 条本轮 blocked 项。
-  4. 若 Harness 未重启/未重建 bundle，GUI 仍显示旧客户端（预期），不是发布失败。
-- **发布记录**：写 `.dsh/pipeline.json` 的 `releases`（`pipeline_record_release`），包含环境/URL/版本/commit/生效/回滚；本报告随 commit 入库。
+- **生效**：重启 Harness（或按现有方式重建客户端 bundle）→ 浏览器强刷 → 打开工作台；纯客户端，无数据迁移。
+- **发布后 smoke**：
+  1. `curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3080/` → 期望 200。
+  2. `node .dsh/tmp/qa-static-v1280.mjs` → STATIC PASS（143 断言）。
+  3. Owner 按 `docs/ACCEPTANCE.md` **批次 17** 复测 10 项并回填 `1c1b66989d`。
+  4. 未重启/未重建 bundle 时 GUI 仍显示旧客户端，属预期。
+- **发布记录**：`.dsh/pipeline.json` releases（`pipeline_record_release`）。
 
-## 5. 回滚方案
+## 5. 回滚
 
-- **代码层**：`git revert <本次 commit>`（或 `git reset --hard e794ff9`，视是否保留发布记录而定；发布前建议备份 `.dsh/pipeline.json`）。
-- **回滚后操作**：重启 Harness → 重建客户端 bundle → 强刷页面；无数据迁移可回滚。
-- **数据层**：本轮**未改** `.dsh/pipeline.json` 之外的业务数据格式；未写 `.dsh/acceptance.json`/交付记录/指派数据；回滚仅影响 UI。
-- **回滚范围**：client.js + CHANGELOG + 插件版本 + docs + 设计资产；不会影响编辑器/终端/Git/流水线 Host 行为。
+- `git revert <本次 commit>` 或 `git reset --hard 2ada4a4`（回滚前备份 `.dsh/pipeline.json`）；重启 Harness + 重建 bundle + 强刷。
+- 无数据迁移；回滚仅影响工作台 UI 文案/空态/CSS；不影响 Host/编辑器/终端/Git/流水线。
 
-## 6. 已知风险与限制（均非阻断）
+## 6. 风险与限制（非阻断）
 
-- **GUI 复测未完成**：7 条本轮 blocked + 7 条历史 blocked 需 Owner 批次 16 复测；模型无浏览器/不能重启 Host，未伪造 pass。DoD 第 1 项「所有 must 项 pass」当前为**有条件通过**。
-- **深色 hero 在深色主题**：hero 固定 #0b1220 锚点 + 内光晕，深色效果图已出；Owner 目视确认。
-- **效果图分组侧栏为方向示意**：实际外壳为横向侧栏条 + pane 头（本轮仅 CSS 统一，不改导航）。
-- **第 5 张运行中卡全宽**为 bento 节奏设计；若 Owner 希望 5 卡等宽，一行 CSS 可回退。
-- `color-mix`/`backdrop-filter` 需现代 Chromium；旧浏览器仅装饰降级。
-- **review marks 0/8**：面板「已审」未标记，PM 已逐文件审阅 diff；Owner 可在面板补标。
-- 页面因 5 卡直接展示 + hero 较高而变长，属预期；首屏只保证 hero + Now。
+- 唯一 blocked：实机视觉复测（模型无浏览器）；Owner 批次 17。
+- 历史 14 条 blocked 仍在清单（v1.2.79 及以前 GUI/视口项），可按 Owner 决定复测/更新/作废。
+- 完成态 Now 区仍保留区头（只改 hint/空态）；若需整区隐藏可再调。
+- 第 5 张运行中卡全宽沿用 v1.2.79 设计；一行 CSS 可回退。
+- 面板 review marks 0/6；PM 已人工审阅 diff，Owner 可补标。
 
-## 7. 发布历史（最近 3 条，完整见 `.dsh/pipeline.json`）
+## 7. 发布历史（最近 3 条）
 
 | 版本 | 环境 / URL | commit | 说明 |
 |---|---|---|---|
-| **v1.2.79（本次）** | local-workspace · http://127.0.0.1:3080 | 见 `pipeline_record_release` | 工作台 UI 全面重构（指挥舱）；纯客户端；批次 16 待 Owner 复测 |
-| v1.2.78 | local-workspace · http://127.0.0.1:3080 | `a2797dc` | 交付区取消折叠（5 卡直接展示，两列/单列） |
-| v1.2.77 | local-workspace · http://127.0.0.1:3080 | `7bed396` | 长 tooltip 修复 + 项目区三列 + 修订记录折叠 |
+| **v1.2.80（本次）** | local-workspace · http://127.0.0.1:3080 | 见 `pipeline_record_release` | 完成态/团队卡/交付卡 10 项修正；批次 17 |
+| v1.2.79 | local-workspace · http://127.0.0.1:3080 | `50cbc34` | 工作台 UI 全面重构（指挥舱） |
+| v1.2.78 | local-workspace · http://127.0.0.1:3080 | `a2797dc` | 交付区取消折叠（5 卡直接展示） |
 
 ## 8. 备注
 
-- 本轮为纯 UI 重构，无 Host 行为/数据格式变化；发布后如需回退，按 §5 执行。
-- 交付后根 `package.json` 版本 +1 至 **1.2.80**（chore commit），插件保持 **1.2.79**（工作区硬性规定）。
-- 下一步：Owner 按批次 16 复测 → 回填 blocked 验收项 → 若均通过则 v1.2.79 可视为验收闭环。
+- 交付后根 `package.json` +1 至 **1.2.81**（chore commit），插件保持 **1.2.80**。
+- 下一步：Owner 批次 17 实机复测 → 回填 blocked 项 → v1.2.80 验收闭环。

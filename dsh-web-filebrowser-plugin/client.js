@@ -527,10 +527,10 @@ window.__ModuleLoader__.load({
       'workbench.preflight': '交付前体检',
       'workbench.preflightReady': '可以交付',
       'workbench.preflightWarn': '建议先处理 {count} 项',
-      'workbench.preflightAcceptance': '验收：通过 {pass} · 失败 {fail} · 未完成 {pending}',
+      'workbench.preflightAcceptance': '验收：通过 {pass} · 失败 {fail} · 未完成 {pending} · 阻塞 {blocked}',
       'workbench.preflightEvidence': '证据缺口 {count} 项',
       'workbench.preflightReview': '变更审阅 {done}/{total}',
-      'workbench.preflightTests': '最近测试：{status}',
+      'workbench.preflightTests': '最近任务：{status}',
       'workbench.preflightRelease': '发布记录：{status}',
       'workbench.preflightPreview': '预览分享：{status}',
       'workbench.preflightDelivery': '交付包：{status}',
@@ -563,6 +563,18 @@ window.__ModuleLoader__.load({
       'workbench.hero.responsible': '负责：{role}',
       'workbench.hero.gateNote': '通过后进入人工确认；发布仍锁定',
       'workbench.hero.start': '启动并派发',
+      'workbench.hero.eyebrowDone': '全部 {total} 关已完成',
+      'workbench.hero.allDoneTitle': '本轮交付完成',
+      'workbench.hero.allDoneSub': '第 {round} 轮 · 全部通过',
+      'workbench.hero.allDoneGate': '全部阶段已完成 · 可发布或发起新轮变更',
+      'workbench.status.allPassed': '全部通过',
+      'workbench.status.doneLine': '第 {round} 轮 · 全部阶段已完成',
+      'workbench.section.nowDone': '全部完成 · 暂无待处理',
+      'workbench.preflightWarnDone': '提示 {count} 项',
+      'workbench.preflightNoRecord': '暂无记录',
+      'workbench.preflightNotShared': '未分享',
+      'workbench.preflightNotBundled': '未打包',
+      'workbench.changesCommitted': '本轮变更已提交，无未提交改动。',
       'workbench.head.eyebrow': '工作区 · {project} · 第 {round} 轮',
       'workbench.head.current': '当前：{stage} · {status}',
       'workbench.head.ready': '全部阶段已完成 · 可发布或发起新轮变更',
@@ -575,7 +587,6 @@ window.__ModuleLoader__.load({
       'workbench.hero.current': '当前第 {n} 关 · {stage}',
       'workbench.hero.ringLabel': '关已完成',
       'workbench.hero.remaining': '已通过 {done}/{total} 关 · 本轮预计还需 {left} 个阶段',
-      'workbench.hero.remainingDone': '全部 {total} 关已完成',
       'workbench.hero.viewReport': '查看复核报告',
       'workbench.hero.railLabel': '七阶段进度',
       'workbench.metric.running': '运行中',
@@ -1746,10 +1757,10 @@ window.__ModuleLoader__.load({
       'workbench.preflight': 'Delivery preflight',
       'workbench.preflightReady': 'Ready to deliver',
       'workbench.preflightWarn': 'Address {count} item(s) first',
-      'workbench.preflightAcceptance': 'Acceptance: {pass} passed · {fail} failed · {pending} open',
+      'workbench.preflightAcceptance': 'Acceptance: {pass} passed · {fail} failed · {pending} open · {blocked} blocked',
       'workbench.preflightEvidence': '{count} evidence gap(s)',
       'workbench.preflightReview': 'Change review {done}/{total}',
-      'workbench.preflightTests': 'Last test: {status}',
+      'workbench.preflightTests': 'Last task: {status}',
       'workbench.preflightRelease': 'Release: {status}',
       'workbench.preflightPreview': 'Preview share: {status}',
       'workbench.preflightDelivery': 'Delivery bundle: {status}',
@@ -1782,6 +1793,18 @@ window.__ModuleLoader__.load({
       'workbench.hero.responsible': 'Owner: {role}',
       'workbench.hero.gateNote': 'Approval next; release stays locked',
       'workbench.hero.start': 'Start & dispatch',
+      'workbench.hero.eyebrowDone': 'ALL {total} STAGES COMPLETE',
+      'workbench.hero.allDoneTitle': 'Delivery complete',
+      'workbench.hero.allDoneSub': 'Round {round} · all passed',
+      'workbench.hero.allDoneGate': 'All stages complete · release or start a change round',
+      'workbench.status.allPassed': 'All passed',
+      'workbench.status.doneLine': 'Round {round} · all stages complete',
+      'workbench.section.nowDone': 'All done · nothing needs you',
+      'workbench.preflightWarnDone': '{count} notice(s)',
+      'workbench.preflightNoRecord': 'No record',
+      'workbench.preflightNotShared': 'Not shared',
+      'workbench.preflightNotBundled': 'Not bundled',
+      'workbench.changesCommitted': 'This round is committed; no uncommitted changes.',
       'workbench.head.eyebrow': 'Workspace · {project} · round {round}',
       'workbench.head.current': 'Now: {stage} · {status}',
       'workbench.head.ready': 'All stages complete · release or start a change round',
@@ -1794,7 +1817,6 @@ window.__ModuleLoader__.load({
       'workbench.hero.current': 'Stage {n} · {stage}',
       'workbench.hero.ringLabel': 'stages done',
       'workbench.hero.remaining': '{done}/{total} stages done · about {left} left this round',
-      'workbench.hero.remainingDone': 'All {total} stages done',
       'workbench.hero.viewReport': 'View acceptance review',
       'workbench.hero.railLabel': 'Seven-stage progress',
       'workbench.metric.running': 'Running',
@@ -10924,6 +10946,7 @@ ${tail}
             .replace(/[*_~>|#-]+/gu, ' ')
             .replace(/\s+/gu, ' ')
             .trim()
+            .replace(/^(?:背景|目标|范围|用户与场景|约束|验收标准|调研与借鉴)\s*[:：]?\s*/u, '')
           if (plain.length === 0) return ''
           return plain.length > 160 ? plain.slice(0, 160) + '…' : plain
         }
@@ -17435,6 +17458,8 @@ ${tail}
           const done = stages.filter((stage) => stage !== null && typeof stage === 'object' && stage.status === 'approved').length
           const total = stages.length === 0 ? 7 : stages.length
           const roundScope = doc !== null && typeof doc.roundScope === 'string' && doc.roundScope.length > 0 ? doc.roundScope : 'full'
+          const hasProject = requirementTitle.length > 0
+          const allStagesDone = stages.length > 0 && done === total
           const stageTitles = {
             product: t('pipeline.stage.product'),
             design: t('pipeline.stage.design'),
@@ -17464,7 +17489,8 @@ ${tail}
           const items = Array.isArray(acceptanceItems) ? acceptanceItems : []
           const passCount = items.filter((item) => item.status === 'pass').length
           const failCount = items.filter((item) => item.status === 'fail').length
-          const pendingCount = items.filter((item) => item.status === 'pending' || item.status === 'blocked').length
+          const pendingCount = items.filter((item) => item.status === 'pending').length
+          const blockedCount = items.filter((item) => item.status === 'blocked').length
           const failedItems = items.filter((item) => item.status === 'fail')
           const releases = doc !== null && Array.isArray(doc.releases) ? doc.releases : []
           const roleLabels = {
@@ -17650,7 +17676,7 @@ ${tail}
                       )
                     : null,
                   h('div', { className: 'ds-hint ds-wb-hint ds-wb-adjust-summary-hint' }, t('workbench.requirement.summaryHint')),
-                  latestChange === null || latestChange.round !== round
+                  latestChange === null || latestChange.round !== round || String(latestChange.title ?? '') === requirementTitle
                     ? null
                     : h(
                         'div',
@@ -17784,10 +17810,12 @@ ${tail}
                     'div',
                     { className: 'ds-wb-status-metric' },
                     h('span', { className: 'ds-wb-status-value' }, String(done) + '/' + String(total)),
-                    h('span', { className: 'ds-wb-status-caption' }, t('workbench.hero.ringLabel')),
+                    h('span', { className: 'ds-wb-status-caption' }, allStagesDone ? t('workbench.status.allPassed') : t('workbench.hero.ringLabel')),
                     h('span', { className: 'ds-spacer' }),
-                    current === null
-                      ? h('span', { className: 'ds-wb-status-pill', 'data-status': 'approved' }, t('workbench.completed'))
+                    allStagesDone
+                      ? null
+                      : current === null
+                        ? h('span', { className: 'ds-wb-status-pill', 'data-status': 'approved' }, t('workbench.completed'))
                       : current.status === 'active'
                         ? h('span', { className: 'ds-wb-status-pill', 'data-status': 'active' }, t('workbench.runningStage'))
                         : current.status === 'review'
@@ -17815,9 +17843,11 @@ ${tail}
                   h(
                     'div',
                     { className: 'ds-wb-status-line' },
-                    t('workbench.round', { round: String(round) }) + ' · ' +
-                      t('workbench.done', { done: String(done), total: String(total) }) +
-                      (current === null ? ' · ' + t('workbench.allDone') : ' · ' + t('workbench.current', { stage: stageTitle(current.id) })),
+                    allStagesDone
+                      ? t('workbench.status.doneLine', { round: String(round) })
+                      : t('workbench.round', { round: String(round) }) + ' · ' +
+                        t('workbench.done', { done: String(done), total: String(total) }) +
+                        (current === null ? ' · ' + t('workbench.allDone') : ' · ' + t('workbench.current', { stage: stageTitle(current.id) })),
                   ),
                   h(
                     'div',
@@ -17941,11 +17971,12 @@ ${tail}
           const preflightChecks = [
             {
               id: 'acceptance',
-              level: failCount > 0 ? 'fail' : pendingCount > 0 ? 'warn' : 'ok',
+              level: failCount > 0 ? 'fail' : pendingCount > 0 || blockedCount > 0 ? 'warn' : 'ok',
               label: t('workbench.preflightAcceptance', {
                 pass: String(passCount),
                 fail: String(failCount),
                 pending: String(pendingCount),
+                blocked: String(blockedCount),
               }),
               action: openAcceptance,
               actionLabel: t('workbench.openAcceptance'),
@@ -17977,11 +18008,13 @@ ${tail}
             },
             {
               id: 'tests',
-              level: latestTestRun === null ? 'warn' : latestTestRun.status === 'failed' ? 'fail' : 'ok',
+              level: latestTestRun === null ? (allStagesDone ? 'na' : 'warn') : latestTestRun.status === 'failed' ? 'fail' : 'ok',
               label: t('workbench.preflightTests', {
                 status:
                   latestTestRun === null
-                    ? t('workbench.preflightMissing')
+                    ? allStagesDone
+                      ? t('workbench.preflightNoRecord')
+                      : t('workbench.preflightMissing')
                     : latestTestRun.status === 'failed'
                       ? t('tasks.failed')
                       : t('tasks.passed'),
@@ -18003,18 +18036,28 @@ ${tail}
             },
             {
               id: 'preview',
-              level: previewShare === null ? 'warn' : 'ok',
+              level: previewShare === null ? (allStagesDone ? 'na' : 'warn') : 'ok',
               label: t('workbench.preflightPreview', {
-                status: previewShare === null ? t('workbench.preflightMissing') : t('workbench.preflightOk'),
+                status:
+                  previewShare === null
+                    ? allStagesDone
+                      ? t('workbench.preflightNotShared')
+                      : t('workbench.preflightMissing')
+                    : t('workbench.preflightOk'),
               }),
               action: openAcceptance,
               actionLabel: t('workbench.openAcceptance'),
             },
             {
               id: 'delivery',
-              level: latestDelivery === null ? 'warn' : 'ok',
+              level: latestDelivery === null ? (allStagesDone ? 'na' : 'warn') : 'ok',
               label: t('workbench.preflightDelivery', {
-                status: latestDelivery === null ? t('workbench.preflightMissing') : String(latestDelivery.name ?? t('workbench.preflightOk')),
+                status:
+                  latestDelivery === null
+                    ? allStagesDone
+                      ? t('workbench.preflightNotBundled')
+                      : t('workbench.preflightMissing')
+                    : String(latestDelivery.name ?? t('workbench.preflightOk')),
               }),
               action: openAcceptance,
               actionLabel: t('workbench.openAcceptance'),
@@ -18023,17 +18066,19 @@ ${tail}
           const preflightIssues = preflightChecks.filter((check) => check.level === 'warn' || check.level === 'fail')
           const preflightCard = h(
             'div',
-            { className: 'ds-wb-card ds-wb-preflight', 'data-kind': preflightIssues.length === 0 ? 'ok' : 'warn' },
+            { className: 'ds-wb-card ds-wb-preflight', 'data-kind': preflightIssues.length === 0 ? 'ok' : allStagesDone ? 'info' : 'warn' },
             h(
               'div',
               { className: 'ds-wb-card-head' },
               h('div', { className: 'ds-wb-card-title ds-wb-card-title-inline' }, t('workbench.preflight')),
               h(
                 'span',
-                { className: 'ds-wb-preflight-verdict', 'data-kind': preflightIssues.length === 0 ? 'ok' : 'warn' },
+                { className: 'ds-wb-preflight-verdict', 'data-kind': preflightIssues.length === 0 ? 'ok' : allStagesDone ? 'info' : 'warn' },
                 preflightIssues.length === 0
                   ? t('workbench.preflightReady')
-                  : t('workbench.preflightWarn', { count: String(preflightIssues.length) }),
+                  : allStagesDone
+                    ? t('workbench.preflightWarnDone', { count: String(preflightIssues.length) })
+                    : t('workbench.preflightWarn', { count: String(preflightIssues.length) }),
               ),
               h('span', { className: 'ds-spacer' }),
               h(
@@ -18128,14 +18173,13 @@ ${tail}
               'div',
               { className: 'ds-wb-counts' },
               h('span', { className: 'ds-wb-count', 'data-status': 'pass' }, t('acceptance.passCount', { count: String(passCount) })),
-              h('span', { className: 'ds-wb-count', 'data-status': 'fail' }, t('acceptance.failCount', { count: String(failCount) })),
-              h('span', { className: 'ds-wb-count', 'data-status': 'pending' }, t('acceptance.pendingCount', { count: String(pendingCount) })),
+              failCount > 0 ? h('span', { className: 'ds-wb-count', 'data-status': 'fail' }, t('acceptance.failCount', { count: String(failCount) })) : null,
+              pendingCount > 0 ? h('span', { className: 'ds-wb-count', 'data-status': 'pending' }, t('acceptance.pendingCount', { count: String(pendingCount) })) : null,
+              blockedCount > 0 ? h('span', { className: 'ds-wb-count', 'data-status': 'blocked' }, t('acceptance.blockedCount', { count: String(blockedCount) })) : null,
             ),
-            h(
-              'div',
-              { className: 'ds-wb-card-title ds-wb-subtitle' },
-              t('workbench.delivery'),
-            ),
+            latestDelivery === null && previewShare === null
+              ? null
+              : h('div', { className: 'ds-wb-card-title ds-wb-subtitle' }, t('workbench.delivery')),
             h(
               'div',
               { className: 'ds-wb-actions' },
@@ -18200,7 +18244,7 @@ ${tail}
                     { className: 'ds-wb-card-head' },
                     h('div', { className: 'ds-wb-card-title ds-wb-card-title-inline' }, t('workbench.changes')),
                     h('span', { className: 'ds-spacer' }),
-                    reviewAvailable
+                    reviewAvailable && Number(reviewState.total ?? 0) > 0
                       ? h(
                           'span',
                           { className: 'ds-wb-review-progress' },
@@ -18225,7 +18269,7 @@ ${tail}
                   !reviewAvailable
                     ? h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.reviewUnavailable'))
                     : reviewFiles.length === 0
-                      ? h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.changesEmpty'))
+                      ? h('div', { className: 'ds-hint ds-wb-hint' }, allStagesDone ? t('workbench.changesCommitted') : t('workbench.changesEmpty'))
                       : h(
                           'div',
                           { className: 'ds-wb-change-list' },
@@ -19197,9 +19241,9 @@ ${tail}
               'div',
               { className: 'ds-wb-run-stats' },
               h('div', { className: 'ds-wb-run-stat' }, h('span', { className: 'ds-wb-run-stat-value' }, String(running.length)), h('span', { className: 'ds-wb-run-stat-label' }, t('workbench.metric.running'))),
+              h('div', { className: 'ds-wb-run-stat ds-wb-run-stat-wide' }, h('span', { className: 'ds-wb-run-stat-value' }, lastRun === null ? '—' : lastRun.name), h('span', { className: 'ds-wb-run-stat-label' }, t('workbench.metric.lastRun'))),
               h('div', { className: 'ds-wb-run-stat' }, h('span', { className: 'ds-wb-run-stat-value' }, lastRunLabel), h('span', { className: 'ds-wb-run-stat-label' }, t('workbench.metric.lastResult'))),
               h('div', { className: 'ds-wb-run-stat' }, h('span', { className: 'ds-wb-run-stat-value' }, lastFailed === null ? '0' : '1'), h('span', { className: 'ds-wb-run-stat-label' }, t('workbench.metric.lastFailed'))),
-              h('div', { className: 'ds-wb-run-stat ds-wb-run-stat-wide' }, h('span', { className: 'ds-wb-run-stat-value' }, lastRun === null ? '—' : lastRun.name), h('span', { className: 'ds-wb-run-stat-label' }, t('workbench.metric.lastRun'))),
             ),
             running.length === 0
               ? h(
@@ -19240,8 +19284,6 @@ ${tail}
            * hero current-stage card and collapsible delivery rows. All existing
            * cards and handlers are reused unchanged inside the new shells.
            * ------------------------------------------------------------------ */
-          const hasProject = requirementTitle.length > 0
-          const allStagesDone = stages.length > 0 && done === total
           const heroStage = reviewStage !== null ? reviewStage : current
           const heroIndex = heroStage === null ? -1 : stages.findIndex((stage) => stage !== null && typeof stage === 'object' && stage.id === heroStage.id)
           const heroSummary = heroStage !== null && typeof heroStage.summary === 'string' ? heroStage.summary.trim() : ''
@@ -19276,12 +19318,20 @@ ${tail}
             h(
               'div',
               { className: 'ds-wb-hero-copy' },
-              h('div', { className: 'ds-wb-hero-eyebrow' }, t('workbench.hero.eyebrow', { n: String(heroStepNumber), total: String(total) })),
+              h(
+                'div',
+                { className: 'ds-wb-hero-eyebrow' },
+                allStagesDone
+                  ? t('workbench.hero.eyebrowDone', { total: String(total) })
+                  : t('workbench.hero.eyebrow', { n: String(heroStepNumber), total: String(total) }),
+              ),
               h(
                 'div',
                 { className: 'ds-wb-hero-title-row' },
-                h('h2', { className: 'ds-wb-hero-title' }, heroStage === null ? t('workbench.completed') : stageTitle(heroStage.id)),
-                h('span', { className: 'ds-wb-status-pill ds-wb-hero-status', 'data-status': heroStatus }, heroStage === null ? t('workbench.completed') : statusText[heroStatus] ?? ''),
+                h('h2', { className: 'ds-wb-hero-title' }, allStagesDone ? t('workbench.hero.allDoneTitle') : heroStage === null ? t('workbench.completed') : stageTitle(heroStage.id)),
+                allStagesDone
+                  ? null
+                  : h('span', { className: 'ds-wb-status-pill ds-wb-hero-status', 'data-status': heroStatus }, heroStage === null ? t('workbench.completed') : statusText[heroStatus] ?? ''),
               ),
               heroSummary.length > 0
                 ? h('div', { className: 'ds-wb-hero-summary', title: heroSummary.length > 80 ? heroSummary.slice(0, 80) + '…' : heroSummary }, heroSummary)
@@ -19291,15 +19341,15 @@ ${tail}
               h(
                 'div',
                 { className: 'ds-wb-hero-meta' },
-                heroRole.length === 0 ? null : h('span', { className: 'ds-wb-hero-role' }, t('workbench.hero.responsible', { role: heroRole })),
-                heroRole.length === 0 ? null : h('span', { className: 'ds-wb-hero-meta-dot', 'aria-hidden': 'true' }),
-                h(
-                  'span',
-                  null,
-                  allStagesDone
-                    ? t('workbench.hero.remainingDone', { total: String(total) })
-                    : t('workbench.hero.remaining', { done: String(railDone), total: String(total), left: String(railLeft) }),
-                ),
+                allStagesDone || heroRole.length === 0 ? null : h('span', { className: 'ds-wb-hero-role' }, t('workbench.hero.responsible', { role: heroRole })),
+                allStagesDone || heroRole.length === 0 ? null : h('span', { className: 'ds-wb-hero-meta-dot', 'aria-hidden': 'true' }),
+                allStagesDone
+                  ? null
+                  : h(
+                      'span',
+                      null,
+                      t('workbench.hero.remaining', { done: String(railDone), total: String(total), left: String(railLeft) }),
+                    ),
                 fastMode ? h('span', { className: 'ds-wb-hero-chip' }, t('pipeline.fastMode')) : null,
               ),
               h(
@@ -19356,7 +19406,11 @@ ${tail}
                   h(
                     'div',
                     { className: 'ds-wb-hero-side-sub' },
-                    heroStage === null ? t('workbench.completed') : t('workbench.hero.current', { n: String(heroStepNumber), stage: stageTitle(heroStage.id) }),
+                    allStagesDone
+                      ? t('workbench.hero.allDoneSub', { round: String(round) })
+                      : heroStage === null
+                        ? t('workbench.completed')
+                        : t('workbench.hero.current', { n: String(heroStepNumber), stage: stageTitle(heroStage.id) }),
                   ),
                 ),
               ),
@@ -19416,8 +19470,12 @@ ${tail}
               h(
                 'div',
                 { className: 'ds-wb-hero-gate-row' },
-                h('span', { className: 'ds-wb-hero-gate' }, t('workbench.hero.gateNote')),
-                reviewStage === null
+                h(
+                  'span',
+                  { className: 'ds-wb-hero-gate' },
+                  allStagesDone ? t('workbench.hero.allDoneGate') : t('workbench.hero.gateNote'),
+                ),
+                reviewStage === null || allStagesDone
                   ? null
                   : h('button', { type: 'button', className: 'ds-linkbtn ds-wb-hero-link', onClick: openPipeline }, t('workbench.hero.viewReport')),
               ),
@@ -19430,7 +19488,7 @@ ${tail}
               'now',
               t('workbench.section.now'),
               t('workbench.zone.nowTitle'),
-              t('workbench.section.nowHint', { count: String(nowCount) }),
+              nowCount === 0 && allStagesDone ? t('workbench.section.nowDone') : t('workbench.section.nowHint', { count: String(nowCount) }),
               h(
                 'button',
                 { type: 'button', className: 'ds-linkbtn ds-wb-zone-link', onClick: openTasks },
@@ -19443,7 +19501,7 @@ ${tail}
               heroCard,
               failedItems.length > 0 ? attentionCard : null,
               issueRows.length === 0 ? null : issuesCard,
-              nowCount === 0 && !attention ? h('div', { className: 'ds-wb-zone-empty' }, t('workbench.section.nowEmpty')) : null,
+              nowCount === 0 && !attention && !allStagesDone ? h('div', { className: 'ds-wb-zone-empty' }, t('workbench.section.nowEmpty')) : null,
             ),
           )
           const projectSection = h(
@@ -25523,7 +25581,7 @@ h(
 .ds-wb-status-value { color: var(--wb-ink); font-size: 32px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
 .ds-wb-status-caption { color: var(--wb-ink-3); font-size: 11px; }
 .ds-wb-progress-bar { height: 6px; overflow: hidden; border-radius: 3px; background: var(--wb-surface-2); }
-.ds-wb-progress-fill { display: block; height: 100%; border-radius: 3px; background: var(--wb-brand); transition: width var(--wb-motion); }
+.ds-wb-progress-fill { display: block; height: 100%; border-radius: 3px; background: var(--wb-biz); transition: width var(--wb-motion); }
 .ds-wb-status-line { margin: 8px 0 12px; color: var(--wb-ink-2); font-size: 11.5px; line-height: 1.5; overflow-wrap: anywhere; }
 .ds-wb-page.ds-wb-v1279 .ds-wb-status-actions { margin-top: 0; }
 /* 需求卡 */
@@ -25575,7 +25633,11 @@ h(
 .ds-wb-page.ds-wb-v1279 .ds-wb-project-cell .ds-wb-actions .ds-btn { min-height: 30px; height: auto; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 /* 团队卡 */
 .ds-wb-page.ds-wb-v1279 .ds-wb-assign-members { gap: 6px; }
-.ds-wb-page.ds-wb-v1279 .ds-wb-assign-member { min-height: 30px; border-radius: 8px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-project-grid .ds-wb-assign-members { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-assign-member { min-height: 34px; padding: 6px 8px; gap: 6px; border-radius: 8px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-project-grid .ds-wb-assign-member-name { font-size: 11.5px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-project-grid .ds-wb-assign-member-id { font-size: 9px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-assign-pill { font-size: 9px; padding: 1px 6px; }
 .ds-wb-page.ds-wb-v1279 .ds-wb-assign-list { max-height: 190px; overflow: auto; }
 /* ---------- 项目流程时间轴 ---------- */
 .ds-wb-page.ds-wb-v1279 .ds-wb-flow { padding: 18px 20px; }
@@ -25664,6 +25726,8 @@ h(
 .ds-wb-page.ds-wb-v1279 .ds-wb-changes-hint { font-size: 10.5px; }
 .ds-wb-page.ds-wb-v1279 .ds-wb-preflight-row { font-size: 11px; line-height: 1.6; }
 .ds-wb-page.ds-wb-v1279 .ds-wb-preflight-verdict { font-size: 10.5px; font-weight: 600; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-preflight[data-kind="info"] { border-left-color: var(--wb-line-strong); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-preflight-verdict[data-kind="info"] { color: var(--wb-ink-3); }
 .ds-wb-page.ds-wb-v1279 .ds-wb-run { margin-top: 4px; }
 .ds-wb-page.ds-wb-v1279 .ds-wb-run-name { font-size: 11.5px; }
 /* 卡片内状态 pill / 计数 */
@@ -25677,6 +25741,7 @@ h(
 .ds-wb-page.ds-wb-v1279 .ds-wb-count[data-status="pass"] { background: color-mix(in srgb, var(--wb-ok) 12%, transparent); color: var(--wb-ok); }
 .ds-wb-page.ds-wb-v1279 .ds-wb-count[data-status="fail"] { background: color-mix(in srgb, var(--wb-err) 12%, transparent); color: var(--wb-err); }
 .ds-wb-page.ds-wb-v1279 .ds-wb-count[data-status="pending"] { background: var(--wb-surface-2); color: var(--wb-ink-2); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-count[data-status="blocked"] { background: var(--wb-surface-2); color: var(--wb-ink-3); border: 1px solid var(--wb-line); }
 /* 焦点与动效 */
 .ds-wb-page.ds-wb-v1279 .ds-btn:focus-visible,
 .ds-wb-page.ds-wb-v1279 .ds-linkbtn:focus-visible,

@@ -1,9 +1,9 @@
-# 测试报告 —— 工作台 UI 全面重构（指挥舱）v1.2.79
+# 测试报告 —— 工作台完成态与细节修正（v1.2.80）
 
-- 角色：测试工程师；日期：2026-10-27（Asia/Shanghai）；阶段：testing（第 7 轮）。
-- 被测版本：插件 `dsh-web-filebrowser-plugin/package.json` **1.2.79**；根 `package.json` **1.2.79**；基线 commit `e794ff9`（工作树未提交）。
-- 环境：Linux x64；Node **v24.22.0**；Harness Web GUI `http://127.0.0.1:3080`；工作区 `/data/dsh/home/dsh-web-powerfilebrowser/dsh-web-filebrowser`；无新增依赖/外部资源。
-- 结论：**自动化全绿（7 套，exit 0）**；新增 `qa-static-v1279` **STATIC PASS（121 断言）**；10 条验收 **3 pass / 0 fail / 7 blocked（纯 GUI/视觉/真实视口项，待 Owner 按批次 16 复测）**；无阻断缺陷。**建议进入 acceptance**（验收复核）。
+- 角色：测试工程师；日期：2026-10-27（Asia/Shanghai）；阶段：testing（第 8 轮）。
+- 被测版本：插件 `dsh-web-filebrowser-plugin/package.json` **1.2.80**；根 `package.json` **1.2.80**；代码基线 commit `2ada4a4`（v1.2.79 交付后版本 chore；本轮改动未提交）。
+- 环境：Linux x64；Node **v24.22.0**；Harness Web GUI `http://127.0.0.1:3080`；无新增依赖/外部资源。
+- 结论：**自动化全绿（7 套）**；新增 `qa-static-v1280` **STATIC PASS（143 断言）**；新增 8 条验收 **7 pass / 0 fail / 1 blocked**（唯一 blocked 为实机视觉复测，需 Owner 重启后按批次 17 核对）；无阻断缺陷。**建议进入 acceptance**。
 
 ---
 
@@ -11,111 +11,91 @@
 
 | # | 命令 | 结果 | 耗时 | 关键输出 |
 |---|---|---|---|---|
-| 1 | `npm run check` | **exit 0** | 0.561s | 21 个模块 `node --check` 通过（含 client.js） |
-| 2 | `npm run check:json` | **exit 0** | 0.101s | `JSON OK`（package/plugin/locale JSON） |
-| 3 | `npm test` | **exit 0** | 0.594s | `PASS: 31/31 host smoke checks` |
-| 4 | `node .dsh/tmp/team/pipeline-selftest.mjs` | **exit 0** | 0.666s | `38/38 checks passed`（七阶段 + 双复核 + 快速模式 + 迁移） |
-| 5 | `node .dsh/tmp/team/review-selftest.mjs` | **exit 0** | 0.798s | `22/22 checks passed`（变更审阅状态/已审/签名） |
-| 6 | `node .dsh/tmp/team/assignments-selftest.mjs` | **exit 0** | 0.153s | `27/27 checks passed`（指派器 100 条上限/SSH/并发） |
-| 7 | `node .dsh/tmp/qa-static-v1279.mjs` | **exit 0** | 0.145s | `STATIC PASS (121 assertions)` |
+| 1 | `npm run check` | **exit 0** | 545 ms | 21 个模块 `node --check` 通过（含 client.js） |
+| 2 | `npm run check:json` | **exit 0** | 111 ms | JSON OK |
+| 3 | `npm test` | **exit 0** | 613 ms | PASS: 31/31 host smoke checks |
+| 4 | `node .dsh/tmp/team/pipeline-selftest.mjs` | **exit 0** | 681 ms | 38/38 checks passed |
+| 5 | `node .dsh/tmp/team/review-selftest.mjs` | **exit 0** | 787 ms | 22/22 checks passed |
+| 6 | `node .dsh/tmp/team/assignments-selftest.mjs` | **exit 0** | 184 ms | 27/27 checks passed |
+| 7 | `node .dsh/tmp/qa-static-v1280.mjs` | **exit 0** | 161 ms | **STATIC PASS（143 断言）** |
 
-> 全部命令 exit 0；本报告不使用「git 变更文件数」充当用例数，计数以命令输出为准。`qa-static-v1279` 是临时静态脚本（`.dsh/tmp`，随 `.gitignore` 忽略，不随包发布），与历史批次 QA 脚本口径一致。
+> 证据日志：`.dsh/evidence/testing-v1.2.80.log`；全部 exit 0。`qa-static-v1280` 为临时静态脚本（`.dsh/tmp`，不随包发布）。
 
 ## 2. 变更审计
 
 | 文件 | 变更 | 说明 |
 |---|---|---|
-| `dsh-web-filebrowser-plugin/client.js` | **+848 / −77** | 唯一代码文件：页面头/hero/Now/Project/Delivery JSX + `.ds-wb-v1279` CSS（≈34KB）+ i18n（+19 键 ×2，删 2 个死键） |
-| `dsh-web-filebrowser-plugin/package.json` | 1 行 | 1.2.78 → **1.2.79** |
-| `CHANGELOG.md` | +31 | 新增 `## 1.2.79`（英文，完整描述 Command Deck） |
-| `docs/ACCEPTANCE.md` | +21 / −2 | 新增**批次 16**复测步骤 + v1.2.79 已知限制 + 版本头 |
-| `docs/pipeline/requirements.md` | 本轮重写 | 第 7 轮需求（11 节；旧轮归档 `docs/pipeline/archive/v1.2.78-requirements.md`） |
-| `docs/pipeline/design.md` | 本轮重写 | 指挥舱设计说明（12 节；旧轮归档 `docs/pipeline/archive/v1.2.78-design.md`） |
-| `docs/pipeline/engineering-research.md` | 本轮重写 | 5 候选许可证矩阵 + 安全/性能（旧轮归档） |
-| 新增（未跟踪） | 12 项 | `docs/pipeline/archive/`（6 个旧轮文档）+ `docs/pipeline/design/` 5 套效果图（SVG+PNG，10 文件）+ 生成脚本；`.dsh/tmp/qa-static-v1279.mjs`（忽略项） |
+| `dsh-web-filebrowser-plugin/client.js` | **+120 / −55** | 10 项完成态/团队卡/交付卡修正 + i18n +12 键、删 1 死键（纯客户端） |
+| `dsh-web-filebrowser-plugin/package.json` | 1 行 | 1.2.79 → **1.2.80** |
+| `CHANGELOG.md` | +29 | `## 1.2.80` 条目 |
+| `docs/ACCEPTANCE.md` | +20 / −2 | 批次 17 复测步骤 + 版本头 + 已知限制 |
+| `docs/pipeline/design.md` | +21 | §13 v1.2.80 实机反馈修正表 |
+| `docs/pipeline/archive/` | 新增 3 | v1.2.79 的 test-report/acceptance-review/release 归档 |
+| `docs/pipeline/test-report.md` | 本轮重写 | 本报告 |
 
-- **无 Host 模块改动**：`index.js` / `pipeline.js` / `acceptance.js` / `assignments.js` / `delivery.js` 等均未修改（`git status` 可复核）。
-- **无依赖改动**：根与插件 `package.json` 的 `dependencies` 与 `HEAD` 逐字节一致（静态断言通过）。
-- **无数据改动**：未写 `.dsh/pipeline.json` / `.dsh/acceptance.json`（本轮 UI 重构不涉及）；验收/流水线数据仅由工具调用产生。
-- **无第三方代码/资源**：不引入组件库/图标/字体/CDN；效果图为仓库内自绘 SVG（Noto Sans SC 子集仅在本地渲染 PNG 时使用，**未提交字体文件**）。
-- **体积**：`client.js` 1,223,438 B → **1,246,554 B**（+23.1 KB，+1.9%；最终值，含死键清理后）。
+- 无 Host 模块改动；根/插件 `dependencies` 与 HEAD 一致；无数据/数据格式改动；无第三方代码/资源；`git diff --check` 干净。
 
-## 3. 静态断言明细（qa-static-v1279，121 条，全部 ok）
+## 3. 10 项修复的静态验证（qa-static-v1280）
 
-| 组 | 关键断言 |
-|---|---|
-| 页面头 | `ds-wb-v1279` 作用域、`<header>` + `data-compact`、`h1.ds-wb-head-title`、eyebrow/chips/meta、动作组（刷新/流水线/团队/提醒/关闭）、4 个 icon 按钮 `aria-label`、sticky、30px 标题、chip tones |
-| Hero | `ds-wb-hero` + `data-status`/`data-done`、`--wb-hero` 渐变（brand→#0b1220）、两列 300px、30px 阶段名、STAGE eyebrow、五态状态 pill、摘要 clamp 2、tooltip ≤80 字、`<ol>` 7 段 rail + sr-only 状态 + 4 种状态色、SVG 环形（两圆 + dasharray + rotate -90）、4/7 数字、主/次 CTA 44px、review note、门禁/复核报告链接、approve/reject/start handler 原样 |
-| Now | hero 在告警卡前、告警在问题卡前、`::before` 告警图标、统一卡片表面 |
-| Project | `ds-wb-project-grid`、≥1280 三列 / ≥768 两列 / ≤700 单列、需求卡两列时全宽、状态卡大数字 4/7 + 进度条 + 状态 pill + 启动 |
-| Delivery | 7 步连接线时间轴 + 当前步 tint + 5 卡顺序（design→acceptance→preflight→review→running）+ null 过滤、≥1024 两列 + 第 5 卡全宽、≤1023 单列、running 4 项统计 |
-| Tokens | 间距 4–32（7 档）、字号 11–30、圆角 10/14/18、阴影 1/2、160ms 动效、canvas 来自 alias + color-mix、无大范围 `!important` |
-| 无障碍 | `:focus-visible` 2px + 2px offset、`prefers-reduced-motion` 全关、sr-only 状态、三 section `aria-labelledby`、rail `<ol aria-label>` |
-| 响应式 | 700/1023 断点、hero ≤1023 单列、compact 模式（页头/hero/project/delivery/steps/run-stats）覆盖 |
-| 外壳 | 48px 顶栏、侧栏表面覆盖、活动标签指示条；不改交互 |
-| 回归/安全 | 无 fold 逻辑回归、无 `dangerouslySetInnerHTML`、无 console.log/TODO、diff 仅允许范围、无 Host 模块改动 |
-| i18n | 19 个新键 zh/en 成对、全部被引用、`workbench.*` 集合一致、整本字典键集合一致、无 `hero.currentStage`/`running.last` 死键 |
-| 版本/资产 | 根/插件 1.2.79、CHANGELOG 1.2.79、ACCEPTANCE 批次 16、依赖不变、`node --check`、6 个效果图存在、CSS 花括号平衡 |
-
-## 4. 需求覆盖矩阵
-
-| 需求条款（requirements.md） | 证据 | 状态 |
+| # | 实机问题 | 修正证据（静态断言/keywords） |
 |---|---|---|
-| 页面头（eyebrow + 30px + chips + 动作组） | 静态断言 + 效果图 overview-light | ✅ 静态通过 / GUI blocked |
-| 深色 hero（阶段/状态/摘要/负责/rail/环形/CTA/note/门禁） | 静态断言 + overview-light/dark | ✅ 静态通过 / GUI blocked |
-| Now 告警卡 | 静态断言 + full-light | ✅ 静态通过 / GUI blocked |
-| 项目区三列（≥1280）/两列/单列 | 静态断言 + 断点表 | ✅ 静态通过 / GUI blocked |
-| 交付区时间轴 + 5 卡 bento（≥1024 两列、≤1023 单列） | 静态断言 + full-light | ✅ 静态通过 / GUI blocked |
-| 设计 tokens / 浅深主题 / 对比度 | CSS + design.md §8.2 + 效果图 dark | ✅ 静态通过 / GUI blocked（像素实测） |
-| hover/focus-visible/reduced-motion/44px/键盘 | CSS + 静态断言 | ✅ 静态通过 / GUI blocked（真实键盘） |
-| 功能回归（通过/打回、派发、note、指派、需求四操作、验收/体检/变更/运行、通知/刷新/关闭/compact） | handler 原样保留 + diff 审计 | ✅ 静态通过 / GUI blocked（点击） |
-| i18n 成对无死键 | 121 断言中的 i18n 组 | **pass** |
-| 质量门（7 套全绿、diff 范围、无调试/密钥） | 本报告 §1/§2 | **pass** |
-| 版本 1.2.79 + CHANGELOG + ACCEPTANCE 批次 16 | 静态断言 | **pass** |
+| 1 | 团队 chips 压成 3 列、名称剩 1 字 | CSS `.ds-wb-page.ds-wb-v1279 .ds-wb-project-grid .ds-wb-assign-members { grid-template-columns: repeat(2, minmax(0, 1fr)); }`；chip 内边距/字号/pill 微调 |
+| 2 | 完成态 hero 过期文案/重复 pill/门禁 | `t('workbench.hero.eyebrowDone')`、`allDoneTitle`、`allDoneSub`、`allDoneGate`；`allStagesDone ? null : status-pill`；复核链接在完成态隐藏 |
+| 3 | 需求摘要「背景」前缀、重复变更行 | `requirementSummaryText` 增加 `replace(/^(?:背景|目标|范围|…)\s*[:：]?\s*/u,'')`；`String(latestChange.title) === requirementTitle` 时隐藏 changeLine |
+| 4 | blocked 计入待验收、空「交付物」 | `blockedCount` 独立统计 + `data-status="blocked"` pill；零值 pill 不渲染；`latestDelivery === null && previewShare === null` 时不渲染「交付物」小节 |
+| 5 | 完成态体检「建议先处理」误报 | `preflightWarnDone`（提示 N 项）+ `data-kind="info"`；`allStagesDone ? 'na' : 'warn'` 降级测试/预览/交付包缺失，文案「暂无记录/未分享/未打包」 |
+| 6 | 提交后变更卡「已审 0/0」 | `Number(reviewState.total) > 0` 才显示已审计数；`changesCommitted` 文案「本轮变更已提交，无未提交改动。」 |
+| 7 | 运行中统计顺序 | JSX 顺序 运行中 → 最近一次（宽列）→ 最近结果 → 上次失败 |
+| 8 | 进度条纯黑 | `.ds-wb-progress-fill { background: var(--wb-biz) }`（`--dsw-alias-state-business-primary`） |
+| 9 | 完成态 Now 区 0 项提示 | `workbench.section.nowDone` + 隐藏重复空态行 |
+| 10 | 项目状态卡重复「已完成」 | 完成态隐藏 pill、caption `workbench.status.allPassed`、行 `workbench.status.doneLine` |
 
-## 5. 验收项状态（10 条，本轮新增）
+**断言分组**：v1.2.79 的 121 条回归（页面头/hero/rail/ring/三区/断点/tokens/a11y/外壳/i18n/版本/资产）全部保留；新增 22 条覆盖上述 10 项修复与版本/批次（共 143）。
 
-| ID | 验收点 | 状态 | 证据/说明 |
-|---|---|---|---|
-| f2276bbaad | 1440×900 首屏页面头 + hero + Now 可见，hero 不折叠 | **blocked** | 真实首屏/视口需 Owner 按批次 16 #1 复测；静态：hero 在 Now 首位、无折叠逻辑 |
-| d2e803c08e | Hero 深色 + 30px 阶段名 + 状态/摘要/负责 + 环形 + 主操作 + note 不回归 | **blocked** | 视觉与点击需 GUI；静态：结构/渐变/ring/handler 全通过 |
-| 1db92733b0 | 三区 + 项目三列 + 5 卡 bento，标题完整，空态降级 | **blocked** | 布局/截断需真实宽度；静态：断点/顺序/空态分支通过 |
-| 34b966a4a8 | 360/768/1024/1280/1440 无横向溢出，≤700 单列/44px | **blocked** | 真实视口需 GUI；静态：断点/44px/min-width:0 通过 |
-| cda93230ed | 视觉系统（字号/间距/圆角/阴影 token、对比达标、不只靠颜色） | **blocked** | 像素对比度/目视需 Owner；静态：tokens/4.5:1 设计计算/文字状态通过 |
-| b6ebf8148d | 交互与无障碍（hover/focus/reduced-motion/44px/键盘/ARIA） | **blocked** | 真实键盘/读屏需 Owner；静态：CSS/ARIA 通过 |
-| 60d7d3a430 | 功能回归（全部入口与禁用逻辑） | **blocked** | 点击行为需 GUI；静态：handler/diff 无删除 |
-| 76ef22cded | i18n 成对无死键 | **pass** | qa-static-v1279 i18n 组：19 键 zh/en、全部引用、集合一致、死键清理 |
-| 4c07b09630 | 质量门（7 套全绿 + diff 范围 + 无调试/密钥） | **pass** | 本报告 §1/§2：check/check:json/test/3 selftest/qa-static 全 exit 0；diff 审计通过 |
-| 1d8bfc0f67 | 版本 1.2.79 / CHANGELOG 1.2.79 / ACCEPTANCE 批次 16 | **pass** | 静态断言 + `docs/ACCEPTANCE.md` 批次 16 |
+## 4. 验收项（本轮新增 8 条）
 
-> 7 条 blocked 均为**纯 GUI/视觉/真实视口**项，模型无浏览器截图能力，不伪造 pass；Owner 重启 Harness → 重建 bundle → 强刷后按 `docs/ACCEPTANCE.md` 批次 16 复测并回填即可。
+| 验收点 | 状态 | 说明 |
+|---|---|---|
+| 团队卡：6 角色 chips 2 列、名称/状态完整 | **pass（静态）** | CSS 2 列规则 + chip 调整；实机目视由 blocked 项覆盖 |
+| 完成态 hero：eyebrow/title/side/gate 正确、无重复 pill/过期门禁 | **pass（静态）** | 4 个新键 + 条件渲染 |
+| 需求摘要：无「背景」前缀、无重复 changeLine | **pass（静态）** | summary helper + 条件 |
+| 验收计数/交付物：blocked 独立、空小节隐藏 | **pass（静态）** | counts/pill/条件 |
+| 体检/变更卡：「提示 N 项」、na 降级、提交态文案 | **pass（静态）** | verdict/level/total=0 |
+| 运行中/视觉细节：顺序、强调色、Now hint、状态卡完成态 | **pass（静态）** | JSX 顺序/CSS/条件 |
+| 回归与版本：7 套全绿、1.2.80、批次 17 | **pass** | 本报告 §1/§2 |
+| 实机 GUI 复测：团队卡可读、完成态、交付卡空态、浅/深主题、360–1440 | **blocked** | 模型无浏览器、不能重启 Host；Owner 按批次 17 复测回填 |
 
-## 6. GUI 复测步骤（给 Owner）
+## 5. 需求覆盖矩阵（round 8）
 
-详见 [docs/ACCEPTANCE.md](../ACCEPTANCE.md) **批次 16**（10 个勾选项）。摘要：
+| 需求点 | 证据 | 状态 |
+|---|---|---|
+| 10 项实机问题全部修正 | §3 修复表 + qa-static-v1280 新增 22 断言 | ✅ 静态通过 |
+| 保留 v1.2.79 全部结构/功能 | 121 条 v1.2.79 断言 + 7 套回归 | ✅ |
+| 无 Host/依赖/数据改动 | diff 审计 + dependencies 对比 | ✅ |
+| 版本插件/根 1.2.80、CHANGELOG、批次 17 | 静态断言 | ✅ |
+| 实机视觉/交互 | 批次 17（10 项） | ⏳ blocked（Owner） |
 
-1. 重启 Harness（client.js 有改动）→ 刷新页面（建议无缓存）→ 打开工作台。
-2. 浅色主题对照 `docs/pipeline/design/workbench-v1279-overview-light-1440.png` 与 `workbench-v1279-full-light-1440.png`；深色主题对照 `workbench-v1279-overview-dark-1440.png`。
-3. 1440×900 首屏确认页面头 + hero + Now；逐项点「通过/打回/启动并派发」、输入 review note、打开复核报告。
-4. 360/768/1024/1280/1440 检查无横滚、列数、44px、标题不截断；执行 `document.documentElement.scrollWidth <= clientWidth + 1`。
-5. 键盘 Tab 走查 + `prefers-reduced-motion` 检查；hover/焦点环。
-6. 回归：指派器、需求四操作、验收/体检/变更/运行、通知/刷新/关闭/compact、外壳其它视图。
-7. 回填 7 条 blocked 验收项；若发现视觉问题按截图/视口/主题记录并打回。
+## 6. GUI 复测步骤（Owner）
 
-## 7. 已知问题与观察（均非阻断）
+详见 [ACCEPTANCE.md 批次 17](../ACCEPTANCE.md#L245)。摘要：
 
-| # | 级别 | 说明 | 处理 |
-|---|---|---|---|
-| OBS-1 | P3 | 设计效果图的「分组侧栏」是视觉方向示意，实际外壳为「文件/搜索/Git/更多」横向侧栏条 + pane 头（本轮只做 CSS 统一） | design.md §11.1 已注明；验收按实际外壳与批次 16 复测 |
-| OBS-2 | P3 | 效果图使用自绘 1440/390 画布；真实 shell 宽度/侧栏占比不同，属示意 | 以真实 GUI 为准；截图对照时看层级/间距/tokens，不逐像素 |
-| OBS-3 | P3 | hero 阶段名用 `h2`，与区块 `h2` 同级；语义上可改为 `h3`（视觉不变） | 记录为 P3；不影响读屏可读性，后续可优化 |
-| OBS-4 | P3 | 第 5 张「运行中」卡全宽是为 bento 节奏与 4 项统计设计的；需求只写「≥1024 两列」 | 若 Owner 希望 5 卡等宽，可一行 CSS 回退（`.ds-wb-delivery-grid > :last-child { grid-column:auto }`） |
-| OBS-5 | P3 | `color-mix` / `backdrop-filter` 需现代 Chromium（DSH Web 环境满足）；旧浏览器仅装饰降级 | engineering-research §5 已记录；不承诺旧浏览器 |
-| OBS-6 | P3 | 本轮重写 requirements/design/engineering-research，旧轮文档已归档 `docs/pipeline/archive/v1.2.78-*.md` | 追溯路径保留；acceptance 复核可查归档 |
-| OBS-7 | P3 | 真实 GUI 截图/像素对比度需外部浏览器；本报告不声称已做 | 7 条 GUI 项标 blocked，不伪造 pass |
+1. 重启 Harness → 重建客户端 bundle → 强制刷新。
+2. 打开工作台（当前为完成态 7/7），检查：团队卡 6 chips 2 列且名称完整；hero「全部 7 关已完成 / 本轮交付完成 / 第 7 轮 · 全部通过 / 门禁已解除」；需求摘要无「背景」、无重复变更行；验收卡「通过 6 / 阻塞 14」且无空「交付物」；体检「提示 N 项」；变更卡「本轮变更已提交…」；运行中顺序；进度条蓝色；Now hint「全部完成 · 暂无待处理」。
+3. 浅/深主题、360/768/1024/1280/1440；无横向溢出。
+4. 回归通过/打回/启动并派发/review note/指派器/需求四操作/验收/交付/流水线/变更审阅/运行中/通知/刷新/关闭/compact。
+
+## 7. 已知问题与观察（P3，非阻断）
+
+| # | 说明 | 处理 |
+|---|---|---|
+| OBS-1 | 实机截图来自 v1.2.79；v1.2.80 修正后尚未由模型重新截图（无浏览器） | Owner 批次 17 目视；本报告不伪造视觉 pass |
+| OBS-2 | 完成态「Now」区仍保留区头（kicker/标题/查看全部待办），只改 hint 与空态 | 若 Owner 希望完成态隐藏整个 Now 区，可再调 |
+| OBS-3 | 交付区第 5 卡全宽与 v1.2.79 一致，未改 | 属既定设计；一行 CSS 可回退 |
+| OBS-4 | 验收卡「通过 6 / 阻塞 14」中 14 为环境 blocked（非代码缺陷） | 批次 17 复测后 Owner 回填/更新 |
+| OBS-5 | `qa-static-v1280` 为临时脚本（.dsh/tmp） | 不随包发布，与历史 QA 口径一致 |
 
 ## 8. 结论
 
-- 自动化质量门 **7/7 全绿**；静态 UI 校验 **121/121**；diff 范围/依赖/安全/版本均符合需求。
-- 无阻断缺陷；10 条验收 3 pass / 0 fail / 7 blocked（纯 GUI，待 Owner 批次 16）。
-- **建议进入 acceptance（项目经理 Agent 验收复核）**；复核通过后进入人工确认（approval）与发布（release）。
+- 7 套自动化全绿；143 条静态断言覆盖 10 项修复与 v1.2.79 回归；diff 范围/版本/依赖符合需求。
+- 新增 8 条验收：**7 pass / 0 fail / 1 blocked（实机视觉复测）**；无阻断缺陷。
+- **建议进入 acceptance**；释放后 Owner 按批次 17 完成实机确认。

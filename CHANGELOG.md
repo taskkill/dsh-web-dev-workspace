@@ -2,6 +2,35 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.80 — 2026-10-27
+
+### Workbench polish: completed-state copy, team chips and post-commit cards
+
+- Fixed the six role chips in the Team & assignments card: inside the
+  three-column project row they now use a readable two-column grid (one column
+  on very narrow screens), so the role name and the status pill are no longer
+  squeezed to a single character.
+- Completed state no longer shows stale/duplicated copy: the hero eyebrow reads
+  "all N stages complete", the title is "delivery complete", the duplicate
+  status pill is hidden, the side copy shows the round/all-passed line, and the
+  gate note becomes "all stages complete · release or start a change round"
+  (the review link is hidden). The Now hint and the project status card follow
+  the same completed-state rules.
+- Acceptance counts now separate `blocked` from `pending` (blocked gets its own
+  pill), the empty "deliverables" sub-section is not rendered when there is no
+  bundle or preview share, and the preflight card switches to a neutral
+  "N notice(s)" verdict (task/preview/bundle missing downgraded to N/A) once
+  every stage is done.
+- After committing, the change card hides the meaningless "reviewed 0/0" and
+  says the round is committed instead of "no file changes yet". Running stats
+  are reordered to running / last run / result / failure, the progress bar uses
+  the business accent instead of the neutral brand ink, and the requirement
+  summary no longer starts with the "background" heading or repeats the
+  latest-change line.
+- Client-only change (no host modules, dependencies or data changes).
+  `docs/ACCEPTANCE.md` gains batch 17; plugin `1.2.80` (root stays 1.2.80,
+  bumped to 1.2.81 after delivery).
+
 ## 1.2.79 — 2026-10-27
 
 ### Workbench: full redesign — Command Deck (modern, spacious, high-end)
