@@ -1026,6 +1026,13 @@ window.__ModuleLoader__.load({
       'hint.noRoot': '当前没有可用的工作区目录。',
       'hint.noRootAction': '请在 Harness 中打开或新建一个工作区后重试。',
       'hint.noFile': '从左侧选择一个文件开始编辑。',
+      'tabMenu.close': '关闭',
+      'tabMenu.closeOthers': '关闭其他',
+      'tabMenu.closeRight': '关闭右侧',
+      'tabMenu.closeAll': '全部关闭',
+      'tabMenu.pin': '固定标签',
+      'tabMenu.unpin': '取消固定',
+      'tabMenu.skippedDirty': '有 {count} 个未保存的标签未关闭',
       'hint.binary': '这是二进制文件，编辑器无法以文本方式打开。',
       'hint.tooLarge': '文件太大，编辑器没有打开它。',
       'hint.pdf': 'PDF 预览',
@@ -2081,6 +2088,13 @@ window.__ModuleLoader__.load({
       'hint.noRoot': 'No workspace directory is available.',
       'hint.noRootAction': 'Open or create a workspace in Harness, then retry.',
       'hint.noFile': 'Select a file on the left to start editing.',
+      'tabMenu.close': 'Close',
+      'tabMenu.closeOthers': 'Close others',
+      'tabMenu.closeRight': 'Close to the right',
+      'tabMenu.closeAll': 'Close all',
+      'tabMenu.pin': 'Pin tab',
+      'tabMenu.unpin': 'Unpin tab',
+      'tabMenu.skippedDirty': '{count} unsaved tab(s) were left open',
       'hint.binary': 'This is a binary file; the editor cannot open it as text.',
       'hint.tooLarge': 'This file is too large for the editor.',
       'hint.pdf': 'PDF preview',
@@ -3747,6 +3761,13 @@ window.__ModuleLoader__.load({
 
     function MinimizeIcon() {
       return icon(15, h('path', { d: 'M6 2v4H2M9 2v4h4M2 9h4v4M13 9H9v4' }))
+    }
+
+    function PinIcon() {
+      return icon(13,
+        h('path', { d: 'M8.6 2.2 11.8 5.4 9.9 6.1 8.9 9.6 4.4 5.1 7.9 4.1Z' }),
+        h('path', { d: 'M5.4 8.6 2.4 11.6' }),
+      )
     }
 
     function CloseIcon() {
@@ -7893,6 +7914,7 @@ window.__ModuleLoader__.load({
           typeof props?.useSessions === 'function' ? props.useSessions((snapshot) => snapshot) : null
         const [draft, setDraft] = useState(null)
         const [menu, setMenu] = useState(null)
+        const [tabMenu, setTabMenu] = useState(null)
         const [propertiesState, setPropertiesState] = useState(null)
         const [modal, setModal] = useState(null)
         const [toast, setToast] = useState(null)
@@ -8755,6 +8777,7 @@ window.__ModuleLoader__.load({
             if (tabs.length >= SESSION_MAX_TABS) break
             if (!isPersistableTab(tab)) continue
             const entry = { path: tab.path }
+            if (tab.pinned === true) entry.pinned = true
             if (
               tab.dirty === true &&
               typeof tab.content === 'string' &&
@@ -8808,6 +8831,15 @@ window.__ModuleLoader__.load({
               const tab = store.get().tabs.find((item) => item.path === entry.path)
               if (tab === undefined || tab.dirty === true) continue
               patchTab(entry.path, { content: entry.content, dirty: entry.content !== tab.saved })
+            }
+            const pinnedPaths = new Set(entries.filter((entry) => entry.pinned === true).map((entry) => entry.path))
+            if (pinnedPaths.size > 0) {
+              store.set((current) => {
+                const pinnedTabs = current.tabs.filter((tab) => pinnedPaths.has(tab.path))
+                if (pinnedTabs.length === 0) return current
+                const rest = current.tabs.filter((tab) => !pinnedPaths.has(tab.path))
+                return { ...current, tabs: [...pinnedTabs.map((tab) => ({ ...tab, pinned: true })), ...rest] }
+              })
             }
             const active =
               typeof stored.active === 'string' && store.get().tabs.some((tab) => tab.path === stored.active)
@@ -8887,6 +8919,23 @@ window.__ModuleLoader__.load({
           window.addEventListener('keydown', onKey)
           return () => window.removeEventListener('keydown', onKey)
         }, [modal])
+
+        useEffect(() => {
+          if (tabMenu === null) return undefined
+          const dismiss = (event) => {
+            if (event.target instanceof Element && event.target.closest('.ds-menu') !== null) return
+            setTabMenu(null)
+          }
+          const onKey = (event) => {
+            if (event.key === 'Escape') setTabMenu(null)
+          }
+          window.addEventListener('pointerdown', dismiss, true)
+          window.addEventListener('keydown', onKey)
+          return () => {
+            window.removeEventListener('pointerdown', dismiss, true)
+            window.removeEventListener('keydown', onKey)
+          }
+        }, [tabMenu])
 
         useEffect(() => {
           if (!pickerOpen) return
@@ -13912,6 +13961,62 @@ ${tail}
           if (active === null) setCompactView('tree')
         }
 
+        /** Close a set of tabs, keeping dirty ones open when onlyClean is set. */
+        function closeTabPaths(paths, onlyClean) {
+          const target = new Set(paths)
+          if (target.size === 0) return
+          const current = store.get()
+          let skippedDirty = 0
+          const remaining = []
+          for (const tab of current.tabs) {
+            if (!target.has(tab.path)) {
+              remaining.push(tab)
+              continue
+            }
+            if (onlyClean === true && tab.dirty === true) {
+              remaining.push(tab)
+              skippedDirty += 1
+              continue
+            }
+            if (tab.mode === 'terminal' && typeof tab.terminalId === 'string') {
+              closeTerminalSession(tab.terminalId, { removeEditor: false })
+            }
+          }
+          const remainingPaths = new Set(remaining.map((tab) => tab.path))
+          const removed = current.tabs.filter((tab) => !remainingPaths.has(tab.path))
+          if (removed.length === 0) {
+            setTabMenu(null)
+            return
+          }
+          let active = current.active
+          if (active !== null && removed.some((tab) => tab.path === active)) {
+            const closedIndex = current.tabs.findIndex((tab) => tab.path === active)
+            const after = remaining.find((tab) => current.tabs.indexOf(tab) > closedIndex) ?? null
+            const before = [...remaining].reverse().find((tab) => current.tabs.indexOf(tab) < closedIndex) ?? null
+            active = (after ?? before)?.path ?? null
+          }
+          store.set((value) => ({ ...value, tabs: remaining, active }))
+          if (active === null) setCompactView('tree')
+          setCursor({ line: 1, column: 1 })
+          setTabMenu(null)
+          if (skippedDirty > 0) showToast(t('tabMenu.skippedDirty', { count: String(skippedDirty) }))
+        }
+
+        /** Pin a tab to the front so bulk close actions skip it. */
+        function toggleTabPin(relative) {
+          store.set((current) => {
+            const tab = current.tabs.find((entry) => entry.path === relative)
+            if (tab === undefined) return current
+            const pinned = tab.pinned !== true
+            const rest = current.tabs.filter((entry) => entry.path !== relative)
+            const pinnedTabs = rest.filter((entry) => entry.pinned === true)
+            const others = rest.filter((entry) => entry.pinned !== true)
+            const updated = { ...tab, pinned }
+            return { ...current, tabs: pinned ? [...pinnedTabs, updated, ...others] : [...pinnedTabs, ...others, updated] }
+          })
+          setTabMenu(null)
+        }
+
         function requestClose(relative) {
           const tab = store.get().tabs.find((entry) => entry.path === relative)
           if (tab === undefined) return
@@ -18696,6 +18801,7 @@ h(
             className: 'ds-tab',
             role: 'tab',
             'data-active': tab.path === state.active ? 'true' : 'false',
+            'data-pinned': tab.pinned === true ? 'true' : undefined,
             'aria-selected': tab.path === state.active,
             title:
               tab.mode === 'browser'
@@ -18722,6 +18828,13 @@ h(
                 requestClose(tab.path)
               }
             },
+            onContextMenu: (event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              const x = Math.min(event.clientX, Math.max(8, window.innerWidth - 190))
+              const y = Math.min(event.clientY, Math.max(8, window.innerHeight - 240))
+              setTabMenu({ x, y, path: tab.path })
+            },
           },
           tab.mode === 'workbench'
             ? h('span', { className: 'ds-glyph ds-glyph-workbench' }, h(WorkbenchIcon))
@@ -18738,6 +18851,7 @@ h(
                 { className: `ds-glyph ds-glyph-${tab.mode === 'pdf' ? 'pdf' : tab.mode === 'image' ? 'image' : 'plain'}` },
                 tab.mode === 'pdf' ? h(PageIcon) : h(PageIcon),
               ),
+          tab.pinned === true ? h('span', { className: 'ds-tab-pin', title: t('tabMenu.unpin') }, h(PinIcon)) : null,
           h('span', { className: 'ds-tab-name' }, tab.name),
           tab.mode === 'diff' && tab.diff?.tag
             ? h('span', { className: 'ds-tab-tag', title: tab.diff.tag }, tab.diff.tag)
@@ -19208,6 +19322,8 @@ h(
           )
         }
 
+        const tabMenuTab = tabMenu === null ? null : state.tabs.find((tab) => tab.path === tabMenu.path) ?? null
+        const tabMenuIndex = tabMenuTab === null ? -1 : state.tabs.indexOf(tabMenuTab)
         const segments = activeTab === null || activeTab.mode === 'diff' || activeTab.mode === 'browser' || activeTab.mode === 'terminal' ? [] : breadcrumbSegments(activeTab)
         const lineCount = activeTab !== null && isTextMode(activeTab.mode) ? activeTab.content.split('\n').length : 0
         const panelSessions = terminals.filter((session) => session.placement === 'panel')
@@ -20123,6 +20239,67 @@ h(
           ),
           renderFloatingChat(),
           terminalPanel,
+          tabMenu === null || tabMenuTab === null
+            ? null
+            : h(
+                'div',
+                { className: 'ds-menu ds-tab-menu', role: 'menu', style: { left: `${String(tabMenu.x)}px`, top: `${String(tabMenu.y)}px` } },
+                h(
+                  MenuItem,
+                  {
+                    label: t('tabMenu.close'),
+                    onClick: () => {
+                      setTabMenu(null)
+                      requestClose(tabMenuTab.path)
+                    },
+                  },
+                  h(CloseIcon),
+                ),
+                h(
+                  MenuItem,
+                  {
+                    label: t('tabMenu.closeOthers'),
+                    onClick: () =>
+                      closeTabPaths(
+                        state.tabs.filter((tab) => tab.path !== tabMenuTab.path && tab.pinned !== true).map((tab) => tab.path),
+                        true,
+                      ),
+                  },
+                  h(CloseIcon),
+                ),
+                h(
+                  MenuItem,
+                  {
+                    label: t('tabMenu.closeRight'),
+                    disabled: tabMenuIndex < 0 || state.tabs.slice(tabMenuIndex + 1).every((tab) => tab.pinned === true),
+                    onClick: () =>
+                      closeTabPaths(
+                        state.tabs.slice(tabMenuIndex + 1).filter((tab) => tab.pinned !== true).map((tab) => tab.path),
+                        true,
+                      ),
+                  },
+                  h(CloseIcon),
+                ),
+                h('div', { key: 'sep-tab-close', className: 'ds-menu-sep' }),
+                h(
+                  MenuItem,
+                  {
+                    label: t('tabMenu.closeAll'),
+                    onClick: () =>
+                      closeTabPaths(state.tabs.filter((tab) => tab.pinned !== true).map((tab) => tab.path), true),
+                  },
+                  h(CloseIcon),
+                ),
+                h('div', { key: 'sep-tab-pin', className: 'ds-menu-sep' }),
+                h(
+                  MenuItem,
+                  {
+                    label: tabMenuTab.pinned === true ? t('tabMenu.unpin') : t('tabMenu.pin'),
+                    onClick: () => toggleTabPin(tabMenuTab.path),
+                  },
+                  h(PinIcon),
+                ),
+              ),
           menu === null
             ? null
             : h(
@@ -23155,6 +23332,8 @@ h(
   height: 2px;
   background: var(--dsw-alias-brand-primary);
 }
+.ds-tab-pin { display: inline-flex; align-items: center; color: var(--dsw-alias-brand-primary); margin-right: 2px; }
+.ds-tab[data-pinned="true"] .ds-tab-name { font-weight: 600; }
 .ds-tab-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ds-tabclose {
   display: inline-flex;

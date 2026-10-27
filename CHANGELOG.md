@@ -249,6 +249,19 @@ client changes take effect on page refresh.
 
 ## Unreleased
 
+### Editor tab context menu: close / close others / close right / close all / pin
+
+- Right-clicking any editor tab (files, browser, terminal, diff, Workbench) opens a
+  tab menu with **Close**, **Close others**, **Close to the right**, **Close all**
+  and **Pin/Unpin tab**. Pinned tabs move to the front, show a pin glyph and are
+  skipped by every bulk close; bulk close keeps unsaved (dirty) tabs open and
+  reports how many were left, while a single close still goes through the usual
+  unsaved-changes confirmation. Closing the active tab activates the nearest
+  remaining tab (right first, then left); terminal tabs are released through the
+  usual cleanup.
+- Pinned state is persisted in the session snapshot and restored to the front of
+  the strip after a reload.
+
 ### Confirmation before packing a delivery bundle
 
 - Clicking **Pack delivery** (Workbench and Acceptance board) now opens a confirm
