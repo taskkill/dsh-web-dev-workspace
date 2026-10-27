@@ -25309,12 +25309,14 @@ h(
 .ds-wb-page.ds-wb-v1279 .ds-wb-page-inner {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 32px;
   width: 100%;
   max-width: 1280px;
   min-width: 0;
   margin: 0 auto;
 }
+.ds-wb-page.ds-wb-v1279 .ds-wb-zone { width: 100%; min-width: 0; }
 /* ---------- 页面头 ---------- */
 .ds-wb-page.ds-wb-v1279 .ds-wb-page-head {
   position: sticky;
@@ -25626,7 +25628,7 @@ h(
   .ds-wb-page.ds-wb-v1279 .ds-wb-project-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ds-wb-page.ds-wb-v1279 .ds-wb-project-grid .ds-wb-project-cell-wide { grid-column: 1 / -1; }
 }
-@media (min-width: 1280px) {
+@media (min-width: 1600px) {
   .ds-wb-page.ds-wb-v1279 .ds-wb-project-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .ds-wb-page.ds-wb-v1279 .ds-wb-project-grid .ds-wb-project-cell-wide { grid-column: auto; }
 }
@@ -25703,7 +25705,8 @@ h(
 /* ---------- 交付 bento ---------- */
 .ds-wb-page.ds-wb-v1279 .ds-wb-delivery-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: stretch; min-width: 0; }
 .ds-wb-page.ds-wb-v1279 .ds-wb-delivery-grid > * { min-width: 0; }
-.ds-wb-page.ds-wb-v1279 .ds-wb-delivery-grid > :last-child { grid-column: 1 / -1; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-delivery-grid > .ds-wb-design { grid-column: 1 / -1; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-delivery-grid > :last-child { grid-column: auto; }
 .ds-wb-page.ds-wb-v1279 .ds-wb-delivery-grid .ds-wb-card { display: flex; flex-direction: column; min-height: 184px; }
 .ds-wb-page.ds-wb-v1279 .ds-wb-delivery-grid .ds-wb-running { min-height: 120px; }
 .ds-wb-page.ds-wb-v1279 .ds-wb-delivery-grid .ds-wb-card .ds-wb-actions { margin-top: auto; padding-top: 10px; }

@@ -2,6 +2,26 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.81 — 2026-10-27
+
+### Workbench layout: full-width hero, two-column project area, 2×2 delivery grid
+
+- The workbench canvas now explicitly stretches its children
+  (`align-items: stretch`), so the Now zone and the dark hero fill the whole
+  content width instead of shrinking to their intrinsic width and leaving a
+  blank block on the right.
+- The project area is now **two columns plus a full-width requirement card**
+  (status | team on the first row, requirement below); the three-column layout
+  only returns at ≥1600px, so the team chips and requirement summary are no
+  longer squeezed at common 1280–1440 widths. ≤700px stays a single column.
+- The delivery area keeps the design showcase full width and turns the other
+  four cards into a **2×2 grid** (acceptance | preflight, changes | running);
+  the running card is no longer a full-width strip and there is no empty cell.
+  ≤1023px stays a single column.
+- Client-only change (no host modules, dependencies or data changes).
+  `docs/ACCEPTANCE.md` gains batch 18; plugin `1.2.81` (root stays 1.2.81,
+  bumped to 1.2.82 after delivery).
+
 ## 1.2.80 — 2026-10-27
 
 ### Workbench polish: completed-state copy, team chips and post-commit cards
