@@ -1,6 +1,6 @@
-# 验收清单（批次 0–13）
+# 验收清单（批次 0–14）
 
-> 面向项目经理的复测步骤。当前代码版本 **v1.2.76**（批次 0–4 写于 v1.2.30、批次 5 写于 v1.2.68、批次 6–9 写于 v1.2.69–v1.2.71、批次 10 写于 v1.2.72、批次 11 写于 v1.2.73、批次 12 写于 v1.2.75；旧批次里的「六阶段/六关」是当时行为，现行**七阶段双复核**见批次 10，三 Agent 能力升级见批次 11，工作台 Agent 指派器见批次 12，工作台三区重构见批次 13）。**首次测试前请重启一次 Harness**（Host 路由/模型工具/`.dsh` 文档只在重启后生效；浏览器刷新只更新客户端）。
+> 面向项目经理的复测步骤。当前代码版本 **v1.2.77**（批次 0–4 写于 v1.2.30、批次 5 写于 v1.2.68、批次 6–9 写于 v1.2.69–v1.2.71、批次 10 写于 v1.2.72、批次 11 写于 v1.2.73、批次 12 写于 v1.2.75、批次 13 写于 v1.2.76；旧批次里的「六阶段/六关」是当时行为，现行**七阶段双复核**见批次 10，三 Agent 能力升级见批次 11，工作台 Agent 指派器见批次 12，工作台三区重构见批次 13，工作台 UI 修正见批次 14）。**首次测试前请重启一次 Harness**（Host 路由/模型工具/`.dsh` 文档只在重启后生效；浏览器刷新只更新客户端）。
 >
 > 预置：任选一个本地工作区；`node_modules` 已安装的项目体验最好。打开侧栏确认能看到 **任务**、**验收**、**流水线** 与 **工作台**。
 
@@ -191,6 +191,22 @@
 - [ ] **自动化全绿**：`npm run check`、`npm run check:json`、`npm test`（31/31）、`node .dsh/tmp/team/pipeline-selftest.mjs`（38/38）、`node .dsh/tmp/team/review-selftest.mjs`（22/22）、`node .dsh/tmp/team/assignments-selftest.mjs`（27/27）、`node .dsh/tmp/qa-static-v1276.mjs` 均 exit 0。
 - [ ] **文档与版本**：本文件含「批次 13」；`CHANGELOG.md` 顶部含 `## 1.2.76 — 2026-10-27`（英文，描述三区重构/hero/折叠/需求摘要/视觉/i18n/响应式/测试）；插件与根 `package.json` 均 **1.2.76**（交付后根 +1 至 1.2.77，需在 release 记录说明）；文档相对链接可解析、无死链。
 
+## 批次 14 · 工作台 UI 修正（v1.2.77）
+
+> 本轮为**纯客户端修正**（`client.js` +68/−20）：① 长 tooltip 溢出（摘要/修订行的原生 `title` 改为 ≤80 字摘要；摘要 `white-space`/`word-break`/`overflow-wrap` + 2 行 clamp；容器 `min-width:0`）；② 项目区宽屏 3 列对齐效果图（≥1024px 状态/团队/需求同一行，≤1023 两列、≤700 单列；需求卡宽屏不再强制跨全宽）；③ 需求修订默认折叠「修订记录 (N)」+ 视觉细化（底色更明显、卡片边框/阴影/标题层级）。
+> 复测前：重启 Harness → **重建客户端 bundle**（client.js 有改动）→ 强制刷新。对照 `docs/proposals/workbench-redesign/mockups/option-a.png`；同时回归批次 13 的 8 项 GUI（三区/hero/折叠/自动展开/视觉/option-a/无障碍/响应式）。
+
+- [ ] **长 tooltip 已修**：悬停「需求与调整」摘要 → 原生 tooltip 只显示 **≤80 字**摘要文本（不再是整段 detail）；悬停需求修订行 → tooltip ≤80 字（标题/摘要），不再出现超长单行提示；`document.body.innerText`/DOM 不出现整段 detail 全文区块（B1-A 口径仍成立）。
+- [ ] **摘要换行不溢出**：摘要长文本在 **2 行内**正常换行（`white-space: normal` + `word-break` + `overflow-wrap` 生效），长英文/URL/连续字符不撑破卡片；容器 `min-width:0`，无文字越过卡片边界。
+- [ ] **多宽度无横向溢出**：在 **360 / 768 / 1080 / 1440** 宽度下工作台均无横向滚动（`document.documentElement.scrollWidth <= clientWidth + 1`），hero/三区/折叠行/需求卡内容不越界；1080 为内容 max-width 上限。
+- [ ] **项目区 ≥1024 三列**：宽屏（1440/1080）项目区为 **3 列**（项目状态 / 团队与指派 / 需求与调整 **同一行**、各 1fr），与 option-a 一致；需求卡不再单独占满一行。
+- [ ] **窄屏降级**：1024–701px 为 **2 列**（需求卡跨全宽）；≤700px **单列**；需求卡操作按钮可换行、不溢出；团队 chips 2 列、列表限高滚动；360/768 无文字裁剪或横向溢出。
+- [ ] **修订记录默认折叠**：「需求修订」默认显示为可点击的「**修订记录 (N)**」摘要行 + chevron；点击或键盘 Enter/Space 展开，`aria-expanded` 与 `aria-controls` 同步；展开后逐条可读、最多 4 条、不超出卡片；再次点击收起；刷新页面恢复默认折叠。
+- [ ] **视觉更清爽**：页面浅灰蓝底更明显（55% layer-2 mix）；卡片白底 + 1px 边框（近 #E3E8EF）+ `0 1px 3px` 轻阴影 + 12 圆角；卡标题 12–13px 层级清晰；三区色条/hero/折叠行与 option-a 视觉一致；对比度 ≥4.5:1（非文本 ≥3:1）；Owner 目视清爽、无脏边/重影。
+- [ ] **回归（含批次 13 的 8 项 GUI）**：三区分层、hero 三态与主操作、5 卡折叠/展开全部、失败自动展开+红点、视觉规范、option-a 落地、无障碍（aria/焦点/44px/reduced-motion）、响应式 ≤700 单列——按批次 13 步骤一并复测；流水线七阶段与双复核、工作台指派器各卡片、验收台、交付包、变更审阅、运行中、编辑器标签右键菜单无回归。
+- [ ] **自动化全绿**：`npm run check`、`npm run check:json`、`npm test`（31/31）、`node .dsh/tmp/team/pipeline-selftest.mjs`（38/38）、`review-selftest`（22/22）、`assignments-selftest`（27/27）、`node .dsh/tmp/qa-static-v1277.mjs`（STATIC PASS）均 exit 0。
+- [ ] **范围与版本**：`git diff` 仅 `client.js`（+68/−20）+ 文档（无 Host 模块/依赖/数据改动）；插件与根 `package.json` 均 **1.2.77**，CHANGELOG 顶部含 `## 1.2.77 — 2026-10-27`；本文件含「批次 14」；文档相对链接可解析。
+
 ## 已知限制（不是缺陷）
 
 - **预览分享**：只改写 HTML；前端在 JS 里拼接的绝对路径需要 dev server 配置 `base`；公网访问要求预览端口可达（否则用隧道）。
@@ -200,11 +216,12 @@
 - **提示词/手册升级（v1.2.73）**：三 Agent 的调研/质量/许可证要求写在 `pipeline.js` 的 STAGE_GUIDES / PIPELINE_SECTION 与 `docs/opc/0{1,2,3}-*.md`，Host 重启后新提示词才生效；纯提示词/文档改动无需重建客户端 bundle。调研依赖 Harness 原生 `web_search` / `web_fetch`，无网络时按提示词要求标 blocked，不得伪造来源。
 - **工作台指派器（v1.2.75）**：每个工作区最多 **100 条**记录、文件 ≤**1 MiB**、history ≤50 条；只有 done/failed/cancelled 可删除；SSH 远程工作区不支持指派；成员实时状态以 Harness 团队面板为准，卡片状态按指派记录**推导**；派发只生成结构化指派单，真正执行由 Lead 用原生团队工具完成；指派动作**不写** `.dsh/pipeline.json`。
 - **工作台三区重构（v1.2.76）**：纯客户端改动（`client.js` + CSS + i18n），需**重建客户端 bundle + 刷新**才生效；折叠展开状态仅**会话内记忆**（刷新回默认收起，不做 localStorage）；需求摘要最多 2 行/约 160 字，完整需求需点「查看完整需求」；≤700px 单列、内容 max-width 1080；无 Host/数据/依赖改动。
+- **工作台 UI 修正（v1.2.77）**：纯客户端（client.js +68/−20）；原生 tooltip 已限制为 ≤80 字摘要（完整需求仍走「查看完整需求」）；项目区宽屏 3 列、≤1023 两列、≤700 单列；「修订记录 (N)」默认折叠、刷新恢复折叠；同样需重建 bundle + 更强刷新。
 - **双复核迁移**：旧 6 阶段 `.dsh/pipeline.json` 在读取时按 id 归一化补 acceptance（首次写回后落盘）；旧已完成项目的 acceptance 迁移备注仅代表「升级前旧流程已完成」，不代表新流程重新复核过，不能作为新交付的放行依据。
 - **变更审阅签名**：`已审` 只在文件的 Git 状态（staged/unstaged/untracked/status）变化时失效；同一未暂存文件继续编辑不会自动失效（与现有 Git 面板一致）。
 - **验收历史上限**：每项 history 最多 50 条、文件 1 MB；极端 300 项 × 长历史可能触顶，届时可先清理已通过项。
 
 ## 回滚与恢复
 
-- 代码层：`git log --oneline` 查看批次提交（v1.2.23 → v1.2.76），可按批次 revert。
+- 代码层：`git log --oneline` 查看批次提交（v1.2.23 → v1.2.77），可按批次 revert。
 - 数据层：验收清单 `.dsh/acceptance.json`、交付记录 `.dsh/deliveries.json`、证据 `.dsh/evidence/`、运行账本 `.dsh/runs.json`、复测记录 `.dsh/verifications/`、变更审阅 `.dsh/review.json`、**工作台指派 `.dsh/agent-assignments.json`**、审阅标记（浏览器 localStorage）。这些都在 `.dsh/` 下且已被 `.gitignore` 忽略。

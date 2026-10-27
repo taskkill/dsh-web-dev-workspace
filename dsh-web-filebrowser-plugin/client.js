@@ -575,6 +575,8 @@ window.__ModuleLoader__.load({
       'workbench.requirement.viewFull': '查看完整需求',
       'workbench.requirement.chips': '第 {round} 轮 · 范围 {scope}',
       'workbench.requirement.summaryHint': '原文仅在「查看完整需求」后展示',
+      'workbench.requirement.logToggle': '修订记录（{count}）',
+      'workbench.requirement.logEmpty': '暂无修订记录',
       'workbench.assign.title': '团队与指派',
       'workbench.assign.subtitle': '6 名角色成员 · {working} 人执行中 · {review} 人待确认（按指派记录推导）',
       'workbench.assign.derivedHint': '状态按指派记录推导；实时状态以 Harness 团队面板为准',
@@ -1782,6 +1784,8 @@ window.__ModuleLoader__.load({
       'workbench.requirement.viewFull': 'View full requirement',
       'workbench.requirement.chips': 'Round {round} · scope {scope}',
       'workbench.requirement.summaryHint': 'Full text only after “View full requirement”',
+      'workbench.requirement.logToggle': 'Requirement revisions ({count})',
+      'workbench.requirement.logEmpty': 'No revisions yet',
       'workbench.assign.title': 'Team & assignments',
       'workbench.assign.subtitle': '6 role members · {working} working · {review} awaiting you (derived from assignments)',
       'workbench.assign.derivedHint': 'Status is derived from assignments; live status is authoritative in the Harness team panel',
@@ -8377,6 +8381,7 @@ window.__ModuleLoader__.load({
         // Workbench redesign (v1.2.76): collapsible delivery rows, session-only memory.
         const [workbenchFolds, setWorkbenchFolds] = useState([])
         const [workbenchFoldsClosed, setWorkbenchFoldsClosed] = useState([])
+        const [requirementLogOpen, setRequirementLogOpen] = useState(false)
 
         const [issues, setIssues] = useState([])
         const [pipelineDoc, setPipelineDoc] = useState(null)
@@ -17608,8 +17613,6 @@ ${tail}
                     'div',
                     { className: 'ds-wb-card-head' },
                     h('div', { className: 'ds-wb-card-title ds-wb-card-title-inline' }, t('workbench.adjust')),
-                    h('span', { className: 'ds-wb-spacer' }),
-                    h('span', { className: 'ds-wb-round-pill' }, t('pipeline.round', { round: String(round) })),
                   ),
                   h('div', { className: 'ds-wb-adjust-title', title: requirementTitle }, requirementTitle),
                   h(
@@ -17625,7 +17628,7 @@ ${tail}
                   typeof requirement.detail === 'string' && requirement.detail.length > 0
                     ? h(
                         'div',
-                        { className: 'ds-wb-adjust-summary', title: requirement.detail },
+                        { className: 'ds-wb-adjust-summary', title: requirementSummaryText(requirement.detail).slice(0, 80) },
                         requirementSummaryText(requirement.detail),
                       )
                     : null,
@@ -17713,13 +17716,40 @@ ${tail}
                     : h(
                         'div',
                         { className: 'ds-wb-reqlog' },
-                        h('div', { className: 'ds-wb-reqlog-title' }, t('workbench.reqLog')),
-                        doc.requirementLog.slice(0, 4).map((entry, index) =>
+                        h(
+                          'button',
+                          {
+                            type: 'button',
+                            className: 'ds-wb-reqlog-toggle',
+                            'aria-expanded': requirementLogOpen ? 'true' : 'false',
+                            'aria-controls': 'ds-wb-reqlog-body',
+                            onClick: () => setRequirementLogOpen((current) => !current),
+                          },
                           h(
-                            'div',
-                            { key: entry.id ?? String(index), className: 'ds-wb-reqlog-row', title: String(entry.detail ?? '') },
-                            h('span', { className: 'ds-wb-reqlog-type', 'data-type': entry.type }, t('workbench.reqType.' + entry.type) ?? String(entry.type ?? '')),
-                            h('span', { className: 'ds-wb-reqlog-text' }, String(entry.title ?? '') || String(entry.detail ?? '')),
+                            'span',
+                            { className: 'ds-wb-reqlog-toggle-text' },
+                            t('workbench.requirement.logToggle', { count: String(doc.requirementLog.length) }),
+                          ),
+                          h(
+                            'span',
+                            { className: 'ds-wb-reqlog-chevron', 'aria-hidden': 'true' },
+                            requirementLogOpen ? h(ChevronUpIcon) : h(ChevronDownIcon),
+                          ),
+                        ),
+                        h(
+                          'div',
+                          { id: 'ds-wb-reqlog-body', className: 'ds-wb-reqlog-body', hidden: requirementLogOpen ? undefined : true },
+                          doc.requirementLog.slice(0, 4).map((entry, index) =>
+                            h(
+                              'div',
+                              {
+                                key: entry.id ?? String(index),
+                                className: 'ds-wb-reqlog-row',
+                                title: String(entry.title ?? '').slice(0, 80) || undefined,
+                              },
+                              h('span', { className: 'ds-wb-reqlog-type', 'data-type': entry.type }, t('workbench.reqType.' + entry.type) ?? String(entry.type ?? '')),
+                              h('span', { className: 'ds-wb-reqlog-text' }, String(entry.title ?? '') || String(entry.detail ?? '')),
+                            ),
                           ),
                         ),
                       ),
@@ -24668,6 +24698,14 @@ h(
 .ds-wb-reqmode[data-active="true"] { border-color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 8%, var(--dsw-alias-bg-layer-1)); color: var(--dsw-alias-label-primary); font-weight: 600; }
 .ds-wb-reqtext { width: 100%; box-sizing: border-box; min-height: 64px; resize: vertical; }
 .ds-wb-reqlog { margin-top: 9px; padding-top: 8px; border-top: 1px dashed var(--dsw-alias-border-l1); }
+.ds-wb-reqlog-toggle { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 32px; padding: 4px 6px; border: 0; border-radius: 6px; background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 11px; font-weight: 600; text-align: left; cursor: pointer; }
+.ds-wb-reqlog-toggle:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent); }
+.ds-wb-reqlog-toggle:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: 2px; }
+.ds-wb-reqlog-toggle-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-wb-reqlog-chevron { display: inline-flex; flex: 0 0 auto; color: var(--dsw-alias-label-caption); }
+.ds-wb-reqlog-body { margin-top: 2px; min-width: 0; }
+.ds-wb-reqlog-body[hidden] { display: none; }
+.ds-wb-reqlog-row { min-width: 0; }
 .ds-wb-reqlog-title { margin-bottom: 4px; color: var(--dsw-alias-label-caption); font-size: 9px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
 .ds-wb-reqlog-row { display: flex; align-items: center; gap: 6px; padding: 1px 0; font-size: 10px; }
 .ds-wb-reqlog-type { flex: 0 0 auto; padding: 0 6px; border-radius: 8px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-caption); font-size: 9px; }
@@ -24978,10 +25016,10 @@ h(
 /* ------------------------------------------------------------------ *
  * v1.2.76 workbench redesign: three zones, hero, collapsible delivery
  * ------------------------------------------------------------------ */
-.ds-wb-page.ds-wb-redesign { background: color-mix(in srgb, var(--dsw-alias-bg-layer-2) 42%, var(--dsw-alias-bg-base)); }
-.ds-wb-redesign .ds-wb-page-head { padding: 14px 24px; background: var(--dsw-alias-bg-base); border-bottom: 1px solid color-mix(in srgb, var(--dsw-alias-label-caption) 18%, transparent); }
+.ds-wb-page.ds-wb-redesign { background: color-mix(in srgb, var(--dsw-alias-bg-layer-2) 55%, var(--dsw-alias-bg-base)); }
+.ds-wb-redesign .ds-wb-page-head { display: flex; align-items: center; flex-wrap: wrap; row-gap: 6px; min-width: 0; padding: 14px 24px; background: var(--dsw-alias-bg-base); border-bottom: 1px solid color-mix(in srgb, var(--dsw-alias-label-caption) 18%, transparent); }
 .ds-wb-redesign .ds-wb-page-title { font-size: 24px; line-height: 32px; font-weight: 700; color: var(--dsw-alias-label-primary); }
-.ds-wb-redesign .ds-wb-page-subtitle { min-width: 0; max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-caption); font-size: 12px; }
+.ds-wb-redesign .ds-wb-page-subtitle { flex: 0 1 auto; min-width: 0; max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-caption); font-size: 12px; }
 .ds-wb-redesign .ds-wb-page-scroll { padding: 20px 24px 32px; }
 .ds-wb-redesign.ds-wb-page .ds-wb-page-inner,
 .ds-wb-redesign .ds-wb-page-inner {
@@ -24990,9 +25028,10 @@ h(
   gap: 16px;
   max-width: 1080px;
   width: 100%;
+  min-width: 0;
   margin: 0 auto;
 }
-.ds-wb-redesign .ds-wb-zone { display: flex; flex-direction: column; gap: 10px; }
+.ds-wb-redesign .ds-wb-zone { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .ds-wb-redesign .ds-wb-zone-head { display: flex; align-items: center; flex-wrap: wrap; row-gap: 4px; gap: 8px; min-height: 28px; }
 .ds-wb-redesign .ds-wb-zone-bar { flex: 0 0 auto; width: 3px; height: 18px; border-radius: 2px; background: var(--dsw-alias-label-caption); }
 .ds-wb-redesign .ds-wb-zone-bar[data-zone="now"] { background: var(--dsw-alias-state-warn-primary); }
@@ -25007,16 +25046,17 @@ h(
 .ds-wb-redesign .ds-wb-zone-hint { color: var(--dsw-alias-label-caption); font-size: 12px; line-height: 18px; }
 .ds-wb-redesign .ds-wb-zone-link { font-size: 12px; white-space: nowrap; }
 .ds-wb-redesign .ds-wb-zone-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
-.ds-wb-redesign .ds-wb-zone-body { display: flex; flex-direction: column; gap: 12px; }
+.ds-wb-redesign .ds-wb-zone-body { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .ds-wb-redesign .ds-wb-zone-empty { color: var(--dsw-alias-label-caption); font-size: 12px; }
 /* Cards: white, 1px border, light shadow, 12 radius, comfortable padding. */
 .ds-wb-page.ds-wb-redesign .ds-wb-card,
 .ds-wb-redesign .ds-wb-card {
+  min-width: 0;
   padding: 16px;
-  border: 1px solid color-mix(in srgb, var(--dsw-alias-label-caption) 26%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-label-caption) 32%, transparent);
   border-radius: 12px;
   background: var(--dsw-alias-bg-layer-1);
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--dsw-alias-label-primary) 9%, transparent);
 }
 .ds-wb-page.ds-wb-redesign .ds-wb-card-title,
 .ds-wb-redesign .ds-wb-card-title {
@@ -25043,7 +25083,7 @@ h(
 .ds-wb-redesign .ds-wb-zone-now-body { gap: 10px; }
 .ds-wb-redesign .ds-wb-zone-now-body .ds-wb-issues { padding: 12px 16px; }
 .ds-wb-redesign .ds-wb-zone-now-body .ds-wb-attention { padding: 12px 16px; border-color: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 45%, transparent); }
-.ds-wb-hero { position: relative; display: flex; flex-direction: column; gap: 12px; padding: 20px 20px 16px; border: 1px solid color-mix(in srgb, var(--dsw-alias-label-caption) 26%, transparent); border-left: 4px solid var(--dsw-alias-state-warn-primary); border-radius: 12px; background: var(--dsw-alias-bg-layer-1); box-shadow: 0 1px 2px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent); }
+.ds-wb-hero { position: relative; display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 20px 20px 16px; border: 1px solid color-mix(in srgb, var(--dsw-alias-label-caption) 30%, transparent); border-left: 4px solid var(--dsw-alias-state-warn-primary); border-radius: 12px; background: var(--dsw-alias-bg-layer-1); box-shadow: 0 1px 3px color-mix(in srgb, var(--dsw-alias-label-primary) 9%, transparent); }
 .ds-wb-hero-main { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .ds-wb-hero-eyebrow { color: var(--dsw-alias-label-caption); font-size: 12px; line-height: 18px; }
 .ds-wb-hero-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
@@ -25064,7 +25104,14 @@ h(
 .ds-wb-hero-note { margin-top: 2px; }
 .ds-wb-hero-gate { color: var(--dsw-alias-label-caption); font-size: 11px; line-height: 1.4; }
 /* Project zone: status + team/assign side by side, requirement summary full width. */
-.ds-wb-zone-project-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.ds-wb-zone-project-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; min-width: 0; }
+.ds-wb-zone-project-grid > * { min-width: 0; }
+@media (min-width: 1024px) {
+  .ds-wb-zone-project-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ds-wb-zone-project-grid .ds-wb-project-cell-wide { grid-column: auto; }
+}
+.ds-wb-project-cell .ds-wb-actions { flex-wrap: wrap; }
+.ds-wb-project-cell .ds-wb-actions .ds-btn { flex: 0 1 auto; max-width: 100%; min-height: 30px; height: auto; white-space: normal; overflow-wrap: anywhere; text-align: center; }
 .ds-wb-project-cell { min-width: 0; }
 .ds-wb-project-cell-wide { grid-column: 1 / -1; }
 .ds-wb-zone-project-grid .ds-wb-assign { grid-column: auto; }
@@ -25073,12 +25120,12 @@ h(
 /* Requirement summary card */
 .ds-wb-adjust-chips { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 2px 0 8px; }
 .ds-wb-scope-pill { padding: 1px 8px; border-radius: 9px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-secondary); font-size: 11px; }
-.ds-wb-adjust-summary { color: var(--dsw-alias-label-secondary); font-size: 13px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.ds-wb-adjust-summary { color: var(--dsw-alias-label-secondary); font-size: 13px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; word-break: break-word; overflow-wrap: anywhere; }
 .ds-wb-adjust-summary-hint { margin-top: 4px; }
 .ds-wb-redesign .ds-wb-adjust-title { color: var(--dsw-alias-label-primary); font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Delivery zone: five compact, collapsible rows. */
 .ds-wb-folds { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; align-items: start; }
-.ds-wb-fold { display: flex; flex-direction: column; min-width: 0; border: 1px solid color-mix(in srgb, var(--dsw-alias-label-caption) 26%, transparent); border-radius: 10px; background: var(--dsw-alias-bg-layer-1); box-shadow: 0 1px 2px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent); overflow: hidden; transition: border-color 150ms ease-out; }
+.ds-wb-fold { display: flex; flex-direction: column; min-width: 0; border: 1px solid color-mix(in srgb, var(--dsw-alias-label-caption) 30%, transparent); border-radius: 10px; background: var(--dsw-alias-bg-layer-1); box-shadow: 0 1px 3px color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent); overflow: hidden; transition: border-color 150ms ease-out; }
 .ds-wb-fold[data-open="true"] { grid-column: 1 / -1; border-color: color-mix(in srgb, var(--dsw-alias-brand-primary) 32%, transparent); }
 .ds-wb-fold[data-fail="true"] { border-color: color-mix(in srgb, var(--dsw-alias-state-error-primary) 38%, transparent); }
 .ds-wb-fold-head { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 10px 12px; border: 0; background: transparent; color: var(--dsw-alias-label-primary); font: inherit; text-align: left; cursor: pointer; transition: background 150ms ease-out; }
@@ -25115,6 +25162,7 @@ h(
   .ds-wb-redesign .ds-wb-page-title { font-size: 17px; }
   .ds-wb-redesign .ds-wb-zone-hint { display: none; }
   .ds-wb-zone-project-grid { grid-template-columns: minmax(0, 1fr); }
+  .ds-wb-project-cell-wide { grid-column: auto; }
   .ds-wb-zone-project-grid .ds-wb-assign-members { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ds-wb-zone-project-grid .ds-wb-assign-list { max-height: none; }
   .ds-wb-folds { grid-template-columns: minmax(0, 1fr); }

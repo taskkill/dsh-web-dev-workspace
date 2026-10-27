@@ -2,6 +2,31 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.77 — 2026-10-27
+
+### Workbench fixes: no more hover-tooltip overflow, the project row matches the design
+
+- The requirement summary and the revision rows no longer put the full PRD detail
+  into a native `title` tooltip (that produced a single screen-wide line). The
+  summary keeps its two-line clamp with proper wrapping (`white-space: normal;
+  word-break: break-word; overflow-wrap: anywhere`), and short tooltips are capped
+  at 80 characters. Layout containers now carry `min-width: 0`, so the Workbench
+  no longer overflows horizontally from 360px to 1440px.
+- The project zone now matches the option-A design at ≥1024px: **project status /
+  team & assignments / requirement summary sit on one row (three columns)**; below
+  1024px it falls back to two columns with the requirement full width, and to one
+  column at ≤700px. Requirement action buttons wrap instead of clipping, and the
+  team card keeps its two-column chips with a height-limited, scrollable list.
+- The requirement revision log is **collapsed by default** behind a
+  「修订记录 (N)」 toggle (`aria-expanded` / `aria-controls`), so the card stays
+  calm; expanding restores the original list. The duplicated round pill in the card
+  head was removed (the chips row keeps the round/scope).
+- Slightly stronger page tint, clearer card borders and a `0 1px 3px` shadow make
+  the zones read better while keeping the 4/8px system and contrast.
+- Client-only change (no host modules, dependencies or data changes). Two new i18n
+  keys; the previous 25 redesign keys and 122 `workbench.assign.*` keys are
+  untouched. `docs/ACCEPTANCE.md` gains batch 14.
+
 ## 1.2.76 — 2026-10-27
 
 ### Workbench redesign: three zones, a current-stage hero and a calmer layout
