@@ -564,14 +564,6 @@ window.__ModuleLoader__.load({
       'workbench.hero.responsible': '负责：{role}',
       'workbench.hero.gateNote': '通过后进入人工确认；发布仍锁定',
       'workbench.hero.start': '启动并派发',
-      'workbench.fold.expand': '展开',
-      'workbench.fold.collapse': '收起',
-      'workbench.fold.expandAll': '展开全部',
-      'workbench.fold.collapseAll': '收起全部',
-      'workbench.fold.count': '{count} 项',
-      'workbench.fold.empty': '无',
-      'workbench.fold.failCount': '{count} 项失败',
-      'workbench.fold.autoExpanded': '已自动展开：有失败',
       'workbench.requirement.viewFull': '查看完整需求',
       'workbench.requirement.chips': '第 {round} 轮 · 范围 {scope}',
       'workbench.requirement.summaryHint': '原文仅在「查看完整需求」后展示',
@@ -1773,14 +1765,6 @@ window.__ModuleLoader__.load({
       'workbench.hero.responsible': 'Owner: {role}',
       'workbench.hero.gateNote': 'Approval next; release stays locked',
       'workbench.hero.start': 'Start & dispatch',
-      'workbench.fold.expand': 'Expand',
-      'workbench.fold.collapse': 'Collapse',
-      'workbench.fold.expandAll': 'Expand all',
-      'workbench.fold.collapseAll': 'Collapse all',
-      'workbench.fold.count': '{count} items',
-      'workbench.fold.empty': 'None',
-      'workbench.fold.failCount': '{count} failed',
-      'workbench.fold.autoExpanded': 'Auto-expanded: failures found',
       'workbench.requirement.viewFull': 'View full requirement',
       'workbench.requirement.chips': 'Round {round} · scope {scope}',
       'workbench.requirement.summaryHint': 'Full text only after “View full requirement”',
@@ -8378,9 +8362,6 @@ window.__ModuleLoader__.load({
         const assignmentTriggerRef = useRef(null)
         const assignmentTitleRef = useRef(null)
         const assignmentIdempotencyRef = useRef(false)
-        // Workbench redesign (v1.2.76): collapsible delivery rows, session-only memory.
-        const [workbenchFolds, setWorkbenchFolds] = useState([])
-        const [workbenchFoldsClosed, setWorkbenchFoldsClosed] = useState([])
         const [requirementLogOpen, setRequirementLogOpen] = useState(false)
 
         const [issues, setIssues] = useState([])
@@ -19356,149 +19337,18 @@ ${tail}
               h('div', { className: 'ds-wb-project-cell ds-wb-project-cell-wide' }, adjustCard),
             ),
           )
-          // Collapsible delivery rows: default closed, failures auto-expand, and
-          // the open state is remembered for this session only.
-          const foldDefinitions = [
-            {
-              key: 'design',
-              title: t('workbench.design'),
-              icon: EyeIcon,
-              card: designCard,
-              summary: designArtifacts.length === 0 ? t('workbench.fold.empty') : t('workbench.fold.count', { count: String(designArtifacts.length) }),
-              fail: false,
-              autoFail: false,
-            },
-            {
-              key: 'acceptance',
-              title: t('workbench.acceptance'),
-              icon: InfoIcon,
-              card: acceptanceCard,
-              summary: items.length === 0 ? t('workbench.fold.empty') : failCount > 0 ? t('workbench.fold.failCount', { count: String(failCount) }) : `${String(passCount)}/${String(items.length)}`,
-              fail: failCount > 0,
-              autoFail: failCount > 0,
-            },
-            {
-              key: 'preflight',
-              title: t('workbench.preflight'),
-              icon: SaveIcon,
-              card: preflightCard,
-              summary:
-                preflightIssues.length === 0
-                  ? t('workbench.preflightReady')
-                  : t('workbench.preflightWarn', { count: String(preflightIssues.length) }),
-              fail: preflightChecks.some((check) => check.level === 'fail'),
-              autoFail: preflightChecks.some((check) => check.level === 'fail'),
-            },
-            {
-              key: 'review',
-              title: t('workbench.changes'),
-              icon: CodeIcon,
-              card: reviewCard,
-              summary: reviewState === null || reviewAvailable === false ? t('workbench.fold.empty') : `${String(reviewState.reviewed ?? 0)}/${String(reviewState.total ?? 0)}`,
-              fail: false,
-              autoFail: false,
-            },
-            {
-              key: 'running',
-              title: t('workbench.running'),
-              icon: TerminalIcon,
-              card: runningCard,
-              summary: running.length === 0 ? t('workbench.fold.empty') : t('workbench.fold.count', { count: String(running.length) }),
-              fail: false,
-              autoFail: false,
-            },
-          ]
-          const foldAutoKeys = foldDefinitions.filter((definition) => definition.autoFail).map((definition) => definition.key)
-          const isFoldOpen = (key) => workbenchFolds.includes(key) || (foldAutoKeys.includes(key) && !workbenchFoldsClosed.includes(key))
-          const toggleFold = (key) => {
-            const open = isFoldOpen(key)
-            if (open) {
-              setWorkbenchFolds((current) => current.filter((entry) => entry !== key))
-              if (foldAutoKeys.includes(key)) setWorkbenchFoldsClosed((current) => (current.includes(key) ? current : [...current, key]))
-            } else {
-              setWorkbenchFolds((current) => (current.includes(key) ? current : [...current, key]))
-              setWorkbenchFoldsClosed((current) => current.filter((entry) => entry !== key))
-            }
-          }
-          const expandAllFolds = () => {
-            setWorkbenchFolds(foldDefinitions.map((definition) => definition.key))
-            setWorkbenchFoldsClosed([])
-          }
-          const collapseAllFolds = () => {
-            setWorkbenchFolds([])
-            setWorkbenchFoldsClosed(foldAutoKeys)
-          }
+          // Delivery cards are shown directly (no folding): keep the original
+          // design/acceptance/preflight/review/running cards side by side.
+          const deliveryCards = [designCard, acceptanceCard, preflightCard, reviewCard, runningCard].filter((card) => card !== null)
           const deliverySection = h(
             'section',
             { className: 'ds-wb-zone ds-wb-zone-delivery', 'aria-labelledby': 'ds-wb-zone-delivery-title' },
-            zoneHead(
-              'delivery',
-              GlobeIcon,
-              t('workbench.section.delivery'),
-              t('workbench.section.deliveryHint'),
-              h(
-                'div',
-                { className: 'ds-wb-zone-actions' },
-                h('button', { type: 'button', className: 'ds-linkbtn ds-wb-zone-link', onClick: expandAllFolds }, t('workbench.fold.expandAll')),
-                h('button', { type: 'button', className: 'ds-linkbtn ds-wb-zone-link', onClick: collapseAllFolds }, t('workbench.fold.collapseAll')),
-              ),
-            ),
+            zoneHead('delivery', GlobeIcon, t('workbench.section.delivery'), t('workbench.section.deliveryHint'), null),
             h(
               'div',
               { className: 'ds-wb-zone-body' },
               flowCard,
-              h(
-                'div',
-                { className: 'ds-wb-folds' },
-                foldDefinitions.map((definition) => {
-                  const open = isFoldOpen(definition.key)
-                  const bodyId = 'ds-wb-fold-body-' + definition.key
-                  return h(
-                    'div',
-                    {
-                      key: definition.key,
-                      className: 'ds-wb-fold',
-                      'data-open': open ? 'true' : 'false',
-                      'data-fail': definition.fail ? 'true' : undefined,
-                    },
-                    h(
-                      'button',
-                      {
-                        type: 'button',
-                        className: 'ds-wb-fold-head',
-                        'aria-expanded': open ? 'true' : 'false',
-                        'aria-controls': bodyId,
-                        onClick: () => toggleFold(definition.key),
-                      },
-                      h('span', { className: 'ds-wb-fold-icon', 'aria-hidden': 'true' }, h(definition.icon)),
-                      h('span', { className: 'ds-wb-fold-title' }, definition.title),
-                      h('span', { className: 'ds-wb-fold-count' }, definition.summary),
-                      definition.fail ? h('span', { className: 'ds-wb-fold-dot', 'aria-hidden': 'true' }) : null,
-                      h('span', { className: 'ds-wb-fold-chevron', 'aria-hidden': 'true' }, open ? h(ChevronUpIcon) : h(ChevronDownIcon)),
-                    ),
-                    h(
-                      'div',
-                      {
-                        id: bodyId,
-                        className: 'ds-wb-fold-body',
-                        role: 'region',
-                        'aria-label': definition.title,
-                        hidden: open ? undefined : true,
-                      },
-                      open
-                        ? [
-                            definition.autoFail
-                              ? h('div', { key: 'auto', className: 'ds-wb-fold-auto' }, t('workbench.fold.autoExpanded'))
-                              : null,
-                            definition.card === null
-                              ? h('div', { key: 'empty', className: 'ds-hint ds-wb-hint' }, t('workbench.fold.empty'))
-                              : definition.card,
-                          ]
-                        : null,
-                    ),
-                  )
-                }),
-              ),
+              deliveryCards.length === 0 ? null : h('div', { className: 'ds-wb-delivery-grid' }, deliveryCards),
             ),
           )
           return h(
@@ -25076,7 +24926,6 @@ h(
 .ds-wb-redesign .ds-wb-card .ds-btn { min-height: 32px; }
 .ds-wb-redesign .ds-wb-card .ds-linkbtn { min-height: 24px; }
 .ds-wb-redesign .ds-wb-card :focus-visible,
-.ds-wb-redesign .ds-wb-fold-head:focus-visible,
 .ds-wb-redesign .ds-wb-hero-actions :focus-visible,
 .ds-wb-redesign .ds-wb-zone-link:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: 2px; }
 /* Now zone: alerts + hero */
@@ -25124,23 +24973,11 @@ h(
 .ds-wb-adjust-summary-hint { margin-top: 4px; }
 .ds-wb-redesign .ds-wb-adjust-title { color: var(--dsw-alias-label-primary); font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Delivery zone: five compact, collapsible rows. */
-.ds-wb-folds { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; align-items: start; }
-.ds-wb-fold { display: flex; flex-direction: column; min-width: 0; border: 1px solid color-mix(in srgb, var(--dsw-alias-label-caption) 30%, transparent); border-radius: 10px; background: var(--dsw-alias-bg-layer-1); box-shadow: 0 1px 3px color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent); overflow: hidden; transition: border-color 150ms ease-out; }
-.ds-wb-fold[data-open="true"] { grid-column: 1 / -1; border-color: color-mix(in srgb, var(--dsw-alias-brand-primary) 32%, transparent); }
-.ds-wb-fold[data-fail="true"] { border-color: color-mix(in srgb, var(--dsw-alias-state-error-primary) 38%, transparent); }
-.ds-wb-fold-head { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 10px 12px; border: 0; background: transparent; color: var(--dsw-alias-label-primary); font: inherit; text-align: left; cursor: pointer; transition: background 150ms ease-out; }
-.ds-wb-fold-head:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent); }
-.ds-wb-fold-icon { display: inline-flex; flex: 0 0 auto; color: var(--dsw-alias-label-caption); }
-.ds-wb-fold-icon svg { width: 16px; height: 16px; }
-.ds-wb-fold-title { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; }
-.ds-wb-fold-count { flex: 0 0 auto; color: var(--dsw-alias-label-secondary); font-size: 12px; font-weight: 600; white-space: nowrap; }
-.ds-wb-fold[data-open="true"] .ds-wb-fold-count { font-size: 15px; color: var(--dsw-alias-label-primary); }
-.ds-wb-fold-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--dsw-alias-state-error-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--dsw-alias-state-error-primary) 16%, transparent); }
-.ds-wb-fold-chevron { display: inline-flex; flex: 0 0 auto; color: var(--dsw-alias-label-caption); transition: transform 150ms ease-out; }
-.ds-wb-fold-body { padding: 0 12px 14px; border-top: 1px solid color-mix(in srgb, var(--dsw-alias-label-caption) 16%, transparent); padding-top: 12px; }
-.ds-wb-fold-body .ds-wb-card { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
-.ds-wb-fold-auto { margin-bottom: 8px; padding: 4px 8px; border-radius: 6px; background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 9%, transparent); color: var(--dsw-alias-state-error-primary); font-size: 11px; }
-.ds-wb-fold .ds-wb-card-title { margin-bottom: 6px; }
+.ds-wb-delivery-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; min-width: 0; }
+.ds-wb-delivery-grid > * { min-width: 0; }
+@media (max-width: 1023px) {
+  .ds-wb-delivery-grid { grid-template-columns: minmax(0, 1fr); }
+}
 /* Existing card internals under the new denser typography. */
 .ds-wb-redesign .ds-wb-progress { font-size: 12px; }
 .ds-wb-redesign .ds-wb-project-title { font-size: 14px; }
@@ -25153,7 +24990,6 @@ h(
 .ds-wb-redesign .ds-wb-step-role { font-size: 10px; }
 .ds-wb-redesign .ds-wb-preflight-row { font-size: 11px; }
 @media (max-width: 1023px) {
-  .ds-wb-folds { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 700px) {
   .ds-wb-redesign .ds-wb-page-scroll { padding: 14px 12px 24px; }
@@ -25165,20 +25001,12 @@ h(
   .ds-wb-project-cell-wide { grid-column: auto; }
   .ds-wb-zone-project-grid .ds-wb-assign-members { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ds-wb-zone-project-grid .ds-wb-assign-list { max-height: none; }
-  .ds-wb-folds { grid-template-columns: minmax(0, 1fr); }
   .ds-wb-hero { padding: 16px 14px 14px; border-left-width: 3px; }
   .ds-wb-hero-title { font-size: 18px; line-height: 26px; }
   .ds-wb-hero-actions .ds-btn { flex: 1 1 100%; justify-content: center; }
-  .ds-wb-fold-head { min-height: 44px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .ds-wb-fold,
-  .ds-wb-fold-head,
-  .ds-wb-fold-chevron { transition: none; }
 }
 .ds-root[data-compact="true"] .ds-wb-redesign .ds-wb-page-scroll { padding: 12px; }
 .ds-root[data-compact="true"] .ds-wb-hero-actions .ds-btn { min-height: 44px; }
-.ds-root[data-compact="true"] .ds-wb-fold-head { min-height: 44px; }
 
 .ds-todo-edit { display: flex; flex-direction: column; gap: 5px; background: color-mix(in srgb, var(--dsw-alias-brand-primary) 5%, transparent); }
 .ds-todo-note-input {

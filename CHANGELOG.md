@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.78 — 2026-10-27
+
+### Workbench: the Delivery cards are shown directly, no folding
+
+- The Delivery zone no longer collapses its five cards. Design, acceptance,
+  preflight, change review and running are rendered as normal cards in a
+  two-column grid (one column ≤1023px), so every title (e.g. 「交付前体检」) is
+  complete and the content is visible without an extra click.
+- Removed the fold state, expand-all / collapse-all buttons, auto-expand and red
+  dot logic, fold rows, their ARIA attributes and the eight `workbench.fold.*`
+  i18n keys; the card contents, actions and filters are unchanged.
+- The rest of the redesign is kept: three zones, the current-stage hero, the
+  requirement summary (with the short hover tooltip and overflow guards), the
+  three-column project row and the visual tokens. Client-only change (no host
+  modules, dependencies or data changes); `docs/ACCEPTANCE.md` gains batch 15.
+
 ## 1.2.77 — 2026-10-27
 
 ### Workbench fixes: no more hover-tooltip overflow, the project row matches the design
