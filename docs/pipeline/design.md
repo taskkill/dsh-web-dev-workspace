@@ -2,7 +2,7 @@
 
 > 角色：UI 设计师｜上游：[requirements.md](requirements.md)（第 7 轮需求，含 6 来源调研）｜下游：全栈开发（纯客户端 client.js/CSS/i18n）→ QA → 验收复核。
 > 结论先行：页面头升级为「eyebrow + 30px display + 上下文 chips + 动作组」；Now 区用**深色渐变 hero** 承载当前阶段、7 段时间轴、环形进度与主操作；Project 区 3 列；Delivery 区 7 步连接线时间轴 + 5 卡 bento（第 5 卡全宽条）；统一 11–30px 字号阶、4–32px 间距、10/14/18 圆角、三级阴影与 160ms 动效；浅/深主题均成立。版本：插件 **1.2.78 → 1.2.79**、根保持 **1.2.79**（交付后根 +1 → 1.2.80）。
-> 效果图（SVG + 2× PNG）：[overview-light](design/workbench-v1279-overview-light-1440.svg) / [overview-dark](design/workbench-v1279-overview-dark-1440.svg) / [full-light](design/workbench-v1279-full-light-1440.svg) / [mobile-390](design/workbench-v1279-mobile-light-390.svg) / [迭代 r1](design/workbench-v1279-overview-light-r1-1440.svg)。
+> 效果图（SVG；2× PNG 导出已随 v1.2.85 仓库瘦身移出，可由 SVG 重建）：[overview-light](design/workbench-v1279-overview-light-1440.svg) / [overview-dark](design/workbench-v1279-overview-dark-1440.svg) / [full-light](design/workbench-v1279-full-light-1440.svg) / [mobile-390](design/workbench-v1279-mobile-light-390.svg) / [迭代 r1](design/workbench-v1279-overview-light-r1-1440.svg)。
 
 ---
 
@@ -393,8 +393,8 @@ r2 五维评分：视觉层级 **5**、清晰度 **4**、一致性 **5**、反�
 ### 11.2 给测试：视觉基线与复测步骤
 
 1. 重启 Harness → 刷新页面 → 打开工作台（必要时关闭再开）。
-2. 浅色主题：对照 [overview-light](design/workbench-v1279-overview-light-1440.png) / [full-light](design/workbench-v1279-full-light-1440.png) 检查页面头、hero、告警、三卡、时间轴、5 卡。
-3. 深色主题：对照 [overview-dark](design/workbench-v1279-overview-dark-1440.png) 检查 hero 与卡片层次、文字对比。
+2. 浅色主题：对照 [overview-light](design/workbench-v1279-overview-light-1440.svg) / [full-light](design/workbench-v1279-full-light-1440.svg) 检查页面头、hero、告警、三卡、时间轴、5 卡。
+3. 深色主题：对照 [overview-dark](design/workbench-v1279-overview-dark-1440.svg) 检查 hero 与卡片层次、文字对比。
 4. 360/768/1024/1280/1440 视口：按 §7.4 检查无横向滚动、单列/两列/三列、CTA 44。
 5. 交互：通过/打回、启动并派发、review note、指派器、需求四操作、验收/体检/变更/运行、通知/刷新/关闭/compact。
 6. 键盘：Tab 顺序、focus 环可见、Enter/Space 可触发；prefers-reduced-motion 下无动画。
@@ -503,7 +503,7 @@ r2 五维评分：视觉层级 **5**、清晰度 **4**、一致性 **5**、反�
 **已验证模式 vs 创新假设**
 
 - 已验证模式（有来源）：① 独立评审窗口 + 顶部产物切换 + 底部结论（#1）；② preview iframe 隔离渲染（#2）；③ 强制评审 + 不可自批 + 变更重审（#3）；④ sandbox 收紧 + title 必填（#4）。
-- 创新假设（需验证）：① 在 360px 侧栏内同时放「提示条 + 缩略图 + 4 个按钮」仍可读 —— 用 [D1](design/design-gate-pipeline-review-1440.png) 目检 + Owner 批次 20 复测，失败则缩略图降为 2 个 + 「查看全部」入口；② 768 档居中设备框足够判断桌面布局 —— 若不足则补 1024 档，宽度常量集中一处；③ 弹层内 iframe 在无脚本下视觉完整 —— 高保真稿以静态视觉为准，若交互稿缺脚本则标注「脚本受限」并保留源码入口。
+- 创新假设（需验证）：① 在 360px 侧栏内同时放「提示条 + 缩略图 + 4 个按钮」仍可读 —— 用 [D1](design/design-gate-pipeline-review-1440.svg) 目检 + Owner 批次 20 复测，失败则缩略图降为 2 个 + 「查看全部」入口；② 768 档居中设备框足够判断桌面布局 —— 若不足则补 1024 档，宽度常量集中一处；③ 弹层内 iframe 在无脚本下视觉完整 —— 高保真稿以静态视觉为准，若交互稿缺脚本则标注「脚本受限」并保留源码入口。
 
 **抓取受限/无网络说明**：无。4 个来源均 HTTP 200；本轮未出现 blocked。上游 product 阶段的 6 个来源（Figma / GitHub / Storybook / MDN×2 / HITL）见 [requirements.md §5](requirements.md)，本设计不重复引用其原文。
 
@@ -699,15 +699,15 @@ r2 五维评分：视觉层级 **5**、清晰度 **4**、一致性 **5**、反�
 
 **迭代第 1 版（r1）渲染 → 检查**
 
-效果图：[design-gate-preview-modal-r1-1440.png](design/design-gate-preview-modal-r1-1440.png)（同目录 SVG）。r1 是「先做出来的弹层」：只有一张静态图片、没有产物切换、没有 iframe、没有提示条、设备按钮 24px、确认按钮 32px、辅助文案用 #94A3B8。
+效果图：[design-gate-preview-modal-r1-1440.svg](design/design-gate-preview-modal-r1-1440.svg)（同目录 SVG）。r1 是「先做出来的弹层」：只有一张静态图片、没有产物切换、没有 iframe、没有提示条、设备按钮 24px、确认按钮 32px、辅助文案用 #94A3B8。
 
 r1 五维评分：视觉层级 **4**、清晰度 **3**、一致性 **3**、反馈 **2**、可访问性 **2** → 均分 **2.8**（未达门槛）。must 失败：触控（确认 32 / 设备 24）、对比度（#94A3B8 2.56:1）、关键状态（无加载/失败/空态）、HTML 预览缺失。
 
 | 轮次 | 触发 | 发现（对照标准） | 修正 | 证据 |
 |---|---|---|---|---|
-| R1 | 渲染 r1 弹层 | ① HTML 产物仍是图片占位「图片预览（HTML 产物暂未渲染）」，无 iframe/产物切换/查看源码 → 不满足 design-preview 核心；② 设备档位 24px、确认 32px → 触控 must 失败；③ 弹层内无「设计稿待你确认 · 确认后进入开发」，Owner 看不到闸门语义；④ 辅助文案 #94A3B8 / #FFFFFF = 2.56:1 → 对比度 must 失败 | 引入 iframe + `sandbox=""` + `title`；顶部产物 tabs；三档 360/768/1280；底部 44px 确认/打回；header 提示条；全部辅助文案改 #64748B（4.76:1）；确认复用 `reviewPipelineStage` | r1 → final 对比；[r1](design/design-gate-preview-modal-r1-1440.png) / [final](design/design-gate-preview-modal-1440.png) |
-| R2 | 渲染 final 三张（D1/D2/D3） + 移动端 | ① 流水线 todo 副文案与「通过」按钮重叠；hero 右栏 300px 越出内边距，按钮贴到 hero 右缘；② D2 预览内容里 mini hero 的「通过/打回」超出画布右缘；③ D4 无 mockup、工作台卡无空态、状态矩阵需要独立证据；④ 状态板四宫格用绝对坐标导致面板互相覆盖 | 收窄 hero 右栏到 300、内边距 28；mini hero 按钮左移到 916/998；新增 D4 HTML 文件预览图；新增状态板（加载/失败/空/打回）；状态板改 `translate` 局部坐标 | [D1](design/design-gate-pipeline-review-1440.png) / [D2](design/design-gate-preview-modal-1440.png) / [D3](design/design-gate-workbench-card-1440.png) / [D4](design/design-gate-html-file-preview-1440.png) / [状态板](design/design-gate-preview-states-1440.png) |
-| R3 | 2× 逐张目检 + 对比度复算 | ① 移动端设备档位行被预览画布遮挡（画布从 224 开始覆盖 192 起的设备框）；② 预览画布上 9.5px 说明文字用 #64748B / #F1F5F9 = 4.34:1，低于 4.5；③ 侧栏提示条 44px 按钮挤压文案；④ 深色主题未验证 | 画布下移到 228、设备框 236、内容压到 396 高；画布说明改 #475569（6.92:1）；提示条文案拆行/缩短；补深色片段并实测对比度；全部重渲染 @2× 后逐张 read_image 目检 | [移动端](design/design-gate-mobile-390.png)、[深色片段](design/design-gate-dark-fragment-900.png) |
+| R1 | 渲染 r1 弹层 | ① HTML 产物仍是图片占位「图片预览（HTML 产物暂未渲染）」，无 iframe/产物切换/查看源码 → 不满足 design-preview 核心；② 设备档位 24px、确认 32px → 触控 must 失败；③ 弹层内无「设计稿待你确认 · 确认后进入开发」，Owner 看不到闸门语义；④ 辅助文案 #94A3B8 / #FFFFFF = 2.56:1 → 对比度 must 失败 | 引入 iframe + `sandbox=""` + `title`；顶部产物 tabs；三档 360/768/1280；底部 44px 确认/打回；header 提示条；全部辅助文案改 #64748B（4.76:1）；确认复用 `reviewPipelineStage` | r1 → final 对比；[r1](design/design-gate-preview-modal-r1-1440.svg) / [final](design/design-gate-preview-modal-1440.svg) |
+| R2 | 渲染 final 三张（D1/D2/D3） + 移动端 | ① 流水线 todo 副文案与「通过」按钮重叠；hero 右栏 300px 越出内边距，按钮贴到 hero 右缘；② D2 预览内容里 mini hero 的「通过/打回」超出画布右缘；③ D4 无 mockup、工作台卡无空态、状态矩阵需要独立证据；④ 状态板四宫格用绝对坐标导致面板互相覆盖 | 收窄 hero 右栏到 300、内边距 28；mini hero 按钮左移到 916/998；新增 D4 HTML 文件预览图；新增状态板（加载/失败/空/打回）；状态板改 `translate` 局部坐标 | [D1](design/design-gate-pipeline-review-1440.svg) / [D2](design/design-gate-preview-modal-1440.svg) / [D3](design/design-gate-workbench-card-1440.svg) / [D4](design/design-gate-html-file-preview-1440.svg) / [状态板](design/design-gate-preview-states-1440.svg) |
+| R3 | 2× 逐张目检 + 对比度复算 | ① 移动端设备档位行被预览画布遮挡（画布从 224 开始覆盖 192 起的设备框）；② 预览画布上 9.5px 说明文字用 #64748B / #F1F5F9 = 4.34:1，低于 4.5；③ 侧栏提示条 44px 按钮挤压文案；④ 深色主题未验证 | 画布下移到 228、设备框 236、内容压到 396 高；画布说明改 #475569（6.92:1）；提示条文案拆行/缩短；补深色片段并实测对比度；全部重渲染 @2× 后逐张 read_image 目检 | [移动端](design/design-gate-mobile-390.svg)、[深色片段](design/design-gate-dark-fragment-900.svg) |
 
 **最终五维评分（附证据）**
 
@@ -760,10 +760,10 @@ r1 五维评分：视觉层级 **4**、清晰度 **3**、一致性 **3**、反�
 
 **给测试的视觉基线**
 
-1. 浅色 1440：对照 [D1](design/design-gate-pipeline-review-1440.png) / [D2](design/design-gate-preview-modal-1440.png) / [D3](design/design-gate-workbench-card-1440.png) / [D4](design/design-gate-html-file-preview-1440.png) 检查提示条、缩略图、按钮高度、三档切换、源码入口。
-2. 关键状态：对照 [状态板](design/design-gate-preview-states-1440.png) 检查加载/失败/空态/打回 note。
-3. 移动 390×844：对照 [移动端](design/design-gate-mobile-390.png) 检查全屏、tabs 横滚、设备切换换行、底部 48px 操作。
-4. 深色：对照 [深色片段](design/design-gate-dark-fragment-900.png) 检查 warn/success/error 与 focus 环；正文对比 ≥4.5。
+1. 浅色 1440：对照 [D1](design/design-gate-pipeline-review-1440.svg) / [D2](design/design-gate-preview-modal-1440.svg) / [D3](design/design-gate-workbench-card-1440.svg) / [D4](design/design-gate-html-file-preview-1440.svg) 检查提示条、缩略图、按钮高度、三档切换、源码入口。
+2. 关键状态：对照 [状态板](design/design-gate-preview-states-1440.svg) 检查加载/失败/空态/打回 note。
+3. 移动 390×844：对照 [移动端](design/design-gate-mobile-390.svg) 检查全屏、tabs 横滚、设备切换换行、底部 48px 操作。
+4. 深色：对照 [深色片段](design/design-gate-dark-fragment-900.svg) 检查 warn/success/error 与 focus 环；正文对比 ≥4.5。
 5. 键盘：Tab 顺序、Esc 关闭并还焦点、iframe title 可读、图片 alt 存在、`prefers-reduced-motion` 无动画。
 6. 三档：360/768/1280 下 iframe 宽度变化、容器横向滚动、无横向溢出；确认/打回 44（移动 48）。
 
@@ -771,15 +771,17 @@ r1 五维评分：视觉层级 **4**、清晰度 **3**、一致性 **3**、反�
 
 | 文件 | 说明 |
 |---|---|
-| [design-gate-pipeline-review-1440.svg](design/design-gate-pipeline-review-1440.svg) / .png | D1 流水线设计卡 review 态，1440×1024 浅色，全页（侧栏 360 + 工作台简化） |
-| [design-gate-preview-modal-1440.svg](design/design-gate-preview-modal-1440.svg) / .png | D2 设计稿预览弹层（HTML iframe + 三档 + 确认/打回 + 查看源码） |
-| [design-gate-workbench-card-1440.svg](design/design-gate-workbench-card-1440.svg) / .png | D3 工作台设计卡待确认态（4 产物 + 预览/通过/打回 + 说明） |
-| [design-gate-html-file-preview-1440.svg](design/design-gate-html-file-preview-1440.svg) / .png | D4 工作区 `.html` 默认预览 + 工具栏「预览 / 源码」 |
-| [design-gate-mobile-390.svg](design/design-gate-mobile-390.svg) / .png | D2 移动端 390×844 全屏弹层（tabs 横滚、设备切换、48px 底部操作） |
-| [design-gate-preview-states-1440.svg](design/design-gate-preview-states-1440.svg) / .png | 关键状态板：加载中 / 加载失败 / 工作台空态 / 打回说明 |
-| [design-gate-dark-fragment-900.svg](design/design-gate-dark-fragment-900.svg) / .png | 深色主题片段（D1 卡 + D2 弹层 + 对比度实测） |
-| [design-gate-preview-modal-r1-1440.svg](design/design-gate-preview-modal-r1-1440.svg) / .png | r1 迭代证据（final 对照） |
+| [design-gate-pipeline-review-1440.svg](design/design-gate-pipeline-review-1440.svg) | D1 流水线设计卡 review 态，1440×1024 浅色，全页（侧栏 360 + 工作台简化） |
+| [design-gate-preview-modal-1440.svg](design/design-gate-preview-modal-1440.svg) | D2 设计稿预览弹层（HTML iframe + 三档 + 确认/打回 + 查看源码） |
+| [design-gate-workbench-card-1440.svg](design/design-gate-workbench-card-1440.svg) | D3 工作台设计卡待确认态（4 产物 + 预览/通过/打回 + 说明） |
+| [design-gate-html-file-preview-1440.svg](design/design-gate-html-file-preview-1440.svg) | D4 工作区 `.html` 默认预览 + 工具栏「预览 / 源码」 |
+| [design-gate-mobile-390.svg](design/design-gate-mobile-390.svg) | D2 移动端 390×844 全屏弹层（tabs 横滚、设备切换、48px 底部操作） |
+| [design-gate-preview-states-1440.svg](design/design-gate-preview-states-1440.svg) | 关键状态板：加载中 / 加载失败 / 工作台空态 / 打回说明 |
+| [design-gate-dark-fragment-900.svg](design/design-gate-dark-fragment-900.svg) | 深色主题片段（D1 卡 + D2 弹层 + 对比度实测） |
+| [design-gate-preview-modal-r1-1440.svg](design/design-gate-preview-modal-r1-1440.svg) | r1 迭代证据（final 对照） |
 | [gen-design-gate-mockups.mjs](design/gen-design-gate-mockups.mjs) | 生成器（纯 SVG 字符串，无外部依赖）；`OUT=<dir> node gen-design-gate-mockups.mjs` |
+
+> PNG 渲染导出不入库（`.gitignore` 已忽略 `docs/pipeline/design/*.png`）；仓库只保留 SVG 源，需要位图时按下方命令重建。
 
 > D4 的空文件 / 读取失败分支不另出图：视觉沿用现有编辑器 `.ds-empty` / `.ds-errorline` 与 §16.6 矩阵（避免与既有空/错误态重复）；D4 主图覆盖默认「预览」与工具栏「预览 / 源码」切换入口。
 

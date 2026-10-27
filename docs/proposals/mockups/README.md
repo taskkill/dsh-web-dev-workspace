@@ -1,17 +1,17 @@
 # 工作台「指定 Agent 干活」高保真效果图 · 说明
 
 > 提案：[AGENT_ASSIGN.md](../AGENT_ASSIGN.md)｜设计标准：[docs/pipeline/design.md](../../pipeline/design.md)（v1.2.73 硬标准）｜日期：2026-10-27
-> 画布：**1440×1024 浅色主题**；输出：SVG（可编辑）+ PNG（2880×2048，@2x）。中文使用 PingFang / Microsoft YaHei / Noto Sans SC 字体栈，已用 `sharp`（librsvg）+ Noto Sans SC 渲染校验。
+> 画布：**1440×1024 浅色主题**；输出：SVG（可编辑）+ PNG（2880×2048，@2x，PNG 导出已随 v1.2.85 仓库瘦身移出，SVG 源保留）。中文使用 PingFang / Microsoft YaHei / Noto Sans SC 字体栈，已用 `sharp`（librsvg）+ Noto Sans SC 渲染校验。
 
 ## 0. 三屏总览
 
 | # | 文件 | 场景 | 核心内容 |
 |---|---|---|---|
-| 1 | [assign-workbench.svg](assign-workbench.svg) / [.png](assign-workbench.png) | 工作台（默认态） | 新增「团队与指派」卡片：6 角色成员 chips（空闲/执行中/阻塞）、指派按钮、最近 4 条记录（已派发/执行中/已完成/已打回）、打开团队面板；展示与「项目状态 / 需要你处理 / 项目流程」的层级 |
-| 2 | [assign-dialog.svg](assign-dialog.svg) / [.png](assign-dialog.png) | 指派弹层（右侧抽屉 608px） | 交给谁（按角色/当前成员/新建 Agent）、任务标题、详细说明、验收标准、优先级、关联流水线阶段（默认自动判断）、期望产物、附件、双复核提示、主按钮 |
-| 3 | [assign-status.svg](assign-status.svg) / [.png](assign-status.png) | 派发后的状态卡 | 4 条任务行：关联阶段执行中 / 临时任务待你确认 / 已完成 / 已打回；五段进度、关联阶段、时间、查看对话/催办/打回/再指派 |
+| 1 | [assign-workbench.svg](assign-workbench.svg) | 工作台（默认态） | 新增「团队与指派」卡片：6 角色成员 chips（空闲/执行中/阻塞）、指派按钮、最近 4 条记录（已派发/执行中/已完成/已打回）、打开团队面板；展示与「项目状态 / 需要你处理 / 项目流程」的层级 |
+| 2 | [assign-dialog.svg](assign-dialog.svg) | 指派弹层（右侧抽屉 608px） | 交给谁（按角色/当前成员/新建 Agent）、任务标题、详细说明、验收标准、优先级、关联流水线阶段（默认自动判断）、期望产物、附件、双复核提示、主按钮 |
+| 3 | [assign-status.svg](assign-status.svg) | 派发后的状态卡 | 4 条任务行：关联阶段执行中 / 临时任务待你确认 / 已完成 / 已打回；五段进度、关联阶段、时间、查看对话/催办/打回/再指派 |
 
-> 打开方式：浏览器直接打开 SVG（矢量、可搜索文字）；PNG 用于评审/文档嵌入。所有尺寸标注基于 SVG 的 1440×1024 坐标系，PNG 为 2 倍。
+> 打开方式：浏览器直接打开 SVG（矢量、可搜索文字）。所有尺寸标注基于 SVG 的 1440×1024 坐标系；如需位图评审，可用 `sharp`（librsvg）以 2× 渲染导出（PNG 导出未入库）。
 
 ---
 
@@ -279,8 +279,8 @@ node -e "require('sharp')('assign-workbench.svg',{density:144}).png().toFile('as
 
 | 文件 | 说明 |
 |---|---|
-| [assign-workbench.svg](assign-workbench.svg) / [assign-workbench.png](assign-workbench.png) | 屏幕 1：工作台卡片 |
-| [assign-dialog.svg](assign-dialog.svg) / [assign-dialog.png](assign-dialog.png) | 屏幕 2：指派抽屉 |
-| [assign-status.svg](assign-status.svg) / [assign-status.png](assign-status.png) | 屏幕 3：派发后状态卡 |
+| [assign-workbench.svg](assign-workbench.svg) | 屏幕 1：工作台卡片 |
+| [assign-dialog.svg](assign-dialog.svg) | 屏幕 2：指派抽屉 |
+| [assign-status.svg](assign-status.svg) | 屏幕 3：派发后状态卡 |
 | [AGENT_ASSIGN.md](../AGENT_ASSIGN.md) | 方案与实现拆解（Lead 撰写） |
 | [design.md](../../pipeline/design.md) | v1.2.73 设计硬标准与 rubric |

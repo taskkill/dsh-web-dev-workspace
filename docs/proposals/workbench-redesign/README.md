@@ -20,7 +20,7 @@
 
 ## 1. 现状痛点（before）
 
-![before](mockups/before.png)
+![before](mockups/before.svg)
 
 > 审计图说明：为在一屏展示全部 10 张卡，卡片高度做了压缩；实际页面约 6–7 张/屏，需要持续滚动。红线编号为审计标注，不是产品 UI。
 
@@ -40,13 +40,13 @@
 
 | 图 | 方案 | 布局 | 首屏关键动作 | 次要信息 |
 |---|---|---|---|---|
-| [A](mockups/option-a.png) | 分区工作台 | 现在 → 项目 → 交付 | hero 内：通过/打回/查看复核报告 | 交付区 5 张折叠卡 + 计数 |
-| [B](mockups/option-b.png) | 标签页 | 概览 / 团队 / 交付 / 变更 | 概览页 hero 内 | 切到「交付/变更」标签 |
-| [C](mockups/option-c.png) | 两栏 + 固定栏 | 左主区 + 右 344px sticky | 左上「需要你处理」卡 | 右栏常驻 5 张小卡 |
+| [A](mockups/option-a.svg) | 分区工作台 | 现在 → 项目 → 交付 | hero 内：通过/打回/查看复核报告 | 交付区 5 张折叠卡 + 计数 |
+| [B](mockups/option-b.svg) | 标签页 | 概览 / 团队 / 交付 / 变更 | 概览页 hero 内 | 切到「交付/变更」标签 |
+| [C](mockups/option-c.svg) | 两栏 + 固定栏 | 左主区 + 右 344px sticky | 左上「需要你处理」卡 | 右栏常驻 5 张小卡 |
 
 ### 2.1 方案 A（推荐）：分区工作台
 
-![option-a](mockups/option-a.png)
+![option-a](mockups/option-a.svg)
 
 **结构**
 
@@ -77,7 +77,7 @@
 
 ### 2.2 方案 B：标签页
 
-![option-b](mockups/option-b.png)
+![option-b](mockups/option-b.svg)
 
 - Tab：概览 / 团队 6 / 交付 5 / 变更 3；概览页只放 3 张卡（hero + 项目状态 + 团队与指派）。
 - 优点：滚动最少、每页聚焦；缺点：功能点分散、切换有额外点击与上下文丢失；跨标签的关联（如「待处理 → 团队」）需要跳转。
@@ -86,7 +86,7 @@
 
 ### 2.3 方案 C：两栏 + 右侧固定栏
 
-![option-c](mockups/option-c.png)
+![option-c](mockups/option-c.svg)
 
 - 左 720px 主区：需要你处理（含主操作）→ 项目状态 → 团队与指派 → 项目流程（7 步两行）→ 需求与调整。
 - 右 344px **sticky** 栏：交付与运行（验收 / 交付前体检 / 本轮变更 / 运行中 / 设计稿），主区滚动时固定。
@@ -197,12 +197,12 @@
 
 | 文件 | 内容 | 尺寸 |
 |---|---|---|
-| [mockups/before.svg](mockups/before.svg) / [before.png](mockups/before.png) | 现状 10 卡 + 5 处痛点审计标注（含压缩说明） | 1440×1024 / 2880×2048 |
-| [mockups/option-a.svg](mockups/option-a.svg) / [option-a.png](mockups/option-a.png) | 方案 A 分区工作台（推荐） | 同上 |
-| [mockups/option-b.svg](mockups/option-b.svg) / [option-b.png](mockups/option-b.png) | 方案 B 标签页 | 同上 |
-| [mockups/option-c.svg](mockups/option-c.svg) / [option-c.png](mockups/option-c.png) | 方案 C 两栏 + sticky 右栏 | 同上 |
+| [mockups/before.svg](mockups/before.svg) | 现状 10 卡 + 5 处痛点审计标注（含压缩说明） | 1440×1024 / 2880×2048 |
+| [mockups/option-a.svg](mockups/option-a.svg) | 方案 A 分区工作台（推荐） | 同上 |
+| [mockups/option-b.svg](mockups/option-b.svg) | 方案 B 标签页 | 同上 |
+| [mockups/option-c.svg](mockups/option-c.svg) | 方案 C 两栏 + sticky 右栏 | 同上 |
 
-**渲染自检**：sharp(librsvg) + Noto Sans SC 400/600/700，@144dpi → 2880×2048；4 张 PNG 均能打开、中文无豆腐块、无文字溢出；浅色主题；关键色对实测对比度见 §4.2；本地链接可用。
+**渲染自检**：sharp(librsvg) + Noto Sans SC 400/600/700，@144dpi → 2880×2048；4 张 PNG 均能打开、中文无豆腐块、无文字溢出；浅色主题；关键色对实测对比度见 §4.2；本地链接可用。（PNG 导出已随 v1.2.85 仓库瘦身移出，SVG 源保留，可由 SVG 重建。）
 **取舍说明**：`before` 为在一屏展示全部 10 张卡做了高度压缩（真实页面约 6–7 张/屏）；after 均按真实内容层级绘制，未压缩关键信息。
 
 ---

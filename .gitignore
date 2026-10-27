@@ -6,6 +6,11 @@ node_modules/
 .dsh/
 *.log
 
+# Generated design assets (vector SVG sources are tracked; raster exports are not)
+docs/pipeline/design/*.png
+docs/proposals/mockups/*.png
+docs/proposals/workbench-redesign/mockups/*.png
+
 # Editors and OS
 .vscode/
 .idea/

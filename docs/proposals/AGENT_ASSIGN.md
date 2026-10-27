@@ -141,9 +141,9 @@ draft → dispatched（已派发，等待 Lead 执行）
 > 由 UI 设计师按 v1.2.73 设计硬标准绘制（1440×1024 浅色、4/8px 间距、对比度 ≥4.5:1、完整状态；PNG 为 @2x 渲染并通过 sharp+librsvg 中文校验）。
 > 尺寸/颜色/文案/状态矩阵/无障碍/迭代记录见 [mockups/README.md](mockups/README.md)。
 
-- 工作台卡片：[assign-workbench.png](mockups/assign-workbench.png)（SVG：[assign-workbench.svg](mockups/assign-workbench.svg)）
-- 指派弹层：[assign-dialog.png](mockups/assign-dialog.png)（SVG：[assign-dialog.svg](mockups/assign-dialog.svg)）
-- 派发后状态卡：[assign-status.png](mockups/assign-status.png)（SVG：[assign-status.svg](mockups/assign-status.svg)）
+- 工作台卡片：[assign-workbench.svg](mockups/assign-workbench.svg)
+- 指派弹层：[assign-dialog.svg](mockups/assign-dialog.svg)
+- 派发后状态卡：[assign-status.svg](mockups/assign-status.svg)
 
 ## 6. 实现拆解与工作量
 

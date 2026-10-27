@@ -2,6 +2,30 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.85 — 2026-10-27
+
+### Repository and package slimming (no runtime changes)
+
+- **The npm package no longer ships a nested `node_modules`.** The publish
+  whitelist in `package.json` now ends with `"!**/node_modules/**"`: `npm pack`
+  drops 347 files and ~4.1 MB of unpacked content (tarball **1.54 MB → 0.57 MB**,
+  unpacked **6.58 MB → 2.51 MB**). The local `dsh-web-filebrowser-plugin/node_modules`
+  stays on disk for development but is never published.
+- **Generated raster mockups are out of version control.** 29 exported PNGs
+  under `docs/pipeline/design/` and `docs/proposals/` (~13.7 MB) were removed.
+  The editable SVG sources stay in git; every removed preview has an SVG
+  counterpart and documentation links were rewritten from `.png` to `.svg`.
+  The two raster-only iteration exports (quality-gate R1/R2 PNGs) were
+  dropped too, and the archive records how to rebuild them with `sharp`.
+- **Tracked checkout drops from ~18.6 MB to ~4.9 MB.** Showcase screenshots
+  used by the READMEs (`docs/1.png`–`docs/6.png`, ~445 KB) are kept.
+  `.gitignore` now ignores generated raster exports in the three mockup
+  directories so they cannot creep back.
+- **No runtime code, dependency, locale or data-format change.** Plugin stays
+  `1.2.83`; root version is `1.2.85` (workspace rule: +1 after each change).
+  `npm run check`, `npm run check:json` and `npm test` pass. Documented in
+  `docs/ACCEPTANCE.md` batch 21.
+
 ## 1.2.83 — 2026-10-27
 
 ### Design-first confirmation + rendered design preview

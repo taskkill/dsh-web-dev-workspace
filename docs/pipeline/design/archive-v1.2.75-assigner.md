@@ -635,10 +635,10 @@ git diff package.json dsh-web-filebrowser-plugin/package.json   # dependencies �
 
 | 文件 | 对应屏幕 | 说明 |
 |---|---|---|
-| [assign-workbench.svg](assign-workbench.svg) / [.png](assign-workbench.png) | 工作台卡片 | 需求顺序、6 chips 三态推导、最近 5 条、团队面板入口、页脚提示 |
-| [assign-dialog.svg](assign-dialog.svg) / [.png](assign-dialog.png) | 指派抽屉 | 608px 右侧抽屉；字段完整；approval/release 置灰；附件 MVP 降级 |
-| [assign-status.svg](assign-status.svg) / [.png](assign-status.png) | 状态卡 | 4 行：执行中/待你确认/已完成/已打回；五段进度；复制派单/催办/打回/取消/再指派 |
-| [assign-empty-state.svg](assign-empty-state.svg) / [.png](assign-empty-state.png) | 卡片空态 | 0 条记录、CTA、团队面板入口 |
+| [assign-workbench.svg](assign-workbench.svg) | 工作台卡片 | 需求顺序、6 chips 三态推导、最近 5 条、团队面板入口、页脚提示 |
+| [assign-dialog.svg](assign-dialog.svg) | 指派抽屉 | 608px 右侧抽屉；字段完整；approval/release 置灰；附件 MVP 降级 |
+| [assign-status.svg](assign-status.svg) | 状态卡 | 4 行：执行中/待你确认/已完成/已打回；五段进度；复制派单/催办/打回/取消/再指派 |
+| [assign-empty-state.svg](assign-empty-state.svg) | 卡片空态 | 0 条记录、CTA、团队面板入口 |
 | [archive-v1.2.73-agent-capabilities.md](archive-v1.2.73-agent-capabilities.md) | 上轮归档 | v1.2.73 专业设计质量标准（保留引用资源） |
 
 ### 13.2 尺寸/颜色/字体
@@ -767,7 +767,7 @@ git diff package.json dsh-web-filebrowser-plugin/package.json   # dependencies �
 | R1 状态卡 | ① 操作仅「查看对话」，需求 MVP 复制派单；② 缺取消；③ 团队入口死链 | 改「复制派单」并按状态补取消/打回/通过并完成/再指派；团队入口改说明；页脚补「再指派=新记录、打回需原因」 | 操作矩阵完整 |
 | R2 | ① 空态成员仍显示执行中/待确认（与 0 条记录矛盾）；② 工作台副标题/长度溢出；③ 抽屉 624px 超出画布 | 空态全部空闲；缩短文案；抽屉改 608px | 全部修正，PNG 复检通过 |
 
-> 证据：最终 4 张 PNG（与 SVG 同目录）；本表为设计过程记录。实现阶段可据此核对布局与状态。
+> 证据：最终 4 张 PNG（与 SVG 同目录；PNG 已随 v1.2.85 仓库瘦身移出，SVG 源保留）；本表为设计过程记录。实现阶段可据此核对布局与状态。
 
 ---
 

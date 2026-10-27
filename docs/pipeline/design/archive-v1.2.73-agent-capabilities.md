@@ -431,11 +431,11 @@
 
 | 轮次 | 触发 | 发现（对照 §3/§6） | 修正 | 证据 |
 |---|---|---|---|---|
-| R1 | `sharp` 渲染 1280×960 @140dpi | ① 硬标准卡片「360/768/1280」文字溢出胶囊；② 表头/脚注 `#8a919c` 对比度 3.2:1（<4.5:1）不可读；③ 评分汇总「4.2/5.0」缺「均分」二字；④ 4 分门槛无视觉标记 | ① 胶囊 76→86px 并右移第二枚；② 文字改 `#61666b`（5.8:1）；③ 加「均分」；④ 加虚线门槛 | `design/design-quality-gate-r1.png` |
-| R2 | 复渲染 @140dpi | ⑤ 门槛文字「门槛≥4」与 1–5 表头挤在同一行，可读性差 | ⑤ 移除表头标签，改为底部说明「虚线 = 4 分门槛」，虚线保留 | `design/design-quality-gate-r2.png` |
-| R3 | 复渲染 @170dpi（3022×2267） | ⑤ 已修；⑥ 迭代计数表述与记录不一致（原「2 轮」→ 实为 3 次渲染 / 2 轮修正） | 改为「3 次渲染 / 2 轮修正」并复渲染 | `design/design-quality-gate.png`、`design/design-quality-gate.svg` |
+| R1 | `sharp` 渲染 1280×960 @140dpi | ① 硬标准卡片「360/768/1280」文字溢出胶囊；② 表头/脚注 `#8a919c` 对比度 3.2:1（<4.5:1）不可读；③ 评分汇总「4.2/5.0」缺「均分」二字；④ 4 分门槛无视觉标记 | ① 胶囊 76→86px 并右移第二枚；② 文字改 `#61666b`（5.8:1）；③ 加「均分」；④ 加虚线门槛 | 渲染 PNG 已移出仓库（见 §12）；SVG 最终稿保留 |
+| R2 | 复渲染 @140dpi | ⑤ 门槛文字「门槛≥4」与 1–5 表头挤在同一行，可读性差 | ⑤ 移除表头标签，改为底部说明「虚线 = 4 分门槛」，虚线保留 | 渲染 PNG 已移出仓库（见 §12）；SVG 最终稿保留 |
+| R3 | 复渲染 @170dpi（3022×2267） | ⑤ 已修；⑥ 迭代计数表述与记录不一致（原「2 轮」→ 实为 3 次渲染 / 2 轮修正） | 改为「3 次渲染 / 2 轮修正」并复渲染 | `design/design-quality-gate.svg` |
 
-> 迭代结果：R1→R3 共修正 6 处；自评从「可读性扣分」回到 4.2/5.0；最终稿见 [design/design-quality-gate.svg](design-quality-gate.svg)。本轮同时验证了「SVG + 系统 CJK 字体」的渲染路径与 PNG 兜底。
+> 迭代结果：R1→R3 共修正 6 处；自评从「可读性扣分」回到 4.2/5.0；最终稿见 [design/design-quality-gate.svg](design-quality-gate.svg)。本轮同时验证了「SVG + 系统 CJK 字体」的渲染路径与 PNG 兜底（PNG 渲染导出已随 v1.2.85 仓库瘦身移出，可由 SVG 重建，见 §12）。
 
 ### 7.5 无 UI 变更时的迭代要求
 
@@ -676,7 +676,7 @@ grep -n "rubric" docs/opc/02-design.md
 | 键盘焦点可见/ARIA | §3.8 | grep `ARIA`、`键盘`、`focus` |
 | Nielsen 10 走查 | §5 十项 + 抽样记录 | 数 10 行；有发现/处理 |
 | 五维 rubric，≥4 才提交 | §6（锚点/门槛/模板/本轮 4.2） | grep `rubric`、`≥4`、五维名 |
-| ≥1 轮「渲染→检查→修正」+ 记录方式 | §7（协议 + 本轮真实 R1/R2/R3） | 看迭代表与 `design-quality-gate-r1.png` |
+| ≥1 轮「渲染→检查→修正」+ 记录方式 | §7（协议 + 本轮真实 R1/R2/R3） | 看 §7.4 迭代表（R1/R2 渲染证据 PNG 已随 v1.2.85 移出仓库，见 §12） |
 | 升级后的交付模板 | §8 | 模板含调研/tokens/状态矩阵/响应式/A11y/迭代/评分 |
 | 给 pipeline.js + 02-design.md 的可执行条款 | §9（含关键词与 grep） | 直接粘贴可用；关键词可断言 |
 | 质量门示意图（中文可读） | [design/design-quality-gate.svg](design-quality-gate.svg) + PNG 渲染 | 浏览器打开；中文正常 |
@@ -694,7 +694,7 @@ grep -n "rubric" docs/opc/02-design.md
 | 4 | **提示词变长导致模型忽略关键检查点** | 设计质量条款失效 | 关键词前置、短句分条、selftest 断言 §9.1 关键词；必要时压缩为 MUST 10 条 | Lead/开发 |
 | 5 | **模板变重拖慢小需求** | 团队抵触、形式化 | 提供 §3.10 MUST 最小集；小需求可复用既有来源但需记录 | Lead |
 | 6 | **无网络时调研受限** | 来源缺失、方案依据不足 | 标 `blocked` + 写缺口与影响；不伪造；可先用既有/内网来源并标注 | UI/Lead |
-| 7 | **SVG 中文依赖系统字体** | 部分环境显示方框 | 字体栈含 PingFang/YaHei/Noto；同时输出 PNG 渲染兜底（`design-quality-gate.png`） | UI |
+| 7 | **SVG 中文依赖系统字体** | 部分环境显示方框 | 字体栈含 PingFang/YaHei/Noto；同时输出 PNG 渲染兜底（PNG 导出已随 v1.2.85 移出仓库，可由 SVG 重建，见 §12） | UI |
 | 8 | **迭代记录可能流于形式** | 渲染发现问题但未真改 | 记录必须含证据路径与复评分；acceptance 抽查前后差异 | acceptance |
 | 9 | **本轮无 UI 变更**，质量标准缺少真实页面验证 | 标准可能过于理想 | 本轮以 meta 交付 + v1.2.72 抽样走查验证；下一轮真实 UI 变更时复评并校准 rubric | Owner/Lead |
 
@@ -706,12 +706,10 @@ grep -n "rubric" docs/opc/02-design.md
 |---|---|
 | `docs/pipeline/design.md` | 本设计说明（标准、rubric、模板、条款） |
 | `docs/pipeline/design/design-quality-gate.svg` | 质量门示意图（1280×960，中文可读，含三态判定/评分卡/证据链） |
-| `docs/pipeline/design/design-quality-gate.png` | 最终渲染（3022×2267，@170dpi，Noto Sans SC） |
-| `docs/pipeline/design/design-quality-gate-r1.png` | 迭代 R1 证据（修正前） |
-| `docs/pipeline/design/design-quality-gate-r2.png` | 迭代 R2 证据（修正中） |
 | `docs/pipeline/design/archive-v1.2.72-seven-stage-design.md` | 上一轮（七阶段双复核 UI）设计说明归档 |
 | `docs/pipeline/design/seven-stage-*.svg` | 上一轮高保真稿（保留，供新模板示例） |
 
+> **仓库瘦身（v1.2.85）**：最终稿与 R1/R2 迭代证据的 PNG 渲染导出（`design-quality-gate.png` / `-r1.png` / `-r2.png`）已移出仓库，仅保留 SVG 源；重建方式见下方命令。
 > 渲染环境：Node `sharp`（librsvg）+ Noto Sans SC；截图见上表。回归方式：用同一命令重建 PNG；或直接用浏览器打开 SVG 检查。
 
 ---

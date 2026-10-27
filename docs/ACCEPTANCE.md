@@ -173,7 +173,7 @@
 
 > 本轮**只改客户端**（`client.js` 渲染 + CSS + i18n），把工作台重组为「**现在 / 项目 / 交付**」三区 + hero 当前阶段卡 + 5 张可折叠交付卡 + 需求摘要化；**无 Host/数据/依赖改动**。
 > 复测前：重启 Harness（可选，确保 Host 为最新）→ **重建客户端 bundle**（client.js 有改动）→ 强制刷新页面。准备一个有需求/流水线数据的工作区（用于 hero、需求摘要与折叠状态），另准备无项目/无待办工作区（空态）。
-> 对照设计稿：`docs/proposals/workbench-redesign/mockups/option-a.png`（before/after 对比）与 `docs/pipeline/design.md`；允许 design.md 记录在案的微调（配色近似值、3–4px 色条、字号 ±1px）。
+> 对照设计稿：`docs/proposals/workbench-redesign/mockups/option-a.svg`（before/after 对比）与 `docs/pipeline/design.md`；允许 design.md 记录在案的微调（配色近似值、3–4px 色条、字号 ±1px）。
 
 - [ ] **三区分层**：1440×1024 打开工作台，从上到下依次为「**现在** → **项目** → **交付**」；每区有左侧 3–4px 类目色条 + 图标 + 13px 半粗标题 + 右侧计数/操作链接。现在区置顶并含 hero；项目区含「项目状态/进度、团队与指派、需求与调整」三卡（两列，需求摘要全宽）；交付区含全宽项目流程（7 步）+ 设计稿/验收/交付前体检/本轮变更/运行中 5 张紧凑折叠行。三区顺序与归属不可乱。
 - [ ] **空态与降级**：无待办时现在区不占位或仅轻提示（不空白堆卡）；无项目时显示开工空态而非假 hero；不靠颜色表意（分区名文字与图标同时存在）。截图或 DOM 核对并保存证据。
@@ -183,7 +183,7 @@
 - [ ] **展开全部 / 收起全部**：交付区头部一键切换 5 行；数据为 0 时显示「无/0」不报错、不隐藏入口；折叠头触控命中 ≥44px；折叠/展开不刷新页面、不丢滚动位置（或仅轻微回顶），变化即时可见。
 - [ ] **失败自动展开与红点**：将某验收项置 fail（fail>0）→ 验收折叠行默认自动展开并显示红点/错误色 + 失败计数/文字；交付前体检存在 fail/阻断（如变更未审、发布记录缺失）→ 体检行同样自动展开 + 红点；Owner 可手动收起，收起后红点/失败计数仍保留；fail 清零/问题修复后恢复默认收起且红点消失；红点同时有文字/计数，不只靠颜色。
 - [ ] **视觉规范**：内容区背景浅灰蓝（近 #F6F8FB token）；白卡 + 1px 边框 + 轻阴影 `0 1px 2px` + 圆角 12 + 内边距 16/20；分区头色条 3–4px + 图标 + 13px 半粗标题；卡片标题 **12px 半粗、正常大小写**（不得残留 9.5–10.5px 全大写）；主要数字 15–16px、正文 12–13px、次要 11px；间距 4/8 体系（分区 16、卡间 12）；对比度：正文/次要/链接/状态文字 ≥4.5:1、非文本（色条/边框/圆点）≥3:1；hover/focus 可见；状态 pill 柔和底色 + 文字。
-- [ ] **与 option-a 基准一致**：逐区对照 `docs/proposals/workbench-redesign/mockups/option-a.png`：分区头、hero、项目区三卡、交付区 7 步 + 5 折叠行、底部「默认收起/展开全部」提示；与 before.png 对比 5 个痛点（同质卡/字号小/无分组/主次同权/滚动长）均已改善；design.md 记录本轮设计（三区 IA、关键状态、tokens/字号/间距/对比度、折叠状态矩阵、响应式、无障碍、五维自评与迭代记录）；设计自评每维 ≥4、must 0 失败；微调项已列明理由。
+- [ ] **与 option-a 基准一致**：逐区对照 `docs/proposals/workbench-redesign/mockups/option-a.svg`：分区头、hero、项目区三卡、交付区 7 步 + 5 折叠行、底部「默认收起/展开全部」提示；与 before.svg 对比 5 个痛点（同质卡/字号小/无分组/主次同权/滚动长）均已改善；design.md 记录本轮设计（三区 IA、关键状态、tokens/字号/间距/对比度、折叠状态矩阵、响应式、无障碍、五维自评与迭代记录）；设计自评每维 ≥4、must 0 失败；微调项已列明理由。
 - [ ] **i18n 中英文完整**：切 English/中文 → 三区标题/副说明、hero 标签与按钮、折叠卡名称/计数/展开全部/收起全部、需求摘要与四个操作、空态/失败提示均有正确翻译，无 key 名/undefined/残留中文硬编码（专有名词除外）；新增约 18–24 个 `workbench.*` 键在 `locale/zh.json` 与 `locale/en.json` 同批存在且集合一致；既有 `workbench.assign.*`（≈122）无删除/重命名，指派器卡片/抽屉/状态卡不回归。
 - [ ] **无障碍**：折叠头为 button 语义且带 `aria-expanded`/`aria-controls`，展开/收起同步；分区为 section + `aria-labelledby`；hero 主操作为真实按钮；Tab 顺序与视觉一致、所有可操作元素可键盘到达、焦点环可见；折叠头/图标按钮/主操作触控命中 ≥44px；`prefers-reduced-motion: reduce` 下折叠/hero 动效降级为直接切换；状态与失败提示同时有颜色+文字；展开后焦点不丢、不跳页首。
 - [ ] **响应式**：视口 ≤700px 时三区/项目区单列、交付折叠行单列、hero 按钮换行、无横向溢出（`document.documentElement.scrollWidth <= clientWidth + 1`）；360×800 / 768×1024 / 1280×800 三档复测：无横向溢出、长标题/计数/chips 换行或截断不撑破、hero 主操作一次点击可达；桌面 1440 项目区两列、内容 max-width 1080；浏览器 200% zoom 下关键按钮可操作不重叠。
@@ -194,7 +194,7 @@
 ## 批次 14 · 工作台 UI 修正（v1.2.77）
 
 > 本轮为**纯客户端修正**（`client.js` +68/−20）：① 长 tooltip 溢出（摘要/修订行的原生 `title` 改为 ≤80 字摘要；摘要 `white-space`/`word-break`/`overflow-wrap` + 2 行 clamp；容器 `min-width:0`）；② 项目区宽屏 3 列对齐效果图（≥1024px 状态/团队/需求同一行，≤1023 两列、≤700 单列；需求卡宽屏不再强制跨全宽）；③ 需求修订默认折叠「修订记录 (N)」+ 视觉细化（底色更明显、卡片边框/阴影/标题层级）。
-> 复测前：重启 Harness → **重建客户端 bundle**（client.js 有改动）→ 强制刷新。对照 `docs/proposals/workbench-redesign/mockups/option-a.png`；同时回归批次 13 的 8 项 GUI（三区/hero/折叠/自动展开/视觉/option-a/无障碍/响应式）。
+> 复测前：重启 Harness → **重建客户端 bundle**（client.js 有改动）→ 强制刷新。对照 `docs/proposals/workbench-redesign/mockups/option-a.svg`；同时回归批次 13 的 8 项 GUI（三区/hero/折叠/自动展开/视觉/option-a/无障碍/响应式）。
 
 - [ ] **长 tooltip 已修**：悬停「需求与调整」摘要 → 原生 tooltip 只显示 **≤80 字**摘要文本（不再是整段 detail）；悬停需求修订行 → tooltip ≤80 字（标题/摘要），不再出现超长单行提示；`document.body.innerText`/DOM 不出现整段 detail 全文区块（B1-A 口径仍成立）。
 - [ ] **摘要换行不溢出**：摘要长文本在 **2 行内**正常换行（`white-space: normal` + `word-break` + `overflow-wrap` 生效），长英文/URL/连续字符不撑破卡片；容器 `min-width:0`，无文字越过卡片边界。
@@ -210,7 +210,7 @@
 ## 批次 15 · 交付区取消折叠（v1.2.78）
 
 > 本轮为**纯客户端修正**（`client.js` +10/−182）：按 Owner「不要折叠」的要求，**彻底取消交付区折叠**——移除 fold state/handlers/JSX/aria、「展开全部/收起全部」按钮、8 个 `workbench.fold.*` i18n 键与全部 fold CSS；交付区改为 `.ds-wb-delivery-grid` **直接渲染 5 张原卡片**（设计稿/验收/交付前体检/本轮变更/运行中），**≥1024px 两列、≤1023px 单列**；三区/hero/需求摘要/项目区三列保留。
-> 复测前：重启 Harness → **重建客户端 bundle**（client.js 有改动）→ 强制刷新。对照 `docs/proposals/workbench-redesign/mockups/option-a.png`；同时回归批次 13/14 的保留项。
+> 复测前：重启 Harness → **重建客户端 bundle**（client.js 有改动）→ 强制刷新。对照 `docs/proposals/workbench-redesign/mockups/option-a.svg`；同时回归批次 13/14 的保留项。
 > 说明：v1.2.76 的折叠相关验收项（`b1c04ed3fb` 折叠、`576044e996` 自动展开）随「取消折叠」作废，不再复测；本批 3 条新项覆盖新交互。
 
 - [ ] **无折叠交互**：交付区**不存在**「展开全部 / 收起全部」按钮、折叠行、chevron、`aria-expanded` 折叠逻辑；页面无「展开/收起」文案；原 `.ds-wb-fold*` 样式已移除（静态 `qa-static-v1278` 断言）。
@@ -227,7 +227,7 @@
 ## 批次 16 · 工作台 UI 全面重构：指挥舱（v1.2.79）
 
 > 本轮为**纯客户端重构**（`client.js` +839/−74，CSS ≈33KB + JSX/i18n ≈12KB）：页面头重做（eyebrow + 30px display + 上下文 chips + 动作组）、深色渐变 hero（阶段/状态/7 段 rail/环形进度/44px 主次 CTA/review note/门禁）、Now 告警卡、项目区三卡（大数字进度）、交付区 7 步连接线时间轴 + 5 卡 bento（第 5 卡全宽）、统一设计 tokens、外壳 CSS 轻量统一。**不改 Host/依赖/数据，保留全部原功能。**
-> 复测前：重启 Harness → **重建客户端 bundle**（client.js 有改动）→ 强制刷新（建议无缓存）。对照效果图：`docs/pipeline/design/workbench-v1279-overview-light-1440.png`、`workbench-v1279-overview-dark-1440.png`、`workbench-v1279-full-light-1440.png`、`workbench-v1279-mobile-light-390.png`。同时回归批次 13–15 的保留项（三区/hero 三态/需求摘要/项目区/指派器/验收/交付/流水线/变更审阅/运行中）。
+> 复测前：重启 Harness → **重建客户端 bundle**（client.js 有改动）→ 强制刷新（建议无缓存）。对照效果图：`docs/pipeline/design/workbench-v1279-overview-light-1440.svg`、`workbench-v1279-overview-dark-1440.svg`、`workbench-v1279-full-light-1440.svg`、`workbench-v1279-mobile-light-390.svg`。同时回归批次 13–15 的保留项（三区/hero 三态/需求摘要/项目区/指派器/验收/交付/流水线/变更审阅/运行中）。
 
 - [ ] **首屏 hero**：1440×900 打开工作台，**不滚动**即可看到页面头（工作台 30px + 轮次/快速模式/进度 chips + 动作组）与深色 hero（阶段名、状态 pill、摘要、负责角色、7 段 rail、环形 4/7、通过/打回或启动并派发）；hero 不折叠；Now 区告警/空态紧随其后。
 - [ ] **hero 功能不回归**：review 阶段点「通过」→ 进入下一阶段；点「打回」→ 阶段 failed 并可重启；task 阶段点「启动并派发」→ 阶段 active 并收到角色提示；review note 输入后提交能带上备注；「查看复核报告 / 查看流水线」可打开；打回/通过按钮在 busy 时禁用。
@@ -297,6 +297,17 @@
 - [ ] **回归与视觉**：通过/打回/启动派发/review note/需求四操作/验收/交付/任务/预览分享无回归；360/768/1440 无横向溢出；浅/深主题可读；打包交付不再导致工作台跳回需求录入（v1.2.83 同时包含该热修）。
 - [ ] **自动化全绿**：`npm run check`、`npm run check:json`、`npm test`（host-smoke 34/34）以及 `.dsh/tmp/qa-static-v1283.mjs`（STATIC PASS）均 exit 0。
 
+## 批次 21 · 仓库与包瘦身：移除生成位图、npm 包排除 node_modules（v1.2.85）
+
+> 本轮**只做仓库/打包清理**，无运行时改动：根 `package.json` 发布白名单排除嵌套 `node_modules`；移除 `docs/` 下 29 张生成的位图（PNG）与对应的过期链接，保留可编辑的 SVG 源与 README 展示截图；`.gitignore` 阻止生成位图回灌。无需重启 Harness、无需重建 bundle。
+
+- [ ] **npm 包不含 node_modules**：根目录执行 `npm pack --dry-run`（`--cache` 指向可写目录）→ 文件清单中 `node_modules` 条目为 **0**；tarball ≈ **0.57 MB**、unpacked ≈ **2.51 MB**（清理前为 1.54 MB / 6.58 MB、399 文件）。发布白名单末尾含 `"!**/node_modules/**"`。
+- [ ] **仓库体积下降**：`git ls-files | xargs du -bc` 统计的已跟踪字节数由 **~18.6 MB 降至 ~4.9 MB**；`docs/pipeline/design/` 与 `docs/proposals/` 下不再跟踪 PNG（`git ls-files '*.png'` 只剩 `docs/1.png`–`docs/6.png`）；`find docs -name '*.png'` 同样只剩 6 张 README 展示截图。
+- [ ] **SVG 源保留**：被移除位图对应的可编辑 SVG 仍在仓库（如 `docs/pipeline/design/design-gate-*.svg`、`docs/proposals/**/mockups/*.svg`、`design-quality-gate.svg`、`workbench-v1279-*.svg`），可用浏览器直接查看；`design-quality-gate` R1/R2 迭代 PNG 移出后，归档文档 §7.4/§12 已注明「已移出、可由 SVG 重建」。
+- [ ] **文档链接无新增死链**：`docs/` 与根 README 中原指向 `*.png` 的 98 处引用已改为 `*.svg`；用 Markdown 相对链接逐条核对（或脚本扫描）→ 新增死链 **0**，被引用文件均存在；「png 文字标签但链接指向 svg」之类的重复过期标签已清理。
+- [ ] **生成位图不会回灌**：`.gitignore` 含 `docs/pipeline/design/*.png`、`docs/proposals/mockups/*.png`、`docs/proposals/workbench-redesign/mockups/*.png`；用 `sharp` 重新导出 PNG 后 `git status` 不出现未跟踪位图。
+- [ ] **无功能回归**：`npm run check`、`npm run check:json`、`npm test` 全部 exit 0；插件版本保持 **1.2.83**（无运行时改动），根 `package.json`/CHANGELOG 为 **1.2.85**；`git diff` 仅含文档、`.gitignore`、`package.json`、CHANGELOG，不含 JS/依赖/数据文件。
+
 ## 已知限制（不是缺陷）
 
 - **预览分享**：只改写 HTML；前端在 JS 里拼接的绝对路径需要 dev server 配置 `base`；公网访问要求预览端口可达（否则用隧道）。
@@ -319,5 +330,5 @@
 
 ## 回滚与恢复
 
-- 代码层：`git log --oneline` 查看批次提交（v1.2.23 → v1.2.83），可按批次 revert。
+- 代码层：`git log --oneline` 查看批次提交（v1.2.23 → v1.2.85），可按批次 revert。
 - 数据层：验收清单 `.dsh/acceptance.json`、交付记录 `.dsh/deliveries.json`、证据 `.dsh/evidence/`、运行账本 `.dsh/runs.json`、复测记录 `.dsh/verifications/`、变更审阅 `.dsh/review.json`、**工作台指派 `.dsh/agent-assignments.json`**、审阅标记（浏览器 localStorage）。这些都在 `.dsh/` 下且已被 `.gitignore` 忽略。
