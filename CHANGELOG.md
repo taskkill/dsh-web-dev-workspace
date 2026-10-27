@@ -2,6 +2,37 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.79 — 2026-10-27
+
+### Workbench: full redesign — Command Deck (modern, spacious, high-end)
+
+- The whole Workbench view is rebuilt around a **Command Deck** layout: a sticky
+  page header with an eyebrow, a 30px display title, round/fast-mode/progress
+  chips and a compact action group (refresh, pipeline, team, alerts, close); a
+  dark gradient **hero** carrying the current stage, status pill, summary, owner,
+  a seven-segment stage rail, a ring progress, the primary/secondary CTAs, the
+  review note and the gate note; a **Now** alert card; a **three-column** project
+  area (status with a large 4/7 metric and progress bar, team & assignments,
+  requirement summary); and a **Delivery** area with a connected seven-step
+  timeline plus five bento cards (the fifth, Running, is a full-width strip with
+  four stats).
+- New visual system, all theme-aware via `--dsw-alias-*` + `color-mix`: 11–30px
+  type scale, 4–32px spacing, 10/14/18px radii, three shadow levels and a 160ms
+  motion token; hero stays on a fixed dark #0b1220 anchor so it works in both
+  light and dark themes. Focus-visible rings, 44px test targets and
+  `prefers-reduced-motion` fallbacks are included.
+- Responsive: project area 3 columns ≥1280px, 2 columns 768–1279px (requirement
+  full width), 1 column ≤700px; delivery cards 2 columns ≥1024px, 1 column
+  ≤1023px; the hero moves to a single column ≤1023px and the page header becomes
+  static ≤700px. No horizontal overflow from 360px to 1440px.
+- The application shell gets a light CSS-only alignment (48px header, calmer
+  sidebar surface, pane head, active tab). No interaction, shortcut or route
+  changes. All existing handlers/data flows are preserved (approve/reject,
+  start & dispatch, review note, assigner, requirement append/edit/change,
+  acceptance/preflight/review/running, alerts, refresh, close, compact).
+- Client-only change (no host modules, dependencies or data changes).
+  `docs/ACCEPTANCE.md` gains batch 16 with the visual retest steps.
+
 ## 1.2.78 — 2026-10-27
 
 ### Workbench: the Delivery cards are shown directly, no folding

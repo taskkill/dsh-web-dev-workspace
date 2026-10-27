@@ -1,85 +1,90 @@
-# 工程调研 · 工作台 Agent 指派器 MVP（v1.2.75，第 3 轮）
+# 工程调研与借鉴决策（v1.2.79 工作台 UI 全面重构）
 
-- 日期：2026-10-27（Asia/Shanghai）；关联需求：[docs/pipeline/requirements.md](requirements.md)；阶段：development（第 3 轮）
-- 功能：工作台「团队与指派」卡 + 指派抽屉 + 状态列表 + 结构化派单（`.dsh/agent-assignments.json`、4 个 owner-only 路由 op）
-- **结论：N/A（无第三方代码/依赖复用）** —— 本轮为**本地状态模块 + 本地 UI**：没有陌生的第三方库/协议需要选型，未检索、未复制任何第三方代码或素材，也未新增/替换运行时依赖。按 [docs/opc/03-engineering.md](../opc/03-engineering.md) §5 记录 N/A 理由、借鉴的**内部模式**、可靠/安全/性能自检与证据；如后续出现陌生第三方能力，必须按该手册 §5 重新执行开源调研与许可证检查。
+- 角色：全栈开发；日期：2026-10-27（Asia/Shanghai）；上游：[requirements.md](requirements.md) + [design.md](design.md)。
+- 范围：`dsh-web-filebrowser-plugin/client.js` 的 JSX/CSS/i18n + 版本/文档；**不改 Host、路由、模型工具、`.dsh` 数据**。
+- 结论：不引入任何第三方组件库/图标库/字体/依赖；借鉴 3 个活跃开源项目的**模式**（可访问性、token 分层、图标规范），不复制代码。零依赖、纯内联 SVG、纯 CSS 实现。
 
-## 1. 为什么记 N/A（判定依据）
+---
 
-| 判定项 | 结论 | 依据 |
+## 1. 检索方式与时间
+
+- 检索于 2026-10-27 通过 GitHub REST API（`https://api.github.com/repos/<owner>/<repo>`）读取 stars、license、pushed_at、archived，并读取 `LICENSE` 原文确认许可证。
+- 同时沿用 product 阶段 2026-10-27 的 6 个设计/标准来源（[requirements.md §7](requirements.md)）；不重复抓取、不伪造 star 数或日期。
+- 检索目的：确认「是否需要引入现成组件库」以及「可借鉴哪些模式」，并给出许可证矩阵，避免 GPL/AGPL/无许可证代码进入交付物。
+
+## 2. 候选项目与许可证矩阵
+
+| # | 项目 | GitHub | 最新 commit（2026-10-27） | Stars（2026-10-27） | 许可证 | 最近推送 | 活跃/归档 | 与本项目关系 | 决策 |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | shadcn/ui | https://github.com/shadcn-ui/ui | `8f04138777c1` | 126,649 | **MIT** | 2026-10-26 | 活跃 | 可复制组件源码的「组件即代码」库；强调可访问默认值 | **只借鉴模式，不复制代码**：卡/按钮状态、focus-visible、token 组织 |
+| 2 | Radix Primitives | https://github.com/radix-ui/primitives | `eb3a2b709129` | 19,435 | **MIT** | 2026-10-14 | 活跃 | 无样式可访问原语（dialog/menu/tooltip 的焦点与 ARIA） | **只借鉴模式，不引入依赖**：焦点环、键盘语义、层叠顺序 |
+| 3 | Carbon Design System | https://github.com/carbon-design-system/carbon | `d8d5cf803fc4` | 9,582 | **Apache-2.0** | 2026-10-27 | 活跃 | IBM 企业级设计系统（token、栅格、字体层级） | **只借鉴模式，不复制代码/样式**：间距 4/8 基数、字号阶、表面分层 |
+| 4 | Lucide Icons | https://github.com/lucide-icons/lucide | `7f1f31d71cc1` | 25,325 | **ISC**（LICENSE 原文确认；GitHub API 显示 NOASSERTION 为识别问题） | 2026-10-27 | 活跃 | 一致的线性图标工具包 | **不引入依赖，不复制图标**：沿用工作区既有内联 SVG 与 16px 线宽规范 |
+| 5 | Tailwind CSS | https://github.com/tailwindlabs/tailwindcss | `8cc0551b1217` | 98,130 | **MIT** | 2026-10-19 | 活跃 | 原子化 CSS 框架 | **不采用**：项目已有手写 CSS 体系，引入会与现有 `ds-*`/token 冲突 |
+
+### 2.1 许可证允许/禁止
+
+| 许可证 | 允许复制/修改/分发 | 义务 | 本项目使用 |
+|---|---|---|---|
+| MIT（shadcn/ui、Radix、Tailwind） | 是 | 保留版权与许可声明 | 未复制代码；若未来复制须在 THIRD_PARTY 中声明 |
+| Apache-2.0（Carbon） | 是 | 保留声明、NOTICE、专利条款 | 未复制代码/样式 |
+| ISC（Lucide） | 是 | 保留版权与许可声明 | 未复制图标 |
+| GPL-2.0/3.0、AGPL-3.0 | 复制会传染到本项目 | 源码开放/网络服务开放 | **未筛选、未使用** |
+| 无许可证 | 默认保留所有权利 | 不可复制 | **未使用** |
+
+> 本轮交付物中**没有**任何第三方源码、样式表、图标文件、字体文件或设计素材；`git diff` 可复核（仅 `client.js` + 版本/文档/效果图）。
+
+## 3. 借鉴模式与落点
+
+| 模式 | 来源 | 落地方式 |
 |---|---|---|
-| 是否遇到不熟悉的功能/库/协议 | **否（N/A）** | 实现对象是团队自有的「工作台 + `.dsh` 本地 JSON 状态」模式；存储、路由、面板组件均为本仓库既有能力 |
-| 是否新增/替换第三方依赖 | **否** | `dsh-web-filebrowser-plugin/package.json` 的 `dependencies` 未变（仅 `files` 白名单补充 `assignments.js`）；根 `package.json` 仅 `scripts.check` 增加一条 `node --check` |
-| 是否需要 GitHub ≥2 活跃候选对比 | **N/A** | 没有「选哪个开源库/实现」的决策点；`node:fs`/`node:crypto`/`node:path` 为 Node 标准库，不属于第三方依赖 |
-| 是否复制第三方代码/素材 | **否** | 只参考本仓库既有模块的**写法**（原子写、锁、错误码风格），代码为重新实现；未引入第三方图标/字体/文案 |
-| 是否需要许可证记录/署名 | **N/A（无第三方代码）** | 见 §4：无外部代码/素材需署名；仓库自身代码为 MIT（根 LICENSE） |
+| 焦点可见：`:focus-visible` 2px 环 + offset | Radix / shadcn/ui | `.ds-wb-v1279 ...:focus-visible { outline: 2px solid brand; outline-offset: 2px }`；hero 内用 #93C5FD 保证深色对比 |
+| 语义化组件：button type、aria-label、aria-current、aria-labelledby | Radix / shadcn/ui | 页面头 h1 + 三 section；rail 为 `<ol>` + sr-only 状态；时间轴 `<ol>`；icon 按钮均有 aria-label |
+| token 分层：页面底/表面/hover/active/border 分级 | Carbon / Geist | `--wb-canvas` / `--wb-surface` / `--wb-surface-2` / `--wb-line` / `--wb-line-strong`，避免散落色值 |
+| 4/8 间距基数 + 字号阶 ≤5 档 | Carbon | 4/8/12/16/20/24/32；11/12/13/14/16/20/30（正文 12–13 为主） |
+| 图标统一 16px、1.6px 线宽、aria-hidden | Lucide | 继续使用工作区已有内联 SVG（Refresh/Pipeline/Task/Close 等），不新增图标依赖 |
+| 单层网格 + 三断点 | Geist Grid | Project/Delivery 各自单层 grid；1280/1024/700 断点 |
+| 不自造动画框架 | Radix（reduce-motion 优先） | 仅 CSS transition 160ms；`prefers-reduced-motion` 全关 |
 
-## 2. 候选对比（≥2 个活跃开源项目）
+## 4. 安全审查
 
-**不适用**：本轮没有需要选型的第三方能力。`assignmentSave/Update/Delete` 的持久化复用团队已定的「`.dsh` 单 JSON + temp+rename 原子写 + per-root 串行锁」模式；面板复用现有 `ds-wb-*` 组件与 `--dsw-alias-*` token。引入 `write-file-atomic` 等库会违反「不新增运行时依赖」约束，且现有模式已被 acceptance/pipeline 等模块验证。
-
-## 3. 借鉴决策（内部模式 + 需求阶段已记录的公开来源）
-
-> 来源 URL 与访问日期沿用 [requirements.md](requirements.md) §7 的真实调研（2026-10-27），本轮不重复抓取、不新增未注明来源。
-
-| 借鉴点 | 来源 | 决策 | 理由 | 落点 |
-|---|---|---|---|---|
-| 原子写（temp 文件 + `rename` 替换） | **内部模式** `acceptance.js` / `pipeline.js`（团队既定；其原则亦见需求 §7 #7 Node.js fs 文档） | **采用** | 防半写、写失败保留旧文件；无需新增依赖 | `assignments.js` `writeAssignments` |
-| per-root 串行锁（读-改-写排队） | **内部模式** `acceptance.js` / `pipeline.js` | **采用** | 防并发丢更新/重复 id；需求 §7 #7 指出同文件并发修改需串行化 | `assignments.js` `withMutationLock` |
-| 面板/卡片/抽屉视觉与组件 | **内部模式** 现有 `ds-wb-*`、`ds-btn`、`ds-pipe-input`、`--dsw-alias-*` + 本轮设计稿 `docs/pipeline/design/assign-*.svg` | **采用** | 不新增设计系统/依赖；与现有工作台一致 | `client.js` `.ds-wb-assign*` |
-| HITL：人类只在派发与完成确认点介入、审批可审计 | 需求 §7 #1（Microsoft Learn · human-in-the-loop workflows，访问 2026-10-27） | **采用** | Owner 只做「派发 + 通过/打回」，状态变更 append history，打回必填原因 | 状态机 + `history` |
-| 状态可见与即时反馈（五段进度、状态 pill、toast、催办） | 需求 §7 #5（NN/g · Progress Indicators，访问 2026-10-27） | **采用** | 异步任务需让 Owner 知道「走到哪一步」 | 卡片/状态列表/催办 |
-| 单一 assignee + 人类保留最终责任 | 需求 §7 #3（Linear Docs · Assign and delegate issues，访问 2026-10-27） | **采用** | 避免「谁在做」歧义；Owner 仍是双复核最终确认人 | `assignedTo` 三选一互斥 |
-| 对话框标签、焦点入/出、Tab 循环、Esc 关闭 | 需求 §7 #6（MDN · ARIA `dialog` role，访问 2026-10-27） | **采用** | 抽屉/底部面板的键盘与焦点规范 | `role=dialog aria-modal` + 焦点管理 |
-| 多 assignee（GitHub 最多 10 个） | 需求 §7 #4（GitHub Docs · assigning issues，访问 2026-10-27，仅对比） | **不采用** | 会让原生团队工具执行与状态追踪歧义 | — |
-| 自动超时失败/自动重试 | 需求 §7 #1/#5 延伸 | **不采用** | Agent 可能长时间运行；自动改状态会误判 | 仅等待提示 + 催办 |
-| 第三方原子写依赖（write-file-atomic 等） | 需求 §7 #7 延伸 | **不采用** | 需求禁新增运行时依赖；自建 temp+rename 足够 | — |
-
-## 4. 出处与许可证说明
-
-- **无第三方代码复制**：`assignments.js` 与 `client.js` 新增部分全部为本轮新写代码；未复制任何外部项目源码、文案、图标或字体，因此无版权头/NOTICE/署名义务。
-- **来源 URL + commit/版本：不适用**（本轮未引用任何第三方仓库/代码，无外部 commit 或 release 需要记录；内部参考模块为同仓库 HEAD 版本，无需外部出处）。
-- **内部代码参考**：`acceptance.js`、`pipeline.js` 与本仓库同许可（MIT，见仓库 `LICENSE`），本轮参考的是模块结构/错误码/锁的**模式**，不是第三方代码；无需外部 attribution。
-- **内联 SVG 图标**：抽屉关闭按钮复用仓库既有 `CloseIcon`（项目自有组件），未引入外部图标库。
-- 若后续需要引入第三方代码/依赖，必须按 [03-engineering.md](../opc/03-engineering.md) §5.3 用 SPDX 标识记录许可证、保留版权与许可声明（Apache-2.0 另加 NOTICE），并经 Lead 确认；GPL/AGPL/无许可证禁止复制代码。
-
-## 5. 可靠 / 安全 / 性能自检
-
-| 检查项 | 结果与证据 |
+| 项 | 结论 |
 |---|---|
-| 关键路径测试与错误处理 | 有；稳定错误码 `bad-root/bad-request/bad-id/bad-transition/not-found/full/too-large/corrupt/ssh-unsupported`；UI 就地错误、不丢输入；打回空 note 双重拒绝 |
-| 并发 | per-root 串行锁：10 次并发 `assignmentSave` → 10 条记录、文件可解析（`dev-check` 与 QA host-smoke 均覆盖） |
-| 原子写 / 损坏恢复 | temp+rename；写失败保留旧文件；JSON 损坏返回 `corrupt`（含路径）且**不静默清空/覆盖**（哈希不变） |
-| 上限保护 | ≤100 条（`full`）、单文件 ≤1MB（`too-large`）、history ≤50、字段长度与条数上限全部在 Host 校验 |
-| 输入校验 | `assignedTo` 三选一互斥 + 角色白名单；`stageId` 白名单且 approval/release 拒绝；priority 白名单；路径 containment/符号链接防护 |
-| 安全 | 面板 op 仅 owner 路由、**不注册模型工具**（Agent 不能自派）；不写 `.dsh/pipeline.json`（生命周期内哈希不变）；无密钥/真实数据写入 |
-| 无新增依赖 | `dependencies` 未变；无第三方代码/素材；客户端纯增量 CSS/JS |
-| UI 间距一致性 | 卡片成员 chips 网格与抽屉 chips 间距统一为 **8px**（PM 复核发现原实现为 7/6px，偏离 4/8px 体系；已改为 8px，不引发布局问题） |
-| 性能预算与测量 | 本地 JSON ≤100 条/≤1MB，单次读写毫秒级；工作台轮询每 3s 增加 1 次本地 `assignmentList`（单文件读取），无可感知影响；无新构建产物/重型依赖，抽屉动画只动 `transform/opacity` 且支持 `prefers-reduced-motion` |
-| 回归 | `npm run check`、`npm run check:json`、`npm test`（QA 31/31，含 13 条 assignments 用例）、`pipeline-selftest` 38/38、`review-selftest` 22/22、`.dsh/tmp/dev-check-assign.mjs` 18/18 全绿 |
+| 新增依赖 | **0**（package.json dependencies 未变；未新增 devDependencies） |
+| 外部资源 | 0（不引第三方字体/CDN/图片；效果图为仓库内 SVG/PNG，不参与运行时） |
+| XSS | 未新增 `dangerouslySetInnerHTML`；全部文本走 React 文本节点；`title` 只放短文本（沿用 v1.2.77 教训，≤80 字） |
+| 用户输入 | review note 为受控 input，仅存 React state；需求文本仍按现有 API 传输 |
+| 敏感信息 | diff 中无 token/密码/内网地址；未改 Host 路由与鉴权 |
+| 供应链 | 无新增包，因此无新增供应链风险；`npm audit` 无新增项 |
+| CSP / 内联样式 | 新增 1 处内联 style（进度条 width，字符串百分比，非用户输入）；无内联脚本 |
+| 链接安全 | 新增按钮均 `type="button"`；无新窗口/外链 |
 
-## 6. 来源记录（沿用需求阶段调研，访问日期均为 2026-10-27）
+## 5. 性能审查
 
-- [Microsoft Learn · Design human-in-the-loop workflows](https://learn.microsoft.com/en-us/training/modules/governance-guardrails-operations/4-design-human-workflows) —— 人类在高影响决策点介入、审批显式可审计、串行执行。
-- [NN/g · Progress Indicators Make a Slow System Less Insufferable](https://www.nngroup.com/articles/progress-indicators/) —— 状态可见性、即时反馈、进度指示。
-- [Linear Docs · Assign and delegate issues](https://linear.app/docs/assigning-issues) —— 单一 assignee、可委托给 Agent 但人类保留责任。
-- [MDN · ARIA `dialog` role](https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Roles/dialog_role) —— `role=dialog` + 可访问名称、焦点入/出、Tab 循环。
-- [Node.js Docs · File system](https://nodejs.org/api/fs.html) —— 同文件并发修改需串行化；temp+rename 原子替换。
-- [GitHub Docs · Assigning issues and PRs](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/assigning-issues-and-pull-requests-to-other-github-users) —— 多 assignee 对比参考（本需求不采用）。
-- [Microsoft HAX Toolkit · Guidelines for Human-AI Interaction](https://www.microsoft.com/en-us/haxtoolkit/ai-guidelines/) —— 能力边界、纠错、后果与状态变化提示。
+| 指标 | 变化 | 说明 |
+|---|---|---|
+| `client.js` 体积 | 1,223,438 B → 1,269,012 B（+45.5 KB，+3.7%） | 其中 CSS ≈33 KB、JSX/i18n ≈12 KB；无新增运行时依赖 |
+| 运行时计算 | O(1) 新增 | rail 进度 = done/total；环形 offset = 2πr×(1−p)；每次 render 常数级 |
+| DOM 增量 | hero 侧栏约 +12 节点、rail 7 节点、running 统计 4 节点；无重复列表 | 所有卡片仍复用原数据与 handler，无额外请求 |
+| 渲染/动画 | 仅 `border-color/background/box-shadow/transform/width` | 均为合成/低成本属性；无 requestAnimationFrame、无自动动画 |
+| 网络 | 0 新增请求 | 无字体/图片/第三方脚本；效果图不进运行时 |
+| CSS 选择器 | 全部以 `.ds-wb-page.ds-wb-v1279` 或 `.ds-root` 限定 | 不污染编辑器/终端等其它视图；无 `!important`（除 reduced-motion） |
+| 内存 | 无新 ref/定时器/listener | 状态与副作用保持原样 |
+| 主题切换 | 纯 CSS token/color-mix | 无 JS 重渲染 |
 
-> 以上来源已在 [requirements.md](requirements.md) §7.1 完整记录 URL + 访问日期 + 关键结论；本轮未新增未注明来源，未伪造。
+**目标浏览器**：DSH Web GUI 现代 Chromium（`color-mix` / `backdrop-filter` 可用）。降级：不支持 `color-mix` 时相关装饰属性失效但不影响布局与文字；`backdrop-filter` 失效时页面头仍为 92% 不透明表面。无 IE/旧 Safari 支持承诺（与现有插件一致）。
 
-## 7. 结论
+## 6. 可访问性实现清单
 
-- **工程调研：N/A（理由完整）**；无第三方代码/依赖复用，无许可证或版权风险。
-- 可靠/安全/性能自检通过；无新增运行时依赖、无流水线写入、无模型工具。
-- 证据：`npm run check` / `npm run check:json` / `npm test`（31/31）/ `pipeline-selftest`（38/38）/ `review-selftest`（22/22）/ `dev-check-assign`（18/18）。
-- 后续风险：团队实时成员状态仍以 Harness 团队面板为准（本 MVP 按记录推导）；若下一轮引入第三方库或复制代码，按 §5 重新调研并补许可证记录。
+- 语义：`header` 页面头 + `h1` 工作台 + 三个 `<section aria-labelledby>` + `h2` 区块标题 + hero `h2`；rail `<ol aria-label>`；时间轴 `<ol>`；按钮全部 `type="button"`。
+- 键盘：页面头动作/hero CTA/note/告警/卡片/时间轴顺序与阅读顺序一致；`:focus-visible` 2px 环；Enter/Space 由原生 button 触发。
+- 屏幕阅读器：rail 每步显示阶段名 + `sr-only` 状态；环内有 4/7 文本；所有 icon button 有 `aria-label`；纯装饰 SVG/段条 `aria-hidden`。
+- 对比：浅色正文 17.85/7.58/4.76，深色 16.34/5.84，hero 18.72；详见 [design.md §8.2](design.md)。
+- 动效：`prefers-reduced-motion: reduce` 关闭全部 transition/animation。
+- 触控：hero 主/次 CTA 44px；icon 按钮视觉 32、外层 44；卡内链接行高 ≥24。
 
-## 8. 第 4 轮补充（v1.2.76 · 工作台 UI 重构）
+## 7. 质量门与后续
 
-- **结论：N/A 仍适用**。本轮为纯客户端 UI 重构（`client.js` 三区布局/hero/折叠/摘要/CSS/i18n），未引入第三方库、组件库或模板，未检索/复制外部代码或素材，未新增运行时依赖（`dependencies` 与 HEAD 逐字一致）。
-- 参考来源沿用需求阶段公开资料（NN/g 渐进披露/视觉层级/卡片、W3C 对比度），仅借鉴模式不复制代码；无需署名/NOTICE。
-- 可靠/安全/性能自检：大函数重构后全部既有卡片与事件保留（无删功能）；无 `innerHTML`/`dangerouslySetInnerHTML`（无新增 XSS 面）；折叠默认收起、展开按需渲染；无新增网络/存储调用；`prefers-reduced-motion` 降级；未改 Host/数据格式。
-- 证据：`npm run check`、`npm run check:json`、`npm test`（31/31）、`pipeline-selftest`（38/38）、`review-selftest`（22/22）、`assignments-selftest`（27/27）、`qa-static-v1276`（STATIC PASS）。
+- 回归：`npm run check`（21 模块）、`check:json`、`npm test`（31/31）、pipeline/review/assignments selftest、新增 `qa-static-v1279`。
+- 静态断言将覆盖：页面头/h1/eyebrow、深色 hero 渐变与 ring、rail 7 段、三列/两列/单列断点、delivery 2 列 + 全宽条、44px、focus-visible/reduced-motion、i18n 成对无死键、版本 1.2.79、无新增依赖/无 `dangerouslySetInnerHTML`。
+- 后续可选（不在本轮）：折叠/记忆、主题专项、把工作台拆分为模块；均需另立轮次。

@@ -559,11 +559,29 @@ window.__ModuleLoader__.load({
       'workbench.section.projectHint': '进度 · 团队 · 需求',
       'workbench.section.delivery': '交付',
       'workbench.section.deliveryHint': '流水线 · 设计 · 验收 · 运行',
-      'workbench.hero.currentStage': '第 {n} 关 · 当前阶段',
       'workbench.hero.progress': '{done}/{total} 关已完成',
       'workbench.hero.responsible': '负责：{role}',
       'workbench.hero.gateNote': '通过后进入人工确认；发布仍锁定',
       'workbench.hero.start': '启动并派发',
+      'workbench.head.eyebrow': '工作区 · {project} · 第 {round} 轮',
+      'workbench.head.current': '当前：{stage} · {status}',
+      'workbench.head.ready': '全部阶段已完成 · 可发布或发起新轮变更',
+      'workbench.head.team': '团队',
+      'workbench.head.notify': '提醒',
+      'workbench.zone.nowTitle': '待你处理',
+      'workbench.zone.projectTitle': '项目总览',
+      'workbench.zone.deliveryTitle': '交付详情',
+      'workbench.hero.eyebrow': 'STAGE {n} / {total} · 当前阶段',
+      'workbench.hero.current': '当前第 {n} 关 · {stage}',
+      'workbench.hero.ringLabel': '关已完成',
+      'workbench.hero.remaining': '已通过 {done}/{total} 关 · 本轮预计还需 {left} 个阶段',
+      'workbench.hero.remainingDone': '全部 {total} 关已完成',
+      'workbench.hero.viewReport': '查看复核报告',
+      'workbench.hero.railLabel': '七阶段进度',
+      'workbench.metric.running': '运行中',
+      'workbench.metric.lastRun': '最近一次',
+      'workbench.metric.lastResult': '最近结果',
+      'workbench.metric.lastFailed': '上次失败',
       'workbench.requirement.viewFull': '查看完整需求',
       'workbench.requirement.chips': '第 {round} 轮 · 范围 {scope}',
       'workbench.requirement.summaryHint': '原文仅在「查看完整需求」后展示',
@@ -1760,11 +1778,29 @@ window.__ModuleLoader__.load({
       'workbench.section.projectHint': 'Progress · team · requirements',
       'workbench.section.delivery': 'Delivery',
       'workbench.section.deliveryHint': 'Pipeline · design · acceptance · running',
-      'workbench.hero.currentStage': 'Stage {n} · current',
       'workbench.hero.progress': '{done}/{total} stages done',
       'workbench.hero.responsible': 'Owner: {role}',
       'workbench.hero.gateNote': 'Approval next; release stays locked',
       'workbench.hero.start': 'Start & dispatch',
+      'workbench.head.eyebrow': 'Workspace · {project} · round {round}',
+      'workbench.head.current': 'Now: {stage} · {status}',
+      'workbench.head.ready': 'All stages complete · release or start a change round',
+      'workbench.head.team': 'Team',
+      'workbench.head.notify': 'Alerts',
+      'workbench.zone.nowTitle': 'Needs you',
+      'workbench.zone.projectTitle': 'Project overview',
+      'workbench.zone.deliveryTitle': 'Delivery details',
+      'workbench.hero.eyebrow': 'STAGE {n} / {total} · CURRENT',
+      'workbench.hero.current': 'Stage {n} · {stage}',
+      'workbench.hero.ringLabel': 'stages done',
+      'workbench.hero.remaining': '{done}/{total} stages done · about {left} left this round',
+      'workbench.hero.remainingDone': 'All {total} stages done',
+      'workbench.hero.viewReport': 'View acceptance review',
+      'workbench.hero.railLabel': 'Seven-stage progress',
+      'workbench.metric.running': 'Running',
+      'workbench.metric.lastRun': 'Last run',
+      'workbench.metric.lastResult': 'Result',
+      'workbench.metric.lastFailed': 'Failed',
       'workbench.requirement.viewFull': 'View full requirement',
       'workbench.requirement.chips': 'Round {round} · scope {scope}',
       'workbench.requirement.summaryHint': 'Full text only after “View full requirement”',
@@ -17746,14 +17782,46 @@ ${tail}
                   null,
                   h(
                     'div',
-                    { className: 'ds-wb-progress' },
+                    { className: 'ds-wb-status-metric' },
+                    h('span', { className: 'ds-wb-status-value' }, String(done) + '/' + String(total)),
+                    h('span', { className: 'ds-wb-status-caption' }, t('workbench.hero.ringLabel')),
+                    h('span', { className: 'ds-spacer' }),
+                    current === null
+                      ? h('span', { className: 'ds-wb-status-pill', 'data-status': 'approved' }, t('workbench.completed'))
+                      : current.status === 'active'
+                        ? h('span', { className: 'ds-wb-status-pill', 'data-status': 'active' }, t('workbench.runningStage'))
+                        : current.status === 'review'
+                          ? h('span', { className: 'ds-wb-status-pill', 'data-status': 'review' }, t('workbench.waitingReview'))
+                          : h(
+                              'button',
+                              {
+                                type: 'button',
+                                className: 'ds-btn ds-btn-primary ds-wb-btn ds-wb-start',
+                                title: t('workbench.startHint'),
+                                disabled: pipelineBusy,
+                                onClick: () => void startPipelineStage(current.id),
+                              },
+                              t('workbench.startStage'),
+                            ),
+                  ),
+                  h(
+                    'div',
+                    { className: 'ds-wb-progress-bar', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': total > 0 ? Math.round((done / total) * 100) : 0 },
+                    h('span', {
+                      className: 'ds-wb-progress-fill',
+                      style: { width: String(total > 0 ? Math.round((done / total) * 100) : 0) + '%' },
+                    }),
+                  ),
+                  h(
+                    'div',
+                    { className: 'ds-wb-status-line' },
                     t('workbench.round', { round: String(round) }) + ' · ' +
                       t('workbench.done', { done: String(done), total: String(total) }) +
                       (current === null ? ' · ' + t('workbench.allDone') : ' · ' + t('workbench.current', { stage: stageTitle(current.id) })),
                   ),
                   h(
                     'div',
-                    { className: 'ds-wb-actions' },
+                    { className: 'ds-wb-actions ds-wb-status-actions' },
                     h(
                       'label',
                       { className: 'ds-pipe-fast ds-wb-fast', title: t('pipeline.fastHint') },
@@ -17766,23 +17834,6 @@ ${tail}
                       h('span', null, t('pipeline.fastMode')),
                     ),
                     h('span', { className: 'ds-spacer' }),
-                    current === null
-                      ? h('span', { className: 'ds-wb-status-pill', 'data-status': 'approved' }, t('workbench.completed'))
-                      : current.status === 'active'
-                        ? h('span', { className: 'ds-wb-status-pill', 'data-status': 'active' }, t('workbench.runningStage'))
-                        : current.status === 'review'
-                          ? h('span', { className: 'ds-wb-status-pill', 'data-status': 'review' }, t('workbench.waitingReview'))
-                          : h(
-                              'button',
-                              {
-                                type: 'button',
-                                className: 'ds-btn ds-wb-btn ds-wb-start',
-                                title: t('workbench.startHint'),
-                                disabled: pipelineBusy,
-                                onClick: () => void startPipelineStage(current.id),
-                              },
-                              t('workbench.startStage'),
-                            ),
                     current !== null && current.status === 'active'
                       ? h(
                           'button',
@@ -19137,10 +19188,19 @@ ${tail}
                   ),
                 )
 
+          const lastRunLabel = lastRun === null ? '—' : lastRun.status === 'passed' ? t('tasks.passed') : t('tasks.failed')
           const runningCard = h(
             'div',
-            { className: 'ds-wb-card' },
+            { className: 'ds-wb-card ds-wb-running' },
             h('div', { className: 'ds-wb-card-title' }, t('workbench.running')),
+            h(
+              'div',
+              { className: 'ds-wb-run-stats' },
+              h('div', { className: 'ds-wb-run-stat' }, h('span', { className: 'ds-wb-run-stat-value' }, String(running.length)), h('span', { className: 'ds-wb-run-stat-label' }, t('workbench.metric.running'))),
+              h('div', { className: 'ds-wb-run-stat' }, h('span', { className: 'ds-wb-run-stat-value' }, lastRunLabel), h('span', { className: 'ds-wb-run-stat-label' }, t('workbench.metric.lastResult'))),
+              h('div', { className: 'ds-wb-run-stat' }, h('span', { className: 'ds-wb-run-stat-value' }, lastFailed === null ? '0' : '1'), h('span', { className: 'ds-wb-run-stat-label' }, t('workbench.metric.lastFailed'))),
+              h('div', { className: 'ds-wb-run-stat ds-wb-run-stat-wide' }, h('span', { className: 'ds-wb-run-stat-value' }, lastRun === null ? '—' : lastRun.name), h('span', { className: 'ds-wb-run-stat-label' }, t('workbench.metric.lastRun'))),
+            ),
             running.length === 0
               ? h(
                   'div',
@@ -19189,36 +19249,42 @@ ${tail}
           const heroStatus = heroStage === null ? 'approved' : heroStage.status
           const heroActionable = heroStage !== null && (heroStage.status === 'pending' || heroStage.status === 'failed')
           const nowCount = (reviewStage === null ? 0 : 1) + failedItems.length + issues.length
-          const zoneHead = (zone, icon, title, hint, actions) =>
+          const zoneHead = (zone, kicker, title, hint, actions) =>
             h(
               'div',
-              { className: 'ds-wb-zone-head' },
+              { className: 'ds-wb-zone-head', 'data-zone': zone },
               h('span', { className: 'ds-wb-zone-bar', 'data-zone': zone, 'aria-hidden': 'true' }),
-              h('span', { className: 'ds-wb-zone-icon', 'data-zone': zone, 'aria-hidden': 'true' }, h(icon)),
-              h('h2', { className: 'ds-wb-zone-title', id: 'ds-wb-zone-' + zone + '-title' }, title),
+              h(
+                'div',
+                { className: 'ds-wb-zone-head-main' },
+                h('span', { className: 'ds-wb-zone-kicker' }, kicker),
+                h('h2', { className: 'ds-wb-zone-title', id: 'ds-wb-zone-' + zone + '-title' }, title),
+              ),
               hint.length === 0 ? null : h('span', { className: 'ds-wb-zone-hint' }, hint),
               h('span', { className: 'ds-spacer' }),
               actions === null || actions === undefined ? null : actions,
             )
+          const railDone = total > 0 ? Math.min(total, done) : 0
+          const railLeft = Math.max(0, total - done)
+          const ringR = 34
+          const ringC = 2 * Math.PI * ringR
+          const ringOffset = ringC * (1 - (total > 0 ? Math.min(1, done / total) : 0))
+          const heroStepNumber = heroStage === null ? total : heroIndex + 1
           const heroCard = h(
             'div',
             { className: 'ds-wb-hero', 'data-status': heroStatus, 'data-done': allStagesDone ? 'true' : undefined },
             h(
               'div',
-              { className: 'ds-wb-hero-main' },
-              h(
-                'div',
-                { className: 'ds-wb-hero-eyebrow' },
-                heroStage === null ? t('workbench.hero.progress', { done: String(done), total: String(total) }) : t('workbench.hero.currentStage', { n: String(heroIndex + 1) }),
-              ),
+              { className: 'ds-wb-hero-copy' },
+              h('div', { className: 'ds-wb-hero-eyebrow' }, t('workbench.hero.eyebrow', { n: String(heroStepNumber), total: String(total) })),
               h(
                 'div',
                 { className: 'ds-wb-hero-title-row' },
-                h('h3', { className: 'ds-wb-hero-title' }, heroStage === null ? t('workbench.completed') : stageTitle(heroStage.id)),
-                h('span', { className: 'ds-wb-status-pill', 'data-status': heroStatus }, heroStage === null ? t('workbench.completed') : statusText[heroStage.status] ?? ''),
+                h('h2', { className: 'ds-wb-hero-title' }, heroStage === null ? t('workbench.completed') : stageTitle(heroStage.id)),
+                h('span', { className: 'ds-wb-status-pill ds-wb-hero-status', 'data-status': heroStatus }, heroStage === null ? t('workbench.completed') : statusText[heroStatus] ?? ''),
               ),
               heroSummary.length > 0
-                ? h('div', { className: 'ds-wb-hero-summary', title: heroSummary }, heroSummary)
+                ? h('div', { className: 'ds-wb-hero-summary', title: heroSummary.length > 80 ? heroSummary.slice(0, 80) + '…' : heroSummary }, heroSummary)
                 : heroActionable
                   ? h('div', { className: 'ds-wb-hero-summary' }, t('workbench.startHint'))
                   : null,
@@ -19226,12 +19292,73 @@ ${tail}
                 'div',
                 { className: 'ds-wb-hero-meta' },
                 heroRole.length === 0 ? null : h('span', { className: 'ds-wb-hero-role' }, t('workbench.hero.responsible', { role: heroRole })),
+                heroRole.length === 0 ? null : h('span', { className: 'ds-wb-hero-meta-dot', 'aria-hidden': 'true' }),
                 h(
                   'span',
-                  { className: 'ds-wb-hero-dots', 'aria-hidden': 'true' },
-                  stages.map((stage) => h('span', { key: stage.id, className: 'ds-wb-hero-dot', 'data-status': stage.status })),
+                  null,
+                  allStagesDone
+                    ? t('workbench.hero.remainingDone', { total: String(total) })
+                    : t('workbench.hero.remaining', { done: String(railDone), total: String(total), left: String(railLeft) }),
                 ),
-                h('span', { className: 'ds-wb-hero-progress-text' }, t('workbench.hero.progress', { done: String(done), total: String(total) })),
+                fastMode ? h('span', { className: 'ds-wb-hero-chip' }, t('pipeline.fastMode')) : null,
+              ),
+              h(
+                'ol',
+                { className: 'ds-wb-rail', 'aria-label': t('workbench.hero.railLabel') },
+                stages.map((stage) =>
+                  h(
+                    'li',
+                    {
+                      key: stage.id,
+                      className: 'ds-wb-rail-step',
+                      'data-status': stage.status,
+                      'data-current': current !== null && current.id === stage.id ? 'true' : undefined,
+                    },
+                    h('span', { className: 'ds-wb-rail-bar', 'aria-hidden': 'true' }),
+                    h('span', { className: 'ds-wb-rail-name' }, stageTitle(stage.id)),
+                    h('span', { className: 'ds-wb-rail-state' }, statusText[stage.status] ?? ''),
+                  ),
+                ),
+              ),
+            ),
+            h(
+              'aside',
+              { className: 'ds-wb-hero-side' },
+              h(
+                'div',
+                { className: 'ds-wb-hero-side-head' },
+                h(
+                  'div',
+                  { className: 'ds-wb-hero-ring' },
+                  h(
+                    'svg',
+                    { viewBox: '0 0 88 88', 'aria-hidden': 'true', focusable: 'false' },
+                    h('circle', { cx: 44, cy: 44, r: ringR, fill: 'none', stroke: 'rgba(255,255,255,0.16)', strokeWidth: 7 }),
+                    h('circle', {
+                      cx: 44,
+                      cy: 44,
+                      r: ringR,
+                      fill: 'none',
+                      stroke: '#60A5FA',
+                      strokeWidth: 7,
+                      strokeLinecap: 'round',
+                      strokeDasharray: ringC + ' ' + ringC,
+                      strokeDashoffset: ringOffset,
+                      transform: 'rotate(-90 44 44)',
+                    }),
+                  ),
+                  h('span', { className: 'ds-wb-hero-ring-value' }, String(done) + '/' + String(total)),
+                ),
+                h(
+                  'div',
+                  { className: 'ds-wb-hero-side-copy' },
+                  h('div', { className: 'ds-wb-hero-side-title' }, t('workbench.hero.ringLabel')),
+                  h(
+                    'div',
+                    { className: 'ds-wb-hero-side-sub' },
+                    heroStage === null ? t('workbench.completed') : t('workbench.hero.current', { n: String(heroStepNumber), stage: stageTitle(heroStage.id) }),
+                  ),
+                ),
               ),
               h(
                 'div',
@@ -19242,12 +19369,12 @@ ${tail}
                       null,
                       h(
                         'button',
-                        { type: 'button', className: 'ds-btn ds-btn-primary ds-wb-hero-primary', disabled: pipelineBusy, onClick: () => void reviewPipelineStage(reviewStage.id, 'approve') },
+                        { type: 'button', className: 'ds-btn ds-wb-hero-primary', disabled: pipelineBusy, onClick: () => void reviewPipelineStage(reviewStage.id, 'approve') },
                         t('pipeline.approve'),
                       ),
                       h(
                         'button',
-                        { type: 'button', className: 'ds-btn ds-wb-hero-secondary ds-pipe-reject', disabled: pipelineBusy, onClick: () => void reviewPipelineStage(reviewStage.id, 'reject') },
+                        { type: 'button', className: 'ds-btn ds-wb-hero-secondary', disabled: pipelineBusy, onClick: () => void reviewPipelineStage(reviewStage.id, 'reject') },
                         t('pipeline.reject'),
                       ),
                     )
@@ -19257,7 +19384,7 @@ ${tail}
                         null,
                         h(
                           'button',
-                          { type: 'button', className: 'ds-btn ds-btn-primary ds-wb-hero-primary', disabled: pipelineBusy, onClick: () => void startPipelineStage(heroStage.id) },
+                          { type: 'button', className: 'ds-btn ds-wb-hero-primary', disabled: pipelineBusy, onClick: () => void startPipelineStage(heroStage.id) },
                           t('workbench.hero.start'),
                         ),
                         h(
@@ -19269,16 +19396,13 @@ ${tail}
                     : h(
                         React.Fragment,
                         null,
-                        h('button', { type: 'button', className: 'ds-btn ds-btn-primary ds-wb-hero-primary', onClick: openPipeline }, t('workbench.openPipeline')),
+                        h('button', { type: 'button', className: 'ds-btn ds-wb-hero-primary', onClick: openPipeline }, t('workbench.openPipeline')),
                         h(
                           'button',
                           { type: 'button', className: 'ds-btn ds-wb-hero-secondary', disabled: assignmentSsh, onClick: () => openAssignmentDrawer(null) },
                           t('workbench.assign.assignButton'),
                         ),
                       ),
-                reviewStage === null && !heroActionable
-                  ? null
-                  : h('button', { type: 'button', className: 'ds-linkbtn ds-wb-hero-link', onClick: openPipeline }, t('workbench.openPipeline')),
               ),
               reviewStage === null
                 ? null
@@ -19289,7 +19413,14 @@ ${tail}
                     spellCheck: false,
                     onChange: (event) => setPipelineReviewNote(event.target.value),
                   }),
-              h('div', { className: 'ds-wb-hero-gate' }, t('workbench.hero.gateNote')),
+              h(
+                'div',
+                { className: 'ds-wb-hero-gate-row' },
+                h('span', { className: 'ds-wb-hero-gate' }, t('workbench.hero.gateNote')),
+                reviewStage === null
+                  ? null
+                  : h('button', { type: 'button', className: 'ds-linkbtn ds-wb-hero-link', onClick: openPipeline }, t('workbench.hero.viewReport')),
+              ),
             ),
           )
           const nowSection = h(
@@ -19297,8 +19428,8 @@ ${tail}
             { className: 'ds-wb-zone ds-wb-zone-now', 'aria-labelledby': 'ds-wb-zone-now-title' },
             zoneHead(
               'now',
-              InfoIcon,
               t('workbench.section.now'),
+              t('workbench.zone.nowTitle'),
               t('workbench.section.nowHint', { count: String(nowCount) }),
               h(
                 'button',
@@ -19309,9 +19440,9 @@ ${tail}
             h(
               'div',
               { className: 'ds-wb-zone-body ds-wb-zone-now-body' },
-              issueRows.length === 0 ? null : issuesCard,
-              reviewStage === null && failedItems.length > 0 ? attentionCard : null,
               heroCard,
+              failedItems.length > 0 ? attentionCard : null,
+              issueRows.length === 0 ? null : issuesCard,
               nowCount === 0 && !attention ? h('div', { className: 'ds-wb-zone-empty' }, t('workbench.section.nowEmpty')) : null,
             ),
           )
@@ -19320,8 +19451,8 @@ ${tail}
             { className: 'ds-wb-zone ds-wb-zone-project', 'aria-labelledby': 'ds-wb-zone-project-title' },
             zoneHead(
               'project',
-              PanelIcon,
               t('workbench.section.project'),
+              t('workbench.zone.projectTitle'),
               t('workbench.section.projectHint'),
               h(
                 'button',
@@ -19331,7 +19462,7 @@ ${tail}
             ),
             h(
               'div',
-              { className: 'ds-wb-zone-body ds-wb-zone-project-grid' },
+              { className: 'ds-wb-zone-body ds-wb-project-grid' },
               h('div', { className: 'ds-wb-project-cell' }, requirementCard),
               h('div', { className: 'ds-wb-project-cell' }, assignmentCard),
               h('div', { className: 'ds-wb-project-cell ds-wb-project-cell-wide' }, adjustCard),
@@ -19343,7 +19474,7 @@ ${tail}
           const deliverySection = h(
             'section',
             { className: 'ds-wb-zone ds-wb-zone-delivery', 'aria-labelledby': 'ds-wb-zone-delivery-title' },
-            zoneHead('delivery', GlobeIcon, t('workbench.section.delivery'), t('workbench.section.deliveryHint'), null),
+            zoneHead('delivery', t('workbench.section.delivery'), t('workbench.zone.deliveryTitle'), t('workbench.section.deliveryHint'), null),
             h(
               'div',
               { className: 'ds-wb-zone-body' },
@@ -19353,41 +19484,95 @@ ${tail}
           )
           return h(
             'div',
-            { className: 'ds-wb-page ds-wb-redesign' },
+            { className: 'ds-wb-page ds-wb-redesign ds-wb-v1279' },
             h(
-              'div',
-              { className: 'ds-wb-page-head' },
+              'header',
+              { className: 'ds-wb-page-head', 'data-compact': compact ? 'true' : undefined },
               compact
                 ? h(
                     'button',
-                    { type: 'button', className: 'ds-iconbtn', title: t('compact.back'), onClick: () => closeWorkbench() },
+                    { type: 'button', className: 'ds-iconbtn ds-wb-head-back', title: t('compact.back'), onClick: () => closeWorkbench() },
                     h(ChevronLeftIcon),
                   )
                 : null,
-              compact ? null : h('span', { className: 'ds-wb-page-title' }, t('workbench.title')),
-              compact || requirementTitle.length === 0 ? null : h('span', { className: 'ds-wb-page-subtitle' }, requirementTitle),
+              h(
+                'div',
+                { className: 'ds-wb-head-main' },
+                h(
+                  'div',
+                  { className: 'ds-wb-head-eyebrow' },
+                  compact
+                    ? t('workbench.title')
+                    : hasProject
+                      ? t('workbench.head.eyebrow', { project: requirementTitle, round: String(round) })
+                      : t('workbench.intake'),
+                ),
+                h(
+                  'div',
+                  { className: 'ds-wb-head-title-row' },
+                  h('h1', { className: 'ds-wb-head-title' }, t('workbench.title')),
+                  hasProject ? h('span', { className: 'ds-wb-head-chip', 'data-tone': 'brand' }, t('pipeline.round', { round: String(round) })) : null,
+                  fastMode ? h('span', { className: 'ds-wb-head-chip', 'data-tone': 'ok' }, t('pipeline.fastMode')) : null,
+                  hasProject
+                    ? h('span', { className: 'ds-wb-head-chip', 'data-tone': 'muted' }, t('workbench.hero.progress', { done: String(done), total: String(total) }))
+                    : null,
+                ),
+                h(
+                  'div',
+                  { className: 'ds-wb-head-meta' },
+                  hasProject
+                    ? current !== null
+                      ? t('workbench.head.current', { stage: stageTitle(current.id), status: statusText[current.status] ?? '' })
+                      : allStagesDone
+                        ? t('workbench.head.ready')
+                        : t('workbench.completed')
+                    : t('workbench.intakeHint'),
+                ),
+              ),
               h('span', { className: 'ds-spacer' }),
               h(
-                'button',
-                {
-                  type: 'button',
-                  className: 'ds-linkbtn ds-wb-notify',
-                  'data-on': notifyEnabled ? 'true' : undefined,
-                  title: t('workbench.notifyEnable'),
-                  onClick: () => void enableNotifications(),
-                },
-                notifyEnabled ? t('workbench.notifyOn') : t('workbench.notifyEnable'),
-              ),
-              h(
-                'button',
-                {
-                  type: 'button',
-                  className: 'ds-iconbtn',
-                  title: t('action.close'),
-                  'aria-label': t('action.close'),
-                  onClick: () => closeWorkbench(),
-                },
-                h(CloseIcon),
+                'div',
+                { className: 'ds-wb-head-actions' },
+                h(
+                  'button',
+                  { type: 'button', className: 'ds-wb-action', title: t('action.refresh'), 'aria-label': t('action.refresh'), onClick: () => void loadWorkbench() },
+                  h(RefreshIcon),
+                  h('span', null, t('action.refresh')),
+                ),
+                h(
+                  'button',
+                  { type: 'button', className: 'ds-wb-action ds-wb-action-primary', title: t('workbench.openPipeline'), 'aria-label': t('workbench.openPipeline'), onClick: openPipeline },
+                  h(PipelineIcon),
+                  h('span', null, t('workbench.openPipeline')),
+                ),
+                h(
+                  'button',
+                  { type: 'button', className: 'ds-wb-action', title: t('workbench.head.team'), 'aria-label': t('workbench.head.team'), disabled: assignmentSsh, onClick: () => openAssignmentDrawer(null) },
+                  h(TaskIcon),
+                  h('span', null, t('workbench.head.team')),
+                ),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-wb-action ds-wb-notify',
+                    'data-on': notifyEnabled ? 'true' : undefined,
+                    title: t('workbench.notifyEnable'),
+                    onClick: () => void enableNotifications(),
+                  },
+                  notifyEnabled ? t('workbench.notifyOn') : t('workbench.head.notify'),
+                ),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-iconbtn ds-wb-head-close',
+                    title: t('action.close'),
+                    'aria-label': t('action.close'),
+                    onClick: () => closeWorkbench(),
+                  },
+                  h(CloseIcon),
+                ),
               ),
             ),
             h(
@@ -25007,6 +25192,592 @@ h(
 }
 .ds-root[data-compact="true"] .ds-wb-redesign .ds-wb-page-scroll { padding: 12px; }
 .ds-root[data-compact="true"] .ds-wb-hero-actions .ds-btn { min-height: 44px; }
+
+/* ================================================================== *
+ * v1.2.79 workbench redesign — Command Deck (scoped to .ds-wb-v1279)
+ * 页面头 / 深色 hero / 7 段 rail / 三列项目区 / 时间轴 / bento 交付卡
+ * ================================================================== */
+.ds-wb-page.ds-wb-v1279 {
+  --wb-canvas: color-mix(in srgb, var(--dsw-alias-bg-layer-2) 55%, var(--dsw-alias-bg-base));
+  --wb-surface: var(--dsw-alias-bg-layer-1);
+  --wb-surface-2: color-mix(in srgb, var(--dsw-alias-bg-layer-2) 72%, var(--dsw-alias-bg-base));
+  --wb-line: color-mix(in srgb, var(--dsw-alias-label-caption) 22%, transparent);
+  --wb-line-strong: color-mix(in srgb, var(--dsw-alias-label-caption) 34%, transparent);
+  --wb-ink: var(--dsw-alias-label-primary);
+  --wb-ink-2: var(--dsw-alias-label-secondary);
+  --wb-ink-3: var(--dsw-alias-label-caption);
+  --wb-brand: var(--dsw-alias-brand-primary);
+  --wb-ok: var(--dsw-alias-state-success-primary);
+  --wb-warn: var(--dsw-alias-state-warn-primary);
+  --wb-err: var(--dsw-alias-state-error-primary);
+  --wb-biz: var(--dsw-alias-state-business-primary, var(--dsw-alias-brand-primary));
+  --wb-shadow-1: 0 1px 2px color-mix(in srgb, var(--wb-ink) 8%, transparent);
+  --wb-shadow-2: 0 1px 2px color-mix(in srgb, var(--wb-ink) 8%, transparent),
+    0 16px 38px -28px color-mix(in srgb, var(--wb-ink) 28%, transparent);
+  --wb-hero: linear-gradient(135deg,
+    color-mix(in srgb, var(--wb-brand) 72%, #0b1220) 0%,
+    #0b1220 58%,
+    color-mix(in srgb, #0b1220 90%, var(--wb-brand)) 100%);
+  --wb-hero-fg-2: rgba(255, 255, 255, 0.76);
+  --wb-hero-fg-3: rgba(255, 255, 255, 0.56);
+  --wb-sp-1: 4px;
+  --wb-sp-2: 8px;
+  --wb-sp-3: 12px;
+  --wb-sp-4: 16px;
+  --wb-sp-5: 20px;
+  --wb-sp-6: 24px;
+  --wb-sp-7: 32px;
+  --wb-r-sm: 10px;
+  --wb-r-md: 14px;
+  --wb-r-lg: 18px;
+  --wb-motion: 160ms cubic-bezier(0.2, 0.7, 0.3, 1);
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--wb-canvas);
+  color: var(--wb-ink);
+}
+.ds-wb-page.ds-wb-v1279 .ds-wb-page-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 28px 32px 40px;
+  background:
+    radial-gradient(1100px 420px at 10% -8%, color-mix(in srgb, var(--wb-brand) 8%, transparent), transparent 68%),
+    radial-gradient(900px 360px at 100% 0%, color-mix(in srgb, var(--wb-biz) 4%, transparent), transparent 70%);
+}
+.ds-wb-page.ds-wb-v1279 .ds-wb-page-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  width: 100%;
+  max-width: 1280px;
+  min-width: 0;
+  margin: 0 auto;
+}
+/* ---------- 页面头 ---------- */
+.ds-wb-page.ds-wb-v1279 .ds-wb-page-head {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 14px;
+  min-width: 0;
+  padding: 18px 32px 16px;
+  border-bottom: 1px solid var(--wb-line);
+  background: color-mix(in srgb, var(--wb-surface) 92%, transparent);
+  backdrop-filter: blur(12px);
+}
+.ds-wb-head-main { display: flex; flex: 1 1 auto; flex-direction: column; gap: 4px; min-width: 0; }
+.ds-wb-head-eyebrow {
+  overflow: hidden;
+  color: var(--wb-ink-3);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.ds-wb-head-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; min-width: 0; }
+.ds-wb-head-title {
+  margin: 0;
+  color: var(--wb-ink);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+.ds-wb-head-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border: 1px solid var(--wb-line);
+  border-radius: 999px;
+  background: var(--wb-surface-2);
+  color: var(--wb-ink-2);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 20px;
+  white-space: nowrap;
+}
+.ds-wb-head-chip[data-tone="brand"] {
+  border-color: color-mix(in srgb, var(--wb-brand) 30%, transparent);
+  background: color-mix(in srgb, var(--wb-brand) 10%, var(--wb-surface));
+  color: var(--wb-brand);
+}
+.ds-wb-head-chip[data-tone="ok"] {
+  border-color: color-mix(in srgb, var(--wb-ok) 28%, transparent);
+  background: color-mix(in srgb, var(--wb-ok) 12%, var(--wb-surface));
+  color: var(--wb-ok);
+}
+.ds-wb-head-meta { color: var(--wb-ink-2); font-size: 12px; line-height: 1.45; }
+.ds-wb-head-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.ds-wb-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 11px;
+  border: 1px solid var(--wb-line);
+  border-radius: var(--wb-r-sm);
+  background: var(--wb-surface-2);
+  color: var(--wb-ink-2);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color var(--wb-motion), background var(--wb-motion), color var(--wb-motion), transform var(--wb-motion);
+}
+.ds-wb-action svg { width: 14px; height: 14px; }
+.ds-wb-action:hover { border-color: var(--wb-line-strong); background: var(--wb-surface); color: var(--wb-ink); }
+.ds-wb-action:active { transform: translateY(1px); }
+.ds-wb-action:disabled { opacity: 0.45; cursor: not-allowed; }
+.ds-wb-action-primary {
+  border-color: transparent;
+  background: var(--wb-ink);
+  color: var(--wb-surface);
+}
+.ds-wb-action-primary:hover { background: color-mix(in srgb, var(--wb-ink) 88%, var(--wb-surface)); color: var(--wb-surface); }
+.ds-wb-action.ds-wb-notify[data-on="true"] { border-color: color-mix(in srgb, var(--wb-ok) 32%, transparent); color: var(--wb-ok); }
+.ds-wb-head-close {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--wb-line);
+  border-radius: 10px;
+  background: var(--wb-surface-2);
+  color: var(--wb-ink-2);
+}
+.ds-wb-head-close:hover { border-color: var(--wb-line-strong); color: var(--wb-ink); }
+.ds-wb-head-back { flex: 0 0 auto; }
+/* ---------- 区块头 ---------- */
+.ds-wb-page.ds-wb-v1279 .ds-wb-zone { gap: 12px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-zone-head { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; min-height: 30px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-zone-bar { flex: 0 0 auto; width: 3px; height: 26px; border-radius: 2px; background: var(--wb-line-strong); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-zone-bar[data-zone="now"] { background: var(--wb-warn); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-zone-bar[data-zone="project"] { background: var(--wb-biz); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-zone-bar[data-zone="delivery"] { background: var(--wb-ok); }
+.ds-wb-zone-head-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ds-wb-zone-kicker { color: var(--wb-ink-3); font-size: 10px; font-weight: 700; letter-spacing: 0.12em; line-height: 1.3; text-transform: uppercase; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-zone-title { margin: 0; color: var(--wb-ink); font-size: 16px; font-weight: 600; line-height: 1.3; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-zone-hint { color: var(--wb-ink-3); font-size: 12px; line-height: 1.4; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-zone-link { color: var(--wb-brand); font-size: 11.5px; font-weight: 600; }
+/* ---------- Hero（深色指挥舱） ---------- */
+.ds-wb-page.ds-wb-v1279 .ds-wb-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 24px;
+  min-width: 0;
+  padding: 26px 28px 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--wb-r-lg);
+  background: var(--wb-hero);
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--wb-ink) 10%, transparent),
+    0 24px 52px -34px color-mix(in srgb, var(--wb-ink) 52%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  overflow: hidden;
+}
+.ds-wb-page.ds-wb-v1279 .ds-wb-hero::before {
+  content: "";
+  position: absolute;
+  inset: -55% -12% auto -18%;
+  height: 140%;
+  background: radial-gradient(620px 280px at 16% 0%, rgba(96, 165, 250, 0.34), transparent 68%);
+  pointer-events: none;
+}
+.ds-wb-page.ds-wb-v1279 .ds-wb-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 42%);
+  pointer-events: none;
+}
+.ds-wb-hero-copy, .ds-wb-hero-side { position: relative; z-index: 1; min-width: 0; }
+.ds-wb-hero-copy { display: flex; flex-direction: column; gap: 10px; }
+.ds-wb-hero-eyebrow { color: var(--wb-hero-fg-3); font-size: 10.5px; font-weight: 700; letter-spacing: 0.14em; line-height: 1.3; }
+.ds-wb-hero-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-hero-title { margin: 0; color: #ffffff; font-size: 30px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-hero-status {
+  height: 22px;
+  padding: 0 9px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  font-size: 10.5px;
+  line-height: 20px;
+}
+.ds-wb-page.ds-wb-v1279 .ds-wb-hero-status[data-status="review"] { border-color: rgba(252, 211, 77, 0.48); background: rgba(245, 158, 11, 0.16); color: #fcd34d; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-hero-status[data-status="approved"] { border-color: rgba(110, 231, 183, 0.4); background: rgba(52, 211, 153, 0.14); color: #6ee7b7; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-hero-status[data-status="active"] { border-color: rgba(147, 197, 253, 0.42); background: rgba(96, 165, 250, 0.16); color: #bfdbfe; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-hero-status[data-status="failed"] { border-color: rgba(252, 165, 165, 0.42); background: rgba(248, 113, 113, 0.16); color: #fca5a5; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-hero-summary {
+  display: -webkit-box;
+  max-width: 760px;
+  overflow: hidden;
+  color: var(--wb-hero-fg-2);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.ds-wb-hero-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: var(--wb-hero-fg-3); font-size: 11.5px; line-height: 1.4; }
+.ds-wb-hero-role { color: var(--wb-hero-fg-2); }
+.ds-wb-hero-meta-dot { width: 3px; height: 3px; border-radius: 50%; background: rgba(255, 255, 255, 0.35); }
+.ds-wb-hero-chip { padding: 1px 7px; border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 999px; background: rgba(255, 255, 255, 0.08); color: var(--wb-hero-fg-2); font-size: 10px; line-height: 16px; }
+.ds-wb-rail { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin: 6px 0 0; padding: 0; list-style: none; }
+.ds-wb-rail-step { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ds-wb-rail-bar { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.16); }
+.ds-wb-rail-step[data-status="approved"] .ds-wb-rail-bar { background: #34d399; }
+.ds-wb-rail-step[data-status="active"] .ds-wb-rail-bar { background: #60a5fa; }
+.ds-wb-rail-step[data-status="review"] .ds-wb-rail-bar { background: #fbbf24; }
+.ds-wb-rail-step[data-status="failed"] .ds-wb-rail-bar { background: #f87171; }
+.ds-wb-rail-name { overflow: hidden; color: var(--wb-hero-fg-3); font-size: 10px; font-weight: 500; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
+.ds-wb-rail-step[data-current="true"] .ds-wb-rail-name { color: #ffffff; font-weight: 600; }
+.ds-wb-rail-state, .ds-wb-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  border: 0;
+  white-space: nowrap;
+}
+.ds-wb-hero-side { display: flex; flex-direction: column; gap: 14px; padding-left: 24px; border-left: 1px solid rgba(255, 255, 255, 0.14); }
+.ds-wb-hero-side-head { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.ds-wb-hero-ring { position: relative; flex: 0 0 auto; width: 88px; height: 88px; }
+.ds-wb-hero-ring svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ds-wb-hero-ring-value { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #ffffff; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.ds-wb-hero-side-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ds-wb-hero-side-title { color: #ffffff; font-size: 12px; font-weight: 600; line-height: 1.4; }
+.ds-wb-hero-side-sub { color: var(--wb-hero-fg-3); font-size: 10.5px; line-height: 1.4; overflow-wrap: anywhere; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-hero-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-hero-actions .ds-btn {
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: normal;
+  transition: background var(--wb-motion), border-color var(--wb-motion), transform var(--wb-motion), opacity var(--wb-motion);
+}
+.ds-wb-page.ds-wb-v1279 .ds-wb-hero-primary { border: 1px solid transparent; background: #ffffff; color: #0b1220; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-hero-primary:hover:not(:disabled) { background: #f1f5fb; transform: translateY(-1px); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-hero-secondary { border: 1px solid rgba(255, 255, 255, 0.28); background: rgba(255, 255, 255, 0.06); color: #ffffff; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-hero-secondary:hover:not(:disabled) { background: rgba(255, 255, 255, 0.13); transform: translateY(-1px); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-hero-note {
+  width: 100%;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font: inherit;
+  font-size: 11.5px;
+  outline: none;
+}
+.ds-wb-page.ds-wb-v1279 .ds-wb-hero-note::placeholder { color: rgba(255, 255, 255, 0.44); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-hero-note:focus { border-color: rgba(147, 197, 253, 0.85); box-shadow: 0 0 0 2px rgba(147, 197, 253, 0.24); }
+.ds-wb-hero-gate-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 8px; }
+.ds-wb-hero-gate { color: rgba(255, 255, 255, 0.5); font-size: 10.5px; line-height: 1.4; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-hero-link { padding: 0; border: 0; background: transparent; color: #93c5fd; font-size: 10.5px; font-weight: 600; line-height: 1.4; cursor: pointer; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-hero-link:hover { color: #bfdbfe; text-decoration: underline; }
+/* ---------- 卡片通用 ---------- */
+.ds-wb-page.ds-wb-v1279 .ds-wb-card {
+  min-width: 0;
+  padding: 18px 20px;
+  border: 1px solid var(--wb-line);
+  border-radius: var(--wb-r-md);
+  background: var(--wb-surface);
+  box-shadow: var(--wb-shadow-1);
+  color: var(--wb-ink);
+  transition: border-color var(--wb-motion), box-shadow var(--wb-motion);
+}
+.ds-wb-page.ds-wb-v1279 .ds-wb-card:hover { border-color: var(--wb-line-strong); box-shadow: var(--wb-shadow-2); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-card-title { margin-bottom: 10px; color: var(--wb-ink); font-size: 14px; font-weight: 600; letter-spacing: 0; line-height: 1.4; text-transform: none; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-card-title-inline { margin-bottom: 0; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-card-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-hint,
+.ds-wb-page.ds-wb-v1279 .ds-wb-card .ds-hint { margin: 0; color: var(--wb-ink-3); font-size: 11px; line-height: 1.5; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-link { color: var(--wb-brand); font-size: 11.5px; font-weight: 600; line-height: 1.6; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-btn { min-height: 30px; padding: 0 10px; border-radius: 8px; font-size: 11.5px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-count { font-size: 12px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-progress { margin-top: 0; color: var(--wb-ink-2); font-size: 11.5px; line-height: 1.5; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-project-title { font-size: 14px; font-weight: 600; }
+/* 项目状态大数字 + 进度条 */
+.ds-wb-status-metric { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin: 2px 0 10px; }
+.ds-wb-status-value { color: var(--wb-ink); font-size: 32px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.ds-wb-status-caption { color: var(--wb-ink-3); font-size: 11px; }
+.ds-wb-progress-bar { height: 6px; overflow: hidden; border-radius: 3px; background: var(--wb-surface-2); }
+.ds-wb-progress-fill { display: block; height: 100%; border-radius: 3px; background: var(--wb-brand); transition: width var(--wb-motion); }
+.ds-wb-status-line { margin: 8px 0 12px; color: var(--wb-ink-2); font-size: 11.5px; line-height: 1.5; overflow-wrap: anywhere; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-status-actions { margin-top: 0; }
+/* 需求卡 */
+.ds-wb-page.ds-wb-v1279 .ds-wb-adjust-title { color: var(--wb-ink); font-size: 13px; font-weight: 600; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-adjust-chips { gap: 6px; margin: 6px 0 8px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-adjust-summary { color: var(--wb-ink-2); font-size: 12px; line-height: 1.55; -webkit-line-clamp: 2; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-adjust-summary-hint { margin-top: 4px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-round-pill,
+.ds-wb-page.ds-wb-v1279 .ds-wb-scope-pill { padding: 1px 8px; border: 1px solid var(--wb-line); border-radius: 999px; background: var(--wb-surface-2); color: var(--wb-ink-2); font-size: 10.5px; line-height: 18px; }
+/* 告警卡（attention / issues） */
+.ds-wb-page.ds-wb-v1279 .ds-wb-attention,
+.ds-wb-page.ds-wb-v1279 .ds-wb-issues { position: relative; padding: 14px 18px 14px 54px; border-left: 1px solid var(--wb-line); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-attention::before,
+.ds-wb-page.ds-wb-v1279 .ds-wb-issues::before {
+  content: "!";
+  position: absolute;
+  left: 18px;
+  top: 16px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--wb-warn) 16%, transparent);
+  color: var(--wb-warn);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 22px;
+  text-align: center;
+}
+.ds-wb-page.ds-wb-v1279 .ds-wb-attention .ds-wb-card-title,
+.ds-wb-page.ds-wb-v1279 .ds-wb-issues .ds-wb-card-title { margin-bottom: 8px; font-size: 13px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-need { margin-top: 8px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-need-text { font-size: 12px; line-height: 1.5; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-fail-item { margin-top: 4px; color: var(--wb-err); font-size: 11.5px; overflow-wrap: anywhere; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-issue-row,
+.ds-wb-page.ds-wb-v1279 .ds-wb-issue-text { font-size: 11.5px; }
+/* ---------- 项目区三列 ---------- */
+.ds-wb-page.ds-wb-v1279 .ds-wb-project-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; min-width: 0; }
+.ds-wb-project-grid > * { min-width: 0; }
+.ds-wb-project-cell { min-width: 0; }
+.ds-wb-project-cell-wide { grid-column: 1 / -1; }
+@media (min-width: 768px) {
+  .ds-wb-page.ds-wb-v1279 .ds-wb-project-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-project-grid .ds-wb-project-cell-wide { grid-column: 1 / -1; }
+}
+@media (min-width: 1280px) {
+  .ds-wb-page.ds-wb-v1279 .ds-wb-project-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-project-grid .ds-wb-project-cell-wide { grid-column: auto; }
+}
+.ds-wb-page.ds-wb-v1279 .ds-wb-project-cell .ds-wb-actions .ds-btn { min-height: 30px; height: auto; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+/* 团队卡 */
+.ds-wb-page.ds-wb-v1279 .ds-wb-assign-members { gap: 6px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-assign-member { min-height: 30px; border-radius: 8px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-assign-list { max-height: 190px; overflow: auto; }
+/* ---------- 项目流程时间轴 ---------- */
+.ds-wb-page.ds-wb-v1279 .ds-wb-flow { padding: 18px 20px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-steps { display: flex; align-items: stretch; margin: 4px 0 0; padding: 0; list-style: none; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-step { position: relative; display: flex; flex: 1 1 0; min-width: 0; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-step-btn {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+  padding: 10px 10px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--wb-motion), box-shadow var(--wb-motion);
+}
+.ds-wb-page.ds-wb-v1279 .ds-wb-step-btn:hover { background: var(--wb-surface-2); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-step[data-current="true"] .ds-wb-step-btn { background: color-mix(in srgb, var(--wb-warn) 10%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--wb-warn) 30%, transparent); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-step-head { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-step-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--wb-line);
+  border-radius: 50%;
+  background: var(--wb-surface-2);
+  color: var(--wb-ink-3);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+}
+.ds-wb-page.ds-wb-v1279 .ds-wb-step[data-status="approved"] .ds-wb-step-index { border-color: transparent; background: color-mix(in srgb, var(--wb-ok) 16%, transparent); color: var(--wb-ok); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-step[data-status="active"] .ds-wb-step-index { border-color: transparent; background: color-mix(in srgb, var(--wb-biz) 16%, transparent); color: var(--wb-biz); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-step[data-status="review"] .ds-wb-step-index { border-color: transparent; background: color-mix(in srgb, var(--wb-warn) 18%, transparent); color: var(--wb-warn); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-step[data-status="failed"] .ds-wb-step-index { border-color: transparent; background: color-mix(in srgb, var(--wb-err) 16%, transparent); color: var(--wb-err); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-step-name { overflow: hidden; color: var(--wb-ink); font-size: 11.5px; font-weight: 600; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-step-role { overflow: hidden; color: var(--wb-ink-3); font-size: 10px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-step-state { color: var(--wb-ink-3); font-size: 10px; font-weight: 600; line-height: 1.35; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-step-state[data-status="approved"] { color: var(--wb-ok); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-step-state[data-status="active"] { color: var(--wb-biz); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-step-state[data-status="review"] { color: var(--wb-warn); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-step-state[data-status="failed"] { color: var(--wb-err); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-step-connector { position: absolute; top: 18px; left: 28px; right: -2px; z-index: 0; height: 2px; background: var(--wb-line); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-step:last-child .ds-wb-step-connector { display: none; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-flow-now { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--wb-line); color: var(--wb-ink-2); font-size: 11px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-flow-events { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; color: var(--wb-ink-3); font-size: 10.5px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-flow-events-title { color: var(--wb-ink-3); font-size: 10px; font-weight: 600; letter-spacing: 0.04em; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-flow-event { display: inline-flex; gap: 6px; min-width: 0; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-flow-event-time { font-variant-numeric: tabular-nums; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-flow-round { font-size: 10.5px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-flow-event-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* ---------- 交付 bento ---------- */
+.ds-wb-page.ds-wb-v1279 .ds-wb-delivery-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: stretch; min-width: 0; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-delivery-grid > * { min-width: 0; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-delivery-grid > :last-child { grid-column: 1 / -1; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-delivery-grid .ds-wb-card { display: flex; flex-direction: column; min-height: 184px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-delivery-grid .ds-wb-running { min-height: 120px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-delivery-grid .ds-wb-card .ds-wb-actions { margin-top: auto; padding-top: 10px; }
+.ds-wb-run-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 2px 0 12px; padding-bottom: 12px; border-bottom: 1px solid var(--wb-line); }
+.ds-wb-run-stat { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ds-wb-run-stat-value { overflow: hidden; color: var(--wb-ink); font-size: 18px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+.ds-wb-run-stat-label { color: var(--wb-ink-3); font-size: 10.5px; line-height: 1.3; }
+.ds-wb-run-stat-wide .ds-wb-run-stat-value { font-size: 12px; font-weight: 600; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-design-docs { margin-top: 8px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-design-docs .ds-wb-link { display: inline-block; margin-right: 10px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-shots { display: flex; flex-wrap: wrap; gap: 8px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-shot { border: 1px solid var(--wb-line); border-radius: 10px; background: var(--wb-surface-2); overflow: hidden; cursor: pointer; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-shot img { display: block; width: 116px; height: 72px; object-fit: cover; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-shot-label { display: block; max-width: 116px; padding: 2px 6px; color: var(--wb-ink-3); font-size: 9.5px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-change-row { font-size: 11px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-change-path { font-size: 11px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-change-status,
+.ds-wb-page.ds-wb-v1279 .ds-wb-review-toggle,
+.ds-wb-page.ds-wb-v1279 .ds-wb-review-progress,
+.ds-wb-page.ds-wb-v1279 .ds-wb-changes-hint { font-size: 10.5px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-preflight-row { font-size: 11px; line-height: 1.6; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-preflight-verdict { font-size: 10.5px; font-weight: 600; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-run { margin-top: 4px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-run-name { font-size: 11.5px; }
+/* 卡片内状态 pill / 计数 */
+.ds-wb-page.ds-wb-v1279 .ds-wb-status-pill { height: 22px; padding: 0 9px; border: 1px solid var(--wb-line); background: var(--wb-surface-2); color: var(--wb-ink-2); font-size: 10.5px; font-weight: 600; line-height: 20px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-status-pill[data-status="approved"] { border-color: color-mix(in srgb, var(--wb-ok) 30%, transparent); background: color-mix(in srgb, var(--wb-ok) 12%, transparent); color: var(--wb-ok); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-status-pill[data-status="active"] { border-color: color-mix(in srgb, var(--wb-biz) 30%, transparent); background: color-mix(in srgb, var(--wb-biz) 12%, transparent); color: var(--wb-biz); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-status-pill[data-status="review"] { border-color: color-mix(in srgb, var(--wb-warn) 32%, transparent); background: color-mix(in srgb, var(--wb-warn) 14%, transparent); color: var(--wb-warn); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-status-pill[data-status="failed"] { border-color: color-mix(in srgb, var(--wb-err) 30%, transparent); background: color-mix(in srgb, var(--wb-err) 12%, transparent); color: var(--wb-err); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-counts { gap: 6px; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-count { padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+.ds-wb-page.ds-wb-v1279 .ds-wb-count[data-status="pass"] { background: color-mix(in srgb, var(--wb-ok) 12%, transparent); color: var(--wb-ok); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-count[data-status="fail"] { background: color-mix(in srgb, var(--wb-err) 12%, transparent); color: var(--wb-err); }
+.ds-wb-page.ds-wb-v1279 .ds-wb-count[data-status="pending"] { background: var(--wb-surface-2); color: var(--wb-ink-2); }
+/* 焦点与动效 */
+.ds-wb-page.ds-wb-v1279 .ds-btn:focus-visible,
+.ds-wb-page.ds-wb-v1279 .ds-linkbtn:focus-visible,
+.ds-wb-page.ds-wb-v1279 .ds-wb-action:focus-visible,
+.ds-wb-page.ds-wb-v1279 .ds-iconbtn:focus-visible,
+.ds-wb-page.ds-wb-v1279 .ds-wb-step-btn:focus-visible,
+.ds-wb-page.ds-wb-v1279 .ds-wb-hero-note:focus-visible,
+.ds-wb-page.ds-wb-v1279 .ds-pipe-input:focus-visible {
+  outline: 2px solid var(--wb-brand);
+  outline-offset: 2px;
+}
+.ds-wb-page.ds-wb-v1279 .ds-wb-hero .ds-btn:focus-visible { outline-color: #93c5fd; }
+/* compact (sidebar tab) overrides */
+.ds-wb-page-head[data-compact="true"] { align-items: center; gap: 8px; padding: 10px 12px; }
+.ds-wb-page-head[data-compact="true"] .ds-wb-head-title { font-size: 20px; }
+.ds-wb-page-head[data-compact="true"] .ds-wb-head-eyebrow,
+.ds-wb-page-head[data-compact="true"] .ds-wb-head-chip,
+.ds-wb-page-head[data-compact="true"] .ds-wb-head-meta { display: none; }
+.ds-wb-page-head[data-compact="true"] .ds-wb-head-actions { gap: 4px; }
+.ds-wb-page-head[data-compact="true"] .ds-wb-head-actions .ds-wb-action { width: 30px; padding: 0; justify-content: center; }
+.ds-wb-page-head[data-compact="true"] .ds-wb-head-actions .ds-wb-action span,
+.ds-wb-page-head[data-compact="true"] .ds-wb-head-actions .ds-wb-notify { display: none; }
+.ds-root[data-compact="true"] .ds-wb-v1279 .ds-wb-page-scroll { padding: 12px; }
+.ds-root[data-compact="true"] .ds-wb-v1279 .ds-wb-page-inner { gap: 16px; }
+.ds-root[data-compact="true"] .ds-wb-v1279 .ds-wb-hero { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 16px; }
+.ds-root[data-compact="true"] .ds-wb-v1279 .ds-wb-hero-side { display: flex; flex-direction: column; padding-left: 0; padding-top: 12px; border-left: 0; border-top: 1px solid rgba(255,255,255,0.14); }
+.ds-root[data-compact="true"] .ds-wb-v1279 .ds-wb-hero-title { font-size: 22px; }
+.ds-root[data-compact="true"] .ds-wb-v1279 .ds-wb-hero-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ds-root[data-compact="true"] .ds-wb-v1279 .ds-wb-project-grid { grid-template-columns: minmax(0, 1fr); }
+.ds-root[data-compact="true"] .ds-wb-v1279 .ds-wb-project-grid .ds-wb-project-cell-wide { grid-column: auto; }
+.ds-root[data-compact="true"] .ds-wb-v1279 .ds-wb-delivery-grid { grid-template-columns: minmax(0, 1fr); }
+.ds-root[data-compact="true"] .ds-wb-v1279 .ds-wb-delivery-grid > :last-child { grid-column: auto; }
+.ds-root[data-compact="true"] .ds-wb-v1279 .ds-wb-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.ds-root[data-compact="true"] .ds-wb-v1279 .ds-wb-step-connector { display: none; }
+.ds-root[data-compact="true"] .ds-wb-v1279 .ds-wb-run-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (prefers-reduced-motion: reduce) {
+  .ds-wb-page.ds-wb-v1279 *,
+  .ds-wb-page.ds-wb-v1279 *::before,
+  .ds-wb-page.ds-wb-v1279 *::after { transition: none !important; animation: none !important; }
+}
+/* ---------- 响应式 ---------- */
+@media (max-width: 1279px) {
+  .ds-wb-page.ds-wb-v1279 .ds-wb-page-head { padding: 16px 24px 14px; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-page-scroll { padding: 24px 24px 32px; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-hero { grid-template-columns: minmax(0, 1fr) 280px; gap: 20px; padding: 24px; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-hero-side { padding-left: 20px; }
+  .ds-wb-head-title { font-size: 28px; }
+}
+@media (max-width: 1199px) {
+  .ds-wb-head-actions .ds-wb-action span { display: none; }
+  .ds-wb-head-actions .ds-wb-action { width: 32px; padding: 0; justify-content: center; }
+  .ds-wb-head-actions .ds-wb-notify { width: auto; padding: 0 10px; }
+  .ds-wb-head-actions .ds-wb-notify span { display: inline; }
+}
+@media (max-width: 1023px) {
+  .ds-wb-page.ds-wb-v1279 .ds-wb-page-head { padding: 14px 20px 12px; gap: 10px; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-page-scroll { padding: 20px 20px 28px; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-page-inner { gap: 24px; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-hero { grid-template-columns: minmax(0, 1fr); gap: 18px; padding: 22px; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-hero-side { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 12px 16px; padding-left: 0; padding-top: 16px; border-left: 0; border-top: 1px solid rgba(255, 255, 255, 0.14); }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-hero-side-head { grid-column: 1 / 2; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-hero-actions { grid-column: 2 / 3; grid-row: 1 / span 2; align-self: center; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-hero-note { grid-column: 1 / -1; }
+  .ds-wb-hero-gate-row { grid-column: 1 / -1; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-hero-title { font-size: 26px; }
+  .ds-wb-head-title { font-size: 26px; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-delivery-grid { grid-template-columns: minmax(0, 1fr); }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-delivery-grid > :last-child { grid-column: auto; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-step-connector { display: none; }
+}
+@media (max-width: 700px) {
+  .ds-wb-page.ds-wb-v1279 .ds-wb-page-head { position: static; padding: 14px 14px 12px; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-head-title { font-size: 24px; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-head-actions { flex: 1 1 100%; justify-content: flex-start; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-page-scroll { padding: 16px 14px 24px; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-page-inner { gap: 20px; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-zone-hint { display: none; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-hero { padding: 18px 16px; border-radius: 16px; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-hero-title { font-size: 24px; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-hero-side { grid-template-columns: minmax(0, 1fr); }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-hero-actions { grid-column: auto; grid-row: auto; width: 100%; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-hero-actions .ds-btn { min-height: 44px; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-hero-note { grid-column: auto; }
+  .ds-wb-hero-gate-row { grid-column: auto; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-rail { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 10px; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-project-grid { grid-template-columns: minmax(0, 1fr); }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-project-grid .ds-wb-project-cell-wide { grid-column: auto; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-card { padding: 16px; }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-run-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-flow-events { display: none; }
+}
+/* ---------- 应用外壳轻量统一（不改交互） ---------- */
+.ds-root .ds-header { height: 48px; padding: 0 12px; }
+.ds-root .ds-header-title { font-size: 13px; }
+.ds-root .ds-side { background: color-mix(in srgb, var(--dsw-alias-bg-layer-2) 46%, var(--dsw-alias-bg-layer-1)); }
+.ds-root .ds-pane-head { height: 36px; letter-spacing: 0.06em; }
+.ds-root .ds-tab[data-active="true"]::before { height: 2px; border-radius: 0 0 2px 2px; }
+.ds-root[data-compact="true"] .ds-header { height: auto; }
+.ds-root[data-compact="true"] .ds-side { background: var(--dsw-alias-bg-layer-1); }
 
 .ds-todo-edit { display: flex; flex-direction: column; gap: 5px; background: color-mix(in srgb, var(--dsw-alias-brand-primary) 5%, transparent); }
 .ds-todo-note-input {

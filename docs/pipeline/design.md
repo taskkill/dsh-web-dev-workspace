@@ -1,507 +1,413 @@
-# 工作台三区重构设计说明 v1.2.76（2026-10-27）
+# 工作台 UI 全面重构设计说明 —— 指挥舱（Command Deck）· v1.2.79
 
-> 角色：UI 设计师（`opc-design`）｜上游需求：[requirements.md](requirements.md)（工作台 UI 重构，343 行）｜上游提案：[workbench-redesign/README.md](../proposals/workbench-redesign/README.md) + [option-a.png](../proposals/workbench-redesign/mockups/option-a.png)｜下游：全栈开发实现（纯 client.js/CSS/i18n，不动 Host）。
-> 本轮性质：第 4 轮变更（`roundScope=full`），Owner 已拍板**方案 A 分区工作台**；七阶段 + 双复核不变。核心目标：首屏先回答「现在该做什么」，次要信息按区折叠降权，界面清爽、模块好辨认。
-> 结论先行：三区（现在/项目/交付）+ hero 当前阶段 + 5 张交付折叠行 + 需求摘要卡；视觉用浅灰蓝底、白卡轻阴影、3px 类目色条、12px 卡标题；只动 `renderWorkbenchPage`/CSS/i18n，保留 v1.2.75 指派器与全部现有功能。版本：插件 **1.2.75 → 1.2.76**、根保持 **1.2.76**（交付后根 +1 → 1.2.77）。
+> 角色：UI 设计师｜上游：[requirements.md](requirements.md)（第 7 轮需求，含 6 来源调研）｜下游：全栈开发（纯客户端 client.js/CSS/i18n）→ QA → 验收复核。
+> 结论先行：页面头升级为「eyebrow + 30px display + 上下文 chips + 动作组」；Now 区用**深色渐变 hero** 承载当前阶段、7 段时间轴、环形进度与主操作；Project 区 3 列；Delivery 区 7 步连接线时间轴 + 5 卡 bento（第 5 卡全宽条）；统一 11–30px 字号阶、4–32px 间距、10/14/18 圆角、三级阴影与 160ms 动效；浅/深主题均成立。版本：插件 **1.2.78 → 1.2.79**、根保持 **1.2.79**（交付后根 +1 → 1.2.80）。
+> 效果图（SVG + 2× PNG）：[overview-light](design/workbench-v1279-overview-light-1440.svg) / [overview-dark](design/workbench-v1279-overview-dark-1440.svg) / [full-light](design/workbench-v1279-full-light-1440.svg) / [mobile-390](design/workbench-v1279-mobile-light-390.svg) / [迭代 r1](design/workbench-v1279-overview-light-r1-1440.svg)。
 
 ---
 
 ## 0. 摘要
 
-| 项 | 内容 |
+| 项 | 设计决定 |
 |---|---|
-| 方向 | 方案 A：现在 / 项目 / 交付三区；hero 当前阶段 + 主操作；交付 5 张次要卡默认收起 |
-| 页面背景 | `#F6F8FB`（浅灰蓝）；白卡 + 1px `#E3E8EF` + `0 1px 2px rgba(15,17,21,.06)` + 12px 圆角 |
-| 间距/字号 | 分区 16、卡间 12、卡内 16/20；hero 20/700、分区标题 13/600、卡标题 12/600、正文 12–13、次要 11；主要数字 15–16 |
-| 类目色 | 现在 `#B7791F`、项目 `#2B6CB0`、交付 `#2F855A`；**仅用于 3px 色条/图标（非文本 ≥3:1），不用于正文** |
-| 折叠 | 设计稿/验收/交付前体检/本轮变更/运行中默认收起；fail 自动展开 + 红点；展开状态本会话记忆；展开全部/收起全部 |
-| 需求摘要 | 标题 + 轮次/范围 chips + ≤2 行摘要 + 查看完整需求/追加说明/修改需求/新轮变更（**不直出 PRD**） |
-| 交付物 | 本说明 + [workbench-redesign-final.svg](design/workbench-redesign-final.svg)/[.png](design/workbench-redesign-final.png) + [workbench-redesign-expanded.svg](design/workbench-redesign-expanded.svg)/[.png](design/workbench-redesign-expanded.png) |
-| 归档 | 上一轮 v1.2.75 指派器设计 → [design/archive-v1.2.75-assigner.md](design/archive-v1.2.75-assigner.md) |
+| 方向 | 「指挥舱」：全页唯一深色面板（hero）+ 浅色内容画布；主次由「表面/尺度/留白」决定，不靠更多边框 |
+| 页面骨架 | 页面头（sticky）→ Now（hero + 告警）→ Project（3 列）→ Delivery（时间轴 + bento） |
+| 首屏 | 1440×900：页面头 + hero（含主操作）+ Now 告警全部可见 |
+| 字号阶 | 11 caption / 12 small / 13 body / 14 card-title / 16 section / 20 metric / 30 display（≤700 display 24） |
+| 间距 | 4 / 8 / 12 / 16 / 20 / 24 / 32；页面 32（≤1023 20，≤700 14） |
+| 圆角 | 10（控件）/ 14（卡片）/ 18（hero/大面板）/ 999（pill） |
+| 状态色 | success / warn / error / business / idle；只用于点、条、pill 底色与图标，正文保持 label 色 |
+| 响应式 | ≥1280 项目三列 / 交付两列；1024–1279 项目两列 / 交付两列；768–1023 项目两列 / 交付单列；≤700 单列、主按钮 44px |
+| 动效 | 160ms cubic-bezier(.2,.7,.3,1)；hover 只做边框/阴影/位移 1px；reduced-motion 全关 |
+| 交付 | 高保真 SVG/PNG + 本说明 + 组件/状态对照表 + QA 视觉基线 |
 
 ---
 
 ## 1. 调研与借鉴
 
-> 调研由 product 阶段完成并写入需求 §11（2026-10-27，1 次 `web_search` + 8 次 `web_fetch`，6 个可引用来源；3 个失败来源如实披露）。设计阶段沿用并复核，不重复抓取、不新增未注明来源。
+> 沿用 product 阶段 2026-10-27 的 6 个可引用来源（URL + 访问日期 + 结论见 [requirements.md §7](requirements.md)）；设计阶段不重复抓取、不新增未注明来源。以下只写「对本设计稿的直接落点」。
 
-### 1.1 来源与关键结论
+### 1.1 来源与结论（设计视角）
 
-| # | 来源 | URL | 访问日期 | 关键结论（对本设计的影响） |
-|---|---|---|---|---|
-| 1 | NN/g · Progressive Disclosure | https://www.nngroup.com/articles/progressive-disclosure/ | 2026-10-27 | 初层只放最重要/高频选项，其余按需披露；初层/次层要切分正确、前进机制明显；一般不超过 2 层。→ 5 张交付卡默认收起；计数 + chevron + 展开全部；需求摘要 + 查看完整 |
-| 2 | NN/g · Visual Hierarchy in UX | https://www.nngroup.com/articles/visual-hierarchy-ux-definition/ | 2026-10-27 | 层级靠颜色/对比、尺度、分组；颜色克制（约 2 主 + 2 辅）、对比层次 ≤3、字号层级 ≤3 档、最重要元素最大且大元素 ≤2 个；不能只靠颜色。→ hero 20px 最大；分区 13px；卡标题 12px；三色条 + 文字 + 图标 |
-| 3 | NN/g · 10 Usability Heuristics | https://www.nngroup.com/articles/ten-usability-heuristics/ | 2026-10-27 | 状态可见、美学极简、一致性与标准、识别优于回忆、用户可控可退出。→ hero 状态/进度；折叠计数；需求摘要；折叠可展开 |
-| 4 | NN/g · F-Shaped Pattern | https://www.nngroup.com/articles/f-shaped-pattern-reading-web-content/ | 2026-10-27 | 用户扫读，首行/左侧获得最多注视；长文本墙降低可读性。→ 现在区 + hero 置顶；关键动作首屏；需求长文摘要化 |
-| 5 | W3C WAI · WCAG 1.4.3 Contrast (Minimum) | https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html | 2026-10-27 | 正文 ≥4.5:1，大字号 ≥3:1；不满足会造成低视力/色觉用户不可读。→ 正文/标题/链接 ≥4.5:1；大字号 ≥3:1 |
-| 6 | NN/g · Cards: UI-Component Definition | https://www.nngroup.com/articles/cards-component/ | 2026-10-27 | 卡片 = 把相关信息分组为可消化单元，是「摘要 + 更多细节入口」；边框/背景/轻阴影形成共同区域。→ 折叠行摘要 + 展开详情；需求卡摘要 + 查看完整；白卡轻阴影 |
+| # | 来源 | 访问日期 | 设计结论 |
+|---|---|---|---|
+| 1 | Linear · [A calmer interface](https://linear.app/now/behind-the-latest-design-refresh) | 2026-10-27 | 侧栏/导航退后、内容优先；减少无意义分割线；调色更平静；标签更紧凑 → 侧栏降权、卡边降对比、页面只留一个强焦点（hero） |
+| 2 | NN/g · [Visual Hierarchy](https://www.nngroup.com/articles/visual-hierarchy-ux-definition/) | 2026-10-27 | 层级靠对比/尺度/分组；大元素 ≤2 个；留白是层级工具 → 30px 只给页面标题与 hero 阶段名；区块 15–16；卡 14 |
+| 3 | NN/g · [Progressive Disclosure](https://www.nngroup.com/articles/progressive-disclosure/) | 2026-10-27 | 摘要 + 明确前进机制；不嵌套多层 → 需求卡 2 行 + 查看完整；事件记录降级；不恢复折叠 |
+| 4 | Vercel Geist · [Colors](https://vercel.com/geist/colors) | 2026-10-27 | 两个背景层级；组件 1/2/3 对应默认/hover/active；边框 4–6；半透明阴影、边框只画一次 → 页面底 vs 卡片 layer-1；卡 hover 边框/阴影；单层边框 |
+| 5 | Vercel Geist · [Grid](https://vercel.com/geist/grid) | 2026-10-27 | 三断点定义列；最多一层网格；可点击 cell 各自焦点环 → 1280/1024/700 断点；Project/Delivery 单层 grid |
+| 6 | W3C WAI · [WCAG 1.4.3](https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html) | 2026-10-27 | 正文 ≥4.5:1、大字 ≥3:1 → 设计稿记录对比度（§8.2），hero 白字 18.7:1 |
 
 ### 1.2 借鉴决策
 
-| 模式 | 决策 | 理由/落点 |
+| 借鉴点 | 决策 | 落点 |
 |---|---|---|
-| 渐进披露（初层只放高频信息） | **采用** | 5 张交付卡默认收起；需求摘要 2 行 |
-| 初层/次层正确切分（按频率） | **采用** | 现在/项目区高频；设计/验收/体检/变更/运行按需 |
-| 前进机制明显 | **采用** | 折叠头计数/状态 + chevron；展开全部/收起全部；aria-expanded |
-| 最多 2 层披露 | **采用** | 只做 1 层折叠，不嵌套 |
-| 视觉层级靠尺度/对比/分组 | **采用** | hero 20px、分区 13px、卡标题 12px；分区色条 + 图标 + 文字 |
-| 颜色克制（≤2 主 + 2 辅） | **采用** | 3 类目色（琥珀/蓝/绿）+ 中性色；正文中性色 |
-| 不靠颜色单独表意 | **采用** | 色条 + 分区文字 + 图标；状态 pill 有文字 |
-| 卡片 = 摘要 + 细节入口 | **采用** | 折叠行、需求摘要卡 |
-| 多层级卡片（卡内再套卡） | **不采用** | 现状已因 10 卡同质混乱，再嵌套会加重 |
-| 方案 B 标签页 / 方案 C sticky 右栏 | **本轮不采用** | Owner 已拍板 A；B/C 作为后续选项 |
-| 折叠状态持久化 | **本轮不做（P2）** | 需求不要求；避免新增存储/状态；本会话记忆即可 |
-| 自动隐藏 fail 卡 | **不采用** | 失败必须被看见：fail 自动展开 + 红点 |
-| 9.5px 全大写卡标题 | **不采用（修复）** | 改 12px 半粗正常大小写 |
-
-### 1.3 已验证 vs 创新假设
-
-- **已验证**：渐进披露降低复杂度；视觉层级靠尺度/对比/分组；状态可见与极简；F 型扫读；对比度阈值；卡片摘要语义。
-- **创新假设（待验收）**：「现在/项目/交付」切分适合本产品；hero 能覆盖所有阶段状态；5 卡收起不降低可发现性；需求摘要 2 行足够；3 类目色 + 浅灰蓝底兼顾清爽与可辨识；≤700 单列够用；五维自评 ≥4 可作为清爽/专业代理指标；本会话记忆可接受。
+| 一个强焦点、其余退后 | **采用** | 全页仅 hero 深色；卡片与区头用中性色 |
+| 少边框、用留白/表面组织 | **采用** | 卡边 22%（hover 32%）；卡内不再套边框；区块间 28–32 |
+| 双表面层级 + hover/active | **采用** | `--wb-canvas` 页面底 / `--wb-surface` 卡片 / hover 表面 2 |
+| 半透明阴影 | **采用** | `--wb-shadow-1/2` 全部用 color-mix 半透明 |
+| 三断点 + 单层网格 | **采用** | Project/Delivery 各自单层；断点 1280/1024/700 |
+| 渐进披露（摘要+入口） | **采用** | 需求 2 行；事件 5 条；设计卡缩略图 + 文档链接 |
+| 深色主题专门配色 | **不采用** | hero 固定 #0B1220 锚点；浅/深主题共用；其余表面走 alias token |
+| 大面积玻璃拟态/渐变背景 | **不采用** | 页面只加 10% 品牌径向光，不做大色块 |
+| 折叠/展开交付卡 | **不采用** | v1.2.78 已取消，本轮保持直接展示 |
 
 ---
 
-## 2. 目标、原则与范围
+## 2. 设计原则
 
-**目标**：1440×1024 首屏看到 hero + 主操作；三区一眼可辨；次要信息可折叠且可发现；需求不再直出全文；保留全部现有功能。
-
-**原则**：
-1. **Owner-first**：首屏先回答「现在要做什么」；关键动作不被折叠。
-2. **分区不嵌套**：只做 1 层折叠；分区归属不可乱。
-3. **摘要优先**：卡片是摘要 + 细节入口；长文进「查看完整」。
-4. **失败可见**：fail 自动展开 + 红点 + 文字，不因极简隐藏告警。
-5. **复用与增量**：复用 `ds-wb-*`/`ds-btn`/`ds-pipe-*`/`--dsw-alias-*`；只加 `.ds-wb-zone*`/`.ds-wb-hero*`/`.ds-wb-fold*` 增量样式。
-6. **不改 Host**：纯客户端渲染/CSS/i18n；不写数据、不加依赖。
-
-**范围**：三区结构、hero、5 卡折叠、需求摘要、视觉/响应式/i18n/无障碍、五维自评。
-**不做**：方案 B/C、折叠持久化（P2）、Host/数据/模型工具/流水线结构、深色主题专门重设计、其他页面重构。
+1. **一眼有主次**：全页只有一个深色面板（hero）；30px 只出现两次（页面标题、hero 阶段名）。
+2. **结论先行**：每张卡首行是「标题 + 主 metric/状态」，细节在后；卡片不是表单。
+3. **留白即层级**：区块间 28–32、卡间 14–16、卡内 16–20；用距离分组而不是加边框。
+4. **克制**：品牌色只用于链接/焦点/小面积强调；状态色只用于点/条/pill。
+5. **稳**：只动表现层与布局容器，所有按钮/数据流/禁用逻辑原样保留。
 
 ---
 
-## 3. 布局与信息架构
-
-### 3.1 页面骨架
-
-- 工作台页面：`ds-wb-page` → `ds-wb-page-head`（标题 24/700 + 项目副标题）→ `ds-wb-page-scroll` → `ds-wb-page-inner`（max-width **1080**，纵向分区栈，分区间距 **16**）。
-- 页面底色 `#F6F8FB`；内容左右留白 24/50；页面滚动区独立，页头固定不随内容滚动。
-- 三个 `<section>`：`现在` → `项目` → `交付`，顺序不可变；每个 section `aria-labelledby` 分区标题。
-
-### 3.2 三区与卡片归属
-
-| 区 | 布局 | 卡片/元素 | 说明 |
-|---|---|---|---|
-| **现在**（置顶全宽） | 分区头 + 待办列表（0–n 行）+ hero | hero 当前阶段卡；无待办时不渲染空卡，可一行轻提示；有问题/额外待办时在 hero 上方显示紧凑行（状态点 + 标题 + 摘要 + 主操作） | hero 不折叠、首屏可见 |
-| **项目**（两列） | 第一行 2 列：项目状态 / 团队与指派；第二行全宽：需求与调整（摘要卡） | ① 项目状态（轮次、进度 4/7、快速模式、当前阶段；查看流水线/打开需求）② 团队与指派（6 chips 三态 + 指派任务 + 团队面板入口 + 最近 1 条摘要）③ 需求与调整（标题 + 轮次/范围 chips + ≤2 行摘要 + 4 操作） | 两列布局，需求摘要卡跨两列 |
-| **交付**（全宽） | 项目流程全宽 + 5 张折叠行 | 项目流程（7 步）；设计稿 / 验收 / 交付前体检 / 本轮变更 / 运行中（默认收起，计数/状态摘要） | 折叠行 1 层，不嵌套 |
-
-**保留但不单独占区**：问题列表（`issuesCard`，problems）作为「现在区」的告警/待办行的数据来源（problems>0 时显示）；未保存需求时沿用现有开工/需求录入空态，不渲染三区空壳。
-
-### 3.3 栅格与间距
-
-| 项 | 数值 |
-|---|---|
-| 内容最大宽 | 1080 |
-| 项目区第一行 | 2 列，各 534（gap 12） |
-| 需求摘要卡 | 全宽 1080 |
-| 交付折叠行 | 5 列等宽：200 + gap 14（合计 1056，居中于 1080） |
-| 分区间距 | 16 |
-| 卡间距 | 12 |
-| 卡内边距 | 16（紧凑）/ 20（hero/需求摘要） |
-| 分区色条 | 3px（允许 3–4px 实现；本设计取 3px） |
-| 卡片圆角 / 折叠行圆角 | 12 / 10 |
-
-### 3.4 分区头（Section Header）
+## 3. 信息架构与页面清单
 
 ```
-[3px 类目色条] [16px 线性图标] 现在(13/600)  需要你决定的事 · 1 项(12)      [右侧计数/操作 12 链接]
+页面头（sticky 108px）  工作区 · 项目 · 第 N 轮 / 工作台 30px + chips / 动作组
+Now 区（eyebrow）       hero（深色，全宽） + 告警卡 + 空态
+Project 区（eyebrow）   项目状态 | 团队与指派 | 需求与调整（3 列）
+Delivery 区（eyebrow）  项目流程时间轴 + 事件；5 卡 bento（2 列 + 1 全宽）
 ```
 
-- 类目色：现在 `#B7791F`、项目 `#2B6CB0`、交付 `#2F855A`；仅色条/图标使用，标题始终 `label-primary`（18.9:1），**不靠颜色表意**。
-- 右侧操作：现在「查看全部待办 →」；项目「打开流水线 →」；交付「展开全部 → / 收起全部 →」。
-- 语义：`<section aria-labelledby>`；标题元素用可读文本，不只图标。
-
-### 3.5 hero 当前阶段卡
-
-| 区域 | 规格 |
-|---|---|
-| 卡容器 | 全宽 1080，白底/1px 边框/轻阴影/圆角 12；内边距 20；左侧 5px 类目色强调条（现在=amber） |
-| 左侧 | eyebrow「第 5 关 · 当前阶段」12；阶段名 20/700；状态 pill 12（待评审/进行中/已通过…）；摘要 13（来自 stage summary，截断）；负责角色 12；7 点进度 + 「4/7 关已完成」15/600；辅助链接「查看复核报告 →」 |
-| 右侧 | 主操作按钮 42–44 高：approval 待确认 → 通过/打回；阶段待启动 → 启动并派发；其它 → 查看流水线 / 指派任务；下方一行 12px 闸门提示（通过后进入人工确认、发布锁定） |
-| 状态覆盖 | 待评审/进行中（查看流水线/指派任务）/待启动（启动并派发）/已通过（查看发布记录）/无进行中阶段（轻提示） |
-| 约束 | 不折叠；1440×1024 首屏可见主操作；摘要 2 行截断 |
-
-### 3.6 折叠行（Fold Row）
-
-- 收起态（默认，高 96）：图标 16 + 标题 12/600 + 计数/状态摘要（15/600 或 12，如「4 张」「42/42」「通过」「3 文件」「1 个」）+ 右侧 chevron（向下）；底部一行 11–12px 状态摘要（如「失败 0」「0 项建议」「npm test 通过」）。
-- 展开态：同一卡片向下展开，内部**复用重构前原卡片渲染内容与操作**，不重写业务；header 右侧出现「收起」文字 + chevron（向上）。
-- 折叠头整行可点：`<button>`，`aria-expanded` + `aria-controls`；触控区域 ≥44px；hover 底色 4%、focus 2px 环。
-- fail 状态：红点 8px + 红点文字/计数（「1 项失败」），自动展开；手动收起后红点与计数保留。
-
-### 3.7 需求摘要卡（本轮明确修复点）
-
-| 元素 | 规格 |
-|---|---|
-| 标题行 | 图标 +「需求与调整」12/600 |
-| 需求标题 | 13–14/600，单行省略；tooltip/title 全文 |
-| chips | 「第 3 轮」「范围 full」各 11px pill（bg-layer-2 / label-secondary）；轮次/范围来自现有 pipelineDoc |
-| 摘要 | 纯文本摘要，**CSS line-clamp: 2**（≤2 行）；剥离 markdown 标题/代码块/链接标记；末尾省略号；不在卡片内渲染整段 PRD 原文 |
-| 操作 | 查看完整需求（复用现有需求视图/弹层，不新增页面）、追加说明、修改需求、新轮变更；四个原有行为不变 |
-| 说明 | 原文仅在「查看完整需求」后出现；如现有弹层只有编辑态，先只读展示 + 编辑按钮，不新增独立页面 |
-
-### 3.8 问题列表（Problems）
-
-- 位置：现在区 hero 上方的紧凑列表（仅当 problems > 0 或存在额外待办时）；不新增第 11 张常驻卡。
-- 行：严重度图标 + `file:line`（等宽 11px）+ 问题摘要（12，单行省略）+ 「查看 →」；最多显示 3 行 + 「查看全部问题」。
-- 空：隐藏；加载/错误：一行提示 + 重试，不拖垮整页。
-- 数据复用 `issues`/problems 现有状态，不新增 Host 接口。
-
-### 3.9 空态与无项目
-
-- 无项目（未保存需求）：沿用现有开工/需求录入卡；**不渲染**三区空壳与假 hero。
-- 无待办：现在区仅 hero（或一行轻提示「今天没有需要你处理的事项」），不留大块空白卡。
-- 5 张折叠行数据为 0：计数显示「0/无」，不报错；折叠头仍可展开看空态。
-
----
-
-## 4. 视觉规范（可实现 token/数值）
-
-### 4.1 颜色与实测对比度
-
-| 用途 | 值（近似） | 对应 token | 实测对比度 | 使用 |
-|---|---|---|---|---|
-| 页面背景 | `#F6F8FB` | `bg-base` 近似 | — | 工作台滚动区底 |
-| 卡片底 | `#FFFFFF` | `bg-layer-1` | — | 所有卡/hero/折叠行 |
-| 卡片边框 | `#E3E8EF` | `border-l2` 近似 | 1.23:1（装饰） | 1px 边框（非识别唯一线索） |
-| 主文字 | `#0F1115` | `label-primary` | 17.76:1（#F6F8FB）/18.9:1（白） | 标题/正文 |
-| 次文字 | `#61666B` | `label-secondary` | 5.45:1（#F6F8FB） | 摘要/元信息 |
-| 链接/信息文字 | `#2563EB` | `info-text` | 4.86:1（#F6F8FB） | 链接/信息 |
-| 现在类目色 | `#B7791F` | warn 柔和近似 | 3.42:1（#F6F8FB）/3.64（白） | **仅 3px 色条/图标（非文本 ≥3:1）**；不用作正文 |
-| 项目类目色 | `#2B6CB0` | info 柔和近似 | 5.09:1（#F6F8FB） | 色条/图标（也可作大字/链接备选） |
-| 交付类目色 | `#2F855A` | success 柔和近似 | 4.27:1（#F6F8FB）/4.54（白） | **仅色条/图标（非文本 ≥3:1）**；不用作正文 |
-| 成功状态文字 | `#1A7F37` on `#E6FAED` | success-text / success 12% | 4.66:1 | 状态 pill 文字 |
-| 警告状态文字 | `#B45309` on `#FEF5E7` | warn-text / warn 12% | 4.65:1 | 状态 pill 文字 |
-| 错误状态文字 | `#D1242F` on `#FEF2F2` | error-text / error 12% | 4.79:1 | 状态 pill / 失败行 |
-| 弱化非文本 | `#7F8287` | label-caption 近似 | 3.62:1（#F6F8FB） | 灰点/非文本 ≥3:1，不承载正文 |
-| 主按钮 | `#0F1115`，白字 | brand-primary | 18.9:1 | 通过/启动/指派 |
-
-> 规则：正文/分区标题/卡标题/计数/链接 **≥4.5:1**；大字号 ≥3:1；非文本（色条/圆点/图标）≥3:1。类目色只用于非文本标识，避免 amber/green 在小字号下不达标。禁用态仍需可辨识，不使用纯浅灰当正文。
-
-### 4.2 字号阶梯
-
-| 用途 | 字号/行高 | 字重 |
+| 页面/区块 | 关键内容 | 保留的交互 |
 |---|---|---|
-| 页面标题 | 24/32 | 700 |
-| hero 阶段名 | 20/28 | 700 |
-| 分区标题 / 副说明 | 13/20 · 12/18 | 600 / 400 |
-| 卡片标题 | **12/18**（替换 9.5–10.5px 全大写） | 600 |
-| 正文 / 卡内容 | 12–13 / ≥1.4 | 400 |
-| 主要数字（4/7、42/42、计数） | **15–16** | 600 |
-| 次要/元信息 | 11–12 | 400 |
-| 折布行计数 | 15/600（短计数）；长状态用 12 | 600 |
-
-### 4.3 间距 / 圆角 / 阴影 / 动效
-
-- 间距 4/8 体系：分区 16、卡间 12、卡内 16/20、色条 3–4px、折叠行内 16。
-- 圆角：卡片 12、折叠行 10、pill 全圆角、按钮 8。
-- 阴影：`0 1px 2px rgba(15,17,21,0.06)`（仅卡片/折叠行；不使用重阴影）。
-- 动效：hover 150ms；折叠展开 150–200ms ease-out；`prefers-reduced-motion: reduce` 直接切换（无高度动画）。
-- 状态 pill：success/warn/error 12% 底 + `*-text` 文字 + 文字标签；不靠颜色单独表意。
-- 焦点：可见 2px 环 + offset；不得 `outline:none` 无替代。
+| 页面头 | eyebrow、display 标题、轮次/快速模式/已通过 chips、当前阶段说明、刷新/流水线/团队/通知/关闭 | 全部原 handler；compact 返回 |
+| Hero | STAGE 05/07、阶段名、状态 pill、摘要、负责角色、7 段时间轴、环形 4/7、主/次 CTA、review note、门禁说明、查看复核报告 | reviewPipelineStage(approve/reject)、startPipelineStage、openPipeline |
+| 告警卡 | 失败项/问题计数、说明、发给团队、查看验收 | sendAcceptanceFailures、openAcceptance、问题行 action |
+| 项目状态 | 4/7 大数字、进度条、轮次/模式 chips、当前阶段、查看流水线/打开需求 | openPipeline、openRequirement |
+| 团队与指派 | 6 角色三态 chips、指派任务、团队面板入口、最近指派 | openAssignmentDrawer、团队入口 |
+| 需求与调整 | 标题、轮次/范围 chips、2 行摘要、查看/追加/修改/新轮、修订记录 disclosure | openRequirementPanel 四模式、修订 disclosure |
+| 项目流程 | 7 步连接线时间轴（名字/角色/状态/当前高亮）、事件记录 | 点击阶段 openPipeline |
+| 交付 5 卡 | 设计稿、验收、交付前体检、本轮变更、运行中（第 5 卡全宽条） | 原卡片全部按钮/链接 |
 
 ---
 
-## 5. 组件规格（状态/进度、团队、折叠、问题）
+## 4. 布局规格
 
-### 5.1 项目状态卡
+### 4.1 页面骨架尺寸（1440 桌面）
 
-- 标题「项目状态」12/600 + 图标；进度条 8px（已完成蓝色 `#2B6CB0`）；主要数字「4/7」15/600；元信息「第 N 轮 · 快速模式：开/关 · 最近提交」11–12；链接「查看流水线 →」「打开需求」12。
-- 进度条 `role="progressbar"` + `aria-valuenow/min/max`；文字冗余（不靠颜色）。
-
-### 5.2 团队与指派卡（v1.2.75 能力不回归）
-
-- 6 chips（3 列 × 2 行）：头像/圆点 + 角色名 11 + 状态点；三态空闲/执行中/待你确认（按指派记录推导）；提示「以团队面板为准」；「指派任务」主按钮 +「团队面板入口」；最近 1 条摘要（标题 · 成员 · 状态）。
-- 完整列表/抽屉/状态卡入口仍在 v1.2.75 指派卡内；本卡只做摘要，不重复实现团队通信。
-
-### 5.3 折叠行
-
-- 收起：图标 16 + 标题 12/600 + 计数/状态 15/600 + chevron；底部摘要 11–12。
-- 展开：复用原卡片 JSX（设计稿缩略图、验收 counts/按钮、体检 chips、变更文件行、运行任务行）；展开后不改变原操作与数据。
-- 自动展开：验收 fail>0 或体检 fail/阻断 → 默认展开 + 红点 + 「自动展开：有失败」文字；修复后恢复收起。
-- 全部展开/收起：交付区头右侧按钮；状态只在本会话记忆（`Set<string>`，刷新回默认）。
-
-### 5.4 问题列表
-
-- 行：严重度图标 + `file:line`（11 mono）+ 摘要 12 + 「查看 →」；最多 3 行 + 查看全部；空/加载/错误有行内兜底。
-
----
-
-## 6. 折叠与展开规则
-
-| 规则 | 设计 |
+| 层 | 尺寸/间距 |
 |---|---|
-| 默认 | 5 张（设计稿/验收/交付前体检/本轮变更/运行中）全部收起；项目流程/hero/现在区不折叠 |
-| 触发 | 点击折叠头任意处；键盘 Enter/Space（button 语义）；触控点击；命中区 ≥44px |
-| 收起态信息 | 必须显示计数/状态摘要（「4 张」「42/42」「通过」「3 文件」「1 个」）；0 显示「0/无」 |
-| 自动展开 | 验收 fail>0、体检 fail/阻断 → 自动展开 + 红点；Owner 可手动收起，红点/计数保留 |
-| 展开全部 | 交付区头「展开全部 / 收起全部」一键切换 |
-| 本会话记忆 | 组件状态 `Set<string>`，切换页面/刷新后回默认；不做 localStorage（P2） |
-| 动效 | 150–200ms ease-out；reduced-motion 直接切换 |
-| 可访问性 | 折叠头 `aria-expanded`/`aria-controls`；展开内容 id 关联；焦点不丢失；状态变化不静默 |
+| 外壳顶栏 | 高 52；左右 padding 16；品牌 28×28 圆角 8；标题 13/700 |
+| 侧栏 | 宽 248；padding 16/12；分组标签 10/600 + 1.2 字距；项高 34、图标 16、文字 12.5；活动项 232×32 圆角 8 + 2×16 左指示条 |
+| 页面头 | 高 108（padding 18/32）；sticky top 0；底面 96% 不透明 + 1px 下边线 |
+| 内容画布 | max-width 1280；左右 32（≤1023 24、≤700 14）；上 28、下 40；区块间 32（≤1023 24、≤700 20） |
+| Hero | 全宽 × 270；padding 26/28；左列弹性、右列 300（≤1279 280）；圆角 18 |
+| 告警卡 | 全宽 × 56；左色条 3；圆角 14 |
+| Project 卡 | 3 列，卡宽 ≈366；高 ≥170；padding 18/20；gap 14 |
+| 时间轴卡 | 全宽 × 154；7 步均分；事件行 11px |
+| Delivery 卡 | 2 列 = 557 × 184；第 5 卡全宽 × 120；gap 14 |
 
----
+### 4.2 断点
 
-## 7. 边界 / 状态矩阵
-
-### 7.1 页面级边界
-
-| 场景 | 行为 |
-|---|---|
-| 无项目（未保存需求） | 现有开工/需求录入空态；不渲染三区空壳/假 hero/0 数据 |
-| 无待办 | 现在区不占位或一行轻提示；hero 仍显示当前阶段或「暂无进行中阶段」 |
-| 无需求标题 | 需求卡显示「还没有需求」+ 开工引导；不渲染空 chips |
-| 无当前阶段 | hero 显示「暂无进行中阶段」+ 查看流水线/全部已完成；不显示假主操作 |
-| 7 关完成 | hero 显示「已完成」+ 发布记录/查看流水线；折叠区正常 |
-| 空数据 | 设计稿 0、验收 0、变更 0、运行 0 → 折叠头「0/无」；展开显示现有空态，不报错 |
-| SSH 工作区 | 现有 SSH 降级：不支持的操作禁用/提示；不写 `.dsh` 数据；不抛错 |
-| 加载中 | 骨架/「读取工作台…」；不整页白屏 |
-| 单卡错误 | 该卡行内错误 + 重试；其他区/卡正常 |
-| 窄屏 | ≤700 单列；项目区单列；折叠行单列；hero 按钮换行；折叠头 44px；无横向溢出 |
-
-### 7.2 组件状态矩阵
-
-| 组件 | default | hover | focus | active | disabled | loading | empty | error |
-|---|---|---|---|---|---|---|---|---|
-| 分区头 | 色条+图标+标题+计数 | 右侧链接加深 | 链接/操作焦点环 | — | 无权限时右侧操作禁用+提示 | 计数骨架 | 0 项显示 0/无 | 读取失败行内提示 |
-| hero 主操作 | 深色主按钮 44 | 加深 4% | 2px 环 | 1px 位移 | 当前阶段不可操作时禁用+原因 | 提交中「处理中…」 | — | 失败 toast/行内错误，不丢状态 |
-| 折叠头 | 白卡+摘要+chevron | 底色 4% | 2px 环 | 按下底色 | — | 内容骨架 | 「无/0」 | 行内错误 + 重试；仍可收起 |
-| 需求摘要卡 | 标题+chips+2 行+4 操作 | 按钮加深 | 焦点环 | 按钮按下 | 已完成轮次时「新轮变更」禁用+提示 | 摘要骨架 | 无需求引导 | 摘要/按钮错误提示 |
-| 团队 chips | 圆点+角色 | 边框加深 | 焦点环 | 按下 | — | — | — | 记录推导失败显示空闲 + 团队面板提示 |
-| 状态 pill | 文字+柔和底 | — | — | — | — | — | — | — |
-| 问题行 | 图标+file:line+摘要 | 行底色 4% | 焦点环 | 按下 | — | 骨架 | 隐藏 | 行内重试 |
-| 展开全部按钮 | 链接/次按钮 | 下划线/加深 | 焦点环 | 按下 | 无可折叠项时隐藏 | — | — | — |
-
-### 7.3 视觉边界
-
-- 长标题/摘要：单行省略或 2 行 clamp；chips 可换行；tooltip 提供全文。
-- 计数 >999 / 多语言长词：不撑破 200px 折叠卡；必要时缩为 14px。
-- 深色主题：新元素用 token，不硬编码白底黑字；若现有主题支持，抽查可读即可（本轮不专门重设计）。
-
----
-
-## 8. 响应式与无障碍
-
-### 8.1 响应式
-
-| 断点 | 行为 |
-|---|---|
-| ≥1024 | 三区纵向；项目区两列（状态/团队 + 全宽需求）；交付 5 列折叠行 |
-| 701–1023 | 三区纵向；项目区可保持两列或降为单列；折叠行 2–3 列/自动换行 |
-| ≤700 | 单列：项目区单列；需求摘要卡全宽；折叠行单列；hero 按钮换行；折叠头 44px；无横向溢出 |
-| 360/768/1280 | 均无横向滚动；长标题/计数/chips 换行或截断；hero 主操作一次点击可达 |
-
-- 内容最大宽 1080；窄屏 padding 16；不隐藏关键操作；分区间距 16 → 窄屏 12。
-
-### 8.2 无障碍
-
-- 语义：`<section aria-labelledby>`；折叠头 `<button aria-expanded aria-controls>`；hero 主操作为真实 `<button>`；问题行链接可读名称。
-- 键盘：Tab 顺序 = 视觉顺序（现在→项目→交付）；折叠/展开焦点不丢；Esc 关闭既有弹层；焦点可见。
-- 触控：折叠头/图标按钮/主操作 ≥44×44（视觉 36–40 + padding 扩展）；不靠 hover 才能操作。
-- 状态：颜色 + 文字 + 图标/形状；fail 红点 + 「失败/阻断」文字；计数有可读名称。
-- 读屏：折叠状态可读（「验收，已收起，1 项失败」）；展开/自动展开有可见反馈；`aria-live="polite"` 用于关键状态变化（非全部）。
-- 对比度：见 §4.1；reduced-motion 生效；无 9.5px 全大写卡标题。
-
----
-
-## 9. i18n（新增 23 键，`workbench.*`）
-
-> 字典位置：`client.js` 中英字典（zh 约 449–560、en 约 1633–1740，`workbench.assign.*` 之前/之后插入均可；**不得删改既有 122 个 assign 键**）。缺键回退中文，不渲染 key 名/undefined。
-
-| Key | 中文 | English |
-|---|---|---|
-| `workbench.section.now` | 现在 | Now |
-| `workbench.section.nowHint` | 需要你决定的事 · {count} 项 | What needs you · {count} |
-| `workbench.section.nowEmpty` | 今天没有需要你处理的事项 | Nothing needs you today |
-| `workbench.section.project` | 项目 | Project |
-| `workbench.section.projectHint` | 进度 · 团队 · 需求 | Progress · team · requirements |
-| `workbench.section.delivery` | 交付 | Delivery |
-| `workbench.section.deliveryHint` | 流水线 · 设计 · 验收 · 运行 | Pipeline · design · acceptance · running |
-| `workbench.hero.currentStage` | 第 {n} 关 · 当前阶段 | Stage {n} · current |
-| `workbench.hero.progress` | {done}/{total} 关已完成 | {done}/{total} stages done |
-| `workbench.hero.responsible` | 负责：{role} | Owner: {role} |
-| `workbench.hero.gateNote` | 通过后进入人工确认；发布仍锁定 | Approval next; release stays locked |
-| `workbench.hero.start` | 启动并派发 | Start & dispatch |
-| `workbench.fold.expand` | 展开 | Expand |
-| `workbench.fold.collapse` | 收起 | Collapse |
-| `workbench.fold.expandAll` | 展开全部 | Expand all |
-| `workbench.fold.collapseAll` | 收起全部 | Collapse all |
-| `workbench.fold.count` | {count} 项 | {count} items |
-| `workbench.fold.empty` | 无 | None |
-| `workbench.fold.failCount` | {count} 项失败 | {count} failed |
-| `workbench.fold.autoExpanded` | 已自动展开：有失败 | Auto-expanded: failures found |
-| `workbench.requirement.viewFull` | 查看完整需求 | View full requirement |
-| `workbench.requirement.chips` | 第 {round} 轮 · 范围 {scope} | Round {round} · scope {scope} |
-| `workbench.requirement.summaryHint` | 原文仅在「查看完整需求」后展示 | Full text only after “View full requirement” |
-
-> 复用既有键（不新增）：折叠卡标题用 `workbench.design/acceptance/preflight/changes/running/flow`；「指派任务」「团队面板入口」「通过」「打回」「查看流水线」「追加说明」「修改需求」「新轮变更」均用 v1.2.75/现有键。合计新增 **23 键**。
-
----
-
-## 10. 给开发实现注意点
-
-### 10.1 文件/位置（当前 v1.2.75 客户端行号，±几行以实际为准）
-
-| # | 位置 | 改动 |
-|---|---|---|
-| 1 | `client.js` `renderWorkbenchPage`（≈17342） | 重构为三区结构；卡片变量顺序/归属重排；hero/折叠渲染 |
-| 2 | 卡片定义 | `adjustCard` ≈17536（需求摘要截断）；`requirementCard` ≈17642；`preflightCard` ≈17877；`acceptanceCard` ≈17976；`reviewCard` ≈18042；`designCard` ≈18164；`assignmentCard` ≈18334；`flowCard` ≈18938；`runningCard` ≈19044。**保留全部卡片变量与内部渲染/事件**，只改外层容器与折叠壳 |
-| 3 | 工作台 JSX 列表（`ds-wb-page-inner` 内） | 按「现在 → 项目（2 列）→ 交付」重排；插入 `<section>` 容器、hero、需求摘要卡、5 个折叠行；<700 依赖现有媒体查询 |
-| 4 | 折叠状态 | 新增组件内 state：`foldOpen`（Set<string>，默认空=收起）、`foldFailAuto`（由验收 fail/体检 fail 推导）、`allFoldsOpen`（可选）；仅本会话，不持久化 |
-| 5 | hero 数据 | 复用现有 `current`/`reviewStage`/`actionableStage`/`statusText`/`stageTitle`/`pipelineDoc`；主操作复用现有 `reviewPipelineStage`/`startPipelineStage`/`openPipeline`/`openAssignmentDrawer` 等 handler，不新造数据流 |
-| 6 | 需求摘要 | 在 `adjustCard` 内：`requirement.detail` → 纯文本 + 首 150 字/2 行 clamp；移除直接全文渲染；操作复用现有 `openRequirementPanel`/`reqMode`；「查看完整需求」复用现有需求视图/弹层（无则只读展示 + 编辑入口，不新增页面） |
-| 7 | 问题列表 | 复用 `issues` 状态；problems>0 时渲染在现在区 hero 上方；不新增 Host |
-| 8 | CSS | 追加在现有 `.ds-wb-*`（≈24348–24470）之后：`.ds-wb-zone*`、`.ds-wb-hero*`、`.ds-wb-fold*`、`.ds-wb-summary*`、`.ds-wb-section-*`；阴影/圆角/间距用变量；覆盖 `.ds-wb-page .ds-wb-card-title { font-size:12px; text-transform:none; letter-spacing:0 }` |
-| 9 | i18n | zh ≈449–560 / en ≈1633–1740 插入 §9 的 23 键；不动 assign 键；缺键回退中文 |
-| 10 | 保留 | v1.2.75 指派卡/抽屉/状态卡、验收/交付/变更/运行、流水线、Owner 编辑器标签右键菜单；不触碰 Host |
-
-### 10.2 分步落地（降低回归风险）
-
-1. **分区容器**：不动卡片内容，先加 `section` + 分区头 + 三区顺序，把现有 10 张卡按归属放入；跑一遍现有功能回归。
-2. **hero**：从现有 attention/current/actionable 数据派生 hero；保留「需要你处理」原有按钮 handler；确认 approval/启动/查看流水线三种状态切换正确。
-3. **需求摘要**：仅改 `adjustCard` 的截断与「查看完整需求」入口；确认 4 个原有操作仍工作。
-4. **折叠**：把 5 张卡包进折叠壳；默认收起 + 计数；展开时渲染原卡片；补 fail 自动展开/红点/展开全部。
-5. **视觉/i18n/响应式/无障碍**：按 §4/§8/§9 收尾；深色主题抽查；跑四条命令。
-
-### 10.3 必须联调/回归的 5 项
-
-1. 现在区 hero 与「需要你处理」原有主操作（approval 通过/打回、阶段启动、查看流水线）一致，不重复触发/不丢 handler。
-2. 折叠 5 卡展开后内容与重构前一致（设计稿缩略图、验收按钮、体检 chips、变更文件、运行任务），操作可用。
-3. 需求摘要：不出现 PRD 全文；4 操作可用；长标题/多行摘要不溢出。
-4. fail 自动展开：验收 fail>0/体检 fail 时自动展开 + 红点；手动收起保留红点；修复后恢复默认收起。
-5. 既有功能：v1.2.75 指派卡/抽屉/状态卡、验收、交付包、变更审阅、运行中、编辑器标签右键菜单；`npm run check`/`npm test`/pipeline-selftest/review-selftest 全绿。
-
----
-
-## 11. 五维自评 rubric 与本轮自评
-
-### 11.1 rubric（0–5 锚点）
-
-| 维度 | 0–1 | 2 | 3 | 4 | 5 |
+| 断点 | 页面/画布 | Project | Delivery | Hero | 页面头 |
 |---|---|---|---|---|---|
-| 视觉层级 | 无层级/同权 | 混乱、主次不分 | 有标题/正文/辅助 | hero/分区/卡标题层级清晰，首屏一个主行动 | 层级即引导，可作范例 |
-| 清晰度 | 看不懂 | 关键信息缺失/歧义 | 主要信息可懂 | 模块可辨、摘要/计数易懂、术语一致 | 新手无需解释即可完成 |
-| 一致性 | 风格混搭 | 多处 token/术语/间距不一致 | 基本沿用现有体系 | token/组件/术语统一，深浅主题一致 | 建立可复用模式 |
-| 反馈 | 无反馈 | 缺展开/失败/加载反馈 | 关键操作有反馈 | 折叠/失败/加载/成功反馈齐备，状态可见 | 反馈节奏与动效编排好 |
-| 可访问性 | 不可键盘/对比度严重不足 | 多处对比度/ARIA 缺陷 | 基本键盘可达、主要文本达标 | 对比度/焦点/ARIA/44px/降级全部达标 | 读屏实测完整 |
+| ≥1280 | 32 / 1280 | 3 列 | 2 列 + 全宽条 | 左右（右 300） | sticky |
+| 1024–1279 | 24 / 1280 | 2 列（需求全宽） | 2 列 + 全宽条 | 左右（右 280） | sticky |
+| 768–1023 | 20 / 100% | 2 列（需求全宽） | 1 列 | 上下两段 | sticky |
+| ≤700 | 14 / 100% | 1 列 | 1 列 | 单列 | 非 sticky |
+| 360 极限 | 14 | 1 列 | 1 列 | 单列，display 24 | 非 sticky |
 
-### 11.2 门槛与一票否决
+- 所有 grid 子项 `min-width:0`；标题 `overflow-wrap:anywhere`；长项目名 `text-overflow:ellipsis`。
+- 触控：主 CTA 44×≥120；次 CTA 36；icon button 32（视觉）但外层点击区 44；卡内文字链接行高 ≥24。
+- Hero 右栏在 ≤1023 下移，CTA 全宽 44；review note 保持 34。
 
-- 每维 **≥4**（需求标准 9 要求），均分 ≥4；must 项 0 失败。
-- must：对比度（正文 ≥4.5:1/大字 ≥3:1/非文本 ≥3:1）、44×44、折叠/状态关键态、键盘/ARIA、来源、迭代、死链、不破坏既有功能。
-- 证据：文件/截图/实测值/命令；自评不代表 Owner/acceptance。
+### 4.3 关键状态布局
 
-### 11.3 本轮自评
+- 无项目：仅需求录入卡（宽 ≤640 居中），不渲染 hero/三区。
+- review 阶段：hero 主 CTA = 通过/打回；pending/failed：启动并派发/指派任务；其它：查看流水线/指派任务。
+- 全通过：hero 显示「全部阶段已完成」+ 查看流水线；进度 7/7。
+- 验收 fail / 体检 warn：告警卡出现（左条 warn/error）；卡内状态 pill 红色 + 文字。
+- 空列表：验收/变更/运行卡显示一行空态 12px caption，不显示假数据。
 
-| 维度 | 分数 | 证据 | 扣分点 |
+---
+
+## 5. 设计 Tokens
+
+> 全部用 `--dsw-alias-*` + `color-mix`；`#0B1220` 只作为 hero 深色锚点。实现作用域 `.ds-wb-page.ds-wb-v1279`，避免影响其它视图。
+
+```css
+.ds-wb-page.ds-wb-v1279 {
+  /* 表面 */
+  --wb-canvas: color-mix(in srgb, var(--dsw-alias-bg-layer-2) 55%, var(--dsw-alias-bg-base));
+  --wb-surface: var(--dsw-alias-bg-layer-1);
+  --wb-surface-2: color-mix(in srgb, var(--dsw-alias-bg-layer-2) 70%, var(--dsw-alias-bg-base));
+  --wb-line: color-mix(in srgb, var(--dsw-alias-label-caption) 22%, transparent);
+  --wb-line-strong: color-mix(in srgb, var(--dsw-alias-label-caption) 32%, transparent);
+  /* 文本 */
+  --wb-ink: var(--dsw-alias-label-primary);
+  --wb-ink-2: var(--dsw-alias-label-secondary);
+  --wb-ink-3: var(--dsw-alias-label-caption);
+  /* 品牌/状态 */
+  --wb-brand: var(--dsw-alias-brand-primary);
+  --wb-ok: var(--dsw-alias-state-success-primary);
+  --wb-warn: var(--dsw-alias-state-warn-primary);
+  --wb-err: var(--dsw-alias-state-error-primary);
+  --wb-biz: var(--dsw-alias-state-business-primary, var(--dsw-alias-brand-primary));
+  /* 字号阶 */
+  --wb-fs-caption: 11px; --wb-fs-sm: 12px; --wb-fs-body: 13px;
+  --wb-fs-card: 14px;    --wb-fs-section: 16px; --wb-fs-metric: 20px; --wb-fs-display: 30px;
+  /* 间距 */
+  --wb-sp-1: 4px; --wb-sp-2: 8px; --wb-sp-3: 12px; --wb-sp-4: 16px;
+  --wb-sp-5: 20px; --wb-sp-6: 24px; --wb-sp-7: 32px;
+  /* 圆角/阴影/动效 */
+  --wb-r-sm: 10px; --wb-r-md: 14px; --wb-r-lg: 18px;
+  --wb-shadow-1: 0 1px 2px color-mix(in srgb, var(--wb-ink) 8%, transparent);
+  --wb-shadow-2: 0 1px 2px color-mix(in srgb, var(--wb-ink) 8%, transparent),
+                 0 16px 38px -28px color-mix(in srgb, var(--wb-ink) 28%, transparent);
+  --wb-hero: linear-gradient(135deg,
+      color-mix(in srgb, var(--wb-brand) 72%, #0b1220) 0%,
+      #0b1220 58%,
+      color-mix(in srgb, #0b1220 90%, var(--wb-brand)) 100%);
+  --wb-hero-fg: #ffffff;
+  --wb-hero-fg-2: rgba(255,255,255,.76);
+  --wb-hero-fg-3: rgba(255,255,255,.56);
+  --wb-motion: 160ms cubic-bezier(.2,.7,.3,1);
+}
+```
+
+| 类别 | 值 |
+|---|---|
+| 间距 | 4 / 8 / 12 / 16 / 20 / 24 / 32（4 基数 + 8 节奏；组件内 8/12，卡内 16/20，区块 28/32） |
+| 字号/行高 | 11/1.4；12/1.45；13/1.55；14/1.4；16/1.3；20/1.2；30/1.15 |
+| 字重 | 400 正文；600 小标题/标签；650 卡标题（实现用 600）；700 display/hero/metric |
+| 数字 | `font-variant-numeric: tabular-nums` |
+| 圆角 | 10 控件/输入；14 卡片/告警；18 hero；999 pill |
+| 阴影 | surface = shadow-1；卡 hover = shadow-2；hero = 0 18 36 -20 + inset 1px 白 8% |
+| 动效 | 160ms；hover 位移 -1px；focus ring 2px + 2px offset；loading 旋转 800ms linear |
+| 层级 z | 页面头 20；hero 内装饰 0；抽屉/菜单 100；toast 200（沿用现有） |
+
+---
+
+## 6. 组件与八态状态矩阵
+
+> 八态 = default / hover / focus / active / disabled / loading / empty / error；N/A 必须写理由。可交互组件的 focus 统一 2px brand + 2px offset。
+
+### 6.1 组件清单
+
+| # | 组件 | 规格（默认） | 备注 |
 |---|---|---|---|
-| 视觉层级 | **4** | 落地稿 [final](design/workbench-redesign-final.svg) / [expanded](design/workbench-redesign-expanded.svg)：hero 20px 唯一最大、三区 13px 标题、卡标题 12px、色条+图标+文字分组；「眯眼测试」可辨三块 | 交付折叠行 5 列在 1080 下略密（窄屏转单列缓解） |
-| 清晰度 | **5** | 三区归属/hero 状态/折叠计数/需求摘要 2 行/问题行规格齐全；i18n 23 键；文案短句、术语与现有卡名一致 | — |
-| 一致性 | **4** | 复用 `ds-wb-*`/`ds-btn`/`ds-pipe-*` 与 `--dsw-alias-*`；白卡/1px 边框/轻阴影/12 圆角/16 间距；类目色 3px 统一 | 提案图 4px 色条 → 需求 3px，已记录允许 3–4px |
-| 反馈 | **4** | 折叠计数/状态、fail 自动展开+红点、展开全部、hover/focus、150–200ms、reduced-motion；hero 主操作状态覆盖 | 静态稿无法验证运行态动画与 toast，实现后复测 |
-| 可访问性 | **4** | 对比度实测（§4.1）；折叠头 button/aria-expanded；44px；焦点环；色条+文字；≤700 规则 | 未做真实读屏测试；深色主题未专门出稿 |
-| **均分** | **4.2 / 5.0** | must 项 0 失败（见下） | 结论：**可提交** |
+| C1 | 页面头 | 108px、sticky、eyebrow 11/600、display 30/700、chips 22、动作组 32 | compact 时隐藏副标题、返回按钮前置 |
+| C2 | 主 CTA | 44×≥120，hero 内白底深字 / 页面内 brand 底白字，圆角 10，13/600 | 一屏一个 |
+| C3 | 次 CTA | 36/44 高，透明或 surface-2，圆角 10 | 与主 CTA 间距 12 |
+| C4 | 文本链接 | 11–12/600 brand，行高 ≥24 | hover 下划线 |
+| C5 | Icon button | 32×32，圆角 8，hover surface-2 | 点击区 44（padding） |
+| C6 | 卡片 | 14 圆角、1px line、shadow-1、padding 18/20 | hover 只用于可点卡 |
+| C7 | Hero | 270 高、18 圆角、深色渐变、白字、内嵌右栏 | 全页唯一深色 |
+| C8 | 阶段段（rail） | 7 段，高 6、圆角 3、gap 8；下方 10px 阶段名 | 纯展示，aria-hidden + 文字说明 |
+| C9 | 时间轴 | 7 步，圆点 14（含 ✓）、连接线 2px、名字 12/600、角色 10、状态 11 | 当前步 tint 底 + 边线 |
+| C10 | Pill/Chip | 高 20–22、圆角 999、11/600，状态底色 8–12% | 不得只靠颜色：含文字 |
+| C11 | 输入 | 34–36 高、圆角 10、1px line，focus brand + ring | review note |
+| C12 | 告警卡 | 56 高、左条 3、圆角 14、图标圆 30 | warn/error 两色 |
+| C13 | 侧栏项 | 34 高、圆角 8；活动项 brand 8% + 2×16 指示条 | 降权非活动 |
+| C14 | 空态 | 12px caption 一行，无插图、无假数据 | 各卡统一 |
 
-### 11.4 must 项自检
+### 6.2 八态矩阵
 
-| must 项 | 结果 | 证据 |
+| 组件 | Default | Hover | Focus | Active | Disabled | Loading | Empty | Error |
+|---|---|---|---|---|---|---|---|---|
+| C2 主 CTA | 白底 #0B1220 字（hero）/ brand 底白字（页面） | 亮度 .96 + translateY(-1px) | 2px #93C5FD 环 | translateY(0) + 亮度 .9 | opacity .55、cursor not-allowed | 文案「处理中…」+ 14px 旋转，宽度不变 | N/A（始终有文案） | toast + `.ds-errorline` 红字，不改变按钮尺寸 |
+| C3 次 CTA | 透明/ surface-2 + line | 表面 2 / 白 10% | 2px brand 环（hero 内白 40%） | 表面 3 / 白 16% | opacity .45 | 文案「处理中…」 | N/A | 同上 |
+| C4 链接 | brand 600 | 下划线 + 深一档 | 2px brand 环 | 深一档 | N/A（不设禁用链接） | N/A | N/A | N/A |
+| C5 Icon button | 32×32、透明 | surface-2 底 | 2px brand 环 | 内阴影 2% | opacity .45 | 图标换 14px 旋转 | N/A | toast |
+| C6 卡片 | surface + line + shadow-1 | line-strong + shadow-2 + translateY(-1px)（仅可点卡） | `:focus-within` 2px brand 环 | N/A（卡非按钮） | N/A | 骨架 3 行（22% 底），reduced-motion 静态 | 一行 caption 空态 | 行内 `.ds-errorline` + 重试链接 |
+| C7 Hero | 深色渐变 + 白字 + 光晕 | N/A（容器） | 内部按钮各自环 | N/A | N/A | 阶段数据加载中：骨架条 + 「加载中」文字 | 无项目不渲染 | 数据错误 → 页面级 errorline |
+| C8 阶段段 | 6px 条 + 10px 标签 | N/A（展示） | N/A（展示） | N/A | N/A | 当前阶段 pulse 2s（reduced-motion 取消） | 阶段数 0 → 不渲染 rail | failed 段红色 + 文字「已打回」 |
+| C9 时间轴步 | 圆点 + 名称/角色/状态 | 背景 surface-2 tint | 2px brand 环 | 背景 12% tint | N/A（可点，始终可用） | active 步圆点 pulse | 无项目不渲染 | failed 红点 + 文字 |
+| C10 Pill/Chip | 状态底色 8% + 状态字 | 可点 chip 边框加强 | 2px brand 环 | 选中 brand 12% | opacity .5 | N/A | 计数 0 显示「0」/「无」 | N/A |
+| C11 输入 | surface-2 + line、34–36 高 | line-strong | brand 边框 + 2px 环 | N/A | opacity .55、不可输入 | N/A | placeholder 文案 | err 边框 + 11px 错误文案 |
+| C12 告警卡 | 白卡 + 左条 + 图标 | 边框 tint 加深 | 内部按钮各自环 | N/A | N/A | N/A | 无告警不渲染 | 本身即 error/warn 语义 |
+| C13 侧栏项 | 透明 + 12.5 字 | surface-2 底 | 2px brand 环 | 左指示条 + brand 8% 底 | opacity .45 | N/A | N/A | N/A |
+| C14 空态 | 12px caption | N/A | N/A | N/A | N/A | N/A | 自身即空态 | N/A |
+
+---
+
+## 7. 响应式规格（360 / 768 / 1280）
+
+### 7.1 360（移动）
+
+- 页面边距 14；页面头非 sticky：eyebrow 9.5、display 24、chips 20；动作组折叠为「刷新 + 更多」。
+- Hero 单列：padding 20；阶段名 24；状态 pill 同行；7 段 rail 宽 100%；进度文案 10；主/次 CTA 各 44 高、全宽并排（或上下），note 32；门禁说明 9.5。
+- 告警卡 58 高、两行文案；项目/交付全部单列；交付 5 卡单列，第 5 卡不再全宽条（与其它一致）。
+- 时间轴 7 步：两行（4+3），圆点 11、标签 8.5；无横向滚动。
+- 无横向溢出：所有文字 `overflow-wrap:anywhere`；chips 可换行。
+
+### 7.2 768（平板竖屏）
+
+- 页面边距 20；页面头 sticky；display 30；Project 2 列（需求全宽）；Delivery 1 列（≤1023 为单列，与需求口径一致）；Hero 上下两段（左文案 + 右进度/CTA 并排换行），CTA 44。
+- 侧栏在 ≤900 由现有 compact 机制接管（保持既有行为，不改交互）。
+
+### 7.3 1280（桌面）
+
+- 页面边距 32；Project 3 列；Delivery 2 列 + 全宽条；Hero 左右（右 300）；页面头 sticky；内容 max-width 1280。
+- 1440 时画布居中；左右剩余空间留白，不拉伸卡片。
+
+### 7.4 断点验证清单
+
+| 视口 | 期望 |
+|---|---|
+| 360×800 | 单列、无横滚、CTA 44、rail 100% |
+| 768×1024 | 项目 2 列 / 交付 1 列、hero 两段、无横滚 |
+| 1024×768 | 2 列（需求全宽）、hero 左右 280 |
+| 1280×800 | 3 列、hero 左右 300、首屏 hero 完整 |
+| 1440×900 | 首屏 hero + Now 完整；Delivery 顶部可见 |
+
+---
+
+## 8. 可访问性
+
+### 8.1 语义与键盘
+
+- 页面：`<header class="ds-wb-page-head">` + 现有滚动容器 + 三个 `<section aria-labelledby="ds-wb-zone-{now|project|delivery}-title">`；标题层级 h1（工作台）→ h2（区块）→ h3（卡片/hero 阶段）。
+- Hero 阶段名用 h2/h3 语义（视觉 30）；7 段时间轴用 `<ol aria-label="阶段进度">`，段条 `aria-hidden`，每步提供文字状态。
+- 时间轴 `<ol>`，每步按钮 `type="button"` + `aria-current="step"`（当前阶段）；事件列表 `<ul>`。
+- 所有 icon button 有 `aria-label`；纯装饰 SVG `aria-hidden="true"`；链接文案独立可读（不只「→」）。
+- Tab 顺序 = 阅读顺序：页面头动作 → hero 主/次 → note → 告警 → 项目 → 时间轴 → 交付卡；焦点环 2px brand + 2px offset，`focus-visible`。
+- 抽屉/弹层沿用现有 focus 与 Esc 关闭逻辑，不改。
+
+### 8.2 对比度（计算值，sRGB）
+
+| 前景 / 背景 | 比值 | 用途 |
 |---|---|---|
-| 对比度 | ✅ | §4.1：正文/标题/链接 ≥4.5:1；大字号 ≥3:1；色条/圆点 ≥3:1；类目色不用于正文 |
-| 44×44 | ✅ | §8.2：折叠头/图标按钮/主操作 44px 命中（视觉 36–40 + padding） |
-| 折叠/状态关键态 | ✅ | §6/§7：默认收起、fail 自动展开+红点、手动收起保留、0/无、展开全部 |
-| 键盘/ARIA | ✅ | §8.2：section/button/aria-expanded/aria-controls/焦点环/顺序 |
-| 来源 | ✅ | 需求 §11 的 6 个来源（URL+日期+结论），失败来源已披露；§1 决策表 |
-| 迭代 | ✅ | §12.3：R1→R2 修正 6 处并复渲染 |
-| 死链 | ✅ | 本说明相对链接检查 0 缺失；保留提案/归档链接 |
-| 既有功能不回归 | ✅ | §10.2 分步 + §10.3 回归清单；设计层保留全部卡片/操作 |
+| #0F172A / #FFFFFF | 17.85 | 浅色主文本 |
+| #475569 / #FFFFFF | 7.58 | 次要文本 |
+| #64748B / #FFFFFF | 4.76 | caption（≥4.5） |
+| #94A3B8 / #FFFFFF | 2.56 | **仅非信息性装饰**（不用作正文） |
+| #2563EB / #FFFFFF | 5.17 | 链接/按钮 |
+| #15803D / #FFFFFF | 5.02 | 成功文字 |
+| #B45309 / #FFFFFF | 5.02 | 警告文字 |
+| #B91C1C / #FFFFFF | 6.47 | 错误文字 |
+| #FFFFFF / #0B1220 | 18.72 | hero 主文本 |
+| #FFFFFF / #1D3E8F | 9.82 | hero 渐变亮端 |
+| #93C5FD / #0B1220 | 10.38 | hero 链接 |
+| #E8EDF5 / #0B0F15 | 16.34 | 深色主题主文本 |
+| #8B97A8 / #151B24 | 5.84 | 深色主题 caption |
+| #60A5FA / #10151D | 7.20 | 深色主题链接 |
+
+> 浅色主题 `--wb-ink-3` 使用 label-caption（#64748B，4.76:1）；不使用 faint 承载信息。hero 内 rgba 白透明度：主 1.0（18.7）、次 .76（等效 ≥10:1）、弱 .56（等效 ≥5.5:1，且仅用于辅助说明）。
+
+### 8.3 颜色以外的表达
+
+- 每个阶段段/圆点旁有文字状态（已通过/待评审/待开始/已打回）。
+- 告警卡有图标 `!` + 标题 + 计数 pill + 文案；错误不是只有红色。
+- 状态 pill 由「底色 + 文字」组成；环形进度有数字 4/7。
+
+### 8.4 动效与降级
+
+- `transition: var(--wb-motion)` 只用于边框/阴影/颜色/位移 1px；不自动播放动画。
+- `@media (prefers-reduced-motion: reduce)`：`transition:none`、无 pulse、无骨架 shimmer。
+- 无全屏遮罩过渡；不改变布局尺寸（loading 文案同宽）。
 
 ---
 
-## 12. 落地稿索引与自检
+## 9. 可用性走查（Nielsen 10 启发式）
 
-### 12.1 文件
+| # | 启发式 | 发现 | 修正 |
+|---|---|---|---|
+| 1 | 系统状态可见 | 旧 hero 只有 7 个 8px 点，进度不直观 | 7 段时间轴 + 环形 4/7 + 「已通过 4/7」文字 + 状态 pill |
+| 2 | 贴合真实世界 | 旧卡标题 9.5px 全大写、术语密 | 中文标题 14/600；阶段名与角色用业务词（验收复核/项目经理 Agent） |
+| 3 | 用户可控 | 打回/关闭/返回分散 | 页面头固定刷新/流水线/团队/通知/关闭；compact 返回前置 |
+| 4 | 一致性与标准 | 旧卡字号 9–10.5、按钮高度不一 | 统一 11–30 字号阶、44/36/32 三档按钮、10/14/18 圆角 |
+| 5 | 错误预防 | 打回不可撤销 | 次 CTA 与主 CTA 分离；review note 可选；沿用现有确认/禁用逻辑 |
+| 6 | 识别优于回忆 | 交付卡要看内容才知道结论 | 卡首行「标题 + metric/状态」（4 张、42/42、通过、已审 1/3、1 个） |
+| 7 | 灵活高效 | 旧页面需要滚动找主操作 | 首屏 hero 固定主操作；紧凑模式保留；键盘焦点顺序 |
+| 8 | 美学与极简 | 10 张同质卡 + 多分割线 | 一个深色焦点、卡边降对比、卡内去嵌套框、留白分组 |
+| 9 | 错误恢复 | 失败项只藏卡内 | 告警卡置顶 + 计数 + 「发给团队」+ 失败项文字；页面级 errorline |
+| 10 | 帮助与文档 | 门禁规则不易懂 | hero 门禁说明 + 「查看复核报告」+ 卡内 hint + 团队入口 |
 
-| 文件 | 状态 | 说明 |
+---
+
+## 10. 自检评分与迭代记录
+
+### 10.1 迭代第 1 版（r1）渲染 → 检查
+
+效果图：[workbench-v1279-overview-light-r1-1440.svg](design/workbench-v1279-overview-light-r1-1440.svg)
+
+r1 五维评分：视觉层级 **4**、清晰度 **4**、一致性 **3**、反馈 **4**、可访问性 **3** → 均分 **3.6**（低于门槛）。must 项 **1 项失败**：hero 三个次按钮 30px 高、单行拥挤（触控 <44）。其他发现：
+
+1. 页面标题 26px、区块标签 13px，和 v1.2.78 差距不明显，缺「大气」；
+2. 项目区 2 列 + 需求全宽第二行，页面更长、需求更弱；
+3. 交付卡按 3 列摆放，标题被压缩（12px 仍可能截断）；
+4. 卡边过淡、阴影过轻，卡片与页面底分不开（尤其深色主题仅 6% 明度差）；
+5. hero 右侧 CTA 无主次，review note 与门禁说明拥挤；
+6. 7 段 rail 固定 90px 宽，右侧留白不对称。
+
+### 10.2 修正（r2 → 最终稿）
+
+| # | 修正 | 结果 |
 |---|---|---|
-| [workbench-redesign-final.svg](design/workbench-redesign-final.svg) / [.png](design/workbench-redesign-final.png) | 默认收起态 1440×1024 | 三区 + hero + 项目两列 + 需求摘要 + 流程 + 5 折叠行（默认收起） |
-| [workbench-redesign-expanded.svg](design/workbench-redesign-expanded.svg) / [.png](design/workbench-redesign-expanded.png) | 展开态 1440×1024 | 已滚动到交付区：设计稿手动展开、验收 fail 自动展开+红点、其余 3 行收起 |
-| 上轮归档 | [design/archive-v1.2.75-assigner.md](design/archive-v1.2.75-assigner.md) | v1.2.75 指派器设计（保留引用资源） |
+| 1 | 主 CTA 44px 白底 + 次 CTA 44px 透明，分两列；note 独立一行；门禁说明/复核报告链接分层 | must 项修复，触控达标 |
+| 2 | display 30 / hero 阶段名 30 / 区块 15–16 / 卡 14；字号阶收敛到 5 档 | 层级更强 |
+| 3 | Project ≥1280 三列，1024–1279 两列（需求全宽），≤700 单列 | 首屏更紧凑 |
+| 4 | Delivery 2 列 + 第 5 卡全宽条（1128×120），标题完整 | 无截断、节奏更好 |
+| 5 | 卡边 22%（hover 32%）、shadow-1/2 半透明；深色 surface 提升到 #151B24 + 26% 边 | 两主题层次清楚 |
+| 6 | rail 宽度 = 左列宽度 - 6×8，段条均分；当前段琥珀、已通过绿 | 对称、可读 |
+| 7 | 补充深色主题、移动端 390 效果图与 r1 对照 | 验证两主题与窄屏 |
 
-> 移动端未出全稿（需求为可选）：≤700 单列、hero 按钮换行、折叠行单列、44px 折叠头、无横向溢出的规则见 §8.1，验收以 360/768/1280 实测为准。
+r2 五维评分：视觉层级 **5**、清晰度 **4**、一致性 **5**、反馈 **4**、可访问性 **5** → 均分 **4.6**；must 项 **0 失败**。判定：可交接开发。
 
-### 12.2 渲染自检
+### 10.3 MUST 项核对
 
-- 1440×1024 逻辑 → PNG 2880×2048（@2x，sharp + Noto Sans SC，中文无豆腐、无溢出）。
-- 视觉：页面 `#F6F8FB`、白卡 1px `#E3E8EF` + 0 1px 2px 阴影 + 12 圆角；3px 色条；卡标题 12/600；主要数字 15；分区间距 16。
-- 对比度：§4.1 实测（主文字 17.76:1、次文字 5.45:1、链接 4.86:1、状态文字 4.65–4.79:1、非文本色条 ≥3.4:1）。
-- 无死链：本说明本地链接 0 缺失；提案/归档路径可解析。
-
-### 12.3 迭代记录（渲染 → 检查 → 修正）
-
-| 轮次 | 发现 | 修正 | 结果 |
-|---|---|---|---|
-| R1 | ① 提案 A 项目区为 3 列，需求要求两列 | 改为「项目状态 + 团队与指派」两列 + 需求摘要卡全宽第二行 | 与需求 §3.1「项目区两列」一致 |
-| R1 | ② hero 状态 pill 与阶段名重叠、重复渲染 | 调整 pill 位置、移除重复节点 | 状态可读、无重叠 |
-| R1 | ③ 折叠计数用 12px，需求要求主要数字 15–16 | 计数/42/42 改 15/600；项目进度 4/7 改 15/600 | 主要数字达标 |
-| R1 | ④ 展开态设计稿 3 张缩略图 vs 计数 4 | 补第 4 张缩略图并右移摘要区 | 计数与内容一致 |
-| R1 | ⑤ 页面底/卡片/色条/标题仍沿用提案的 4px/13px/浅灰 | 改 `#F6F8FB`、3px 色条、12px 标题、白卡阴影、16 间距 | 与需求 §5 一致 |
-| R2 | 复渲染检查 | 无文字溢出、无遮挡；PNG 可打开、中文正常 | 定稿 |
-
----
-
-## 13. 验收对照（需求 §10 的 10 条 + 设计补充 2 条）
-
-| # | 验收点 | 设计落点 | 验证方式 |
-|---|---|---|---|
-| 1 | 三区分层且模块可辨认 | §3.2–3.4；final 稿 | 1440×1024 看三区顺序/色条/图标/标题；无待办时降级合理 |
-| 2 | hero 首屏可见且主操作正确 | §3.5；final 稿 | approval 待确认/阶段待启动两种数据检查按钮；首屏无滚动 |
-| 3 | 需求与调整不再直出 PRD | §3.7；final 稿 | 检查 DOM/截图：标题+chips+≤2 行+4 操作；不出现全文 |
-| 4 | 5 张折叠默认收起、计数正确、展开完整 | §3.6/§6；final/expanded 稿 | 默认 5 行收起；点击/键盘展开；fail 自动展开+红点；0 显示无/0 |
-| 5 | 视觉规范落地 | §4；final 稿 | 取色/对比度抽查；无 9.5px 全大写卡标题；焦点可见 |
-| 6 | i18n/窄屏/44px/reduced-motion | §8/§9 | zh/en 切换无缺 key；700/360/768/1280 无横向滚动；折叠头 44px |
-| 7 | 不破坏现有功能 | §10.2/§10.3 | 手工回归 + 四条命令 |
-| 8 | 无 Host/依赖/数据改动 | §2/§10 | `git diff` 仅 client.js/CSS/locale/文档；pipeline/acceptance 哈希一致 |
-| 9 | 与 option-a 一致且五维自评 ≥4 | §11/§12；final vs option-a | 逐区比对；自评 4.2、must 0 失败 |
-| 10 | 文档/版本一致 | §15 | design.md + ACCEPTANCE 批次 13 + CHANGELOG 1.2.76 + 两个 package.json |
-| 11 | 设计稿无死链、归档可追溯 | §12.1/§15 | 链接检查；归档文件存在 |
-| 12 | 真实渲染/中文/对比度自检 | §12.2 | PNG 可打开；中文正常；对比度实测记录 |
+| MUST | 结果 |
+|---|---|
+| 4/8px 间距体系 | ✅ 4/8/12/16/20/24/32 |
+| 字号阶梯与行高 ≥1.4 | ✅ 11/12/13/14/16/20/30；正文 1.4–1.55 |
+| 颜色 token 化 + 对比度 | ✅ 只用 alias + color-mix；§8.2 计算 |
+| 可点击区域 ≥44×44 | ✅ 主 CTA 44；icon 外层 44；卡内链接 ≥24 行高（§4.1） |
+| 八态矩阵 | ✅ §6.2，N/A 均写理由 |
+| 响应式 360/768/1280 | ✅ §7 |
+| 动效 150–300ms + reduced-motion | ✅ 160ms + 降级 |
+| 键盘可达/焦点可见/ARIA/不只靠颜色 | ✅ §8 |
+| 一屏一个主行动 + 层级清晰 | ✅ hero 主 CTA 唯一 |
 
 ---
 
-## 14. 风险与未决
+## 11. 交接
 
-| # | 风险/未决 | 影响 | 缓解 |
+### 11.1 给开发：组件/状态对照表
+
+| 设计组件 | 实现位置/类名 | 状态规则 | Tokens/要点 |
 |---|---|---|---|
-| 1 | `renderWorkbenchPage` ~1000 行，重排回归面大 | 改一处坏一处 | §10.2 分步；保留卡片变量与内部渲染；逐卡回归；四条命令兜底 |
-| 2 | 折叠隐藏信息 | 可发现性下降 | 计数/状态摘要、fail 自动展开+红点、展开全部、i18n 清晰 |
-| 3 | 本会话折叠记忆（不持久化） | 刷新回默认 | 需求不要求；P2 可加 localStorage |
-| 4 | 需求摘要截断 markdown 残留 | 修复点不达标 | 纯文本剥离标记；2 行 clamp；验收项 3 专测 |
-| 5 | hero 与现有 attention/current 逻辑重复 | 按钮重复/状态错 | 复用同一 handler；只渲染一层主操作；联调第 1 项 |
-| 6 | 折叠展开后原卡片高/宽变化导致滚动跳动 | 体验 | 展开动画 150–200ms；滚动容器保持；reduced-motion 直接切换 |
-| 7 | 窄屏 hero 高度、按钮换行 | 首屏动作被推下 | ≤700 单列 + 摘要截断 + 按钮换行；360/768/1280 复测 |
-| 8 | 类目色 amber/green 作正文对比不足 | 可读性 | 仅用于色条/图标；标题/正文用中性色（§4.1） |
-| 9 | 深色主题未专门设计 | 可读性 | 新元素只用 token；若主题支持则抽查，不硬编码 |
-| 10 | 版本口径（根 1.2.76 不回退，交付后 +1） | 版本误判 | 严格按需求 §12；实现/测试阶段核对 |
-| 11 | 折叠状态「本会话记忆」实现方式未定 | 行为差异 | 设计建议组件内 Set，不进 localStorage；不阻断验收 |
-| 12 | 问题列表数据/数量异常 | 现在区噪声 | 最多 3 行 + 查看全部；problems=0 隐藏；单卡错误隔离 |
+| 页面头 | `.ds-wb-page-head` + `.ds-wb-head-eyebrow/-title/-meta/-actions` | sticky；compact 隐藏副标题；≤700 非 sticky | 30/700、11/600、108px 高、bottom line |
+| Hero | `.ds-wb-hero` + `.ds-wb-hero-copy/-side/-eyebrow/-title/-summary/-meta` | 无项目不渲染；全通过态；review/pending/其它三态 CTA | `--wb-hero` 渐变、18 圆角、白字、`--wb-motion` |
+| 环形进度 | `.ds-wb-hero-ring`（SVG 2 圆） | 4/7 arc；0/7 与 7/7 边界正确 | r=34、sw=7、rotate(-90)、tabular-nums |
+| 阶段 rail | `.ds-wb-rail` + `.ds-wb-rail-step[data-status]` | approved/active/review/pending/failed 五色 | 段高 6、gap 8、标签 10 |
+| 告警卡 | `.ds-wb-alert[data-tone="warn|error"]` | 有 failedItems/issues 才渲染 | 左条 3、圆角 14、图标 30 |
+| 区块头 | `.ds-wb-zone-head` + `.ds-wb-zone-kicker/-title/-hint` | 沿用现有 zoneHead | kicker 11/600、title 16/650 |
+| Project 栅格 | `.ds-wb-project-grid` | 1280/1024/700 三断点 | 单层 grid、gap 14 |
+| 需求卡 | 现有 `.ds-wb-adjust` 内容 + `.ds-wb-adjust-summary` | 保留 disclosure/四操作 | 2 行 clamp、动作换行 |
+| 时间轴 | `.ds-wb-flow` + `.ds-wb-flow-step[data-status]` | current tint、✓、failed 文字 | 圆点 14、连接线 2 |
+| 交付栅格 | `.ds-wb-delivery-grid` + `.ds-wb-delivery-card` | 2 列；第 5 卡 `.ds-wb-delivery-wide` | 卡 557×184 / 宽 1128×120 |
+| 按钮 | 复用 `.ds-btn` + `.ds-wb-btn`，hero 内 `.ds-wb-hero-primary/-secondary` | 见 §6.2 | 44/36/32、圆角 10 |
+| 侧栏/外壳 | `.ds-root .ds-header/.ds-side/.ds-pane-*` 限定覆盖 | 不改交互 | 降权、活动项 8% + 2px |
+| i18n | 新增 `workbench.v1279.*`（标题/eyebrow/进度/空态/门禁等） | zh/en 成对 | 不删旧键 |
+
+**开发约束**：只改 `dsh-web-filebrowser-plugin/client.js`（含 CSS/i18n）+ 版本/文档；不改 Host/数据/依赖；保留全部 handler 与禁用逻辑；类名前缀 `ds-wb-`，外壳覆盖加 `.ds-root` 限定；不使用大范围 `!important`。
+
+> 说明：效果图左侧的「分组式侧栏」是视觉方向示意；实际外壳仍是现有的「文件 / 搜索 / Git / 更多」横向侧栏条 + pane 头 + 标签页。本轮外壳只做 CSS 轻量统一（48px 顶栏、更安静的侧栏表面、pane 头与活动标签），**不改变导航结构、交互或快捷键**，满足需求「外壳 CSS 为主、不改交互」。
+
+### 11.2 给测试：视觉基线与复测步骤
+
+1. 重启 Harness → 刷新页面 → 打开工作台（必要时关闭再开）。
+2. 浅色主题：对照 [overview-light](design/workbench-v1279-overview-light-1440.png) / [full-light](design/workbench-v1279-full-light-1440.png) 检查页面头、hero、告警、三卡、时间轴、5 卡。
+3. 深色主题：对照 [overview-dark](design/workbench-v1279-overview-dark-1440.png) 检查 hero 与卡片层次、文字对比。
+4. 360/768/1024/1280/1440 视口：按 §7.4 检查无横向滚动、单列/两列/三列、CTA 44。
+5. 交互：通过/打回、启动并派发、review note、指派器、需求四操作、验收/体检/变更/运行、通知/刷新/关闭/compact。
+6. 键盘：Tab 顺序、focus 环可见、Enter/Space 可触发；prefers-reduced-motion 下无动画。
+7. 记录：截图 + 视口 + 主题 + 结论（pass/fail/blocked），回填 acceptance 对应项。
 
 ---
 
-## 15. 版本与归档
+## 12. 风险与开放问题
 
-| 版本 | 日期 | 变更 |
+| 风险 | 说明 | 处理 |
 |---|---|---|
-| v1.2.73 | 2026-10-27 | 专业设计质量标准与自检体系（归档） |
-| v1.2.75 | 2026-10-27 | 工作台 Agent 指派器（归档到 [design/archive-v1.2.75-assigner.md](design/archive-v1.2.75-assigner.md)） |
-| **v1.2.76** | **2026-10-27** | 工作台 UI 重构（方案 A）：三区/hero/折叠/需求摘要/视觉/响应式/i18n/自评 |
-
-- 版本口径：发布 **1.2.76**；插件 1.2.75 → **1.2.76**，根保持 **1.2.76**（不回退）；CHANGELOG `## 1.2.76 — 2026-10-27`；ACCEPTANCE「批次 13 · 工作台 UI 重构（v1.2.76）」；交付后根 +1 至 **1.2.77**。
-- 本设计不改代码/验收项；实现与验收由开发/测试阶段完成。
+| 深色 hero 在深色主题过重 | hero 锚点固定深色，周围表面更深 | 内光晕 + 1px 白 8% 边；深色效果图已出，待 Owner 目视 |
+| 全量 CSS 覆盖回归 | 旧卡片内部有 9–10.5px 规则 | 只覆盖 `.ds-wb-v1279` 作用域；QA 静态断言 + 逐卡回归 |
+| 5 卡 bento 第 5 卡全宽 | 宽卡内容少会显空 | 改为 4 列统计（运行中/最近一次/结果/失败）+ 操作，见 full-light |
+| 360 宽度 7 段 rail | 段条过窄 | 移动端两行时间轴（§7.1），标签 8.5 |
+| 视觉主观「高大上」 | 需要 Owner 判断 | 提供浅/深/全页/移动 4 效果图 + r1 对照；批次 16 目视验收 |
