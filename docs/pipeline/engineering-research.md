@@ -76,3 +76,10 @@
 - 可靠/安全/性能自检通过；无新增运行时依赖、无流水线写入、无模型工具。
 - 证据：`npm run check` / `npm run check:json` / `npm test`（31/31）/ `pipeline-selftest`（38/38）/ `review-selftest`（22/22）/ `dev-check-assign`（18/18）。
 - 后续风险：团队实时成员状态仍以 Harness 团队面板为准（本 MVP 按记录推导）；若下一轮引入第三方库或复制代码，按 §5 重新调研并补许可证记录。
+
+## 8. 第 4 轮补充（v1.2.76 · 工作台 UI 重构）
+
+- **结论：N/A 仍适用**。本轮为纯客户端 UI 重构（`client.js` 三区布局/hero/折叠/摘要/CSS/i18n），未引入第三方库、组件库或模板，未检索/复制外部代码或素材，未新增运行时依赖（`dependencies` 与 HEAD 逐字一致）。
+- 参考来源沿用需求阶段公开资料（NN/g 渐进披露/视觉层级/卡片、W3C 对比度），仅借鉴模式不复制代码；无需署名/NOTICE。
+- 可靠/安全/性能自检：大函数重构后全部既有卡片与事件保留（无删功能）；无 `innerHTML`/`dangerouslySetInnerHTML`（无新增 XSS 面）；折叠默认收起、展开按需渲染；无新增网络/存储调用；`prefers-reduced-motion` 降级；未改 Host/数据格式。
+- 证据：`npm run check`、`npm run check:json`、`npm test`（31/31）、`pipeline-selftest`（38/38）、`review-selftest`（22/22）、`assignments-selftest`（27/27）、`qa-static-v1276`（STATIC PASS）。

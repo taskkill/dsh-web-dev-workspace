@@ -1,331 +1,343 @@
-# 需求：工作台 Agent 指派器 MVP —— 选 Agent → 写任务 → 指派 → 状态追踪（v1.2.75，第 3 轮变更）
+# 需求：工作台 UI 重构 —— 三区分层 + 清爽视觉 + 模块可辨识（v1.2.76，第 4 轮变更）
 
-- 提出人：Owner（项目经理/你）；日期：2026-10-27（Asia/Shanghai）；优先级：P0；目标版本：**v1.2.75**（第 3 轮变更，`roundScope=full`，七阶段 + 双复核不变；Lead 已拍板版本口径见 §9）。
-- 上游依据：`.dsh/pipeline.json` 第 3 轮需求全文；提案 [AGENT_ASSIGN.md](../proposals/AGENT_ASSIGN.md)（MVP · 方案 A）；效果图与交互说明 [mockups/](../proposals/mockups/)（3 屏：工作台卡片 / 指派弹层 / 状态卡）。
-- 一句话：「在工作台里把『谁、做什么、做到什么程度、属于哪一关、产出放哪』一次说清，生成结构化指派单交给当前对话的 Lead 执行，并把状态留在项目里可追踪。」
+- 提出人：Owner（项目经理/你）；日期：2026-10-27（Asia/Shanghai）；优先级：P0；目标版本：**v1.2.76**（第 4 轮变更，`roundScope=full`，七阶段 + 双复核不变；版本口径见 §12）。
+- 已选方向：**方案 A「分区工作台」**（Owner 已拍板）。上游依据：`.dsh/pipeline.json` 第 4 轮需求全文；设计提案 [workbench-redesign/README.md](../proposals/workbench-redesign/README.md)；基准效果图 [option-a.png](../proposals/workbench-redesign/mockups/option-a.png)、现状审计 [before.png](../proposals/workbench-redesign/mockups/before.png)。
+- 一句话：「把 10 张同质卡片重排成『现在 / 项目 / 交付』三层——首屏先回答『现在该做什么』，次要信息按区降权可折叠，界面清爽、模块好辨认。」
 - 本文只做需求分析与可验收化，不改写 `.dsh/pipeline.json` 中的需求本身；范围、约束与验收标准以本文 + 需求详情为准。
 
 ## 1. 背景与问题
 
-1. **工作台只有「按阶段启动并派发」**：Owner 只能把某个阶段整体派给角色，无法在工作台内指定某个 Agent（如 `opc-dev`）做一件具体小事，也无法追踪「谁在做、做到哪、产物是什么」。
-2. **Harness 原生团队面板与「当前项目」脱节**：原生面板有成员 roster 与共享任务，但不知道这次指派属于第几轮、哪个阶段、验收标准与期望产物是什么；口述派单经常漏边界、验收与产物路径，事后难追溯。
-3. **临时任务没有入口**：不改变流水线的修补/补证据/调研/清理类工作，Owner 只能口头让 Lead 做，缺少结构化记录。
-4. **双复核不能被绕过**：任何「指派」都不能替代流水线闸门；阶段任务仍须 testing → acceptance → Owner 人工确认 → release。
+Owner 实际使用反馈：工作台「看的太累、区分不出功能点」。现状审计（[before.png](../proposals/workbench-redesign/mockups/before.png)，5 处标注）确认问题不在功能缺失，而在**信息层级**：
 
-**本轮解法（MVP · 方案 A）**：工作台新增「团队与指派」卡 → 指派抽屉 → 生成**结构化指派单**用现有 `sendPromptText` 发到当前对话 → Lead 用 Harness 原生 Agent Teams 工具（`spawn_teammate` / `send_message` / `team_task_*`）执行；插件只做**项目侧派工台 + 留痕 + 状态桥**，不重复实现团队通信，不直接 spawn。指派记录存本工作区 `.dsh/agent-assignments.json`。
+| # | 痛点 | 证据（现状代码/样式/截图） | 对本需求的含义 |
+|---|---|---|---|
+| ① | **10 张同质卡片** | 全部白底 + 1px 边框 + 同款小标题（`.ds-wb-card` / `.ds-wb-card-title` 单一背景与样式），功能点难区分 | 需要分区 + 卡片标题分级 + 分区色条/图标 |
+| ② | **字号偏小** | 卡标题 9.5–10.5px、全大写 + letter-spacing，扫读慢 | 卡标题改 12px 半粗；主要数字 15–16px；正文 12–13px |
+| ③ | **无分组** | 项目状态、团队、需求、设计、验收、运行混排（JSX 顺序 `issuesCard → attentionCard → preflightCard → reviewCard → adjustCard → requirementCard → flowCard → designCard → acceptanceCard → runningCard`） | 重排为「现在 / 项目 / 交付」三区 |
+| ④ | **主次同权** | 关键动作（待处理/当前阶段/指派）与体检/变更/设计稿/运行同网格、同视觉权重 | 新增 hero 承载当前阶段主操作；次要卡折叠降权 |
+| ⑤ | **滚动长 + 长文直出** | 2 列 1080px 网格 10 卡纵向滚动；「需求与调整」把整段 PRD 直接铺开，页面很长 | 折叠 5 张次要卡；需求与调整改 2 行摘要 + 查看完整 |
+
+**根因判断**：层级扁平 + 主次同权 + 无分组；不是缺功能。**本次修复点**：三区分层、hero 当前阶段、次要卡折叠、需求摘要化、清爽视觉 token。
 
 ## 2. 目标用户与核心场景
 
 | 用户 | 场景 | 期望结果 |
 |---|---|---|
-| **Owner（你）** | 项目进行中，有一件具体任务要某个 Agent 做（如「补验收页脚证据并复测移动端」） | 在工作台 30 秒内完成「选角色/成员 → 写任务与验收 → 关联阶段或临时任务 → 指派」；之后能在状态卡看到进度、催办、通过/打回、再指派 |
-| **Owner（你）** | 想确认当前谁在干什么 | 卡片显示 6 角色成员与「按指派记录推导」的状态；明确提示成员实时状态以 Harness 团队面板为权威，可一键打开团队面板 |
-| **Lead（编排者）** | 收到工作台指派单 | 消息结构化、字段齐全（交给/任务/背景/验收/关联阶段/期望产物/优先级/执行要求/闸门提示），可直接 `spawn_teammate` / `send_message` / `team_task_*` 执行，不需要再追问 |
-| **Lead（编排者）** | 执行完成 | 在对话中汇报产物与验证；Owner 在状态卡「通过并完成」或写原因打回；催办/再指派都留痕 |
-| **项目经理 Agent（acceptance）** | 验收复核 | 能核对指派记录与验收结果是否与需求/阶段一致；临时任务与阶段任务的边界有书面依据 |
-| **运维 / 其它角色** | 看到指派状态 | 不越权：approval/release 永远由 Owner 在面板审批，指派只影响对话执行，不改流水线状态 |
-
-**核心场景**：
-1. Owner 点「指派任务」→ 选「测试工程师 · opc-qa」→ 填标题/说明/验收 → 关联「测试验收」→ 提交 → 当前对话收到结构化指派单 + 卡片出现 `dispatched` 记录。
-2. Lead 接单执行（对话/团队工具）→ Owner 状态卡点「下一条」推进 `running` → 完成汇报后 `review` → Owner「通过并完成」→ `done`；不满意则写原因「打回」→ `failed` → 可「再指派」（预填新弹层，保留原记录）。
-3. 临时任务（不关联阶段）走同样流程，但明确「不改变流水线，结果只在对话汇报」。
-4. 刷新页面 / 重启 Harness 后记录仍在；Web 端与窄屏都可完成指派与状态操作。
+| **Owner（你）** | 每天打开工作台 1–2 次，先看「现在该做什么」 | 首屏（1440×1024）直接看到 hero：当前阶段 + 状态 + 摘要 + 进度 + 主操作（通过/打回 或 启动并派发/查看流水线/指派任务），无需滚动 |
+| **Owner（你）** | 想知道项目进度、谁在干活、还差什么 | 项目区三卡（项目状态 / 团队与指派 / 需求与调整）一眼可辨；团队 chips 与最近指派摘要可见，完整列表仍在指派卡 |
+| **Owner（你）** | 想确认设计/验收/体检/变更/运行等交付细节 | 交付区 5 张紧凑折叠行，头部有计数/状态摘要；点击/键盘展开原卡片，完整功能不丢；fail 项自动展开或标红点 |
+| **Owner（你）** | 需求变更/追加说明 | 需求与调整卡只显示标题 + 轮次/范围 chips + ≤2 行摘要 + 查看完整需求 / 追加说明 / 修改需求 / 新轮变更，不再整段铺 PRD |
+| **Lead / 团队** | 通过工作台进入流水线、指派器、验收台 | 现有入口与数据流不变（v1.2.75 指派器、v1.2.73 提示词、验收/交付/流水线/变更审阅/运行中、编辑器标签右键菜单），不用重新学习 |
+| **窄屏/移动用户** | 在笔记本小窗或平板上打开 | ≤700px 单列、hero 按钮换行、无横向溢出；折叠头 44px 可点 |
 
 ## 3. 范围
 
-### 3.1 做什么
+### 3.1 做什么（纯客户端：`client.js` 渲染 + CSS + i18n）
 
-1. **Host 新模块 `dsh-web-filebrowser-plugin/assignments.js` + 主路由接线**
-   - 数据文件 `.dsh/agent-assignments.json`（按工作区隔离、不进 Git、原子写、单文件 ≤1MB、≤100 条、per-root 串行锁，参照 `pipeline.js` / `acceptance.js` 的既有模式）。
-   - 数据模型：`{ id, round, title, detail, acceptance[], assignedTo:{role?, member?, newAgent?{name, role}}, stageId?, priority:'P0'|'P1'|'P2', expectedArtifacts[], status, note, createdAt, updatedAt, history[] }`；`status ∈ dispatched / running / review / done / failed / cancelled`；`history[]` 条目 `{at,status,note,actor}`，上限 50。
-   - 4 个主路由 op：`assignmentList` / `assignmentSave` / `assignmentUpdate` / `assignmentDelete`（校验字段/上限/root；SSH 工作区返回 `ssh-unsupported`；错误码稳定）。
-   - 状态机校验：`dispatched→running→review→done`；任意 → `failed`/`cancelled`（打回需 `note`）；每次状态变更 append history；非法流转返回稳定错误且不改变文件。
-2. **客户端（`client.js` + `locale/zh.json`、`locale/en.json`）**
-   - 工作台新增「**团队与指派**」卡（位于「项目状态」与「项目流程」之间，示例顺序：需要你处理 → 项目状态 → **团队与指派** → 项目流程）。
-   - 6 角色成员 chips + 状态（按指派记录推导：空闲/执行中/待你确认；并提示实时状态以 Harness 团队面板为准）、指派按钮、最近指派（默认 5 条，可展开）、空态、打开团队面板入口。
-   - 指派弹层（桌面右侧抽屉 / 窄屏底部面板）：交给谁（按角色 / 当前成员自由填写 / 新建 Agent 名称+角色）、任务标题（≤120）、详细说明（≤4000）、验收标准（1–10 条，每条≤500，默认带「产物落盘 + 自测通过」）、优先级 P0/P1/P2、关联流水线阶段（默认自动判断；人工确认/发布不可选且有提示）、期望产物路径（可空）、附件（可选，复用上传或提示可拖入对话）。必填/长度校验，错误就地提示不丢输入。
-   - 提交：先 `assignmentSave` 落盘（`status=dispatched`），再生成结构化指派单用 `sendPromptText` 发到当前对话；toast 与卡片状态更新。
-   - 状态卡/列表：筛选（全部/进行中/待你确认/已完成）、五段进度（已派发→等待 Lead→执行中→待你确认→已完成）、关联阶段、时间、操作（查看对话/复制派单、催办、打回需原因、通过并完成、再指派、取消）；打回/再指派不丢失原记录。
-   - 关联阶段的任务：**指派动作不得改写 `.dsh/pipeline.json`**；临时任务不改变流水线；文案明确仍走七阶段双复核闸门，人工确认/发布只能 Owner 在面板审批。
-   - 中英文完整 i18n；无障碍（焦点环、aria-label、Esc 关闭归还焦点、44px 命中、状态不靠颜色、`aria-live` 提示）；不新增运行时依赖。
-3. **文档与版本**
-   - `docs/AGENT_TEAM.md`、`docs/PLAYBOOK.md` 增加「工作台指派」小节（边界：阶段任务走闸门、临时任务 Owner 确认、指派不改流水线）。
-   - `docs/ACCEPTANCE.md` 新增「批次 12 · 工作台 Agent 指派器（v1.2.75）」；`CHANGELOG.md` 新增 `## 1.2.75 — 2026-10-27`（并纳入此前 Unreleased 的编辑器标签右键菜单变更）；根与插件 `package.json` 版本按 §9 版本口径执行（目标 **1.2.75**：插件升 1.2.75、根保持 1.2.75；交付后按硬性规定根 +1 至 1.2.76）。
-   - 更新 `docs/proposals/AGENT_ASSIGN.md` 状态为「已实现」或加实现说明（可选）；不删除提案与 mockups。
+1. **信息架构（三区）**
+   - **现在区**（全宽，置顶）：无待办时**不占位**或仅轻提示（不空白堆卡）；有待办时列表行更清晰（状态点 + 标题 + 摘要 + 主操作按钮）。
+   - **当前阶段 hero 卡**（现在区）：阶段名 + 状态 pill + 一句摘要 + 进度（7 步点 /「4/7」）+ 主操作；主操作按当前阶段与待办动态显示（通过/打回，或 启动并派发/查看流水线/指派任务）；首屏可见。
+   - **项目区**（两列）：① **项目状态/进度**（轮次、进度条、模式、当前阶段；查看流水线/打开需求）；② **团队与指派**（6 角色 chips 三态 + 指派任务 + 团队面板入口 + 最近 1 条摘要，完整列表仍在指派卡内）；③ **需求与调整**（**只显示标题 + 轮次/范围 chips + ≤2 行摘要 + 查看完整需求 / 追加说明 / 修改需求 / 新轮变更** —— 不再直出全文，这是本次明确修复点）。
+   - **交付区**（全宽）：**项目流程**仍全宽 7 步；**设计稿 / 验收 / 交付前体检 / 本轮变更 / 运行中**5 张改为紧凑可折叠行（图标 + 名称 + 计数/状态摘要 + chevron），默认收起，点击展开原卡片内容；关键待处理项（验收有 fail、体检 fail）自动展开或标红点。
+   - 保留全部现有功能与数据流：v1.2.75 指派器、v1.2.73 提示词、验收/交付/流水线/变更审阅/运行中、Owner 编辑器标签右键菜单；**不改 Host 模块、模型工具与 pipeline 数据**。
+2. **视觉（清爽、清新、可辨识）**：浅灰蓝页面底、白卡 + 1px 边框 + 轻阴影、12px 圆角、16px 间距；分区标题条（类目色条 + 图标 + 13px 半粗标题 + 右侧计数/操作链接）；类目色 现在=琥珀 / 项目=蓝 / 交付=绿；卡标题 12px 半粗（不再 9.5px 大写）；主要数字 15–16px；正文 12–13px、次要 11px；状态 pill 柔和底色；hover/focus 可见；正文对比度 ≥4.5:1。详见 §5。
+3. **i18n**：新增 section / hero / 折叠 / 需求摘要等 `workbench.*` 键 zh/en（约 18–24 键），**不破坏既有 122 个 assign 键**。
+4. **响应式**：≤700 单列、hero 按钮换行、折叠头 44px 触控；动效 150–200ms 且 `prefers-reduced-motion` 可用。详见 §7。
+5. **文档与版本**：design.md（本轮设计说明）+ ACCEPTANCE 批次 13 + CHANGELOG 1.2.76 + 版本口径一致；README/PLAYBOOK 如涉及工作台描述同步更新（不涉及 Host 文档）。
 
 ### 3.2 不做什么
 
-- **不实现 owner 级团队 API / 直接 spawn / 实时成员状态**（Harness 权限模型限制；提案 B/C 路线后续）。
-- **不重复实现 Agent Team 面板**（成员 roster、共享任务依赖、写范围仍以原生面板为准）。
-- **不做 SSH 工作区支持**（返回 `ssh-unsupported`，客户端降级提示）。
-- **不引入运行时依赖**；不新增模型工具（避免 Agent 自派任务；只有 Owner 面板的 4 个 op）。
-- **不改写/旁路流水线**：不直接改 `.dsh/pipeline.json`，不允许绕过 acceptance → approval 人工闸门。
-- **不做移动端专门重构**（按 mockups 规则：≤768 抽屉转全宽底部面板）。
-- 不做服务端搜索/分页/消息队列；不做实时对话定位（「查看对话」= 提示/复制派单，MVP 无消息 ID 定位）。
-- 不复制第三方受版权/商标/界面素材内容。
+- **不改 Host**（`assignments.js` / `pipeline.js` / `acceptance.js` / `delivery.js` 等模块）、**不加依赖**、**不改流水线/验收数据**。
+- **不做方案 B 标签页**、**不做方案 C 的 sticky 右栏**（后续增强，可作 A+C 混合）。
+- **不删除任何现有功能**；不改变卡片内部数据与操作语义；不做新 Host 接口或新模型工具。
+- **不做折叠状态持久化**（可选后续 `localStorage`，本轮不强制；见 §4.4）。
+- 不重画设计稿/不新增第三方组件库/不改设计 token 体系（只用现有 `--dsw-alias-*` 与近似值）。
+- 不做深色主题专门重设计（若现有主题支持，须保证不破；验收以浅色为主）。
+- 不做与工作台无关的页面（编辑器/文件/搜索/更多/流水线面板等）重构。
 
-## 4. 数据模型与 Host 接口规格
+## 4. 信息架构与交互规格
 
-### 4.1 记录字段与约束
+> 视觉基准：[option-a.png](../proposals/workbench-redesign/mockups/option-a.png)（1440×1024）；尺寸/间距/tokens/组件映射见 [README §2.1 / §4](../proposals/workbench-redesign/README.md)。实现允许设计内微调（记录在 design.md），但**分区归属、首屏 hero、折叠规则、摘要化**不得改变。
 
-| 字段 | 类型/约束 | 说明 |
-|---|---|---|
-| `id` | string，10–64 字符，文件内唯一 | 参考 acceptance 的短 id 生成（10 位 hex） |
-| `round` | integer ≥1 | 保存时从 `.dsh/pipeline.json` 的 `round` 读取（读不到则 1），**只读流水线，不写** |
-| `title` | string，**必填**，trim 后 1–120 字符 | 一句话结果 |
-| `detail` | string，**必填**，1–4000 字符 | 背景 / 期望 / 不做范围 |
-| `acceptance` | string[]，**1–10 条**，每条 trim 后 1–500 字符 | 默认客户端预填 1 条「产物落盘 + 自测通过」 |
-| `assignedTo` | object | `role` / `member` / `newAgent{name, role}` 三选一（详见 4.2） |
-| `stageId` | string，可空 | 仅允许 `product/design/development/testing/acceptance`；`approval`/`release` 必须拒绝（`bad-request`）；空 = 临时任务 |
-| `priority` | `P0` \| `P1` \| `P2`，默认 `P1` | — |
-| `expectedArtifacts` | string[]，可空 | 建议 ≤10 条、每条 ≤500 字符（**上限待实现确认**，见 §10）；路径只存字符串，不读取文件 |
-| `status` | enum 6 值 | 初值 `dispatched`；状态机见 4.3 |
-| `note` | string，≤4000，可空 | 打回原因/备注；打回（→failed）时必填 |
-| `createdAt`/`updatedAt` | 毫秒时间戳 | 原子写时更新 |
-| `history` | 数组，≤50 条 | `{at, status, note, actor}`；`actor` 固定 `owner`（面板操作） |
+### 4.1 现在区（置顶，全宽）
 
-- 文件级限制：**≤100 条记录/工作区**（超出返回 `full`）、**单文件 ≤1MB**（超出返回 `too-large`）；文件不存在 = 空列表；JSON 损坏返回 `corrupt`（含路径，**不静默清空**）。
-- 写入：`temp 文件 + rename` 原子替换 + per-root 串行锁；写失败保留原文件（见 §8 错误恢复）。
-
-### 4.2 `assignedTo` 三选一
-
-| 形式 | 必填 | 说明 |
-|---|---|---|
-| 按角色 | `role` ∈ product-manager / ui-designer / fullstack-developer / qa-engineer / project-manager-agent / devops | 默认；Lead 按角色选当前成员（如 `opc-qa`） |
-| 当前成员 | `member`（自由填写，如 `opc-dev`） | 用于指定具体成员；跨会话可能变化（以 role 为主） |
-| 新建 Agent | `newAgent{name, role}` | 只记录 spawn 参数；由 Lead `spawn_teammate` 创建；名称建议 `opc-<role>-<n>` |
-
-- 同一记录只允许一个目标（一个 role 或一个 member 或一个 newAgent）；三者互斥，冲突返回 `bad-request`。
-
-### 4.3 状态机与操作
-
-```
-dispatched（已派发/等待 Lead）
-  → running（执行中：Lead 接单/成员开工）
-  → review（待你确认：完成汇报）
-  → done（已完成）
-
-任意状态 → failed（已打回；需 note，可再指派）
-任意状态 → cancelled（已取消）
-```
-
-| 操作 | 允许前置状态 | 结果 | 要求 |
-|---|---|---|---|
-| 下一条/开始执行 | dispatched | running | append history |
-| 提交汇报 | running | review | append history（note 可写产物/验证） |
-| 通过并完成 | review | done | Owner 确认；append history |
-| 打回 | dispatched/running/review | failed | **note 必填**，不自动重派；append history |
-| 取消 | dispatched/running/review | cancelled | append history；取消后可再指派 |
-| 催办 | dispatched/running | 状态不变 | 向当前对话再发提醒；append history（同状态 + note） |
-| 查看对话/复制派单 | 任意 | 状态不变 | 不写记录（客户端复制/提示） |
-| 再指派 | failed/done/cancelled | **新建记录**（预填弹层） | 不删除原记录；新记录初始 dispatched |
-| 删除 | 任意（**待定**，见 §10） | 记录移除 | 客户端二次确认；删除不存在 id 返回 `not-found` |
-
-- 非法流转（如 `dispatched→done`、`done→running`、`review→dispatched`）返回 `bad-transition`，文件不变。
-- 终态 `done`/`failed`/`cancelled` 不再进入 running/review（除「再指派」新记录外）。
-
-### 4.4 4 个路由 op
-
-| op | 入参 | 出参 | 说明 |
-|---|---|---|---|
-| `assignmentList` | `{root}` | `{items[], path, limits:{maxItems,maxBytes}}` | 按 `updatedAt` 倒序；可附 `counts`（可选） |
-| `assignmentSave` | `{root, title, detail, acceptance, assignedTo, stageId?, priority?, expectedArtifacts?}` | 新记录 | 校验全部字段；生成 id/round/时间/history 初条；status=dispatched |
-| `assignmentUpdate` | `{root, id, status?, note?}` | 更新后记录 | 状态机校验、打回需 note、append history；内容字段不可变（改内容走再指派新记录） |
-| `assignmentDelete` | `{root, id}` | `{removed:id}` | 不存在 → `not-found`；客户端二次确认 |
-
-- 接线：`index.js` 的 `dispatch()` switch 增加 4 个 case（与 pipeline/acceptance 同级）；沿用现有连接鉴权与错误封装。
-- 错误码（稳定）：`bad-root` / `bad-request` / `bad-id` / `bad-transition` / `not-found` / `full` / `too-large` / `corrupt` / `ssh-unsupported`。
-- **无模型工具**：本轮不新增 agent-facing 工具；避免 Agent 自派。
-
-## 5. 交互规格（引用三张 mockups）
-
-| # | 屏幕 | 资源 | 必须落地的关键内容 |
-|---|---|---|---|
-| 1 | 工作台「团队与指派」卡 | [assign-workbench.svg](../proposals/mockups/assign-workbench.svg) / [assign-workbench.png](../proposals/mockups/assign-workbench.png) | 卡片位于「项目状态」与「项目流程」之间；6 角色成员 chips（名称+角色/成员 id+状态，点击预填并打开抽屉）；指派任务按钮；最近指派默认 5 条（状态 pill / 标题 / 成员 / 类型 / 时间 / 操作），可展开；空态；「打开团队面板 ↗」；底部提示「派发后由 Lead 用原生 team 工具执行；成员与共享任务状态以团队面板为准」；记录保存路径提示 |
-| 2 | 指派弹层 | [assign-dialog.svg](../proposals/mockups/assign-dialog.svg) / [assign-dialog.png](../proposals/mockups/assign-dialog.png) | 右侧抽屉 608px（≤768 全宽底部面板）；交给谁（按角色/当前成员/新建 Agent，名称+角色）；任务标题（计数器 ≤120）；详细说明（≤4000）；验收标准（1–10 条，每条 ≤500）；优先级 P0/P1/P2（默认 P1）；关联阶段（自动判断 + 5 个可关联阶段 + 不关联）；期望产物路径；附件入口；双复核提示；取消/指派给 Agent（提交中禁用防重复） |
-| 3 | 派发后状态卡 | [assign-status.svg](../proposals/mockups/assign-status.svg) / [assign-status.png](../proposals/mockups/assign-status.png) | 筛选（全部/进行中/待你确认/已完成）；每行五段进度（已派发→等待 Lead→执行中→待你确认→已完成）与状态 pill（执行中/待你确认/已完成/已打回）；关联阶段/时间；操作（查看对话/催办/打回/通过并完成/再指派/取消）；打回示例完整闭环；汇总文案；操作留痕提示 |
-
-> 交互细节（尺寸、间距、tokens、状态矩阵、文案表、无障碍、渲染与迭代记录）见 [mockups/README.md](../proposals/mockups/README.md) §1–§8。实现复用现有 `ds-wb-*` / `ds-btn` / `ds-pipe-*` 样式与 i18n key 前缀 `workbench.assign.*`。
-
-### 5.1 结构化指派单（发到当前对话，字段固定）
-
-```text
-【工作台指派 · 第 N 轮】
-交给：<角色/成员 opc-xxx>（新建则写明 spawn 参数 name+role）
-任务：<标题>
-背景/期望：<详细说明>
-验收标准：<逐条 1..n>
-关联阶段：<stageId 或「临时任务」>
-期望产物：<路径，可空>
-优先级：<P0/P1/P2>
-执行要求：按角色边界执行；阶段任务走 pipeline_* 闸门；临时任务完成后在对话汇报产物与验证；
-         不要越过 approval/release 人工闸门；完成后更新工作台指派状态（由 Owner 在状态卡操作）。
-```
-
-### 5.2 提交与错误恢复
-
-1. 表单校验通过 → `assignmentSave` 落盘（status=dispatched）→ 生成指派单 → `sendPromptText` 发到当前对话 → toast「已派发」+ 卡片/列表刷新。
-2. **部分失败**：落盘成功但发送失败 → 记录保留（dispatched），UI 提示「已保存，发送失败」并提供「重发指派单」；落盘失败 → 不发送，错误就地提示且**表单内容不丢**。
-3. 防重复提交：提交中按钮禁用；同一表单重复点击只产生一条记录（按钮禁用 + 幂等提示）。
-
-### 5.3 MVP 允许的缩减（实现以此为准，验收不按 mockup 过度要求）
-
-| 项 | 缩减后行为 |
+| 元素 | 规格 |
 |---|---|
-| 成员实时状态 | 卡片状态**按指派记录推导**：无进行中记录=空闲、有 running=执行中、有 review=待你确认；明确提示「成员实时状态以 Harness 团队面板为准」。mockup 中的「阻塞/离线」为原生面板/未来态，MVP 不承诺实时判定 |
-| 打开团队面板 | 若 Harness 无稳定深链：显示可复制的团队面板入口说明/引导手动打开，点击不报错（不得出现死链） |
-| 附件 | MVP 至少提供「可拖入对话」的提示入口；复用 `.dsh/attachments` 上传为可选实现（不阻塞提交） |
-| 发布上线 chip | **需求明确：人工确认/发布不可指派**；mockup 中「发布上线」选项必须置灰并提示「仅 Owner 在流水线面板审批」（以需求为准） |
-| 新建 Agent | 仅记录名称+角色（spawn 参数）；真正创建由 Lead 执行；上限/spawn 失败由 Lead 回填错误，表单保留输入 |
-| 超时 | 不做自动超时失败；running 超过 30 分钟仅显示「等待中」提示 + 催办 |
-| 查看对话 | 无消息 ID 定位；「查看对话/复制派单」= 复制指派单/提示当前对话位置 |
-| 服务端能力 | 无搜索/分页/推送；≤100 条客户端筛选与展开 |
+| 待办列表 | 有待办：每行 状态点 + 标题 + 摘要 + 主操作按钮（通过/打回/查看），行高清晰可点；无待办：不占位或仅一行轻提示（如「今天没有需要你处理的事项」），不渲染空卡 |
+| hero 卡 | 阶段名（如「验收复核」）+ 状态 pill（待评审/进行中/已通过…）+ 一句摘要（来自阶段 summary，截断）+ 7 步点进度 + 「4/7 关已完成」文字；右侧主操作：approval 待确认 → 通过/打回；阶段待启动 → 启动并派发；其它 → 查看流水线/指派任务；附辅助链接（查看复核报告/查看流水线） |
+| 首屏约束 | 1440×1024 下 hero 与其主操作在**首屏可见**，无需滚动；hero 不得被折叠 |
+| 空数据 | 无项目时显示现有「开工」空态，不渲染假 hero；无待办时 hero 仍展示当前阶段（或「暂无进行中阶段」轻提示） |
 
-## 6. 与流水线 / 双复核的关系
+### 4.2 项目区（两列）
 
-| 指派类型 | 是否走流水线 | 闸门与约束 |
-|---|---|---|
-| 关联阶段（product/design/development/testing/acceptance） | 是，走现有七阶段 | 不变：testing → **acceptance（AI 复核）** → **approval（Owner 人工确认）** → release；指派动作**不写** `.dsh/pipeline.json` |
-| 临时任务（不关联） | 否 | 不改变流水线，完成后由 Owner 在状态卡确认（通过/打回）；涉及改需求/范围时应提示转「需求与调整」或发起变更轮 |
-| 人工确认（approval）/ 发布（release） | — | **不可指派**：只能 Owner 在流水线面板操作；表单置灰并提示 |
-| 新建 Agent | 由 Lead `spawn_teammate` 创建（受 Harness 团队上限约束） | 不改变闸门；插件不直接 spawn |
+| 卡片 | 内容与操作 |
+|---|---|
+| 项目状态/进度 | 轮次（第 N 轮）、进度条 + 「已完成 x/7」、快速模式开关/状态、当前阶段；链接「查看流水线」「打开需求」 |
+| 团队与指派 | 6 角色 chips（三态：空闲/执行中/待你确认，按指派记录推导 + 「以团队面板为准」提示）、「指派任务」按钮、团队面板入口、最近 1 条指派摘要（标题/成员/状态）；完整列表仍在指派卡内（v1.2.75 能力不回归） |
+| 需求与调整（**摘要化**） | 需求标题 + 轮次/范围 chips（如「第 3 轮 · 范围 full」）+ **≤2 行摘要（CSS line-clamp / 截断，不得渲染整段 PRD 原文）** + 操作：查看完整需求（打开现有需求视图/弹层）、追加说明、修改需求、新轮变更；四操作均保持原有行为 |
 
-- 验证手段：指派前后对比 `.dsh/pipeline.json` 的 mtime/内容哈希应完全一致；取消/完成后也不得触发 pipeline 状态变化。
+### 4.3 交付区（全宽）
 
-## 7. 调研与借鉴（本需求自身的调研证据）
+1. **项目流程**：全宽 7 步（现状保留），当前阶段高亮，右侧「查看流水线」。
+2. **5 张紧凑折叠行**（默认收起）：设计稿 / 验收 / 交付前体检 / 本轮变更 / 运行中。折叠头结构：图标 + 名称 + **计数或状态摘要**（如「4 张」「42/42」「通过」「3 文件」「1 个」）+ chevron；点击折叠头展开/收起，展开后渲染原卡片完整内容与操作（不重新实现内容）。
+3. 交付区头部右侧提供「展开全部 / 收起全部」（option-a 中为「展开全部 →」）。
+4. **关键待处理自动展开/标红点**：验收 `fail > 0` 或交付前体检存在失败/阻断项时，该折叠行默认自动展开并显示红点/警示色；Owner 可手动收起（收起后保留红点与计数）。
+5. 次要卡不得隐藏唯一入口：折叠时仅显示摘要，展开后所有按钮/链接/数据与重构前一致。
 
-> 调研执行时间：2026-10-27（Asia/Shanghai）。使用 Harness 自带 `web_search`（1 次、4 条查询）与 `web_fetch`（13 次，其中 10 次 HTTP 200、3 次失败）。下表来源均为真实抓取（HTTP 200），关键结论为抓取正文摘要；失败/未采用来源见 §7.4，未伪造任何来源。
+### 4.4 折叠与展开规则
 
-### 7.1 来源与关键结论（7 个可引用来源）
+| 规则 | 说明 |
+|---|---|
+| 默认状态 | 5 张次要卡默认全部收起；项目流程/hero/现在区不参与折叠 |
+| 展开触发 | 鼠标点击折叠头任意处；键盘 Enter/Space（折叠头为 `button` 或等效 button 语义）；触控点击 |
+| 计数/摘要 | 收起态必须显示计数或状态摘要（不得只显示名称）；计数为 0/空时显示「无」/「0」，不报错 |
+| 自动展开 | 验收 fail>0、体检 fail/阻断时自动展开 + 红点；修复后（fail=0）恢复默认收起 |
+| 展开全部 | 交付区头部「展开全部/收起全部」一键切换 5 张卡 |
+| 状态记忆 | 本轮**不要求**持久化折叠状态（刷新回默认）；如实现 `localStorage`（建议 key `dsh-web-filebrowser:wb-fold`）须刷新保留且不影响验收，不阻断 |
+| 动效 | 150–200ms；`prefers-reduced-motion: reduce` 时直接显示/隐藏，不做高度动画 |
+| 可访问性 | 折叠头 `aria-expanded` + `aria-controls`；展开内容与折叠头有 DOM 关联；焦点不丢失；触控区域 ≥44px |
 
-| # | 来源 | URL | 访问日期 | 类型 | 关键结论（用于本需求） |
-|---|---|---|---|---|---|
-| 1 | Microsoft Learn · Design human-in-the-loop workflows | https://learn.microsoft.com/en-us/training/modules/governance-guardrails-operations/4-design-human-workflows | 2026-10-27 | 人机协作审批 | 人类应放在**高影响决策点**（合并/部署/敏感权限），而不是每一步；审批应**显式、可审计、责任角色明确**；生产部署应**串行**（防并发冲突）；用证据/小范围/回滚减少治理疲劳。→ 支撑「Owner 只在派发与完成确认点介入」「打回需 note、history 留痕」「per-root 串行写」「状态卡给证据」 |
-| 2 | Microsoft HAX Toolkit · Guidelines for Human-AI Interaction（18 条） | https://www.microsoft.com/en-us/haxtoolkit/ai-guidelines/（清单：https://www.microsoft.com/en-us/haxtoolkit/library/） | 2026-10-27 | 人机交互规范 | 18 条循证指南覆盖初次交互/交互中/出错/长期；与本功能直接相关：G1 说清系统能做什么、G2 说清做得多好、G7 高效触发、G8 高效关闭、G9 高效纠错、G11 解释原因、G16 说明后果、G18 通知变化。→ 支撑表单能力说明、状态解释、打回/再指派、闸门后果提示、toast/状态更新 |
-| 3 | Linear Docs · Assign and delegate issues | https://linear.app/docs/assigning-issues | 2026-10-27 | 任务指派 UX | 每个 issue 同一时间**只指派给一个人**（清晰 ownership）；可把任务**委托给 agent 而人类 assignee 保留所有权与责任**；指派受团队权限约束；支持列表/卡片直接指派与快捷操作。→ 支撑「一个目标（role/member/newAgent 互斥）」「Owner 保留最终确认责任」「卡片/抽屉内快速指派」 |
-| 4 | GitHub Docs · Assigning issues and pull requests（对比参考） | https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/assigning-issues-and-pull-requests-to-other-github-users | 2026-10-27 | 任务指派 UX | assignee 用于说明「谁在做」；GitHub 支持多个 assignee（最多 10）。→ 与 Linear 单指派对比后**决定不采用多指派**（见 §7.2），避免团队工具执行歧义 |
-| 5 | NN/g · Progress Indicators Make a Slow System Less Insufferable | https://www.nngroup.com/articles/progress-indicators/ | 2026-10-27 | 状态反馈 UX | 「系统状态可见性」是最重要可用性原则之一；操作要立即反馈；>1 秒的操作需要进度指示；循环动画适合 2–10 秒，更长需给出估计；反馈减少不确定感、提升满意度。→ 支撑五段进度、状态 pill 文案、toast、催办、「等待 Lead」提示 |
-| 6 | MDN · ARIA `dialog` role | https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Roles/dialog_role | 2026-10-27 | 无障碍 | 对话框需 `role="dialog"` + `aria-labelledby`/`aria-describedby` 标签；出现时把焦点移入默认控件，关闭后焦点归还触发点；Tab 顺序应在对话框内循环；模态时外部内容不可交互。→ 支撑右侧抽屉/底部面板的键盘与焦点规范、Esc 归还焦点 |
-| 7 | Node.js Docs · File system（`fs`/`fs.promises` 与 `rename`） | https://nodejs.org/api/fs.html | 2026-10-27 | 本地持久化/原子写 | Node fs 文档指出：promise API 的文件操作**不同步、非线程安全**，对同一文件并发修改可能导致数据损坏，需要串行化；`fs.rename` 提供替换目标路径的原子操作，常见「写临时文件再 rename」可避免半写文件。→ 支撑 `per-root 串行锁 + temp+rename 原子写`、「不加锁冲突」与错误恢复 |
+### 4.5 交互规格引用
 
-### 7.2 借鉴决策表（采用 / 调整 / 不采用 + 理由）
+| 规格 | 位置 |
+|---|---|
+| 三区结构与卡片归属 | [README §2.1](../proposals/workbench-redesign/README.md) + [option-a.png](../proposals/workbench-redesign/mockups/option-a.png) |
+| 现状痛点与审计标注 | [README §1](../proposals/workbench-redesign/README.md) + [before.png](../proposals/workbench-redesign/mockups/before.png) |
+| 组件复用与 class 映射（`.ds-wb-zone*` / `.ds-wb-hero*` / `.ds-wb-fold*`） | [README §4.1](../proposals/workbench-redesign/README.md) |
+| Token / 字号 / 间距 / 对比度 | [README §4.2](../proposals/workbench-redesign/README.md) + 本文 §5 |
+| 实现拆分与建议顺序 | [README §5](../proposals/workbench-redesign/README.md) |
+| 验收要点 | [README §6](../proposals/workbench-redesign/README.md) + 本文 §10 |
 
-| 借鉴点 | 来源 | 决策 | 理由 | 落点 |
-|---|---|---|---|---|
-| 一个任务单一 assignee，边界清晰 | #3 | **采用** | 避免「到底谁做」歧义；与 Lead 用原生工具执行更匹配 | `assignedTo` 三选一互斥；状态卡单目标展示 |
-| 委托给 Agent、人类保留责任 | #3 | **采用（映射为 Owner 确认）** | 插件只派工不担责；双复核最终仍由 Owner 拍板 | 完成/打回必须 Owner 操作；approval/release 不可指派 |
-| 人类只在关键决策点审批、可审计 | #1 | **采用** | 派发与完成确认是 Owner 的关键点；其余交给 Lead/Agent 执行 | 4 个 op 记 history；打回需 note；history≤50 |
-| 审批显式、可审计，串行执行 | #1 | **采用** | 状态变更与写文件都要可追溯、避免并发冲突 | 状态机校验 + per-root 串行锁 + history |
-| 状态可见、立即反馈、进度可读 | #5 | **采用** | 指派是异步长流程，Owner 需要知道到哪一步 | toast、五段进度、状态 pill 文字、催办 |
-| 对话框标签 + 焦点管理 + Esc 归还 | #6 | **采用** | 抽屉/底部面板是模态交互，无障碍硬要求 | `role=dialog`、`aria-modal`、焦点入/出、Tab 循环 |
-| 并发写串行化 + 临时文件 rename | #7 | **采用** | 防数据损坏、防半写；无需新增依赖 | 原子写 + per-root 锁 + 1MB/100 条上限 |
-| HAX G1/G2/G9/G11/G16/G18 | #2 | **采用（简化落地）** | 让 Owner 知道能力边界、如何纠错、操作后果与状态变化 | 表单提示、阶段闸门提示、打回/再指派、toast/aria-live |
-| 多 assignee（GitHub 最多 10） | #4 | **不采用** | MVP 一个任务一个执行目标，多目标会让原生团队工具执行与状态追踪歧义 | — |
-| 直接调用团队服务实时读取成员状态（提案 B） | #3/#2 延伸 | **不采用（本轮）** | 无 owner 级 TeamService API；会破坏「Lead 组队」权限模型 | 状态由记录推导 + 团队面板为权威 + 入口提示 |
-| 插件内直接 spawn / 建共享任务（提案 C） | #3 延伸 | **不采用** | 与 Harness 团队面板重复且可能越权 | 只生成结构化指派单，Lead 执行 |
-| 自动超时失败/自动重试 | #1/#5 延伸 | **不采用** | Agent 可能长时间运行；自动失败会造成误判与状态抖动 | 只显示等待提示 + 催办；不自动改状态 |
-| 新增第三方原子写依赖（write-file-atomic 等） | #7 延伸 | **不采用** | 需求禁止新依赖；用现有 fs.temp+rename 足够 | 实现内建原子写 |
-| 独立任务数据库/队列 | #3 延伸 | **不采用** | MVP 规模 ≤100 条，本地 JSON 足够；避免新依赖与迁移复杂度 | `.dsh/agent-assignments.json` |
+## 5. 视觉规范（清爽 / 清新 / 可辨识）
 
-### 7.3 已验证模式 vs 创新假设
+> 需求原文为准；README/效果图为参考。实现使用现有 `--dsw-alias-*` token 与柔和近似值，不硬编码，不新增依赖。
 
-- **已验证模式（有来源支撑）**：单 assignee 清晰 ownership 与委托给 agent（#3）；人类在高影响决策点审批、审批显式可审计、串行执行（#1）；状态可见性与即时反馈（#5）；对话框焦点管理与标签（#6）；文件并发写需串行化、temp+rename 原子替换（#7）；HAX 能力边界/纠错/后果提示（#2）。
-- **创新假设（本项目自研/组合，需交付验证）**：
-  1. **结构化指派单 → 当前对话 → Lead 原生执行**能显著减少口述漏项（需实际使用验证；模板字段可能后续增删）；
-  2. **「已派发/等待 Lead」拆两段**能让 Owner 看见「消息已发但未接单」；
-  3. 成员状态由**指派记录推导**足以支撑 Owner 判断（实时状态以团队面板为准）；
-  4. 关联阶段任务与流水线状态**解耦**（指派不写 pipeline，状态由 Owner 推进）能避免双写冲突；
-  5. 「自动判断关联阶段」的推导规则（当前/下一阶段）在真实轮次中是否准确；
-  6. 100 条 / 1MB / history 50 的本地 JSON 上限对 1 人公司 + Agent 团队足够；
-  7. 附件「仅提示拖入对话」的降级是否被 Owner 接受。
+### 5.1 色板与层级
 
-### 7.4 未采用/抓取失败的来源（诚实披露）
+| 用途 | 值/规则 |
+|---|---|
+| 页面背景 | 浅灰蓝 **#F6F8FB**（近似 `bg-base`/工作台底色） |
+| 卡片 | 白底 + **1px 边框**（`border-l2` 近似 #E3E8EF）+ **轻阴影 `0 1px 2px`**；圆角 **12px**；内边距 16/20 |
+| 分区色条 | 左侧 **3px** 类目色条（需求原文；README 为 4px，允许 3–4px 实现并在 design.md 记录），同时有分区名文字，**不靠颜色单独表意** |
+| 类目色 | 现在 = **琥珀**（warn 系柔和值）；项目 = **蓝**（brand/info 系）；交付 = **绿**（success 系）；均使用现有语义色 token 的柔和近似值，保证对比度 |
+| 文字 | 主要文字 `label-primary`（近似 #0F1115，18.9:1 白底）；次要 `label-secondary`（近似 #61666B，5.8:1）；链接 `info-text`（近似 #2563EB，5.17:1）；状态语义色必须用 `*-text` 变体，不得用小字号 `state-*-primary` 当正文 |
+| 对比度 | 正文/分区标题/卡片标题/计数/链接 **≥4.5:1**；大字号（≥18pt 或 14pt bold）≥3:1；**非文本**（色条/边框/圆点）≥3:1（WCAG 2.1 SC 1.4.3 及 1.4.11 精神） |
+| 状态 pill | 柔和底色（success/warn/error 12%）+ 深色文字（*-text）+ 文字标签；不得只靠颜色 |
 
-| URL | 结果 | 处理 |
-|---|---|---|
-| https://support.atlassian.com/jira-software-cloud/docs/assign-issues/ | HTTP 404（页面不存在） | 未采用；任务指派 UX 依据改用 #3/#4 |
-| https://help.asana.com/s/article/assign-tasks | HTTP 404（页面不存在） | 未采用；同上 |
-| https://www.npmjs.com/package/write-file-atomic | HTTP 403（站点拦截） | 未采用；原子写依据改用 #7（Node.js 官方文档） |
-| https://uxpatternsguide.com/patterns/step-progress/ | HTTP 200 但正文被截断，未提取到可引用结论 | 未采用；进度反馈依据改用 #5（NN/g） |
+### 5.2 字号与间距
 
-> 结论：网络可用，可引用来源 7 个（≥3），全部记录 URL + 访问日期 + 关键结论；失败项已如实披露，不存在伪造来源，无「无网络」`blocked`。
+| 用途 | 规格 |
+|---|---|
+| 页面标题 | 24/32（现有） |
+| hero 阶段名 | 20/28、700（需求：主操作与阶段名显著，最大元素 ≤2 处） |
+| 分区标题 | 13/20、600 + 分区副说明 12/18 |
+| 卡片标题 | **12px 半粗（600）**（替换现状 9.5–10.5px 全大写；不再 text-transform: uppercase） |
+| 主要数字 | 15–16px、600（如 4/7、42/42、counts） |
+| 正文 / 卡片内容 | 12–13px、行高 ≥1.4 |
+| 次要/元信息 | 11px（不得承载唯一信息） |
+| 间距 | 4/8px 体系：分区间距 **16**、卡间距 12、卡内 16/20、分区色条 3–4px |
+| 圆角/阴影 | 卡片 12、折叠行 10、pill 12；卡片阴影 0 1px 2px；不使用重阴影 |
+| 动效 | hover 150ms、折叠/抽屉 150–200ms、ease-out；`prefers-reduced-motion` 直接切换 |
+| 焦点 | 焦点环可见（现有 2px + offset 或 token），不得 `outline:none` 无替代 |
 
-## 8. 错误处理、边界与数据安全
+### 5.3 视觉自检（沿用 v1.2.73 设计质量门）
+
+- 五维自评（视觉层级 / 清晰度 / 一致性 / 反馈 / 可访问性）每项 **≥4/5**，must 项 0 失败（需求标准 9）。
+- 用「眯眼测试」检查层级：模糊后仍能看出「现在区/hero → 项目区 → 交付区」三块（README §2 / NN/g 视觉层级）。
+- 深浅主题双测（若现有主题支持）：新色条/折叠行不得出现不可读或硬编码冲突。
+
+## 6. i18n 与无障碍
+
+### 6.1 i18n
+
+- 新增 key（建议前缀）：`workbench.zone.now/project/delivery`（+副标题）、`workbench.hero.*`、`workbench.fold.*`（标题/计数/展开全部/收起全部/空）、`workbench.requirement.summary` 等；**zh/en 同批补齐（约 18–24 键）**。
+- 既有 `workbench.assign.*`（v1.2.75，约 122 键）不得删除/重命名导致指派器缺文案。
+- 无 key 时应有 zh 回退，不得渲染 `undefined`/key 名。
+
+### 6.2 无障碍
+
+- 语义：分区为 `section` + `aria-labelledby`；折叠头为 `button` + `aria-expanded` + `aria-controls`；hero 主操作为真实按钮。
+- 键盘：Tab 顺序与视觉顺序一致；折叠/展开焦点不丢；Esc 关闭弹层（沿用现有）；可聚焦元素有可见焦点环。
+- 触控：折叠头、图标按钮、主操作命中 ≥44px。
+- 状态表达：颜色 + 文字 + 图标/形状（分区色条同时有文字分区名；fail 有红点也有「失败/阻断」文字）。
+- 读屏：折叠计数/状态有可读名称；状态变化（展开/自动展开）可用 `aria-live`/可见反馈，不静默变内容。
+- 对比度：见 §5.1；reduced-motion 生效。
+
+## 7. 响应式与窄屏
+
+| 断点 | 行为 |
+|---|---|
+| ≥1024 | 三区纵向；项目区两列；hero 与主操作完整可见 |
+| 701–1023 | 三区纵向；项目区可降为 2 列或自适应；hero 按钮保持一行或自然换行 |
+| ≤700（需求原文断点） | **单列**：项目区单列；hero 按钮换行；交付区折叠行单列；折叠头 44px；无横向溢出 |
+| 360 / 768 / 1280 复测 | 无横向滚动；长标题/计数/chips 换行或截断不溢出；hero 主操作仍可达 |
+
+- 标题/摘要：单行省略或 2 行 clamp；chips 可换行；表格类（若有）不撑破容器。
+- 窄屏不隐藏关键操作（通过/打回/启动/指派必须在首屏或一次点击内可达）。
+
+## 8. 边界与异常场景
 
 | 场景 | 期望行为 |
 |---|---|
-| 必填缺失（title/detail/acceptance/assignedTo） | Host 返回 `bad-request` 且指出字段；客户端字段下就地提示、不丢输入、不落盘 |
-| 长度越界（title>120、detail>4000、单条验收>500、验收>10 条） | Host 拒绝（`bad-request`）；客户端计数器与提示，超限不可提交 |
-| 记录数 >100 / 文件 >1MB | 分别返回 `full` / `too-large`；客户端提示清理终态记录；原文件不变 |
-| 非法状态流转（dispatched→done、done→running、review→dispatched 等） | `bad-transition`，文件不变；客户端只展示可用操作 |
-| 打回但未填原因 | `bad-request`；客户端打回弹窗必填 note，未填不能提交 |
-| 不存在的 id / id 非法 | `not-found` / `bad-id` |
-| SSH 工作区 | 四个 op 均返回 `ssh-unsupported`；卡片禁用并提示「SSH 工作区暂不支持指派」 |
-| 数据文件损坏 | 读取返回 `corrupt`（含路径），不静默清空、不覆盖；客户端提示联系 Owner 修复/备份 |
-| 并发保存/更新 | per-root 串行锁保证不丢更新、不产生重复 id；并发 10 次保存应得到 10 条且文件可解析 |
-| 落盘成功但发送失败 | 记录保留 dispatched；提示「已保存，发送失败」+「重发指派单」；不重复建记录 |
-| 写文件失败（权限/磁盘） | 原子写保留旧文件；返回稳定错误；客户端不丢输入，可重试 |
-| 刷新/重启 | 记录从 `.dsh/agent-assignments.json` 恢复；`.dsh/.gitignore` 保证不进 Git |
-| 关联阶段但不改流水线 | 指派前后 `.dsh/pipeline.json` 内容哈希一致；approval/release 不可作为 stageId |
-| 新建 Agent spawn 失败 | Lead 在对话回报错误；指派记录保留，Owner 可「再指派」或改 member/role |
+| 无项目（未保存需求） | 显示现有开工/需求录入空态；不渲染三区空壳与假 hero；「现在/项目/交付」不出现误导性 0 数据 |
+| 无待办 | 现在区不占位或仅轻提示；hero 仍显示当前阶段或「暂无进行中阶段」；不得留一大块空白卡 |
+| 空数据（0 记录） | 最近指派「暂无」、设计稿 0 张、验收 0 条、变更 0 文件、运行中 0 个 → 折叠头显示 0/「无」，不报错、不崩 |
+| 长文本/超长标题 | 需求标题/摘要 clamp；卡片标题单行省略；tooltip/title 提供全文（如已有） |
+| 验收 fail / 体检 fail | 自动展开 + 红点 + 失败文字；折叠头计数显示失败数；Owner 可收起但保留红点 |
+| SSH 工作区 | 沿用现有 SSH 降级：不支持的功能不显示/禁用提示，重构不得抛错或空白；不写 `.dsh` 数据 |
+| 单卡片数据异常/加载失败 | 该卡显示错误/空态，不拖垮其它区（局部 try/catch 或空态兜底）；整页不白屏 |
+| 折叠全部收起 | 5 张行仍显示计数/状态摘要与可点击入口；无内容丢失 |
+| 键盘/读屏 | 折叠、hero 主操作、链接均可键盘到达并有可读名称 |
+| 深色主题（如支持） | 不出现白底黑字硬编码冲突；新元素可读 |
 
-## 9. 验收标准（需求 10 条细化为可独立复测）
+## 9. 与现有功能 / 数据流的关系（回归边界）
 
-| # | 结论式验收点 | 复测方式（命令/文件/GUI） | 边界用例 |
+- **不改**：Host 全部模块与接口、`.dsh/pipeline.json` / `.dsh/acceptance.json` / `.dsh/agent-assignments.json` 等数据；不改模型工具与系统提示词；不改流水线七阶段与双复核闸门。
+- **保留**：v1.2.75 工作台 Agent 指派器（卡片/抽屉/状态卡）、v1.2.73 三 Agent 提示词与手册、验收台、交付包、变更审阅、运行中任务、Owner 编辑器标签右键菜单（关闭/关闭其他/关闭右侧/全部关闭/固定）。
+- **仅动**：`client.js` 的 `renderWorkbenchPage` 及配套渲染片段、工作台相关 `.ds-wb-*` CSS 增量、`locale/zh.json` + `locale/en.json` 新增键。
+- 回归基线：`npm run check`、`npm test`、`node .dsh/tmp/team/pipeline-selftest.mjs`、`node .dsh/tmp/team/review-selftest.mjs` 全绿；手工回归 §9 列出的既有功能。
+
+## 10. 验收标准（需求 10 条细化为可独立复测）
+
+| # | 结论式验收点 | 复测方式（GUI/文件/命令） | 边界/容差 |
 |---|---|---|---|
-| 1 | 工作台出现「团队与指派」卡，位于项目状态与项目流程之间，含 6 角色 chips、推导状态、指派按钮、最近 5 条/空态 | 刷新工作台；DOM/截图核对卡片顺序与文案；6 chips；空态（清空 `.dsh/agent-assignments.json` 或新工作区）；最近记录默认 5 条可展开；「打开团队面板」入口存在且不报错 | 0 条记录空态；>5 条时默认折叠/展开；状态推导=空闲/执行中/待你确认三态 + 「以团队面板为准」提示 |
-| 2 | 指派表单字段与校验完整；人工确认/发布不可选并有提示；新建 Agent 支持名称+角色 | 打开抽屉：必填校验、标题 120 字符 / 详细 4000 字符 / 验收 1–10 条（每条 500 字符）、计数器、错误就地提示不丢输入、P1 默认、阶段 chips（自动判断 + 5 阶段 + 不关联；approval/release 置灰+提示）、新建 Agent 名称+角色 | 空提交、超长输入、验收 0 条/11 条、附件入口不阻塞 |
-| 3 | 提交后 `.dsh/agent-assignments.json` 有 `status=dispatched` 记录，当前对话收到含全部字段的结构化指派单 | 提交后读文件（jq/node 解析）核对字段/round/时间/history；检查对话消息包含交给/任务/背景/验收/关联阶段/期望产物/优先级/执行要求/闸门提示；toast 与卡片刷新 | 落盘成功/发送失败时记录保留 + 重发；连续点击只产生一条 |
-| 4 | 状态流转可用且持久：dispatched→running→review→done；打回需 note→failed 可再指派；催办/取消可用；刷新/重启记录仍在；history 完整 | 依次用 GUI 或直接调用 4 个 op 推进/打回/取消/催办；重载页面与重启 Host 后 `assignmentList` 数据仍在；history 追加且≤50；再指派生成新记录、原记录保留 | 非法流转拒绝；打回空 note 拒绝；终态不可回退；并发状态更新不丢 |
-| 5 | 关联阶段不修改 `.dsh/pipeline.json`；临时任务不改变流水线；双复核闸门不被绕过 | 指派前后 `sha256sum .dsh/pipeline.json` 一致；临时任务完成后流水线七阶段状态不变；阶段任务仍显示 acceptance/approval 闸门提示；approval/release 不可选 | 关联阶段 + 自动判断；临时任务；取消/打回均不写 pipeline |
-| 6 | 数据校验/上限/SSH 降级/错误提示正确（≥6 个边界用例） | 用 node 调 `.dsh` 路由或 selftest 覆盖：必填缺失、长度越界、>100 条 `full`、>1MB `too-large`、非法流转 `bad-transition`、打回空 note、不存在 id `not-found`、SSH root `ssh-unsupported`；错误码稳定 | 至少 8 个用例；错误信息可操作 |
-| 7 | 中英文完整、无障碍与移动端可用；不新增运行时依赖 | 切换 zh/en 检查卡片/抽屉/状态卡文案无缺失（key 前缀 `workbench.assign.*`）；键盘 Tab/Shift+Tab 焦点环、Esc 关闭归还焦点、`role=dialog aria-modal`、44px 命中、状态有文字+颜色、`prefers-reduced-motion`；≤768 抽屉为底部面板 | 空 key 回退；焦点不逃逸；触屏命中 |
-| 8 | 不破坏现有工作台/流水线/验收/交付/团队流程；`npm run check`、`npm test`、`pipeline-selftest`、`review-selftest` 全绿 | 依次执行四条命令并记录退出码/输出末尾；host-smoke 扩展 assignments 用例（ops/校验/上限/状态机/SSH）；现有功能手工回归（工作台/流水线/验收/交付） | 无既有用例回归；无新依赖（`git diff package.json` dependencies 不变） |
-| 9 | 三张效果图的关键布局/状态/操作在实现中落地（允许 MVP 缩减） | 对照 mockups 三屏逐项核对：卡片位置/成员 chips/最近记录/抽屉字段与提示/状态卡筛选/五段进度/状态 pill/操作按钮；允许 §5.3 缩减项（实时状态→推导+提示；发布 chip 置灰；附件降级） | 打回态/已完成态/空态均有；400/窄屏不溢出 |
-| 10 | 文档同步：AGENT_TEAM/PLAYBOOK 指派小节、ACCEPTANCE 批次 12、CHANGELOG 1.2.75、版本一致 | `grep -n "工作台指派\|指派" docs/AGENT_TEAM.md docs/PLAYBOOK.md`；`grep -n "批次 12" docs/ACCEPTANCE.md`；CHANGELOG 顶部 `## 1.2.75 — 2026-10-27`；核对两个 `package.json` 版本与 §9 版本口径一致 | 文档无死链；版本与 CHANGELOG/验收记录一致 |
+| 1 | 三区分层出现且模块可辨认 | 1440×1024 打开工作台：从上到下「现在/项目/交付」三区；每区有色条+图标+标题+右侧计数/操作；项目区含 项目状态/团队与指派/需求与调整；交付区含 项目流程 + 5 折叠行 | 无待办时「现在」区合理降级（不空白堆卡）；三区顺序不可乱 |
+| 2 | hero 首屏可见且主操作正确 | 分别在「approval 待你确认」「阶段待启动/进行中」两种数据下检查：阶段+状态+摘要+7 点进度+主操作（通过/打回 或 启动并派发/查看流水线/指派任务）；1440×1024 首屏无需滚动即可看到主操作 | 摘要长文本截断；审批与启动互斥显示正确 |
+| 3 | 需求与调整不再直出整段 PRD（修复点） | 打开工作台并检查该卡 DOM/截图：需求标题 + 轮次/范围 chips + **≤2 行摘要** + 查看完整需求/追加说明/修改需求/新轮变更；页面中不出现需求详情原文（长 markdown 全文） | 摘要来自需求标题/首句；4 个操作原有行为可用；原文仅在「查看完整需求」后出现 |
+| 4 | 交付区 5 张次要卡默认收起、计数/摘要正确、展开后功能完整 | 默认状态 5 行收起且头部显示计数/状态（如 4 张 / 42/42 / 通过 / 3 文件 / 1 个）；点击/键盘 Enter 展开，内容与重构前一致；「展开全部/收起全部」可用；验收 fail>0 或体检 fail 时自动展开+红点 | 0 数据行显示「无/0」不报错；收起后关键失败仍能通过红点/计数发现 |
+| 5 | 视觉规范落地：浅灰蓝底、白卡轻阴影、分区色条、标题 12–13px、16px 间距、对比度 ≥4.5:1、焦点可见 | 截图对照 option-a；用取色/对比度工具抽查正文、次文字、链接、状态文字（≥4.5:1）与非文本（≥3:1）；Tab 键检查焦点环；检查无 9.5px 全大写卡标题残留 | 允许 3–4px 色条、±1px 字号微调（design.md 记录）；不得出现小字号语义色当正文 |
+| 6 | i18n zh/en 完整；≤700 单列无横向溢出；折叠头 44px；reduced-motion 降级 | 切换中文/English 检查三区/hero/折叠/摘要/空态文案无缺失（无 key 名/undefined）；缩窄到 700/360、768、1280 检查单列与无横向滚动；量折叠头点击高度 ≥44px；系统启用 reduce motion 后折叠无动画 | 既有 assign 文案不缺；窄屏主操作一次点击可达 |
+| 7 | 不破坏现有功能：流水线 7 关、团队与指派（卡片/抽屉/状态卡）、验收、交付包、变更审阅、运行中、标签右键菜单正常；四条命令全绿 | 手工逐项回归 §9 列表；执行 `npm run check`、`npm test`、`node .dsh/tmp/team/pipeline-selftest.mjs`、`node .dsh/tmp/team/review-selftest.mjs` 记录退出码与输出末尾 | 任一既有功能回归即 fail；无新增依赖 |
+| 8 | 无 Host 改动、无新增依赖、不改 pipeline/验收数据 | `git diff` 检查仅 client.js/CSS/locale/文档变更；`git diff -- package.json dsh-web-filebrowser-plugin/package.json` 无 dependencies 变化；改动前后 `.dsh/pipeline.json`、`.dsh/acceptance.json` 哈希一致；Host 文件未被改 | 若确需 Host 改动必须 Lead 批准并更新范围，否则 fail |
+| 9 | 设计落地与 option-a 一致（允许微调并记录），五维自评 ≥4、must 0 失败 | 对照 [option-a.png](../proposals/workbench-redesign/mockups/option-a.png) 逐区比对：分区头/hero/项目三卡/交付折叠行/7 步流程；design.md 记录微调与五维自评（视觉层级/清晰度/一致性/反馈/可访问性，各 ≥4，must 项 0 失败） | 允许配色近似 token、3–4px 色条、文案微调；不得改变分区与折叠规则 |
+| 10 | 文档与版本：design.md + ACCEPTANCE 批次 13 + CHANGELOG 1.2.76 + 版本口径一致 | 检查 `docs/pipeline/design.md` 本轮产物；`grep -n "批次 13" docs/ACCEPTANCE.md`；CHANGELOG 顶部 `## 1.2.76 — 2026-10-27`（英文）；插件 package.json = 1.2.76、根 package.json = 1.2.76（不回退）；交付后根 +1 至 1.2.77 | 版本与 CHANGELOG/验收记录一致；文档相对链接无死链 |
 
-**版本口径说明（Lead 已拍板，2026-10-27）**：当前仓库根为 **1.2.75**（工作区硬性规定：上一轮交付后根 +1，编辑器标签右键菜单提交后再次 +1）、插件为 **1.2.73**。本轮发布版本定为 **1.2.75**：**插件 `package.json` 升至 1.2.75、根保持 1.2.75 不回退**；交付提交中 CHANGELOG 用 `## 1.2.75 — 2026-10-27`（并把此前 Unreleased 的编辑器标签右键菜单变更一并纳入本轮发布）；交付完成后按硬性规定把根 `package.json` +1 至 **1.2.76**。下一轮发布时插件对齐 1.2.76。
+## 11. 调研与借鉴（本需求自身的调研证据）
 
-## 10. 风险与未决问题
+> 调研执行时间：2026-10-27（Asia/Shanghai）。使用 Harness 自带 `web_search`（1 次、4 条查询）与 `web_fetch`（8 次：6 次 HTTP 200、1 次 404、1 次网络失败）。下表来源均为真实抓取（HTTP 200 / 404 已披露），关键结论为抓取正文摘要；未伪造任何来源。
 
-### 10.1 风险
+### 11.1 来源与关键结论（6 个可引用来源）
+
+| # | 来源 | URL | 访问日期 | 类型 | 关键结论（用于本需求） |
+|---|---|---|---|---|---|
+| 1 | NN/g · Progressive Disclosure（Jakob Nielsen, 2006-12-03） | https://www.nngroup.com/articles/progressive-disclosure/ | 2026-10-27 | 渐进披露 | 初始只显示**最重要的少量选项**，其余按需披露；必须做对两件事：**初层/次层的正确切分**（高频必在上层）与**前进机制明显可预期**（按钮/标签 + 清晰文案）；一般不应超过 2 层；可按使用频率决定初层内容。→ 支撑 5 张次要卡默认收起、计数+chevron+「展开全部」、需求摘要化 |
+| 2 | NN/g · Visual Hierarchy in UX: Definition（Kelley Gordon, 2021-01-17） | https://www.nngroup.com/articles/visual-hierarchy-ux-definition/ | 2026-10-27 | 视觉层级 | 视觉层级通过**颜色/对比、尺度、分组（邻近与共同区域）**建立；颜色别太多（常见约 2 主 + 2 辅）、对比层次 ≤3；字号层级 ≤3 档（大/中/小），**最重要的元素最大**且大元素 ≤2 个；不能只靠颜色传达层级（色盲可用性）。→ 支撑 hero 最大、分区三色+文字、卡标题 12px 分级、色彩克制 |
+| 3 | NN/g · 10 Usability Heuristics（Jakob Nielsen, 1994，last reviewed 2024-01-30） | https://www.nngroup.com/articles/ten-usability-heuristics/ | 2026-10-27 | 可用性原则 | 系统状态可见性（及时反馈当前状态与下一步）；美学与极简设计（无关/少用信息降权）；一致性与标准（同一概念用同一表达）；识别优于回忆（关键信息可见，不靠记忆）；用户控制与自由（可撤销/可退出）。→ 支撑 hero 状态/进度、折叠计数摘要、需求摘要、模块标题一致、折叠可展开 |
+| 4 | NN/g · F-Shaped Pattern of Reading on the Web（Kara Pernice, 2017-11-12，last reviewed 2026-08-19） | https://www.nngroup.com/articles/f-shaped-pattern-reading-web-content/ | 2026-10-27 | 扫读模式 | 用户扫读网页，**首行与左侧获得最多注视**；F 型扫描对用户与业务都不利，可通过标题层级/层蛋糕式结构改善；长文本墙降低可读性。→ 支撑「现在区+hero 置顶」「关键动作首屏」「需求摘要化而非长 PRD」；卡片/分区标题便于层蛋糕扫读 |
+| 5 | W3C WAI · Understanding SC 1.4.3 Contrast (Minimum)（WCAG 2.1，Updated 2026-09-06） | https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html | 2026-10-27 | 无障碍对比度 | 正文对比度**≥4.5:1**；大字号（≥18pt 或 14pt bold）**≥3:1**；不满足会造成低视力与色觉差异用户不可读。→ 支撑视觉规范「正文 ≥4.5:1、状态文字用 *-text 变体」 |
+| 6 | NN/g · Cards: UI-Component Definition（Page Laubheimer, 2016-11-06） | https://www.nngroup.com/articles/cards-component/ | 2026-10-27 | 卡片模式 | 卡片用于**把相关信息分组为一个可消化的单元**；卡片应是**摘要 + 指向更多细节的入口**（不是全部细节）；用边框/背景/轻阴影形成共同区域，可点击区域越大越好（Fitts 定律）。→ 支撑 5 张紧凑折叠行（摘要+展开）+ 卡片轻阴影 + 折叠头大点击区；需求卡「摘要+查看完整」 |
+
+### 11.2 借鉴决策表（采用 / 调整 / 不采用 + 理由）
+
+| 借鉴点 | 来源 | 决策 | 理由 | 落点 |
+|---|---|---|---|---|
+| 渐进披露：初层只放高频/关键信息 | #1 | **采用** | 首屏聚焦「现在该做什么」；交付细节按需展开 | 5 张交付卡默认收起；需求摘要化 |
+| 初层/次层正确切分（按使用频率） | #1 | **采用** | 现在/项目区是每天必看，设计/验收/体检/变更/运行是阶段/按需查看 | 三区归属：现在+项目在上层，交付细节折叠 |
+| 前进机制明显：按钮标签+计数+清晰预期 | #1 | **采用** | 折叠不能藏得看不见；要有计数与「展开全部」 | 折叠头 = 图标+名称+计数/状态+chevron；「展开全部/收起全部」 |
+| 最多 2 层披露 | #1 | **采用** | 避免多层折叠迷路 | 只做 1 层折叠（不再嵌套折叠） |
+| 视觉层级：尺度/颜色/分组 | #2 | **采用** | 解决「主次同权」根因 | hero 20px；分区 13px；卡标题 12px；三色条+图标+文字 |
+| 颜色克制（≤2 主 + 2 辅）、对比层次 ≤3 | #2 | **采用（3 类目色）** | 三区各一色（琥珀/蓝/绿）+ 中性色，足够区分且不花 | 类目色只用柔和 token 值；正文用中性色 |
+| 不靠颜色单独表意 | #2/#5 | **采用** | 色盲可用性硬要求 | 色条 + 分区文字 + 图标；状态 pill 文字 |
+| 字号层级 ≤3 档、最重要最大 | #2 | **采用（适配产品规范）** | 保留产品既有 11/12/13/15/16/20 阶梯但严格控制主次（hero 最大，正文/元信息降级） | §5.2 字号表 |
+| 状态可见 + 及时反馈 | #3 | **采用** | 折叠后仍需知道内容/有无失败 | 计数/状态摘要、fail 红点、展开即时反馈 |
+| 美学极简：移除无关信息 | #3 | **采用** | 「整段 PRD」是最大噪声源 | 需求卡摘要 + 查看完整 |
+| 识别优于回忆 | #3 | **采用** | Owner 不应记忆折叠里有什么 | 折叠头显示计数/状态，而非只显示名称 |
+| 用户控制与自由 | #3 | **采用** | 折叠是隐藏信息，必须可展开/可收起 | 点击/键盘展开、展开全部、fail 可收起但保留红点 |
+| 首行/左侧优先、F 型扫读 | #4 | **采用** | 关键操作放首屏顶部/左侧分区 | 现在区+hero 置顶；关键按钮在 hero |
+| 长文本墙不利于扫读 | #4 | **采用** | 需求长文直出是痛点 ⑤ | 2 行摘要 + 查看完整；卡片内容短句化 |
+| 正文 4.5:1、大字 3:1 | #5 | **采用** | 清爽不等于低对比；浅色底必须保证可读 | §5.1 对比度要求 |
+| 卡片 = 摘要 + 细节入口 | #6 | **采用** | 折叠卡天然符合卡片语义 | 折叠头摘要 + 展开详情；需求卡摘要 + 查看完整 |
+| 卡片共同区域/轻阴影 | #6 | **采用** | 保持现有白卡+轻阴影风格；不引入新组件库 | `.ds-wb-card` 复用 + 轻阴影 |
+| 多层级卡片（每卡内部再套卡片） | #6 延伸 | **不采用** | 现状已因 10 卡同质混乱，再嵌套会加重 | 平铺分区 + 一层折叠 |
+| 方案 B 标签页 | README | **不采纳（本轮）** | 功能点分散、切换成本；Owner 已拍板 A | 保持 A 三区 |
+| 方案 C sticky 右栏 | README | **不采纳（本轮）** | 实现/适配成本最高；可后续作为 A 增强 | 列为后续 |
+| 折叠状态持久化 | #1 延伸 | **本轮不强制** | 需求未要求；README 亦标「不要求实现」；避免新增存储与状态复杂度 | 可选 localStorage，验收不阻断 |
+| 自动隐藏 fail 卡片（纯极简） | #3 延伸 | **不采用** | 失败必须被看见；极简不能牺牲关键告警 | fail 自动展开 + 红点 |
+| 9.5px 全大写卡标题 | 现状 | **不采用（修复）** | 小字号大写降低扫读与可读性 | 改 12px 半粗、正常大小写 |
+
+### 11.3 已验证模式 vs 创新假设
+
+- **已验证模式（有来源支撑）**：渐进披露能降低复杂度、提升可学习性/效率（#1）；视觉层级靠尺度/对比/分组，颜色与字号需克制（#2）；状态可见性与极简设计（#3）；用户扫读首屏与左侧、长文墙不利（#4）；正文对比度阈值（#5）；卡片 = 分组 + 摘要 + 细节入口（#6）。
+- **创新假设（本项目自研/组合，需交付验证）**：
+  1. 「现在 / 项目 / 交付」三区切分是这个产品最合适的信息架构（来源只给原则，切分方式为本项目假设）；
+  2. hero 承载 7 阶段的主操作，能覆盖所有状态（待确认/待启动/进行中/空数据）；
+  3. 5 张次要卡默认收起不会造成可发现性下降（靠计数/红点/展开全部缓解）；
+  4. 需求摘要 2 行足以让 Owner 判断，不需要更长；
+  5. 3 类目色（琥珀/蓝/绿）+ 浅灰蓝底能同时满足「清爽」与「可辨识」；
+  6. 折叠状态不持久化可接受（每次回默认）；
+  7. ≤700px 单断点单列即够用；360/768/1280 复测即可覆盖；
+  8. 五维自评 ≥4 能作为「清爽/专业」的代理验收指标。
+
+### 11.4 未采用/抓取失败的来源（诚实披露）
+
+| URL | 结果 | 处理 |
+|---|---|---|
+| https://www.nngroup.com/articles/dashboard-design/ | HTTP 404（页面不存在） | 未采用；仪表盘/工作台依据改用 #1/#2/#3/#4/#6 |
+| https://web.dev/learn/accessibility/color-contrast | 抓取失败：TypeError fetch failed | 未采用；对比度依据改用 #5（W3C WCAG 1.4.3） |
+| https://www.nngroup.com/videos/proximity-gestalt/ | 检索结果命中，但本轮未抓取正文 | 未采用为证据；分组原则由 #2 的「Grouping: Proximity and Common Regions」覆盖 |
+
+> 结论：网络可用，可引用来源 6 个（≥3），全部记录 URL + 访问日期 + 关键结论；失败项已如实披露，不存在伪造来源，无「无网络」`blocked`。
+
+## 12. 版本口径与交付物
+
+### 12.1 版本（需求原文）
+
+| 项 | 值 |
+|---|---|
+| 本轮发布版本 | **v1.2.76** |
+| 插件 `dsh-web-filebrowser-plugin/package.json` | **1.2.75 → 1.2.76** |
+| 根 `package.json` | **保持 1.2.76（不回退）** |
+| 交付后 | 根 **+1 至 1.2.77**（硬性规定） |
+| CHANGELOG.md | 新增 `## 1.2.76 — 2026-10-27`（英文，描述工作台三区重构、hero、折叠、需求摘要、视觉/i18n/响应式、测试） |
+| docs/ACCEPTANCE.md | 新增「批次 13 · 工作台 UI 重构（v1.2.76）」 |
+| Chrome 复核现状 | 当前仓库根 = 1.2.76、插件 = 1.2.75，与本轮要求一致（实现前请再核对一次，避免并发改动） |
+
+### 12.2 交付物
+
+- **代码**：`dsh-web-filebrowser-plugin/client.js`（`renderWorkbenchPage` 重构 + 折叠/hero 渲染 + 状态）；工作台相关 CSS（`.ds-wb-zone*` / `.ds-wb-hero*` / `.ds-wb-fold*` 等增量，可内联在 client.js 现有样式或样式文件，按仓库现状）；`locale/zh.json`、`locale/en.json` 新增键。
+- **设计文档**：`docs/pipeline/design.md`（本轮：三区 IA、三屏/关键状态、tokens/字号/间距/对比度、折叠状态矩阵、响应式、无障碍、五维自评与迭代记录）。
+- **记录**：`docs/ACCEPTANCE.md` 批次 13、`CHANGELOG.md` 1.2.76、两个 `package.json` 版本。
+- **不交付**：Host 模块改动、新依赖、方案 B/C 代码。
+
+### 12.3 优先级
+
+- **P0**：三区结构 + hero + 需求摘要化（明确修复点）+ 交付区 5 卡折叠（默认收起/计数/展开/自动展开规则）+ 视觉规范（背景/卡片/色条/字号/间距/对比度）+ 现有功能不回归。
+- **P1**：展开全部/收起全部、i18n 全量、窄屏单列、五维自评、design.md 与文档同步。
+- **P2（可选）**：折叠状态 localStorage 记忆；A+C sticky rail（下一轮）。
+
+## 13. 风险与未决问题
+
+### 13.1 风险
 
 | 风险 | 影响 | 缓解 |
 |---|---|---|
-| 指派消息被 Lead/模型忽略细节 | Agent 做偏、返工 | 结构化模板 + 必填验收 + 派单回执（「已接单」）+ 状态卡追踪（提案 §8 / 本需求 §5.1） |
-| 成员名跨会话变化 | 记录指向旧成员 | `assignedTo.role` 为准、member 可选；新会话提示「成员已重建」并允许按角色重派 |
-| 临时任务滥用绕过流水线 | 质量风险 | 默认「自动判断」引导关联阶段；临时任务强制验收与产物；涉代码/需求提示转需求变更；acceptance 复核检查 |
-| 深链接团队面板不可用 | 「打开团队面板」失效 | MVP 降级为可复制入口/手动打开提示；不出现死链（§5.3） |
-| 指派状态与流水线双写冲突 | 状态不一致 | 指派显式不写 pipeline；阶段状态只读推导；Owner 审批仍走闸门 |
-| 新建 Agent 名称/上限冲突 | spawn 失败 | Lead spawn 失败回填表单错误、不丢输入；名称建议 `opc-<role>-<n>` |
-| 数据文件损坏/并发写 | 记录丢失/解析失败 | 原子写 + per-root 串行锁 + `corrupt` 错误不静默清空 + 上限/备份提示 |
-| 100 条/1MB 上限 | 满后无法新增 | 返回 `full`/`too-large`；提示清理终态记录；删除二次确认 |
-| mockup 与需求不一致（发布 chip、实时状态文案） | 实现走偏或被误判 | 以本需求为准（§5.3），实现时调整 mockup 文案；验收按需求与 MVP 缩减 |
-| Host 改动需重启 Harness、客户端需重建 bundle/刷新 | 看不到新卡/新 op | 交付说明写明重启 + 刷新；GUI 复测在重启后进行 |
-| 版本口径（已拍板：发布 1.2.75，插件升 1.2.75、根保持 1.2.75，交付后根 +1 至 1.2.76） | 版本倒退或验收误判 | 按 §9 版本说明执行；提交前核 diff；不得把根版本回退 |
-| i18n key 漏配 | 英文界面缺文案 | 统一 `workbench.assign.*` 清单；验收项 7 覆盖 zh/en |
+| `renderWorkbenchPage` 是 ~1000 行大函数，重排回归面大 | 改一处坏一处（现有 10 卡/指派/验收/流程） | 按 README §5.1 分步：先分区容器→hero→折叠；保留原卡片渲染片段；逐卡手工回归；四条命令兜底 |
+| 折叠隐藏信息 → 可发现性下降 | Owner 找不到设计/验收/运行 | 折叠头显示计数/状态摘要；fail 自动展开+红点；展开全部；i18n 文案清晰；验收项 4 专测 |
+| 折叠记忆未实现 | 刷新回默认，体验不一致 | 本轮明确不要求（验收不阻断）；下一轮可选 localStorage |
+| 窄屏/小高度屏 hero 过高、按钮换行 | 首屏关键动作不可见 | ≤700 单列 + 按钮换行；1440×1024 与 360/768/1280 复测；hero 摘要截断 |
+| 新增色条/图标与现有风格冲突 | 视觉不统一 | 只用 token 柔和值 + 线性图标；不引入组件库；深浅主题双测；五维自评 |
+| 9.5px 大写标题替换为 12px 后信息层级变化 | 部分旧样式被覆盖/遗漏 | 全量 grep `.ds-wb-card-title` 相关样式；视觉复核所有卡片标题 |
+| 需求摘要实现粗糙（截断 markdown 残留符号） | 修复点不达标 | 摘要取纯文本（剥离标题/代码块/链接标记）；2 行 clamp；验收项 3 专测「不出现整段原文」 |
+| i18n 漏 key / 旧 assign 键被破坏 | 英文界面缺失、指派器回归 | 统一 key 清单；zh/en 同批；验收项 6/7 覆盖 |
+| 数据/接口误改 | 违反「不改 Host」 | 只动 client.js/CSS/locale；`git diff` 检查；pipeline/acceptance 哈希前后一致（验收项 8） |
+| 版本口径执行错误（根回退/插件未升） | 版本倒退 | 按 §12.1 执行；提交前核对两个 package.json 与 CHANGELOG；交付后根 +1 |
+| 效果图与实现有偏差被误判 | 验收争议 | 以需求原文为准，允许 design.md 记录微调；验收项 9 明确容差 |
+| Host 改动需重启 Harness、客户端需重建 bundle/刷新 | 看不到新布局 | 交付说明写明重启 + 刷新；GUI 复测在重启后进行 |
 
-### 10.2 未决问题（需 Owner/Lead 拍板）
+### 13.2 未决问题（需 Owner/Lead 拍板）
 
-1. **版本操作顺序（已拍板）**：发布 1.2.75；插件 `package.json` 1.2.73 → 1.2.75，根保持 1.2.75（不回退）；CHANGELOG 1.2.75 并纳入 Unreleased 的标签右键菜单；交付后根 +1 至 1.2.76。下一轮插件对齐 1.2.76。
-2. **`assignmentDelete` 权限范围**：允许删除任意状态，还是仅终态（done/failed/cancelled）？建议仅终态删除 + 客户端二次确认，避免删掉进行中任务且无留痕。
-3. **「再指派」语义**：新建记录（保留原记录）还是复用原记录重置为 dispatched？需求倾向「不丢失原记录」→ 建议新建记录；请确认。
-4. **「自动判断」阶段推导规则**：按当前 `pipeline` 阶段还是下一阶段？pipeline 无需求/已完成时是否回退为临时任务？建议：有需求 → 当前 active/review 阶段；已完成 → 提示选临时任务或发起变更轮。
-5. **附件实现**：复用 `.dsh/attachments` 上传，还是仅提示「拖入对话」？建议 MVP 先「提示拖入对话」不阻塞，上传作为后续增强。
-6. **是否允许 Agent 侧模型工具读指派**（如只读 `assignmentList`）？需求边界「不允许 Agent 自派」；建议本轮不加模型工具，保持 4 个 owner 路由 op。
-7. **`expectedArtifacts` 条数/长度上限**：建议 ≤10 条、每条 ≤500 字符；请实现与验收对齐（当前需求未给具体值）。
-8. **「查看对话」交互**：无消息 ID 定位时，采用「复制指派单 + 提示当前对话」是否可接受？建议可接受并在文案说明。
+1. **分区色条 3px（需求）vs 4px（README）**：以需求 3px 为准，允许 3–4px 并在 design.md 记录——确认？
+2. **卡标题 12px（需求）vs README 13px/600**：以需求 12px 为准（分区标题 13px）——确认？
+3. **折叠状态记忆**是否本轮顺带实现 localStorage？建议不实现（验收不阻断），留待下一轮。
+4. **「查看完整需求」的承载方式**：复用现有需求查看/编辑弹层还是跳转？建议复用现有，避免新增页面。
+5. **hero 摘要来源**：用流水线当前阶段 summary（截断）还是单独文案？建议优先 stage summary，无则用状态文案。
+6. **深色主题**：是否要求本轮适配？建议「不专门设计，但 token 不破、可读」。
+7. **是否顺带做 A+C sticky rail**？建议不做（P2 后续）。
+8. **`renderWorkbenchPage` 拆分**：是否允许把大函数拆成 render 子函数（同一文件内）以便维护？建议允许（不改 Host、不改行为）。
 
-## 11. 交付物与优先级
+## 14. 兼容与迁移
 
-- **P0**：Host `assignments.js` + 4 op + 数据模型/上限/状态机/SSH 降级；工作台卡 + 抽屉 + 状态卡核心流程；结构化指派单；不改流水线；i18n/无障碍基础；测试全绿。
-- **P1**：最近指派展开/筛选/催办/再指派细节；mockup 全状态覆盖；移动端底部面板；文档同步。
-- **交付物路径**：`dsh-web-filebrowser-plugin/assignments.js`（新增）、`dsh-web-filebrowser-plugin/index.js`（4 个 case 接线）、`dsh-web-filebrowser-plugin/client.js`、`locale/zh.json`、`locale/en.json`；`docs/AGENT_TEAM.md`、`docs/PLAYBOOK.md`、`docs/ACCEPTANCE.md`、`CHANGELOG.md`、两个 `package.json`；测试 `scripts/selftest/host-smoke.mjs`（扩展）与既有 selftest 脚本。
-- **Owner 验收路径**：重启 Harness → 刷新工作台 → 走一遍「指派→对话收到指派单→状态推进→打回/再指派→刷新仍存在」→ 用 §9 的边界用例核对 → 按 ACCEPTANCE 批次 12 逐条点。
-
-## 12. 兼容与迁移
-
-- 新数据文件：首次读取不存在 = 空列表；无需迁移旧版本（本轮全新功能）；`.dsh/.gitignore` 已忽略全部 `.dsh` 状态，保证不进 Git。
-- 旧客户端/旧 bundle：不识别新 op → 工作台旧版不显示卡片；升级后需重建 bundle + 刷新页面；Host 与客户端需同版本交付。
-- 不影响既有 `.dsh/pipeline.json` / `.dsh/acceptance.json` / `.dsh/todos.json` / `.dsh/review.json` / `.dsh/deliveries.json` 结构。
-- SSH 工作区：四个 op 返回 `ssh-unsupported`，客户端卡片禁用 + 提示；不写任何 `.dsh` 文件。
+- 纯前端重排：无数据迁移；旧数据（pipeline/acceptance/assignments/delivery/todo/memory）格式不变，刷新即恢复。
+- 旧客户端 bundle：升级后需重建 bundle + 刷新页面；Host 与客户端同版本交付（v1.2.76）。
+- 深链接/旧截图：历史 README/ACCEPTANCE 截图可能与新布局不一致；本轮同步 design.md + ACCEPTANCE 批次 13，保留 before.png 作为对照，不删除提案。
+- 未改任何 `.dsh/*.json` 结构，无迁移脚本。

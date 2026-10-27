@@ -552,6 +552,29 @@ window.__ModuleLoader__.load({
       'workbench.reviewProgress': '已审 {done}/{total}',
       'workbench.reviewUnavailable': '此工作区没有 Git，无法显示本轮变更。',
       'workbench.openGit': '打开 Git',
+      'workbench.section.now': '现在',
+      'workbench.section.nowHint': '需要你决定的事 · {count} 项',
+      'workbench.section.nowEmpty': '今天没有需要你处理的事项',
+      'workbench.section.project': '项目',
+      'workbench.section.projectHint': '进度 · 团队 · 需求',
+      'workbench.section.delivery': '交付',
+      'workbench.section.deliveryHint': '流水线 · 设计 · 验收 · 运行',
+      'workbench.hero.currentStage': '第 {n} 关 · 当前阶段',
+      'workbench.hero.progress': '{done}/{total} 关已完成',
+      'workbench.hero.responsible': '负责：{role}',
+      'workbench.hero.gateNote': '通过后进入人工确认；发布仍锁定',
+      'workbench.hero.start': '启动并派发',
+      'workbench.fold.expand': '展开',
+      'workbench.fold.collapse': '收起',
+      'workbench.fold.expandAll': '展开全部',
+      'workbench.fold.collapseAll': '收起全部',
+      'workbench.fold.count': '{count} 项',
+      'workbench.fold.empty': '无',
+      'workbench.fold.failCount': '{count} 项失败',
+      'workbench.fold.autoExpanded': '已自动展开：有失败',
+      'workbench.requirement.viewFull': '查看完整需求',
+      'workbench.requirement.chips': '第 {round} 轮 · 范围 {scope}',
+      'workbench.requirement.summaryHint': '原文仅在「查看完整需求」后展示',
       'workbench.assign.title': '团队与指派',
       'workbench.assign.subtitle': '6 名角色成员 · {working} 人执行中 · {review} 人待确认（按指派记录推导）',
       'workbench.assign.derivedHint': '状态按指派记录推导；实时状态以 Harness 团队面板为准',
@@ -1736,6 +1759,29 @@ window.__ModuleLoader__.load({
       'workbench.reviewProgress': 'Reviewed {done}/{total}',
       'workbench.reviewUnavailable': 'No Git repository; change review is unavailable.',
       'workbench.openGit': 'Open Git',
+      'workbench.section.now': 'Now',
+      'workbench.section.nowHint': 'What needs you · {count}',
+      'workbench.section.nowEmpty': 'Nothing needs you today',
+      'workbench.section.project': 'Project',
+      'workbench.section.projectHint': 'Progress · team · requirements',
+      'workbench.section.delivery': 'Delivery',
+      'workbench.section.deliveryHint': 'Pipeline · design · acceptance · running',
+      'workbench.hero.currentStage': 'Stage {n} · current',
+      'workbench.hero.progress': '{done}/{total} stages done',
+      'workbench.hero.responsible': 'Owner: {role}',
+      'workbench.hero.gateNote': 'Approval next; release stays locked',
+      'workbench.hero.start': 'Start & dispatch',
+      'workbench.fold.expand': 'Expand',
+      'workbench.fold.collapse': 'Collapse',
+      'workbench.fold.expandAll': 'Expand all',
+      'workbench.fold.collapseAll': 'Collapse all',
+      'workbench.fold.count': '{count} items',
+      'workbench.fold.empty': 'None',
+      'workbench.fold.failCount': '{count} failed',
+      'workbench.fold.autoExpanded': 'Auto-expanded: failures found',
+      'workbench.requirement.viewFull': 'View full requirement',
+      'workbench.requirement.chips': 'Round {round} · scope {scope}',
+      'workbench.requirement.summaryHint': 'Full text only after “View full requirement”',
       'workbench.assign.title': 'Team & assignments',
       'workbench.assign.subtitle': '6 role members · {working} working · {review} awaiting you (derived from assignments)',
       'workbench.assign.derivedHint': 'Status is derived from assignments; live status is authoritative in the Harness team panel',
@@ -8328,6 +8374,9 @@ window.__ModuleLoader__.load({
         const assignmentTriggerRef = useRef(null)
         const assignmentTitleRef = useRef(null)
         const assignmentIdempotencyRef = useRef(false)
+        // Workbench redesign (v1.2.76): collapsible delivery rows, session-only memory.
+        const [workbenchFolds, setWorkbenchFolds] = useState([])
+        const [workbenchFoldsClosed, setWorkbenchFoldsClosed] = useState([])
 
         const [issues, setIssues] = useState([])
         const [pipelineDoc, setPipelineDoc] = useState(null)
@@ -10841,6 +10890,21 @@ ${tail}
           document.addEventListener('keydown', onKeyDown)
           return () => document.removeEventListener('keydown', onKeyDown)
         }, [assignmentRejectTarget])
+
+        /** Plain-text, 2-line requirement summary (strips markdown, max ~160 chars). */
+        function requirementSummaryText(value) {
+          const text = typeof value === 'string' ? value : ''
+          const plain = text
+            .replace(/\u0060\u0060\u0060[\s\S]*?\u0060\u0060\u0060/gu, ' ')
+            .replace(/\u0060[^\u0060]*\u0060/gu, ' ')
+            .replace(/^#{1,6}\s+/gmu, '')
+            .replace(/\[([^\]]*)\]\([^)]*\)/gu, '$1')
+            .replace(/[*_~>|#-]+/gu, ' ')
+            .replace(/\s+/gu, ' ')
+            .trim()
+          if (plain.length === 0) return ''
+          return plain.length > 160 ? plain.slice(0, 160) + '…' : plain
+        }
 
         /** Record one problem surfaced by any panel so the Workbench can show it. */
         function reportIssue(source, message) {
@@ -17348,6 +17412,7 @@ ${tail}
           const fastMode = doc !== null && doc.settings !== null && typeof doc.settings === 'object' && doc.settings.gateMode === 'fast'
           const done = stages.filter((stage) => stage !== null && typeof stage === 'object' && stage.status === 'approved').length
           const total = stages.length === 0 ? 7 : stages.length
+          const roundScope = doc !== null && typeof doc.roundScope === 'string' && doc.roundScope.length > 0 ? doc.roundScope : 'full'
           const stageTitles = {
             product: t('pipeline.stage.product'),
             design: t('pipeline.stage.design'),
@@ -17546,10 +17611,25 @@ ${tail}
                     h('span', { className: 'ds-wb-spacer' }),
                     h('span', { className: 'ds-wb-round-pill' }, t('pipeline.round', { round: String(round) })),
                   ),
-                  h('div', { className: 'ds-wb-adjust-title' }, requirementTitle),
+                  h('div', { className: 'ds-wb-adjust-title', title: requirementTitle }, requirementTitle),
+                  h(
+                    'div',
+                    { className: 'ds-wb-adjust-chips' },
+                    h('span', { className: 'ds-wb-round-pill' }, t('pipeline.round', { round: String(round) })),
+                    h(
+                      'span',
+                      { className: 'ds-wb-scope-pill', title: t('workbench.requirement.chips', { round: String(round), scope: t('workbench.reqScope.' + roundScope) }) },
+                      t('workbench.reqScope') + ' · ' + t('workbench.reqScope.' + roundScope),
+                    ),
+                  ),
                   typeof requirement.detail === 'string' && requirement.detail.length > 0
-                    ? h('div', { className: 'ds-wb-adjust-detail', title: requirement.detail }, requirement.detail)
+                    ? h(
+                        'div',
+                        { className: 'ds-wb-adjust-summary', title: requirement.detail },
+                        requirementSummaryText(requirement.detail),
+                      )
                     : null,
+                  h('div', { className: 'ds-hint ds-wb-hint ds-wb-adjust-summary-hint' }, t('workbench.requirement.summaryHint')),
                   latestChange === null || latestChange.round !== round
                     ? null
                     : h(
@@ -17565,6 +17645,11 @@ ${tail}
                     : h(
                         'div',
                         { className: 'ds-wb-actions' },
+                        h(
+                          'button',
+                          { type: 'button', className: 'ds-btn ds-wb-btn ds-wb-view-requirement', onClick: openPipeline },
+                          t('workbench.requirement.viewFull'),
+                        ),
                         h(
                           'button',
                           { type: 'button', className: 'ds-btn ds-wb-btn', onClick: () => openRequirementPanel(false, 'append') },
@@ -19079,9 +19164,316 @@ ${tail}
               h('button', { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: openTasks }, t('workbench.openTasks')),
             ),
           )
+          /* ------------------------------------------------------------------ *
+           * v1.2.76 workbench redesign: three zones (Now / Project / Delivery),
+           * hero current-stage card and collapsible delivery rows. All existing
+           * cards and handlers are reused unchanged inside the new shells.
+           * ------------------------------------------------------------------ */
+          const hasProject = requirementTitle.length > 0
+          const allStagesDone = stages.length > 0 && done === total
+          const heroStage = reviewStage !== null ? reviewStage : current
+          const heroIndex = heroStage === null ? -1 : stages.findIndex((stage) => stage !== null && typeof stage === 'object' && stage.id === heroStage.id)
+          const heroSummary = heroStage !== null && typeof heroStage.summary === 'string' ? heroStage.summary.trim() : ''
+          const heroRole = heroStage === null ? '' : roleLabels[heroStage.id] ?? ''
+          const heroStatus = heroStage === null ? 'approved' : heroStage.status
+          const heroActionable = heroStage !== null && (heroStage.status === 'pending' || heroStage.status === 'failed')
+          const nowCount = (reviewStage === null ? 0 : 1) + failedItems.length + issues.length
+          const zoneHead = (zone, icon, title, hint, actions) =>
+            h(
+              'div',
+              { className: 'ds-wb-zone-head' },
+              h('span', { className: 'ds-wb-zone-bar', 'data-zone': zone, 'aria-hidden': 'true' }),
+              h('span', { className: 'ds-wb-zone-icon', 'data-zone': zone, 'aria-hidden': 'true' }, h(icon)),
+              h('h2', { className: 'ds-wb-zone-title', id: 'ds-wb-zone-' + zone + '-title' }, title),
+              hint.length === 0 ? null : h('span', { className: 'ds-wb-zone-hint' }, hint),
+              h('span', { className: 'ds-spacer' }),
+              actions === null || actions === undefined ? null : actions,
+            )
+          const heroCard = h(
+            'div',
+            { className: 'ds-wb-hero', 'data-status': heroStatus, 'data-done': allStagesDone ? 'true' : undefined },
+            h(
+              'div',
+              { className: 'ds-wb-hero-main' },
+              h(
+                'div',
+                { className: 'ds-wb-hero-eyebrow' },
+                heroStage === null ? t('workbench.hero.progress', { done: String(done), total: String(total) }) : t('workbench.hero.currentStage', { n: String(heroIndex + 1) }),
+              ),
+              h(
+                'div',
+                { className: 'ds-wb-hero-title-row' },
+                h('h3', { className: 'ds-wb-hero-title' }, heroStage === null ? t('workbench.completed') : stageTitle(heroStage.id)),
+                h('span', { className: 'ds-wb-status-pill', 'data-status': heroStatus }, heroStage === null ? t('workbench.completed') : statusText[heroStage.status] ?? ''),
+              ),
+              heroSummary.length > 0
+                ? h('div', { className: 'ds-wb-hero-summary', title: heroSummary }, heroSummary)
+                : heroActionable
+                  ? h('div', { className: 'ds-wb-hero-summary' }, t('workbench.startHint'))
+                  : null,
+              h(
+                'div',
+                { className: 'ds-wb-hero-meta' },
+                heroRole.length === 0 ? null : h('span', { className: 'ds-wb-hero-role' }, t('workbench.hero.responsible', { role: heroRole })),
+                h(
+                  'span',
+                  { className: 'ds-wb-hero-dots', 'aria-hidden': 'true' },
+                  stages.map((stage) => h('span', { key: stage.id, className: 'ds-wb-hero-dot', 'data-status': stage.status })),
+                ),
+                h('span', { className: 'ds-wb-hero-progress-text' }, t('workbench.hero.progress', { done: String(done), total: String(total) })),
+              ),
+              h(
+                'div',
+                { className: 'ds-wb-hero-actions' },
+                reviewStage !== null
+                  ? h(
+                      React.Fragment,
+                      null,
+                      h(
+                        'button',
+                        { type: 'button', className: 'ds-btn ds-btn-primary ds-wb-hero-primary', disabled: pipelineBusy, onClick: () => void reviewPipelineStage(reviewStage.id, 'approve') },
+                        t('pipeline.approve'),
+                      ),
+                      h(
+                        'button',
+                        { type: 'button', className: 'ds-btn ds-wb-hero-secondary ds-pipe-reject', disabled: pipelineBusy, onClick: () => void reviewPipelineStage(reviewStage.id, 'reject') },
+                        t('pipeline.reject'),
+                      ),
+                    )
+                  : heroActionable
+                    ? h(
+                        React.Fragment,
+                        null,
+                        h(
+                          'button',
+                          { type: 'button', className: 'ds-btn ds-btn-primary ds-wb-hero-primary', disabled: pipelineBusy, onClick: () => void startPipelineStage(heroStage.id) },
+                          t('workbench.hero.start'),
+                        ),
+                        h(
+                          'button',
+                          { type: 'button', className: 'ds-btn ds-wb-hero-secondary', disabled: assignmentSsh, onClick: () => openAssignmentDrawer(null) },
+                          t('workbench.assign.assignButton'),
+                        ),
+                      )
+                    : h(
+                        React.Fragment,
+                        null,
+                        h('button', { type: 'button', className: 'ds-btn ds-btn-primary ds-wb-hero-primary', onClick: openPipeline }, t('workbench.openPipeline')),
+                        h(
+                          'button',
+                          { type: 'button', className: 'ds-btn ds-wb-hero-secondary', disabled: assignmentSsh, onClick: () => openAssignmentDrawer(null) },
+                          t('workbench.assign.assignButton'),
+                        ),
+                      ),
+                reviewStage === null && !heroActionable
+                  ? null
+                  : h('button', { type: 'button', className: 'ds-linkbtn ds-wb-hero-link', onClick: openPipeline }, t('workbench.openPipeline')),
+              ),
+              reviewStage === null
+                ? null
+                : h('input', {
+                    className: 'ds-pipe-input ds-wb-note ds-wb-hero-note',
+                    value: pipelineReviewNote,
+                    placeholder: t('pipeline.reviewNotePlaceholder'),
+                    spellCheck: false,
+                    onChange: (event) => setPipelineReviewNote(event.target.value),
+                  }),
+              h('div', { className: 'ds-wb-hero-gate' }, t('workbench.hero.gateNote')),
+            ),
+          )
+          const nowSection = h(
+            'section',
+            { className: 'ds-wb-zone ds-wb-zone-now', 'aria-labelledby': 'ds-wb-zone-now-title' },
+            zoneHead(
+              'now',
+              InfoIcon,
+              t('workbench.section.now'),
+              t('workbench.section.nowHint', { count: String(nowCount) }),
+              h(
+                'button',
+                { type: 'button', className: 'ds-linkbtn ds-wb-zone-link', onClick: openTasks },
+                t('workbench.openTasks'),
+              ),
+            ),
+            h(
+              'div',
+              { className: 'ds-wb-zone-body ds-wb-zone-now-body' },
+              issueRows.length === 0 ? null : issuesCard,
+              reviewStage === null && failedItems.length > 0 ? attentionCard : null,
+              heroCard,
+              nowCount === 0 && !attention ? h('div', { className: 'ds-wb-zone-empty' }, t('workbench.section.nowEmpty')) : null,
+            ),
+          )
+          const projectSection = h(
+            'section',
+            { className: 'ds-wb-zone ds-wb-zone-project', 'aria-labelledby': 'ds-wb-zone-project-title' },
+            zoneHead(
+              'project',
+              PanelIcon,
+              t('workbench.section.project'),
+              t('workbench.section.projectHint'),
+              h(
+                'button',
+                { type: 'button', className: 'ds-linkbtn ds-wb-zone-link', onClick: openPipeline },
+                t('workbench.openPipeline'),
+              ),
+            ),
+            h(
+              'div',
+              { className: 'ds-wb-zone-body ds-wb-zone-project-grid' },
+              h('div', { className: 'ds-wb-project-cell' }, requirementCard),
+              h('div', { className: 'ds-wb-project-cell' }, assignmentCard),
+              h('div', { className: 'ds-wb-project-cell ds-wb-project-cell-wide' }, adjustCard),
+            ),
+          )
+          // Collapsible delivery rows: default closed, failures auto-expand, and
+          // the open state is remembered for this session only.
+          const foldDefinitions = [
+            {
+              key: 'design',
+              title: t('workbench.design'),
+              icon: EyeIcon,
+              card: designCard,
+              summary: designArtifacts.length === 0 ? t('workbench.fold.empty') : t('workbench.fold.count', { count: String(designArtifacts.length) }),
+              fail: false,
+              autoFail: false,
+            },
+            {
+              key: 'acceptance',
+              title: t('workbench.acceptance'),
+              icon: InfoIcon,
+              card: acceptanceCard,
+              summary: items.length === 0 ? t('workbench.fold.empty') : failCount > 0 ? t('workbench.fold.failCount', { count: String(failCount) }) : `${String(passCount)}/${String(items.length)}`,
+              fail: failCount > 0,
+              autoFail: failCount > 0,
+            },
+            {
+              key: 'preflight',
+              title: t('workbench.preflight'),
+              icon: SaveIcon,
+              card: preflightCard,
+              summary:
+                preflightIssues.length === 0
+                  ? t('workbench.preflightReady')
+                  : t('workbench.preflightWarn', { count: String(preflightIssues.length) }),
+              fail: preflightChecks.some((check) => check.level === 'fail'),
+              autoFail: preflightChecks.some((check) => check.level === 'fail'),
+            },
+            {
+              key: 'review',
+              title: t('workbench.changes'),
+              icon: CodeIcon,
+              card: reviewCard,
+              summary: reviewState === null || reviewAvailable === false ? t('workbench.fold.empty') : `${String(reviewState.reviewed ?? 0)}/${String(reviewState.total ?? 0)}`,
+              fail: false,
+              autoFail: false,
+            },
+            {
+              key: 'running',
+              title: t('workbench.running'),
+              icon: TerminalIcon,
+              card: runningCard,
+              summary: running.length === 0 ? t('workbench.fold.empty') : t('workbench.fold.count', { count: String(running.length) }),
+              fail: false,
+              autoFail: false,
+            },
+          ]
+          const foldAutoKeys = foldDefinitions.filter((definition) => definition.autoFail).map((definition) => definition.key)
+          const isFoldOpen = (key) => workbenchFolds.includes(key) || (foldAutoKeys.includes(key) && !workbenchFoldsClosed.includes(key))
+          const toggleFold = (key) => {
+            const open = isFoldOpen(key)
+            if (open) {
+              setWorkbenchFolds((current) => current.filter((entry) => entry !== key))
+              if (foldAutoKeys.includes(key)) setWorkbenchFoldsClosed((current) => (current.includes(key) ? current : [...current, key]))
+            } else {
+              setWorkbenchFolds((current) => (current.includes(key) ? current : [...current, key]))
+              setWorkbenchFoldsClosed((current) => current.filter((entry) => entry !== key))
+            }
+          }
+          const expandAllFolds = () => {
+            setWorkbenchFolds(foldDefinitions.map((definition) => definition.key))
+            setWorkbenchFoldsClosed([])
+          }
+          const collapseAllFolds = () => {
+            setWorkbenchFolds([])
+            setWorkbenchFoldsClosed(foldAutoKeys)
+          }
+          const deliverySection = h(
+            'section',
+            { className: 'ds-wb-zone ds-wb-zone-delivery', 'aria-labelledby': 'ds-wb-zone-delivery-title' },
+            zoneHead(
+              'delivery',
+              GlobeIcon,
+              t('workbench.section.delivery'),
+              t('workbench.section.deliveryHint'),
+              h(
+                'div',
+                { className: 'ds-wb-zone-actions' },
+                h('button', { type: 'button', className: 'ds-linkbtn ds-wb-zone-link', onClick: expandAllFolds }, t('workbench.fold.expandAll')),
+                h('button', { type: 'button', className: 'ds-linkbtn ds-wb-zone-link', onClick: collapseAllFolds }, t('workbench.fold.collapseAll')),
+              ),
+            ),
+            h(
+              'div',
+              { className: 'ds-wb-zone-body' },
+              flowCard,
+              h(
+                'div',
+                { className: 'ds-wb-folds' },
+                foldDefinitions.map((definition) => {
+                  const open = isFoldOpen(definition.key)
+                  const bodyId = 'ds-wb-fold-body-' + definition.key
+                  return h(
+                    'div',
+                    {
+                      key: definition.key,
+                      className: 'ds-wb-fold',
+                      'data-open': open ? 'true' : 'false',
+                      'data-fail': definition.fail ? 'true' : undefined,
+                    },
+                    h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'ds-wb-fold-head',
+                        'aria-expanded': open ? 'true' : 'false',
+                        'aria-controls': bodyId,
+                        onClick: () => toggleFold(definition.key),
+                      },
+                      h('span', { className: 'ds-wb-fold-icon', 'aria-hidden': 'true' }, h(definition.icon)),
+                      h('span', { className: 'ds-wb-fold-title' }, definition.title),
+                      h('span', { className: 'ds-wb-fold-count' }, definition.summary),
+                      definition.fail ? h('span', { className: 'ds-wb-fold-dot', 'aria-hidden': 'true' }) : null,
+                      h('span', { className: 'ds-wb-fold-chevron', 'aria-hidden': 'true' }, open ? h(ChevronUpIcon) : h(ChevronDownIcon)),
+                    ),
+                    h(
+                      'div',
+                      {
+                        id: bodyId,
+                        className: 'ds-wb-fold-body',
+                        role: 'region',
+                        'aria-label': definition.title,
+                        hidden: open ? undefined : true,
+                      },
+                      open
+                        ? [
+                            definition.autoFail
+                              ? h('div', { key: 'auto', className: 'ds-wb-fold-auto' }, t('workbench.fold.autoExpanded'))
+                              : null,
+                            definition.card === null
+                              ? h('div', { key: 'empty', className: 'ds-hint ds-wb-hint' }, t('workbench.fold.empty'))
+                              : definition.card,
+                          ]
+                        : null,
+                    ),
+                  )
+                }),
+              ),
+            ),
+          )
           return h(
             'div',
-            { className: 'ds-wb-page' },
+            { className: 'ds-wb-page ds-wb-redesign' },
             h(
               'div',
               { className: 'ds-wb-page-head' },
@@ -19093,6 +19485,7 @@ ${tail}
                   )
                 : null,
               compact ? null : h('span', { className: 'ds-wb-page-title' }, t('workbench.title')),
+              compact || requirementTitle.length === 0 ? null : h('span', { className: 'ds-wb-page-subtitle' }, requirementTitle),
               h('span', { className: 'ds-spacer' }),
               h(
                 'button',
@@ -19123,17 +19516,9 @@ ${tail}
               h(
                 'div',
                 { className: 'ds-wb-page-inner' },
-                issuesCard,
-                attention ? attentionCard : null,
-                preflightCard,
-                reviewCard,
-                adjustCard,
-                requirementCard,
-                assignmentCard,
-                flowCard,
-                designCard,
-                acceptanceCard,
-                runningCard,
+                hasProject
+                  ? h(React.Fragment, null, nowSection, projectSection, deliverySection)
+                  : requirementCard,
                 workbenchError !== null ? h('div', { className: 'ds-errorline' }, workbenchError) : null,
               ),
             ),
@@ -24589,6 +24974,163 @@ h(
 .ds-root[data-compact="true"] .ds-wb-assign-members { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .ds-root[data-compact="true"] .ds-wb-assign-member { min-height: 48px; }
 .ds-root[data-compact="true"] .ds-wb-assign-actions .ds-wb-btn { height: 32px; font-size: 11px; }
+
+/* ------------------------------------------------------------------ *
+ * v1.2.76 workbench redesign: three zones, hero, collapsible delivery
+ * ------------------------------------------------------------------ */
+.ds-wb-page.ds-wb-redesign { background: color-mix(in srgb, var(--dsw-alias-bg-layer-2) 42%, var(--dsw-alias-bg-base)); }
+.ds-wb-redesign .ds-wb-page-head { padding: 14px 24px; background: var(--dsw-alias-bg-base); border-bottom: 1px solid color-mix(in srgb, var(--dsw-alias-label-caption) 18%, transparent); }
+.ds-wb-redesign .ds-wb-page-title { font-size: 24px; line-height: 32px; font-weight: 700; color: var(--dsw-alias-label-primary); }
+.ds-wb-redesign .ds-wb-page-subtitle { min-width: 0; max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-caption); font-size: 12px; }
+.ds-wb-redesign .ds-wb-page-scroll { padding: 20px 24px 32px; }
+.ds-wb-redesign.ds-wb-page .ds-wb-page-inner,
+.ds-wb-redesign .ds-wb-page-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 1080px;
+  width: 100%;
+  margin: 0 auto;
+}
+.ds-wb-redesign .ds-wb-zone { display: flex; flex-direction: column; gap: 10px; }
+.ds-wb-redesign .ds-wb-zone-head { display: flex; align-items: center; flex-wrap: wrap; row-gap: 4px; gap: 8px; min-height: 28px; }
+.ds-wb-redesign .ds-wb-zone-bar { flex: 0 0 auto; width: 3px; height: 18px; border-radius: 2px; background: var(--dsw-alias-label-caption); }
+.ds-wb-redesign .ds-wb-zone-bar[data-zone="now"] { background: var(--dsw-alias-state-warn-primary); }
+.ds-wb-redesign .ds-wb-zone-bar[data-zone="project"] { background: var(--dsw-alias-state-business-primary); }
+.ds-wb-redesign .ds-wb-zone-bar[data-zone="delivery"] { background: var(--dsw-alias-state-success-primary); }
+.ds-wb-redesign .ds-wb-zone-icon { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; color: var(--dsw-alias-label-secondary); }
+.ds-wb-redesign .ds-wb-zone-icon[data-zone="now"] { color: var(--dsw-alias-state-warn-primary); }
+.ds-wb-redesign .ds-wb-zone-icon[data-zone="project"] { color: var(--dsw-alias-state-business-primary); }
+.ds-wb-redesign .ds-wb-zone-icon[data-zone="delivery"] { color: var(--dsw-alias-state-success-primary); }
+.ds-wb-redesign .ds-wb-zone-icon svg { width: 16px; height: 16px; }
+.ds-wb-redesign .ds-wb-zone-title { margin: 0; color: var(--dsw-alias-label-primary); font-size: 13px; font-weight: 600; line-height: 20px; }
+.ds-wb-redesign .ds-wb-zone-hint { color: var(--dsw-alias-label-caption); font-size: 12px; line-height: 18px; }
+.ds-wb-redesign .ds-wb-zone-link { font-size: 12px; white-space: nowrap; }
+.ds-wb-redesign .ds-wb-zone-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.ds-wb-redesign .ds-wb-zone-body { display: flex; flex-direction: column; gap: 12px; }
+.ds-wb-redesign .ds-wb-zone-empty { color: var(--dsw-alias-label-caption); font-size: 12px; }
+/* Cards: white, 1px border, light shadow, 12 radius, comfortable padding. */
+.ds-wb-page.ds-wb-redesign .ds-wb-card,
+.ds-wb-redesign .ds-wb-card {
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-label-caption) 26%, transparent);
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-layer-1);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent);
+}
+.ds-wb-page.ds-wb-redesign .ds-wb-card-title,
+.ds-wb-redesign .ds-wb-card-title {
+  margin-bottom: 8px;
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.ds-wb-page.ds-wb-redesign .ds-wb-card-head,
+.ds-wb-redesign .ds-wb-card-head { margin-bottom: 8px; }
+.ds-wb-page.ds-wb-redesign .ds-wb-hint,
+.ds-wb-redesign .ds-wb-hint { font-size: 11px; line-height: 1.45; }
+.ds-wb-redesign .ds-wb-card .ds-wb-actions { gap: 8px; }
+.ds-wb-redesign .ds-wb-card .ds-btn { min-height: 32px; }
+.ds-wb-redesign .ds-wb-card .ds-linkbtn { min-height: 24px; }
+.ds-wb-redesign .ds-wb-card :focus-visible,
+.ds-wb-redesign .ds-wb-fold-head:focus-visible,
+.ds-wb-redesign .ds-wb-hero-actions :focus-visible,
+.ds-wb-redesign .ds-wb-zone-link:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: 2px; }
+/* Now zone: alerts + hero */
+.ds-wb-redesign .ds-wb-zone-now-body { gap: 10px; }
+.ds-wb-redesign .ds-wb-zone-now-body .ds-wb-issues { padding: 12px 16px; }
+.ds-wb-redesign .ds-wb-zone-now-body .ds-wb-attention { padding: 12px 16px; border-color: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 45%, transparent); }
+.ds-wb-hero { position: relative; display: flex; flex-direction: column; gap: 12px; padding: 20px 20px 16px; border: 1px solid color-mix(in srgb, var(--dsw-alias-label-caption) 26%, transparent); border-left: 4px solid var(--dsw-alias-state-warn-primary); border-radius: 12px; background: var(--dsw-alias-bg-layer-1); box-shadow: 0 1px 2px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent); }
+.ds-wb-hero-main { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.ds-wb-hero-eyebrow { color: var(--dsw-alias-label-caption); font-size: 12px; line-height: 18px; }
+.ds-wb-hero-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.ds-wb-hero-title { margin: 0; color: var(--dsw-alias-label-primary); font-size: 20px; font-weight: 700; line-height: 28px; }
+.ds-wb-hero-summary { color: var(--dsw-alias-label-secondary); font-size: 13px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.ds-wb-hero-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; color: var(--dsw-alias-label-caption); font-size: 12px; }
+.ds-wb-hero-role { color: var(--dsw-alias-label-secondary); }
+.ds-wb-hero-dots { display: inline-flex; align-items: center; gap: 4px; }
+.ds-wb-hero-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dsw-alias-bg-layer-2); border: 1px solid color-mix(in srgb, var(--dsw-alias-label-caption) 30%, transparent); }
+.ds-wb-hero-dot[data-status="approved"] { background: var(--dsw-alias-state-success-primary); border-color: transparent; }
+.ds-wb-hero-dot[data-status="active"] { background: var(--dsw-alias-state-business-primary); border-color: transparent; }
+.ds-wb-hero-dot[data-status="review"] { background: var(--dsw-alias-state-warn-primary); border-color: transparent; }
+.ds-wb-hero-dot[data-status="failed"] { background: var(--dsw-alias-state-error-primary); border-color: transparent; }
+.ds-wb-hero-progress-text { color: var(--dsw-alias-label-primary); font-size: 15px; font-weight: 600; }
+.ds-wb-hero-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.ds-wb-hero-actions .ds-btn { min-height: 44px; padding: 0 18px; font-size: 13px; border-radius: 8px; }
+.ds-wb-hero-link { font-size: 12px; }
+.ds-wb-hero-note { margin-top: 2px; }
+.ds-wb-hero-gate { color: var(--dsw-alias-label-caption); font-size: 11px; line-height: 1.4; }
+/* Project zone: status + team/assign side by side, requirement summary full width. */
+.ds-wb-zone-project-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.ds-wb-project-cell { min-width: 0; }
+.ds-wb-project-cell-wide { grid-column: 1 / -1; }
+.ds-wb-zone-project-grid .ds-wb-assign { grid-column: auto; }
+.ds-wb-zone-project-grid .ds-wb-assign-members { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ds-wb-zone-project-grid .ds-wb-assign-list { max-height: 190px; overflow: auto; }
+/* Requirement summary card */
+.ds-wb-adjust-chips { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 2px 0 8px; }
+.ds-wb-scope-pill { padding: 1px 8px; border-radius: 9px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-secondary); font-size: 11px; }
+.ds-wb-adjust-summary { color: var(--dsw-alias-label-secondary); font-size: 13px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.ds-wb-adjust-summary-hint { margin-top: 4px; }
+.ds-wb-redesign .ds-wb-adjust-title { color: var(--dsw-alias-label-primary); font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Delivery zone: five compact, collapsible rows. */
+.ds-wb-folds { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.ds-wb-fold { display: flex; flex-direction: column; min-width: 0; border: 1px solid color-mix(in srgb, var(--dsw-alias-label-caption) 26%, transparent); border-radius: 10px; background: var(--dsw-alias-bg-layer-1); box-shadow: 0 1px 2px color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent); overflow: hidden; transition: border-color 150ms ease-out; }
+.ds-wb-fold[data-open="true"] { grid-column: 1 / -1; border-color: color-mix(in srgb, var(--dsw-alias-brand-primary) 32%, transparent); }
+.ds-wb-fold[data-fail="true"] { border-color: color-mix(in srgb, var(--dsw-alias-state-error-primary) 38%, transparent); }
+.ds-wb-fold-head { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 10px 12px; border: 0; background: transparent; color: var(--dsw-alias-label-primary); font: inherit; text-align: left; cursor: pointer; transition: background 150ms ease-out; }
+.ds-wb-fold-head:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent); }
+.ds-wb-fold-icon { display: inline-flex; flex: 0 0 auto; color: var(--dsw-alias-label-caption); }
+.ds-wb-fold-icon svg { width: 16px; height: 16px; }
+.ds-wb-fold-title { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; }
+.ds-wb-fold-count { flex: 0 0 auto; color: var(--dsw-alias-label-secondary); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.ds-wb-fold[data-open="true"] .ds-wb-fold-count { font-size: 15px; color: var(--dsw-alias-label-primary); }
+.ds-wb-fold-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--dsw-alias-state-error-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--dsw-alias-state-error-primary) 16%, transparent); }
+.ds-wb-fold-chevron { display: inline-flex; flex: 0 0 auto; color: var(--dsw-alias-label-caption); transition: transform 150ms ease-out; }
+.ds-wb-fold-body { padding: 0 12px 14px; border-top: 1px solid color-mix(in srgb, var(--dsw-alias-label-caption) 16%, transparent); padding-top: 12px; }
+.ds-wb-fold-body .ds-wb-card { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.ds-wb-fold-auto { margin-bottom: 8px; padding: 4px 8px; border-radius: 6px; background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 9%, transparent); color: var(--dsw-alias-state-error-primary); font-size: 11px; }
+.ds-wb-fold .ds-wb-card-title { margin-bottom: 6px; }
+/* Existing card internals under the new denser typography. */
+.ds-wb-redesign .ds-wb-progress { font-size: 12px; }
+.ds-wb-redesign .ds-wb-project-title { font-size: 14px; }
+.ds-wb-redesign .ds-wb-need-text { font-size: 12px; }
+.ds-wb-redesign .ds-wb-status-pill { font-size: 11px; }
+.ds-wb-redesign .ds-wb-count { font-size: 11px; }
+.ds-wb-redesign .ds-wb-issue-text { font-size: 12px; }
+.ds-wb-redesign .ds-wb-flow-round { font-size: 11px; }
+.ds-wb-redesign .ds-wb-step-name { font-size: 11px; }
+.ds-wb-redesign .ds-wb-step-role { font-size: 10px; }
+.ds-wb-redesign .ds-wb-preflight-row { font-size: 11px; }
+@media (max-width: 1023px) {
+  .ds-wb-folds { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 700px) {
+  .ds-wb-redesign .ds-wb-page-scroll { padding: 14px 12px 24px; }
+  .ds-wb-redesign .ds-wb-page-inner { gap: 12px; }
+  .ds-wb-redesign .ds-wb-page-head { padding: 12px 14px; }
+  .ds-wb-redesign .ds-wb-page-title { font-size: 17px; }
+  .ds-wb-redesign .ds-wb-zone-hint { display: none; }
+  .ds-wb-zone-project-grid { grid-template-columns: minmax(0, 1fr); }
+  .ds-wb-zone-project-grid .ds-wb-assign-members { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ds-wb-zone-project-grid .ds-wb-assign-list { max-height: none; }
+  .ds-wb-folds { grid-template-columns: minmax(0, 1fr); }
+  .ds-wb-hero { padding: 16px 14px 14px; border-left-width: 3px; }
+  .ds-wb-hero-title { font-size: 18px; line-height: 26px; }
+  .ds-wb-hero-actions .ds-btn { flex: 1 1 100%; justify-content: center; }
+  .ds-wb-fold-head { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-wb-fold,
+  .ds-wb-fold-head,
+  .ds-wb-fold-chevron { transition: none; }
+}
+.ds-root[data-compact="true"] .ds-wb-redesign .ds-wb-page-scroll { padding: 12px; }
+.ds-root[data-compact="true"] .ds-wb-hero-actions .ds-btn { min-height: 44px; }
+.ds-root[data-compact="true"] .ds-wb-fold-head { min-height: 44px; }
 
 .ds-todo-edit { display: flex; flex-direction: column; gap: 5px; background: color-mix(in srgb, var(--dsw-alias-brand-primary) 5%, transparent); }
 .ds-todo-note-input {

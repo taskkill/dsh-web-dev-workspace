@@ -2,6 +2,41 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.76 — 2026-10-27
+
+### Workbench redesign: three zones, a current-stage hero and a calmer layout
+
+- The Workbench is reorganised into three colour-coded zones — **Now**
+  (issues / current stage), **Project** (status, team & assignments, requirement)
+  and **Delivery** (pipeline, design, acceptance, preflight, changes, running) —
+  so each module is recognisable at a glance instead of ten identical cards.
+- A **current-stage hero** sits at the top of the page: stage name, status pill,
+  one-line summary, 7-step progress and the primary actions (approve / send back
+  when a review is waiting, start-and-dispatch when a stage needs starting,
+  otherwise open the pipeline or assign a task). No project → the kickoff prompt
+  is shown instead of empty zones.
+- **Requirement & adjustments** no longer dumps the whole PRD into the card:
+  title, round/scope chips, a two-line plain-text summary and the four actions
+  (view full requirement, append, modify, new round).
+- The five secondary Delivery cards (design, acceptance, preflight, change review,
+  running) are **compact collapsible rows** that are collapsed by default; they
+  show counts / status summaries and auto-expand with a red dot when the
+  acceptance board or the preflight check has failures. Expand-all / collapse-all
+  is available and the fold state is remembered for the session.
+- Fresh visual language: soft blue-grey page background, white cards with a 1px
+  border, a subtle shadow and 12px radius, 16px spacing, 3px zone accent bars,
+  12px card titles (no more 9.5px uppercase), category colours used only for
+  accents/icons, visible focus rings, 150ms transitions with reduced-motion
+  support and single-column layout at ≤700px.
+- New i18n strings (23 keys, zh/en) for zones, hero, folds and the requirement
+  summary; the 122 `workbench.assign.*` keys are untouched. This is a client-only
+  change — no host module, dependency or data format changes.
+
+### Housekeeping
+
+- `docs/ACCEPTANCE.md` gains batch 13 (GUI checks for the redesigned Workbench);
+  both `package.json` files are 1.2.76.
+
 ## 1.2.75 — 2026-10-27
 
 ### Workbench Agent assignments: pick an agent, write the task, assign and track

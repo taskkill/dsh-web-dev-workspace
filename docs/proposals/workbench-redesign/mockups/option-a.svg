@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1024" viewBox="0 0 1440 1024" role="img" aria-labelledby="title desc">
+<title id="title">方案 A · 分区工作台（推荐）</title><desc id="desc">三区工作台：现在区（当前阶段 hero + 主操作）、项目区（项目状态/团队与指派/需求与调整）、交付区（项目流程 + 5 张默认收起的次要卡）。</desc>
+<style>
+  text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif; }
+  .page { font-size: 24px; font-weight: 700; fill: #0f1115; }
+  .sub { font-size: 13px; fill: #61666b; }
+  .zone { font-size: 16px; font-weight: 700; fill: #0f1115; }
+  .zone-sub { font-size: 12px; fill: #61666b; }
+  .card-title { font-size: 13px; font-weight: 600; fill: #0f1115; }
+  .card-title-sm { font-size: 12px; font-weight: 600; fill: #0f1115; }
+  .old-title { font-size: 10px; font-weight: 600; fill: #61666b; letter-spacing: 0.06em; }
+  .body { font-size: 14px; fill: #0f1115; }
+  .body-b { font-size: 14px; font-weight: 600; fill: #0f1115; }
+  .meta { font-size: 12px; fill: #61666b; }
+  .tiny { font-size: 11px; fill: #61666b; }
+  .btn-p { font-size: 13px; font-weight: 600; fill: #ffffff; }
+  .btn-s { font-size: 13px; font-weight: 600; fill: #0f1115; }
+  .link { font-size: 12px; fill: #2563eb; }
+  .link-b { font-size: 13px; font-weight: 600; fill: #2563eb; }
+  .pill { font-size: 11px; font-weight: 600; }
+  .nav { font-size: 13px; fill: #61666b; }
+  .nav-on { font-size: 13px; font-weight: 600; fill: #0f1115; }
+  .nav-group { font-size: 12px; font-weight: 600; fill: #61666b; }
+  .badge-num { font-size: 12px; font-weight: 700; fill: #ffffff; }
+  .white { fill: #ffffff; }
+ .h2 { font-size: 20px; font-weight: 700; fill: #0f1115; } .chip { font-size: 11px; fill: #0f1115; }</style>
+
+<rect width="1440" height="1024" fill="#eceff3"/>
+<rect x="24" y="24" width="1392" height="976" rx="12" fill="#ffffff"/>
+<rect x="24" y="24" width="1392" height="56" fill="#ffffff"/>
+<line x1="24" y1="80" x2="1416" y2="80" stroke="#e3e8ef" stroke-width="1"/>
+<circle cx="52" cy="52" r="11" fill="#0f1115"/><circle cx="52" cy="52" r="4" fill="#fff"/>
+<text x="72" y="57" class="body-b" >Dev Workspace</text>
+<text x="196" y="57" class="meta" >工作区 / dsh-web-filebrowser</text>
+<text x="1180" y="57" class="meta" text-anchor="end">项目：工作台 Agent 指派器 MVP · 第 3 轮</text>
+<circle cx="1360" cy="52" r="14" fill="#eef4ff"/><text x="1360" y="57" class="meta" text-anchor="middle" style="fill:#2563eb;font-weight:600">你</text>
+<rect x="24" y="80" width="212" height="920" fill="#f9fafb"/>
+<line x1="236" y1="80" x2="236" y2="1000" stroke="#e3e8ef" stroke-width="1"/>
+<text x="44" y="108" class="nav-group" >工作区</text>
+<rect x="36" y="120" width="188" height="36" rx="8" fill="#ffffff" stroke="#e3e8ef"/>
+<g><path d="M50 139 L56 134 L62 139 V147 H50 Z" fill="none" stroke="#0f1115" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g><text x="70" y="144" class="nav-on" >工作台</text>
+<g><path d="M51 167 H58 L62 171 V181 H51 Z" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g><text x="70" y="180" class="nav" >文件</text>
+<g><circle cx="55" cy="209" r="4.5" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><line x1="58.5" y1="212.5" x2="63" y2="217" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g><text x="70" y="216" class="nav" >搜索</text>
+<g><circle cx="51" cy="250" r="1.4" fill="#61666b"/><circle cx="56" cy="250" r="1.4" fill="#61666b"/><circle cx="61" cy="250" r="1.4" fill="#61666b"/></g><text x="70" y="255" class="nav" >更多</text>
+<line x1="40" y1="278" x2="220" y2="278" stroke="#e3e8ef" stroke-width="1"/>
+<text x="44" y="302" class="nav-group" >项目</text>
+<g><rect x="50" y="320" width="4" height="12" rx="1" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><rect x="55" y="320" width="4" height="8" rx="1" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><rect x="60" y="320" width="3" height="14" rx="1" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g><text x="70" y="332" class="nav" >流水线</text>
+<g><rect x="50" y="350" width="12" height="12" rx="3" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><polyline points="53,356 55.5,359 60,353" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g><text x="70" y="362" class="nav" >验收</text>
+<g><line x1="50" y1="378" x2="62" y2="378" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><line x1="50" y1="382" x2="62" y2="382" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><line x1="50" y1="386" x2="58" y2="386" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g><text x="70" y="388" class="nav" >待办</text>
+<line x1="40" y1="410" x2="220" y2="410" stroke="#e3e8ef" stroke-width="1"/>
+<text x="44" y="434" class="nav-group" >开发</text>
+<g><rect x="50" y="446" width="12" height="12" rx="3" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><polygon points="55,449 55,455 60,452" fill="#61666b"/></g><text x="70" y="458" class="nav" >任务</text>
+<g><circle cx="52" cy="480" r="2.4" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="52" cy="489" r="2.4" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="61" cy="484" r="2.4" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M54 480 H57 A2 2 0 0 1 59 482 V484" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g><text x="70" y="490" class="nav" >Git</text>
+<g><rect x="50" y="512" width="12" height="10" rx="2" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><line x1="53" y1="512" x2="53" y2="510" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><line x1="59" y1="512" x2="59" y2="510" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g><text x="70" y="523" class="nav" >记忆</text>
+<rect x="36" y="928" width="188" height="40" rx="8" fill="#eef4ff"/>
+<g><circle cx="54" cy="946" r="3" fill="none" stroke="#2563eb" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M49 955 C49 950, 59 950, 59 955" fill="none" stroke="#2563eb" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="60" cy="946" r="2.4" fill="none" stroke="#2563eb" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M59 954 C60 950, 63 950, 63 954" fill="none" stroke="#2563eb" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g><text x="76" y="953" class="nav-on" style="fill:#2563eb">团队面板入口</text>
+<rect x="236" y="80" width="1180" height="920" fill="#f7f8fa"/>
+<text x="286" y="114" class="page" >工作台</text>
+<text x="286" y="138" class="sub" >项目：工作台 Agent 指派器 MVP · 第 3 轮</text>
+<text x="1346" y="120" class="pill" text-anchor="end" style="fill:#2563eb">方案 A · 推荐</text>
+<text x="1346" y="140" class="link" text-anchor="end">刷新</text>
+
+
+<!-- NOW zone -->
+<rect x="286" y="162" width="4" height="22" rx="2" fill="#f59e0b"/>
+<g><path d="M308 166 L315 178 H301 Z" fill="none" stroke="#b45309" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><line x1="308" y1="171" x2="308" y2="174" fill="none" stroke="#b45309" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="308" cy="176.4" r=".9" fill="#b45309"/></g>
+<text x="326" y="180" class="zone" >现在</text>
+<text x="374" y="180" class="zone-sub" >需要你决定的事 · 1 项</text>
+<text x="1346" y="180" class="link" text-anchor="end">查看全部待办 →</text>
+<rect x="286" y="192" width="1080" height="204" rx="12" fill="#ffffff" stroke="#e3e8ef"/>
+<rect x="286" y="192" width="5" height="204" fill="#f59e0b"/>
+<text x="310" y="222" class="meta" >第 5 关 · 当前阶段</text>
+<text x="310" y="254" class="h2" >验收复核</text>
+<rect x="404" y="236" width="64" height="24" rx="12" fill="#fef5e7"/><text x="436" y="252" class="pill" text-anchor="middle">待评审</text>
+<text x="310" y="286" class="body" >建议放行 · 阻断项 0 · 复测 3/3 通过</text>
+<text x="310" y="310" class="meta" >负责：项目经理 Agent · 复核报告已提交（docs/pipeline/acceptance-review.md）</text>
+<circle cx="314" cy="340" r="5" fill="#1a7f37"/><circle cx="336" cy="340" r="5" fill="#1a7f37"/><circle cx="358" cy="340" r="5" fill="#1a7f37"/><circle cx="380" cy="340" r="5" fill="#1a7f37"/><circle cx="402" cy="340" r="5" fill="#f59e0b"/><circle cx="424" cy="340" r="5" fill="#e3e8ef"/><circle cx="446" cy="340" r="5" fill="#e3e8ef"/>
+<text x="500" y="344" class="meta" >4/7 关已完成 · 当前第 5 关进行中</text>
+<line x1="1000" y1="212" x2="1000" y2="376" stroke="#e3e8ef" stroke-width="1"/>
+<text x="1024" y="230" class="meta" >通过后进入人工确认；发布仍锁定</text>
+<rect x="1024" y="250" width="96" height="44" rx="8" fill="#0f1115"/><text x="1072" y="277" class="btn-p" text-anchor="middle">通过</text>
+<rect x="1128" y="250" width="88" height="44" rx="8" fill="#ffffff" stroke="#d5dae1"/><text x="1172" y="277" class="btn-s" text-anchor="middle">打回</text>
+<text x="1024" y="326" class="link-b" >查看复核报告 →</text>
+<text x="1024" y="350" class="meta" >通过后才解锁「人工确认」与发布</text>
+
+<!-- PROJECT zone -->
+<rect x="286" y="420" width="4" height="22" rx="2" fill="#4176e6"/>
+<g><circle cx="306" cy="428" r="3" fill="none" stroke="#2563eb" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M301 437 C301 432, 311 432, 311 437" fill="none" stroke="#2563eb" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="312" cy="428" r="2.4" fill="none" stroke="#2563eb" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M311 436 C312 432, 315 432, 315 436" fill="none" stroke="#2563eb" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g>
+<text x="326" y="438" class="zone" >项目</text>
+<text x="374" y="438" class="zone-sub" >进度 · 团队 · 需求</text>
+<text x="1346" y="438" class="link" text-anchor="end">打开流水线 →</text>
+
+<rect x="286" y="454" width="349" height="180" rx="12" fill="#ffffff" stroke="#e3e8ef"/>
+<g><line x1="309" y1="484" x2="309" y2="479" fill="none" stroke="#2563eb" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><line x1="314" y1="484" x2="314" y2="475" fill="none" stroke="#2563eb" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><line x1="319" y1="484" x2="319" y2="481" fill="none" stroke="#2563eb" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g><text x="330" y="482" class="card-title" >项目状态</text>
+<rect x="306" y="502" width="309" height="8" rx="4" fill="#eef0f3"/><rect x="306" y="502" width="177" height="8" rx="4" fill="#4176e6"/>
+<text x="306" y="530" class="body-b" >4/7 · 当前：验收复核</text>
+<text x="306" y="552" class="meta" >第 3 轮 · 快速模式：关闭</text>
+<text x="306" y="616" class="link" >查看流水线 →</text>
+<text x="615" y="616" class="link" text-anchor="end">打开需求</text>
+
+<rect x="651" y="454" width="349" height="180" rx="12" fill="#ffffff" stroke="#e3e8ef"/>
+<g><circle cx="677" cy="476" r="3" fill="none" stroke="#2563eb" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M672 485 C672 480, 682 480, 682 485" fill="none" stroke="#2563eb" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="683" cy="476" r="2.4" fill="none" stroke="#2563eb" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M682 484 C683 480, 686 480, 686 484" fill="none" stroke="#2563eb" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g><text x="695" y="482" class="card-title" >团队与指派</text>
+<text x="671" y="502" class="meta" >2 执行中 · 1 待确认（按记录推导）</text>
+<rect x="671" y="514" width="100" height="26" rx="8" fill="#ffffff" stroke="#e3e8ef"/><circle cx="683" cy="527" r="3.5" fill="#7f8287"/><text x="693" y="531" class="chip" >产品经理</text><rect x="779" y="514" width="100" height="26" rx="8" fill="#ffffff" stroke="#e3e8ef"/><circle cx="791" cy="527" r="3.5" fill="#4176e6"/><text x="801" y="531" class="chip" >UI 设计</text><rect x="887" y="514" width="100" height="26" rx="8" fill="#ffffff" stroke="#e3e8ef"/><circle cx="899" cy="527" r="3.5" fill="#4176e6"/><text x="909" y="531" class="chip" >全栈开发</text><rect x="671" y="546" width="100" height="26" rx="8" fill="#ffffff" stroke="#e3e8ef"/><circle cx="683" cy="559" r="3.5" fill="#f59e0b"/><text x="693" y="563" class="chip" >测试工程师</text><rect x="779" y="546" width="100" height="26" rx="8" fill="#ffffff" stroke="#e3e8ef"/><circle cx="791" cy="559" r="3.5" fill="#7f8287"/><text x="801" y="563" class="chip" >项目经理</text><rect x="887" y="546" width="100" height="26" rx="8" fill="#ffffff" stroke="#e3e8ef"/><circle cx="899" cy="559" r="3.5" fill="#7f8287"/><text x="909" y="563" class="chip" >运维</text>
+<rect x="671" y="584" width="88" height="30" rx="6" fill="#0f1115"/><text x="715" y="603" class="btn-p" text-anchor="middle">指派任务</text>
+<text x="983" y="603" class="link" text-anchor="end">团队面板入口</text>
+
+<rect x="1016" y="454" width="349" height="180" rx="12" fill="#ffffff" stroke="#e3e8ef"/>
+<g><line x1="1038" y1="474" x2="1050" y2="474" fill="none" stroke="#2563eb" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="1042" cy="474" r="2" fill="#fff" stroke="#2563eb" stroke-width="1.6"/><line x1="1038" y1="482" x2="1050" y2="482" fill="none" stroke="#2563eb" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="1047" cy="482" r="2" fill="#fff" stroke="#2563eb" stroke-width="1.6"/></g><text x="1060" y="482" class="card-title" >需求与调整</text>
+<text x="1036" y="512" class="body-b" >工作台 Agent 指派器 MVP</text>
+<text x="1036" y="534" class="meta" >第 3 轮 · 范围 full</text>
+<text x="1036" y="556" class="meta" >三区工作台 · 可折叠 · 团队指派入口</text>
+<rect x="1036" y="584" width="76" height="30" rx="6" fill="#ffffff" stroke="#d5dae1"/><text x="1074" y="603" class="btn-s" text-anchor="middle">追加说明</text>
+<rect x="1120" y="584" width="76" height="30" rx="6" fill="#ffffff" stroke="#d5dae1"/><text x="1158" y="603" class="btn-s" text-anchor="middle">修改需求</text>
+<rect x="1204" y="584" width="76" height="30" rx="6" fill="#0f1115"/><text x="1242" y="603" class="btn-p" text-anchor="middle">新轮变更</text>
+
+<!-- DELIVERY zone -->
+<rect x="286" y="650" width="4" height="22" rx="2" fill="#16a34a"/>
+<g><rect x="302" y="654" width="12" height="12" rx="3" fill="none" stroke="#1a7f37" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><polyline points="305,660 307.5,663 312,657" fill="none" stroke="#1a7f37" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g>
+<text x="326" y="668" class="zone" >交付</text>
+<text x="374" y="668" class="zone-sub" >流水线 · 设计 · 验收 · 运行</text>
+<text x="1346" y="668" class="link" text-anchor="end">展开全部 →</text>
+
+<rect x="286" y="684" width="1080" height="124" rx="12" fill="#ffffff" stroke="#e3e8ef"/>
+<g><rect x="308" y="702" width="4" height="12" rx="1" fill="none" stroke="#1a7f37" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><rect x="313" y="702" width="4" height="8" rx="1" fill="none" stroke="#1a7f37" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><rect x="318" y="702" width="3" height="14" rx="1" fill="none" stroke="#1a7f37" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g><text x="330" y="712" class="card-title" >项目流程</text>
+<text x="1346" y="712" class="meta" text-anchor="end">当前：验收复核 · 待评审</text>
+<rect x="306" y="724" width="141" height="68" rx="8" fill="#fbfcfe" stroke="#e3e8ef" stroke-width="1"/><circle cx="322" cy="740" r="6" fill="#e6faed"/><text x="334" y="744" class="card-title-sm" >需求分析</text><text x="320" y="764" class="meta" style="fill:#1a7f37">已通过</text><rect x="455" y="724" width="141" height="68" rx="8" fill="#fbfcfe" stroke="#e3e8ef" stroke-width="1"/><circle cx="471" cy="740" r="6" fill="#e6faed"/><text x="483" y="744" class="card-title-sm" >UI 设计</text><text x="469" y="764" class="meta" style="fill:#1a7f37">已通过</text><rect x="604" y="724" width="141" height="68" rx="8" fill="#fbfcfe" stroke="#e3e8ef" stroke-width="1"/><circle cx="620" cy="740" r="6" fill="#e6faed"/><text x="632" y="744" class="card-title-sm" >开发实现</text><text x="618" y="764" class="meta" style="fill:#1a7f37">已通过</text><rect x="753" y="724" width="141" height="68" rx="8" fill="#fbfcfe" stroke="#e3e8ef" stroke-width="1"/><circle cx="769" cy="740" r="6" fill="#e6faed"/><text x="781" y="744" class="card-title-sm" >测试验收</text><text x="767" y="764" class="meta" style="fill:#1a7f37">已通过</text><rect x="902" y="724" width="141" height="68" rx="8" fill="#fffaf0" stroke="#f0b74a" stroke-width="1.5"/><circle cx="918" cy="740" r="6" fill="#fef5e7"/><text x="930" y="744" class="card-title-sm" >验收复核</text><text x="916" y="764" class="meta" style="fill:#b45309">待评审</text><rect x="1051" y="724" width="141" height="68" rx="8" fill="#fbfcfe" stroke="#e3e8ef" stroke-width="1"/><circle cx="1067" cy="740" r="6" fill="#f1f3f5"/><text x="1079" y="744" class="card-title-sm" >人工确认</text><text x="1065" y="764" class="meta" style="fill:#61666b">待开始</text><rect x="1200" y="724" width="141" height="68" rx="8" fill="#fbfcfe" stroke="#e3e8ef" stroke-width="1"/><circle cx="1216" cy="740" r="6" fill="#f1f3f5"/><text x="1228" y="744" class="card-title-sm" >发布上线</text><text x="1214" y="764" class="meta" style="fill:#61666b">待开始</text>
+<text x="306" y="796" class="meta" >双击阶段可查看详情；当前阶段由 hero 卡承载主操作。</text>
+
+<rect x="286" y="822" width="200" height="100" rx="12" fill="#ffffff" stroke="#e3e8ef"/><g><rect x="304" y="839" width="12" height="10" rx="2" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="308" cy="843" r="1.2" fill="#61666b"/><path d="M306 847 L310 843 L313 846 L315 844" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g><text x="324" y="852" class="card-title" >设计稿</text><rect x="428" y="834" width="44" height="20" rx="10" fill="#f1f3f5"/><text x="450" y="848" class="pill" text-anchor="middle">4 张</text><text x="302" y="878" class="meta" >v1.2.75</text><text x="470" y="894" class="meta" text-anchor="end" style="font-size:16px">›</text><rect x="500" y="822" width="200" height="100" rx="12" fill="#ffffff" stroke="#e3e8ef"/><g><rect x="518" y="838" width="12" height="12" rx="3" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><polyline points="521,844 523.5,847 528,841" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g><text x="538" y="852" class="card-title" >验收</text><rect x="642" y="834" width="44" height="20" rx="10" fill="#f1f3f5"/><text x="664" y="848" class="pill" text-anchor="middle">42/42</text><text x="516" y="878" class="meta" >失败 0</text><text x="684" y="894" class="meta" text-anchor="end" style="font-size:16px">›</text><rect x="714" y="822" width="200" height="100" rx="12" fill="#ffffff" stroke="#e3e8ef"/><g><path d="M738 838 L744 841 V845 C744 848, 741 850, 738 851 C735 850, 732 848, 732 845 V841 Z" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><polyline points="735.5,844.5 737.5,846.5 741,842.5" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g><text x="752" y="852" class="card-title" >交付前体检</text><rect x="856" y="834" width="44" height="20" rx="10" fill="#f1f3f5"/><text x="878" y="848" class="pill" text-anchor="middle">通过</text><text x="730" y="878" class="meta" >0 项建议</text><text x="898" y="894" class="meta" text-anchor="end" style="font-size:16px">›</text><rect x="928" y="822" width="200" height="100" rx="12" fill="#ffffff" stroke="#e3e8ef"/><g><circle cx="948" cy="840" r="2.4" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="948" cy="849" r="2.4" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="957" cy="842" r="2.4" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M950 840 H953 A2 2 0 0 1 955 842 V844" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g><text x="966" y="852" class="card-title" >本轮变更</text><rect x="1070" y="834" width="44" height="20" rx="10" fill="#f1f3f5"/><text x="1092" y="848" class="pill" text-anchor="middle">3 文件</text><text x="944" y="878" class="meta" >未审 3</text><text x="1112" y="894" class="meta" text-anchor="end" style="font-size:16px">›</text><rect x="1142" y="822" width="200" height="100" rx="12" fill="#ffffff" stroke="#e3e8ef"/><g><circle cx="1166" cy="844" r="6" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><polygon points="1164.5,841 1164.5,847 1169.5,844" fill="#61666b"/></g><text x="1180" y="852" class="card-title" >运行中</text><rect x="1284" y="834" width="44" height="20" rx="10" fill="#f1f3f5"/><text x="1306" y="848" class="pill" text-anchor="middle">1 个</text><text x="1158" y="878" class="meta" >npm test 通过</text><text x="1326" y="894" class="meta" text-anchor="end" style="font-size:16px">›</text>
+<text x="286" y="950" class="meta" >次要卡默认收起，点击展开；展开状态记忆可作为后续增强（localStorage）。</text>
+<text x="1346" y="950" class="meta" text-anchor="end">5 项 · 默认收起</text>
+</svg>
