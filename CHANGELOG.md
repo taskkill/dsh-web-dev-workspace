@@ -2,6 +2,32 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.90 — 2026-10-27
+
+### Reset categories: tick exactly what to clear
+
+- **Every reset target is now its own checkbox.** The Workbench reset dialog
+  lists thirteen categories — delivery pipeline, acceptance checklist, review and
+  re-checked marks, workspace todos, run history, preview bookmarks, role
+  assignments, delivery history and bundles, acceptance evidence, verification
+  records, requirement attachments, workspace memory and temporary files — plus
+  "select all / select none" shortcuts. Memory stays off by default and temporary
+  files on, matching the previous behaviour; the other eleven default to on.
+- **The Host takes the selection as a category list.** `resetWorkspaceDataAt`
+  accepts `{ groups: [...] }`: omitted means every category (the old behaviour),
+  an empty array clears nothing, and an unknown id is rejected with `bad-group`.
+  The table is exported as `WORKSPACE_RESET_GROUPS` so the dialog, docs and tests
+  share one source of truth; the fixed allow-list, symlink handling and SSH guard
+  are unchanged.
+- **Why:** reset was all-or-nothing apart from memory/tmp, so an owner who only
+  wanted to start a new delivery round had to lose acceptance evidence and
+  history as well. Choosing the scope makes the destructive action precise.
+- **Verification.** The host-smoke reset case now covers the category table,
+  a full reset, a subset reset, an empty selection, an unknown category id, the
+  symlinked-`.dsh` refusal and the empty-workspace no-op. Plugin `1.2.88`, root
+  `1.2.90` (workspace rule: +1 after each change). `npm run check`,
+  `npm run check:json` and `npm test` pass (37/37).
+
 ## 1.2.89 — 2026-10-27
 
 ### One-click workspace data reset

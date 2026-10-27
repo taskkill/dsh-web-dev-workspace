@@ -1871,29 +1871,29 @@ async function deletePath(ctx, body) {
   return { path: body.path }
 }
 
-/** Plugin data files removed by one workspace reset (file name → panel label). */
-const WORKSPACE_RESET_FILES = [
-  ['pipeline.json', '交付流水线'],
-  ['acceptance.json', '验收清单'],
-  ['review.json', '复核与已审标记'],
-  ['todos.json', '工作区待办'],
-  ['runs.json', '运行历史'],
-  ['browser-bookmarks.json', '预览书签'],
-  ['agent-assignments.json', '角色指派记录'],
-  ['deliveries.json', '交付历史'],
+/**
+ * One selectable reset category. The Workbench dialog renders these ids as
+ * checkboxes and the Host only ever removes entries named in this table, so the
+ * browser can pick the scope without gaining any other filesystem reach.
+ */
+export const WORKSPACE_RESET_GROUPS = [
+  { id: 'pipeline', label: '交付流水线', entries: ['pipeline.json'] },
+  { id: 'acceptance', label: '验收清单', entries: ['acceptance.json'] },
+  { id: 'review', label: '复核与已审标记', entries: ['review.json'] },
+  { id: 'todos', label: '工作区待办', entries: ['todos.json'] },
+  { id: 'runs', label: '运行历史', entries: ['runs.json'] },
+  { id: 'bookmarks', label: '预览书签', entries: ['browser-bookmarks.json'] },
+  { id: 'assignments', label: '角色指派记录', entries: ['agent-assignments.json'] },
+  { id: 'delivery', label: '交付历史与交付包', entries: ['deliveries.json', 'deliveries'] },
+  { id: 'evidence', label: '验收证据', entries: ['evidence'] },
+  { id: 'verifications', label: '复测记录', entries: ['verifications'] },
+  { id: 'intake', label: '需求附件', entries: ['intake'] },
+  { id: 'memory', label: '工作区记忆', entries: ['memory.json'] },
+  { id: 'tmp', label: '临时文件', entries: ['tmp'] },
 ]
 
-/** Plugin data directories removed by one workspace reset (directory name → panel label). */
-const WORKSPACE_RESET_DIRS = [
-  ['deliveries', '交付包'],
-  ['evidence', '验收证据'],
-  ['verifications', '复测记录'],
-  ['intake', '需求附件'],
-  ['tmp', '临时文件'],
-]
-
-/** Workspace memory file kept unless the caller asks to clear it. */
-const WORKSPACE_RESET_MEMORY_FILE = 'memory.json'
+/** Lookup table for the reset categories above. */
+const WORKSPACE_RESET_GROUP_INDEX = new Map(WORKSPACE_RESET_GROUPS.map((group) => [group.id, group]))
 
 /**
  * Remove this plugin's own state from one workspace `.dsh` directory.
@@ -1901,12 +1901,22 @@ const WORKSPACE_RESET_MEMORY_FILE = 'memory.json'
  * user's source tree are never removed, and symlinked entries are unlinked
  * instead of followed so a reset cannot escape the workspace.
  * @param root - canonical local workspace root.
- * @param options - `{ keepMemory, keepTmp }`; both default to `false`.
+ * @param options - `{ groups }`: category ids to clear; omitted means every
+ *   category, an empty array clears nothing, an unknown id is rejected.
  * @returns `{ removed, failed }` with removed entry names and per-entry errors.
  */
 export async function resetWorkspaceDataAt(root, options = {}) {
-  const keepMemory = options.keepMemory === true
-  const keepTmp = options.keepTmp === true
+  const requested = Array.isArray(options.groups) ? options.groups : null
+  const groups = []
+  if (requested === null) {
+    groups.push(...WORKSPACE_RESET_GROUPS)
+  } else {
+    for (const id of requested) {
+      const group = WORKSPACE_RESET_GROUP_INDEX.get(String(id))
+      if (group === undefined) throw new SideError('bad-group', `未知的清理类别：${String(id)}`)
+      if (groups.includes(group) === false) groups.push(group)
+    }
+  }
   const resolved = path.resolve(root)
   const directory = path.join(resolved, '.dsh')
   const removed = []
@@ -1922,14 +1932,13 @@ export async function resetWorkspaceDataAt(root, options = {}) {
   if (!info.isDirectory()) throw new SideError('unsafe', '.dsh 不是目录，已拒绝重置')
   const real = await fsp.realpath(directory)
   if (!isInside(resolved, real)) throw new SideError('outside-root', '.dsh 指向工作区之外，已拒绝重置')
-  const names = [
-    ...WORKSPACE_RESET_FILES.map((entry) => entry[0]),
-    WORKSPACE_RESET_MEMORY_FILE,
-    ...WORKSPACE_RESET_DIRS.map((entry) => entry[0]),
-  ]
+  const names = []
+  for (const group of groups) {
+    for (const name of group.entries) {
+      if (names.includes(name) === false) names.push(name)
+    }
+  }
   for (const name of names) {
-    if (keepMemory && name === WORKSPACE_RESET_MEMORY_FILE) continue
-    if (keepTmp && name === 'tmp') continue
     const target = path.join(directory, name)
     let entry
     try {
@@ -1951,13 +1960,13 @@ export async function resetWorkspaceDataAt(root, options = {}) {
 /**
  * Host op: reset the plugin's workspace data for one registered workspace.
  * @param ctx - Host context.
- * @param body - `{ root, keepMemory, keepTmp }`.
+ * @param body - `{ root, groups }`.
  * @returns reset summary.
  */
 async function resetWorkspaceData(ctx, body) {
   const root = await resolveRoot(ctx, body.root)
   if (ssh.isSshRoot(root)) throw new SideError('ssh-unsupported', 'SSH 远程工作区暂不支持重置工作区数据')
-  return resetWorkspaceDataAt(root, { keepMemory: body.keepMemory === true, keepTmp: body.keepTmp === true })
+  return resetWorkspaceDataAt(root, { groups: Array.isArray(body.groups) ? body.groups : undefined })
 }
 
 /** Confirm the direct parent of a path is inside the root without following it. */

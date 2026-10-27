@@ -29,6 +29,23 @@ window.__ModuleLoader__.load({
     /** Local Git companion route (host bridge bundle). */
     const GIT_PATH = 'api/dsh-web-filebrowser-git'
 
+    /** Workspace reset categories, in the Host's canonical order (v1.2.90). */
+    const RESET_GROUP_IDS = [
+      'pipeline',
+      'acceptance',
+      'review',
+      'todos',
+      'runs',
+      'bookmarks',
+      'assignments',
+      'delivery',
+      'evidence',
+      'verifications',
+      'intake',
+      'memory',
+      'tmp',
+    ]
+
     /** Locale-store keys. */
     const ROOT_KEY = 'dsh-web-filebrowser:root'
     const WIDTH_KEY = 'dsh-web-filebrowser:tree-width'
@@ -412,13 +429,27 @@ window.__ModuleLoader__.load({
       'workbench.intakeDone': '已提交，正在交给产品经理梳理。',
       'workbench.reset': '重置数据',
       'workbench.resetTitle': '重置工作区数据',
-      'workbench.resetMessage': '只清理本插件在工作区 `.dsh/` 里生成的数据（流水线、验收、待办、复核标记、运行历史、预览书签、交付包、证据、复测、需求附件），不会删除代码文件。',
-      'workbench.resetMemory': '同时清除工作区记忆（memory.json）',
-      'workbench.resetTmp': '同时清理临时文件（.dsh/tmp）',
+      'workbench.resetMessage': '勾选要清理的类别。只会删除本插件在 `.dsh/` 里生成的数据：不删除代码文件，不改动 `.dsh` 本身与未知文件。',
+      'workbench.resetSelectAll': '全选',
+      'workbench.resetSelectNone': '全不选',
+      'workbench.resetPickOne': '至少选择一个类别。',
       'workbench.resetConfirm': '重置',
       'workbench.resetBusy': '正在重置…',
       'workbench.resetDone': '已清理 {count} 项；刷新页面后各面板显示空状态。',
       'workbench.resetError': '重置失败：{message}',
+      'workbench.reset.group.pipeline': '交付流水线',
+      'workbench.reset.group.acceptance': '验收清单',
+      'workbench.reset.group.review': '复核与已审标记',
+      'workbench.reset.group.todos': '工作区待办',
+      'workbench.reset.group.runs': '运行历史',
+      'workbench.reset.group.bookmarks': '预览书签',
+      'workbench.reset.group.assignments': '角色指派记录',
+      'workbench.reset.group.delivery': '交付历史与交付包',
+      'workbench.reset.group.evidence': '验收证据',
+      'workbench.reset.group.verifications': '复测记录',
+      'workbench.reset.group.intake': '需求附件',
+      'workbench.reset.group.memory': '工作区记忆',
+      'workbench.reset.group.tmp': '临时文件',
       'workbench.attachments': '附件',
       'workbench.needInput': '先写需求或加一个附件。',
       'workbench.progress': '阶段 {done}/{total} · 当前：{stage}',
@@ -1699,13 +1730,27 @@ window.__ModuleLoader__.load({
       'workbench.intakeDone': 'Submitted; handing it to the product manager.',
       'workbench.reset': 'Reset data',
       'workbench.resetTitle': 'Reset workspace data',
-      'workbench.resetMessage': 'Only the data this plugin keeps in the workspace `.dsh/` directory is removed (pipeline, acceptance, todos, review marks, run history, preview bookmarks, delivery bundles, evidence, verifications, requirement attachments). Your source files are never touched.',
-      'workbench.resetMemory': 'Also clear workspace memory (memory.json)',
-      'workbench.resetTmp': 'Also clear temporary files (.dsh/tmp)',
+      'workbench.resetMessage': 'Tick the categories to clear. Only data this plugin keeps in `.dsh/` is removed: your source files, `.dsh` itself and unknown files are never touched.',
+      'workbench.resetSelectAll': 'Select all',
+      'workbench.resetSelectNone': 'Select none',
+      'workbench.resetPickOne': 'Pick at least one category.',
       'workbench.resetConfirm': 'Reset',
       'workbench.resetBusy': 'Resetting…',
       'workbench.resetDone': 'Removed {count} items; refresh the page to see empty panels.',
       'workbench.resetError': 'Reset failed: {message}',
+      'workbench.reset.group.pipeline': 'Delivery pipeline',
+      'workbench.reset.group.acceptance': 'Acceptance checklist',
+      'workbench.reset.group.review': 'Review and re-checked marks',
+      'workbench.reset.group.todos': 'Workspace todos',
+      'workbench.reset.group.runs': 'Run history',
+      'workbench.reset.group.bookmarks': 'Preview bookmarks',
+      'workbench.reset.group.assignments': 'Role assignments',
+      'workbench.reset.group.delivery': 'Delivery history and bundles',
+      'workbench.reset.group.evidence': 'Acceptance evidence',
+      'workbench.reset.group.verifications': 'Verification records',
+      'workbench.reset.group.intake': 'Requirement attachments',
+      'workbench.reset.group.memory': 'Workspace memory',
+      'workbench.reset.group.tmp': 'Temporary files',
       'workbench.attachments': 'Attachments',
       'workbench.needInput': 'Write the requirement or add an attachment first.',
       'workbench.progress': 'Stage {done}/{total} · current: {stage}',
@@ -8562,11 +8607,24 @@ window.__ModuleLoader__.load({
         const [intakeFiles, setIntakeFiles] = useState([])
         const [intakeMode, setIntakeMode] = useState('fast')
         const [intakeNotice, setIntakeNotice] = useState('')
-        // One-click workspace reset (v1.2.89): the Host only touches its own
-        // `.dsh/` allow-list, so these flags are the whole scope contract.
+        // One-click workspace reset (v1.2.89): every category is its own
+        // checkbox and the Host only removes entries named by the ticked ids.
         const [resetOpen, setResetOpen] = useState(false)
-        const [resetClearMemory, setResetClearMemory] = useState(false)
-        const [resetClearTmp, setResetClearTmp] = useState(true)
+        const [resetGroups, setResetGroups] = useState(() => ({
+          pipeline: true,
+          acceptance: true,
+          review: true,
+          todos: true,
+          runs: true,
+          bookmarks: true,
+          assignments: true,
+          delivery: true,
+          evidence: true,
+          verifications: true,
+          intake: true,
+          memory: false,
+          tmp: true,
+        }))
         const [resetBusy, setResetBusy] = useState(false)
         const [resetNotice, setResetNotice] = useState('')
         const [resetError, setResetError] = useState(null)
@@ -10552,18 +10610,26 @@ ${tail}
           }
         }
 
-        /** Reset this workspace's plugin data from the Workbench (v1.2.89). */
+        /** Tick or clear every reset category at once. */
+        function setAllResetGroups(value) {
+          const next = {}
+          for (const id of RESET_GROUP_IDS) next[id] = value
+          return next
+        }
+
+        /** Reset the ticked workspace data categories from the Workbench (v1.2.90). */
         async function resetWorkspaceFromWorkbench() {
           const root = store.get().root
           if (root === null || isSshRootPath(root)) return
+          const groups = RESET_GROUP_IDS.filter((id) => resetGroups[id] === true)
+          if (groups.length === 0) {
+            setResetError(t('workbench.resetPickOne'))
+            return
+          }
           setResetBusy(true)
           setResetError(null)
           try {
-            const result = await call('resetWorkspaceData', {
-              root,
-              keepMemory: resetClearMemory === false,
-              keepTmp: resetClearTmp === false,
-            })
+            const result = await call('resetWorkspaceData', { root, groups })
             const removed = Array.isArray(result?.removed) ? result.removed : []
             setResetNotice(t('workbench.resetDone', { count: String(removed.length) }))
             setResetOpen(false)
@@ -19951,26 +20017,30 @@ ${tail}
                     h('div', { className: 'ds-modal-title', id: 'ds-wb-reset-title' }, t('workbench.resetTitle')),
                     h('div', { className: 'ds-modal-text' }, t('workbench.resetMessage')),
                     h(
-                      'label',
-                      { className: 'ds-modal-check' },
-                      h('input', {
-                        type: 'checkbox',
-                        checked: resetClearMemory,
-                        disabled: resetBusy,
-                        onChange: (event) => setResetClearMemory(event.target.checked),
-                      }),
-                      h('span', null, t('workbench.resetMemory')),
+                      'div',
+                      { className: 'ds-modal-checks' },
+                      RESET_GROUP_IDS.map((id) =>
+                        h(
+                          'label',
+                          { className: 'ds-modal-check', key: id },
+                          h('input', {
+                            type: 'checkbox',
+                            checked: resetGroups[id] === true,
+                            disabled: resetBusy,
+                            onChange: (event) => {
+                              const checked = event.target.checked
+                              setResetGroups((current) => ({ ...current, [id]: checked }))
+                            },
+                          }),
+                          h('span', null, t('workbench.reset.group.' + id)),
+                        ),
+                      ),
                     ),
                     h(
-                      'label',
-                      { className: 'ds-modal-check' },
-                      h('input', {
-                        type: 'checkbox',
-                        checked: resetClearTmp,
-                        disabled: resetBusy,
-                        onChange: (event) => setResetClearTmp(event.target.checked),
-                      }),
-                      h('span', null, t('workbench.resetTmp')),
+                      'div',
+                      { className: 'ds-modal-checks-actions' },
+                      h('button', { type: 'button', className: 'ds-linkbtn', disabled: resetBusy, onClick: () => setResetGroups(setAllResetGroups(true)) }, t('workbench.resetSelectAll')),
+                      h('button', { type: 'button', className: 'ds-linkbtn', disabled: resetBusy, onClick: () => setResetGroups(setAllResetGroups(false)) }, t('workbench.resetSelectNone')),
                     ),
                     resetError === null ? null : h('div', { className: 'ds-errorline' }, resetError),
                     h(
@@ -28012,8 +28082,10 @@ h(
 .ds-props-note { margin-top: 6px; color: var(--dsw-alias-label-caption); font-size: 10px; }
 .ds-modal-title { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
 .ds-modal-text { color: var(--dsw-alias-label-secondary); line-height: 1.65; overflow-wrap: anywhere; }
-.ds-modal-check { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--dsw-alias-label-primary); font-size: 12.5px; cursor: pointer; }
+.ds-modal-check { display: flex; align-items: center; gap: 8px; color: var(--dsw-alias-label-primary); font-size: 12.5px; cursor: pointer; }
 .ds-modal-check input { width: 14px; height: 14px; accent-color: var(--dsw-alias-brand-primary); }
+.ds-modal-checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; margin-top: 12px; }
+.ds-modal-checks-actions { display: flex; gap: 14px; margin-top: 10px; }
 .ds-wb-action-danger { color: var(--dsw-alias-label-error, #d33); }
 .ds-wb-action-danger:hover { border-color: var(--dsw-alias-label-error, #d33); color: var(--dsw-alias-label-error, #d33); }
 .ds-modal-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 18px; }

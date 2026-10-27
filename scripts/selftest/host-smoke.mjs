@@ -25,7 +25,7 @@ import * as delivery from '../../dsh-web-filebrowser-plugin/delivery.js'
 import * as pipeline from '../../dsh-web-filebrowser-plugin/pipeline.js'
 import * as review from '../../dsh-web-filebrowser-plugin/review.js'
 import * as workspaceState from '../../dsh-web-filebrowser-plugin/workspace-state.js'
-import { apply, resetWorkspaceDataAt } from '../../dsh-web-filebrowser-plugin/index.js'
+import { apply, resetWorkspaceDataAt, WORKSPACE_RESET_GROUPS } from '../../dsh-web-filebrowser-plugin/index.js'
 
 const results = []
 const roots = []
@@ -790,34 +790,55 @@ try {
     dispose()
   })
 
-  await test('v1.2.89 workspace reset only removes the plugin data allow-list', async () => {
+  await test('v1.2.89 workspace reset only removes the ticked categories', async () => {
+    // Every reset category is a selectable group with a stable id.
+    const ids = WORKSPACE_RESET_GROUPS.map((group) => group.id)
+    assert.equal(ids.length, 13, `expected 13 reset categories, got ${String(ids.length)}`)
+    assert.deepEqual(ids, [...new Set(ids)], 'reset category ids must be unique')
+    for (const expected of ['pipeline', 'acceptance', 'review', 'todos', 'runs', 'bookmarks', 'assignments', 'delivery', 'evidence', 'verifications', 'intake', 'memory', 'tmp']) {
+      assert.ok(ids.includes(expected), `reset categories must include ${expected}`)
+    }
     const root = await workspace('reset')
     const dsh = path.join(root, '.dsh')
-    await fsp.mkdir(path.join(dsh, 'evidence'), { recursive: true })
-    await fsp.mkdir(path.join(dsh, 'verifications'), { recursive: true })
-    await fsp.mkdir(path.join(dsh, 'tmp'), { recursive: true })
-    await fsp.writeFile(path.join(dsh, 'pipeline.json'), '{"version":1}')
-    await fsp.writeFile(path.join(dsh, 'acceptance.json'), '{"version":1}')
-    await fsp.writeFile(path.join(dsh, 'todos.json'), '{"items":[]}')
-    await fsp.writeFile(path.join(dsh, 'memory.json'), '{"memories":[]}')
-    await fsp.writeFile(path.join(dsh, 'evidence', 'shot.png'), 'png')
-    await fsp.writeFile(path.join(dsh, 'tmp', 'cache.bin'), 'cache')
-    // Unknown files in `.dsh` are not plugin data and must survive a reset.
-    await fsp.writeFile(path.join(dsh, 'notes.txt'), 'keep me')
+    const seed = async () => {
+      await fsp.mkdir(path.join(dsh, 'evidence'), { recursive: true })
+      await fsp.mkdir(path.join(dsh, 'verifications'), { recursive: true })
+      await fsp.mkdir(path.join(dsh, 'tmp'), { recursive: true })
+      await fsp.writeFile(path.join(dsh, 'pipeline.json'), '{"version":1}')
+      await fsp.writeFile(path.join(dsh, 'acceptance.json'), '{"version":1}')
+      await fsp.writeFile(path.join(dsh, 'todos.json'), '{"items":[]}')
+      await fsp.writeFile(path.join(dsh, 'memory.json'), '{"memories":[]}')
+      await fsp.writeFile(path.join(dsh, 'evidence', 'shot.png'), 'png')
+      await fsp.writeFile(path.join(dsh, 'tmp', 'cache.bin'), 'cache')
+      // Unknown files in `.dsh` are not plugin data and must survive a reset.
+      await fsp.writeFile(path.join(dsh, 'notes.txt'), 'keep me')
+    }
+    const exists = (name) => fsp.stat(path.join(dsh, name)).then(() => true, () => false)
+    // Omitting `groups` clears every category.
+    await seed()
     const result = await resetWorkspaceDataAt(root)
     assert.deepEqual(result.failed, [], 'reset must not fail on the allow-list')
     for (const name of ['pipeline.json', 'acceptance.json', 'todos.json', 'memory.json', 'evidence', 'tmp']) {
-      await assert.rejects(fsp.access(path.join(dsh, name)), `${name} must be removed by default`)
+      assert.equal(await exists(name), false, `${name} must be removed by default`)
     }
     assert.ok((await fsp.stat(dsh)).isDirectory(), '.dsh itself must stay')
     assert.equal(await fsp.readFile(path.join(dsh, 'notes.txt'), 'utf8'), 'keep me', 'unknown files must stay')
-    // keepMemory / keepTmp preserve exactly those entries.
-    await fsp.writeFile(path.join(dsh, 'memory.json'), '{"memories":[]}')
-    await fsp.mkdir(path.join(dsh, 'tmp'), { recursive: true })
-    await fsp.writeFile(path.join(dsh, 'tmp', 'cache.bin'), 'cache')
-    await resetWorkspaceDataAt(root, { keepMemory: true, keepTmp: true })
-    assert.ok((await fsp.stat(path.join(dsh, 'memory.json'))).isFile(), 'keepMemory keeps memory.json')
-    assert.ok((await fsp.stat(path.join(dsh, 'tmp'))).isDirectory(), 'keepTmp keeps .dsh/tmp')
+    // A subset only clears the ticked categories.
+    await seed()
+    const subset = await resetWorkspaceDataAt(root, { groups: ['memory', 'tmp'] })
+    assert.deepEqual(subset.removed.sort(), ['memory.json', 'tmp'])
+    assert.equal(await exists('memory.json'), false)
+    assert.equal(await exists('tmp'), false)
+    assert.equal(await exists('pipeline.json'), true, 'unticked pipeline file must stay')
+    assert.equal(await exists('evidence'), true, 'unticked evidence directory must stay')
+    // An empty selection clears nothing and an unknown id is rejected.
+    const none = await resetWorkspaceDataAt(root, { groups: [] })
+    assert.deepEqual(none.removed, [])
+    assert.equal(await exists('pipeline.json'), true)
+    await assert.rejects(
+      resetWorkspaceDataAt(root, { groups: ['pipeline', 'not-a-category'] }),
+      (error) => error?.code === 'bad-group',
+    )
     // A symlinked `.dsh` is refused rather than followed out of the workspace.
     const external = await workspace('reset-external')
     const linkRoot = await workspace('reset-link')
@@ -826,8 +847,8 @@ try {
     await assert.rejects(resetWorkspaceDataAt(linkRoot), (error) => error?.code === 'unsafe')
     assert.ok((await fsp.stat(path.join(external, 'pipeline.json'))).isFile(), 'symlink target must be untouched')
     // A workspace without `.dsh` is a no-op instead of an error.
-    const empty = await resetWorkspaceDataAt(await workspace('reset-empty'))
-    assert.deepEqual(empty.removed, [])
+    const emptyWorkspace = await resetWorkspaceDataAt(await workspace('reset-empty'))
+    assert.deepEqual(emptyWorkspace.removed, [])
   })
 
   await test('v1.2.73 stage prompts carry research/quality/license/security requirements', async () => {
