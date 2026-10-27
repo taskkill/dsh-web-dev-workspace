@@ -2,6 +2,62 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.89 — 2026-10-27
+
+### One-click workspace data reset
+
+- **The Workbench header gained a “重置数据 / Reset data” button.** It opens a
+  confirmation dialog that lists the scope, offers two checkboxes — *also clear
+  workspace memory (`memory.json`)* (off by default) and *also clear temporary
+  files (`.dsh/tmp`)* (on by default) — and then calls one new Host op,
+  `resetWorkspaceData`. On success the workbench reloads and a notice reports how
+  many entries were removed.
+- **The Host only deletes a fixed allow-list inside `.dsh/`**: `pipeline.json`,
+  `acceptance.json`, `review.json`, `todos.json`, `runs.json`,
+  `browser-bookmarks.json`, `agent-assignments.json`, `deliveries.json`,
+  `memory.json` (skippable), and the `deliveries/`, `evidence/`, `verifications/`,
+  `intake/`, `tmp/` (skippable) directories. `.dsh` itself, unknown files and the
+  user's source tree are never touched. A symlinked `.dsh` is refused with
+  `unsafe`, entries that are symlinks are unlinked instead of followed, and SSH
+  roots are rejected with `ssh-unsupported`. Per-entry failures are reported
+  without aborting the rest of the reset.
+- **Why:** after several delivery rounds a workspace accumulates pipeline,
+  acceptance and evidence data that the owner wants to clear before starting
+  over; doing it by hand meant deleting `.dsh` files with no way to see the
+  scope or keep memory. The button makes the scope explicit and safe.
+- **Verification.** New host-smoke case `v1.2.89 workspace reset only removes
+  the plugin data allow-list` covers the default reset, `keepMemory`/`keepTmp`,
+  the symlinked-`.dsh` refusal and the empty-workspace no-op. Plugin `1.2.87`,
+  root `1.2.89` (workspace rule: +1 after each change). `npm run check`,
+  `npm run check:json` and `npm test` pass (37/37).
+
+## 1.2.88 — 2026-10-27
+
+### Session hygiene: one requirement per conversation, shipped with the plugin
+
+- **The injected guidance now states the conversation rule.** `PIPELINE_SECTION`
+  gained a `会话与成本` paragraph: workbench actions (hand to the product manager /
+  kick off / start and dispatch / start a change) only send prompts to the current
+  conversation, so a new requirement or project should begin in a new conversation
+  while same-requirement fixes stay; large searches, build logs and batch
+  verification go to `subagent` / `spawn_teammate` (fresh); delivery state is
+  persisted in `.dsh/` and `docs/`, not in chat memory; use `/compact` or a new
+  conversation when the context grows.
+- **The workspace briefing reminds a completed project.** When all seven stages are
+  done, the `## 工作区状态` briefing adds a session suggestion, so a session resumed
+  after delivery tells the owner to start a new conversation before the next
+  requirement.
+- **Workbench copy says it where the owner types.** The Chinese and English
+  `workbench.intakeHint` now point at the new-conversation button and explain that
+  kickoff prompts only reach the current conversation. README (zh/en) and
+  `docs/PLAYBOOK.md` document the same recommended workflow.
+- **Why:** the rule previously lived only in a per-workspace `memory.json` entry, so
+  a fresh install never had it. It now ships with the package (prompt section +
+  briefing + UI copy + docs), the same way the v1.2.86 trigger policy was moved out
+  of workspace memory.
+- **Verification.** Plugin `1.2.86`, root `1.2.88` (workspace rule: +1 after each
+  change). `npm run check`, `npm run check:json` and `npm test` pass.
+
 ## 1.2.86 — 2026-10-27
 
 ### Pipeline trigger policy: workbench requests run the seven stages, chat requests stay in the default flow

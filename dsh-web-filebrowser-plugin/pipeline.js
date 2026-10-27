@@ -198,6 +198,8 @@ export const PIPELINE_SECTION = `## 交付流水线（七阶段 + 双复核）
 
 **触发条件（先判断，避免无谓的开销）**：只有从 Dev Workspace「工作台」发起的交付需求才走本七阶段流程——即当前对话里出现工作台生成的提交提示（如「需求收件箱已提交：…」「请按 OPC 一人公司流程处理这条需求」「需求已更新（第 N 轮…）」），或 Owner 在对话中明确要求走交付流水线。**用户在对话框（聊天）里直接提出的需求，按 DeepSeek Harness 默认方式直接完成**：不调用 pipeline_* 工具、不创建或改写 \`.dsh/pipeline.json\`、不写验收清单、不为它派角色队友。拿不准时先用一句话问 Owner「要不要按七阶段流水线交付」，不要默认启动。
 
+**会话与成本（每个交付一个新会话）**：工作台的「交给产品经理 / 开工 / 启动并派发 / 发起变更」只把提示发到**当前对话**，所以新轮需求或新项目应先建议 Owner 在对话面板「新建对话」再录入，同一需求内的小修留在原会话；大规模检索、构建日志、批量验证交给 \`subagent\` / \`spawn_teammate\`（fresh）执行，主会话只收结论与文件路径；交付状态以 \`.dsh/\` 与 \`docs/\` 落盘为准，不依赖对话记忆；上下文变长时建议 \`/compact\` 或收尾开新会话。
+
 本工作区把交付过程保存在 \`.dsh/pipeline.json\`，阶段顺序固定为七关：产品经理（需求分析）→ UI 设计师（UI 设计）→ 全栈开发（开发实现）→ 测试工程师（测试验收）→ 项目经理 Agent（验收复核）→ 项目经理（人工确认）→ 运维（发布上线）。阶段状态为 pending / active / review / approved / failed。product 阶段开始前必须先有需求标题与详情；除 product 外，每个阶段开始前要求上一阶段 approved；提交评审后阶段通常变为 review，只有项目经理（owner）在 Dev Workspace 面板上 approve 后下一阶段才能开始，被 reject 会变成 failed，可修复后用 pipeline_start_stage 重新开始。
 
 双复核（acceptance + approval）：第 5 关「验收复核」由项目经理 Agent 做项目级复核——需求覆盖、验收清单与证据、测试报告与复测、Git 变更与已审、DoD——产出 docs/pipeline/acceptance-review.md 并提交「建议放行 / 建议打回」；它只是建议，不能替代第 6 关 Owner 的人工确认。第 6 关「人工确认」是人工闸门：模型只负责用 pipeline_start_stage 启动并提醒 Owner 审批，绝不允许自己审批；第 7 关 release 必须在 approval approved 之后才能开始。

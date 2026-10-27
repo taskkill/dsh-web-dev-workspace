@@ -408,8 +408,17 @@ window.__ModuleLoader__.load({
       'workbench.removeFile': '移除',
       'workbench.intakeMode': '自动推进（中间阶段自动通过，只在最终确认与发布找我）',
       'workbench.submitIntake': '交给产品经理',
-      'workbench.intakeHint': '提交后：产品经理梳理可落地方案 → 设计/开发/测试自动推进 → 你只需在工作台确认与验收。',
+      'workbench.intakeHint': '提交后：产品经理梳理可落地方案 → 设计/开发/测试自动推进 → 你只需在工作台确认与验收。新一轮需求建议先新建对话——开工提示只会发到当前对话。',
       'workbench.intakeDone': '已提交，正在交给产品经理梳理。',
+      'workbench.reset': '重置数据',
+      'workbench.resetTitle': '重置工作区数据',
+      'workbench.resetMessage': '只清理本插件在工作区 `.dsh/` 里生成的数据（流水线、验收、待办、复核标记、运行历史、预览书签、交付包、证据、复测、需求附件），不会删除代码文件。',
+      'workbench.resetMemory': '同时清除工作区记忆（memory.json）',
+      'workbench.resetTmp': '同时清理临时文件（.dsh/tmp）',
+      'workbench.resetConfirm': '重置',
+      'workbench.resetBusy': '正在重置…',
+      'workbench.resetDone': '已清理 {count} 项；刷新页面后各面板显示空状态。',
+      'workbench.resetError': '重置失败：{message}',
       'workbench.attachments': '附件',
       'workbench.needInput': '先写需求或加一个附件。',
       'workbench.progress': '阶段 {done}/{total} · 当前：{stage}',
@@ -1686,8 +1695,17 @@ window.__ModuleLoader__.load({
       'workbench.removeFile': 'Remove',
       'workbench.intakeMode': 'Auto-advance (intermediate stages pass automatically; only final sign-off and release need you)',
       'workbench.submitIntake': 'Hand to the product manager',
-      'workbench.intakeHint': 'After submitting: the product manager turns it into a plan, design/dev/test advance automatically, and you only confirm and accept in the Workbench.',
+      'workbench.intakeHint': 'After submitting: the product manager turns it into a plan, design/dev/test advance automatically, and you only confirm and accept in the Workbench. Start a new requirement in a new conversation — kickoff prompts only go to the current one.',
       'workbench.intakeDone': 'Submitted; handing it to the product manager.',
+      'workbench.reset': 'Reset data',
+      'workbench.resetTitle': 'Reset workspace data',
+      'workbench.resetMessage': 'Only the data this plugin keeps in the workspace `.dsh/` directory is removed (pipeline, acceptance, todos, review marks, run history, preview bookmarks, delivery bundles, evidence, verifications, requirement attachments). Your source files are never touched.',
+      'workbench.resetMemory': 'Also clear workspace memory (memory.json)',
+      'workbench.resetTmp': 'Also clear temporary files (.dsh/tmp)',
+      'workbench.resetConfirm': 'Reset',
+      'workbench.resetBusy': 'Resetting…',
+      'workbench.resetDone': 'Removed {count} items; refresh the page to see empty panels.',
+      'workbench.resetError': 'Reset failed: {message}',
       'workbench.attachments': 'Attachments',
       'workbench.needInput': 'Write the requirement or add an attachment first.',
       'workbench.progress': 'Stage {done}/{total} · current: {stage}',
@@ -8544,6 +8562,14 @@ window.__ModuleLoader__.load({
         const [intakeFiles, setIntakeFiles] = useState([])
         const [intakeMode, setIntakeMode] = useState('fast')
         const [intakeNotice, setIntakeNotice] = useState('')
+        // One-click workspace reset (v1.2.89): the Host only touches its own
+        // `.dsh/` allow-list, so these flags are the whole scope contract.
+        const [resetOpen, setResetOpen] = useState(false)
+        const [resetClearMemory, setResetClearMemory] = useState(false)
+        const [resetClearTmp, setResetClearTmp] = useState(true)
+        const [resetBusy, setResetBusy] = useState(false)
+        const [resetNotice, setResetNotice] = useState('')
+        const [resetError, setResetError] = useState(null)
         const [requirementPanelOpen, setRequirementPanelOpen] = useState(false)
         const [requirementMode, setRequirementMode] = useState('append')
         const [requirementTitleDraft, setRequirementTitleDraft] = useState('')
@@ -10523,6 +10549,29 @@ ${tail}
             setWorkbenchError(t('workbench.loadFailed', { message: errorText(error) }))
           } finally {
             setWorkbenchBusy(false)
+          }
+        }
+
+        /** Reset this workspace's plugin data from the Workbench (v1.2.89). */
+        async function resetWorkspaceFromWorkbench() {
+          const root = store.get().root
+          if (root === null || isSshRootPath(root)) return
+          setResetBusy(true)
+          setResetError(null)
+          try {
+            const result = await call('resetWorkspaceData', {
+              root,
+              keepMemory: resetClearMemory === false,
+              keepTmp: resetClearTmp === false,
+            })
+            const removed = Array.isArray(result?.removed) ? result.removed : []
+            setResetNotice(t('workbench.resetDone', { count: String(removed.length) }))
+            setResetOpen(false)
+            await loadWorkbench({ silent: true })
+          } catch (error) {
+            setResetError(t('workbench.resetError', { message: errorText(error) }))
+          } finally {
+            setResetBusy(false)
           }
         }
 
@@ -19880,6 +19929,67 @@ ${tail}
                     ),
                   ),
                 )
+          const resetModal =
+            resetOpen === false
+              ? null
+              : h(
+                  'div',
+                  {
+                    className: 'ds-modal-backdrop',
+                    onPointerDown: (event) => {
+                      if (event.target === event.currentTarget && resetBusy === false) setResetOpen(false)
+                    },
+                  },
+                  h(
+                    'div',
+                    {
+                      className: 'ds-modal',
+                      role: 'dialog',
+                      'aria-modal': 'true',
+                      'aria-labelledby': 'ds-wb-reset-title',
+                    },
+                    h('div', { className: 'ds-modal-title', id: 'ds-wb-reset-title' }, t('workbench.resetTitle')),
+                    h('div', { className: 'ds-modal-text' }, t('workbench.resetMessage')),
+                    h(
+                      'label',
+                      { className: 'ds-modal-check' },
+                      h('input', {
+                        type: 'checkbox',
+                        checked: resetClearMemory,
+                        disabled: resetBusy,
+                        onChange: (event) => setResetClearMemory(event.target.checked),
+                      }),
+                      h('span', null, t('workbench.resetMemory')),
+                    ),
+                    h(
+                      'label',
+                      { className: 'ds-modal-check' },
+                      h('input', {
+                        type: 'checkbox',
+                        checked: resetClearTmp,
+                        disabled: resetBusy,
+                        onChange: (event) => setResetClearTmp(event.target.checked),
+                      }),
+                      h('span', null, t('workbench.resetTmp')),
+                    ),
+                    resetError === null ? null : h('div', { className: 'ds-errorline' }, resetError),
+                    h(
+                      'div',
+                      { className: 'ds-modal-actions' },
+                      h('button', { type: 'button', className: 'ds-btn', disabled: resetBusy, onClick: () => setResetOpen(false) }, t('action.cancel')),
+                      h(
+                        'button',
+                        {
+                          type: 'button',
+                          className: 'ds-btn ds-btn-danger',
+                          disabled: resetBusy,
+                          onClick: () => void resetWorkspaceFromWorkbench(),
+                        },
+                        resetBusy ? t('workbench.resetBusy') : t('workbench.resetConfirm'),
+                      ),
+                    ),
+                  ),
+                )
           const flowCard =
             requirementTitle.length === 0
               ? null
@@ -20394,6 +20504,23 @@ ${tail}
                   'button',
                   {
                     type: 'button',
+                    className: 'ds-wb-action ds-wb-action-danger',
+                    title: t('workbench.resetTitle'),
+                    'aria-label': t('workbench.resetTitle'),
+                    disabled: assignmentSsh,
+                    onClick: () => {
+                      setResetOpen(true)
+                      setResetNotice('')
+                      setResetError(null)
+                    },
+                  },
+                  h(TrashIcon),
+                  h('span', null, t('workbench.reset')),
+                ),
+                h(
+                  'button',
+                  {
+                    type: 'button',
                     className: 'ds-iconbtn ds-wb-head-close',
                     title: t('action.close'),
                     'aria-label': t('action.close'),
@@ -20413,10 +20540,12 @@ ${tail}
                   ? h(React.Fragment, null, nowSection, projectSection, deliverySection)
                   : requirementCard,
                 workbenchError !== null ? h('div', { className: 'ds-errorline' }, workbenchError) : null,
+                resetNotice.length === 0 ? null : h('div', { className: 'ds-wb-notice' }, resetNotice),
               ),
             ),
             assignmentDrawer,
             assignmentRejectModal,
+            resetModal,
           )
         }
 
@@ -27883,6 +28012,10 @@ h(
 .ds-props-note { margin-top: 6px; color: var(--dsw-alias-label-caption); font-size: 10px; }
 .ds-modal-title { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
 .ds-modal-text { color: var(--dsw-alias-label-secondary); line-height: 1.65; overflow-wrap: anywhere; }
+.ds-modal-check { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--dsw-alias-label-primary); font-size: 12.5px; cursor: pointer; }
+.ds-modal-check input { width: 14px; height: 14px; accent-color: var(--dsw-alias-brand-primary); }
+.ds-wb-action-danger { color: var(--dsw-alias-label-error, #d33); }
+.ds-wb-action-danger:hover { border-color: var(--dsw-alias-label-error, #d33); color: var(--dsw-alias-label-error, #d33); }
 .ds-modal-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 18px; }
 .ds-modal-link { margin-right: auto; align-self: center; color: var(--dsw-alias-brand-primary); font-size: 12px; text-decoration: none; }
 .ds-modal-link:hover { text-decoration: underline; }

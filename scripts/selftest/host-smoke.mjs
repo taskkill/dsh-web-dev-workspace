@@ -25,7 +25,7 @@ import * as delivery from '../../dsh-web-filebrowser-plugin/delivery.js'
 import * as pipeline from '../../dsh-web-filebrowser-plugin/pipeline.js'
 import * as review from '../../dsh-web-filebrowser-plugin/review.js'
 import * as workspaceState from '../../dsh-web-filebrowser-plugin/workspace-state.js'
-import { apply } from '../../dsh-web-filebrowser-plugin/index.js'
+import { apply, resetWorkspaceDataAt } from '../../dsh-web-filebrowser-plugin/index.js'
 
 const results = []
 const roots = []
@@ -766,6 +766,68 @@ try {
     assert.ok(briefingText.includes('流程约定'), 'workspace briefing must carry the pipeline trigger rule')
     assert.ok(briefingText.includes('对话框'), 'workspace briefing must mention chat requests')
     disposeBriefing()
+  })
+
+  await test('v1.2.88 session hygiene: one requirement per conversation, shipped in the prompt and briefing', async () => {
+    // The injected section states the conversation rule, so a fresh install has it
+    // without a per-workspace memory entry.
+    assert.ok(pipeline.PIPELINE_SECTION.includes('会话与成本'))
+    assert.ok(pipeline.PIPELINE_SECTION.includes('新建对话'))
+    assert.ok(pipeline.PIPELINE_SECTION.includes('当前对话'))
+    assert.ok(pipeline.PIPELINE_SECTION.includes('subagent'))
+    assert.ok(pipeline.PIPELINE_SECTION.includes('/compact'))
+    // A completed project's briefing suggests starting a new conversation.
+    const root = await workspace('session-hygiene')
+    const statuses = {}
+    for (const id of STAGE_ORDER) statuses[id] = 'approved'
+    await writeRawPipeline(root, rawPipelineDocument(STAGE_ORDER, statuses, { title: '已完成需求' }))
+    const host = makeHost()
+    const dispose = workspaceState.registerWorkspaceStatePrompt(host.ctx, {})
+    const briefing = host.contexts.find((context) => context.name === 'dsh-web-filebrowser:workspace-state')
+    assert.ok(briefing !== undefined)
+    const text = briefing.text({ agent: { id: 'qa', session: { meta: { cwd: root } } } })
+    assert.ok(text.includes('新建对话'), 'completed-project briefing must suggest a new conversation')
+    dispose()
+  })
+
+  await test('v1.2.89 workspace reset only removes the plugin data allow-list', async () => {
+    const root = await workspace('reset')
+    const dsh = path.join(root, '.dsh')
+    await fsp.mkdir(path.join(dsh, 'evidence'), { recursive: true })
+    await fsp.mkdir(path.join(dsh, 'verifications'), { recursive: true })
+    await fsp.mkdir(path.join(dsh, 'tmp'), { recursive: true })
+    await fsp.writeFile(path.join(dsh, 'pipeline.json'), '{"version":1}')
+    await fsp.writeFile(path.join(dsh, 'acceptance.json'), '{"version":1}')
+    await fsp.writeFile(path.join(dsh, 'todos.json'), '{"items":[]}')
+    await fsp.writeFile(path.join(dsh, 'memory.json'), '{"memories":[]}')
+    await fsp.writeFile(path.join(dsh, 'evidence', 'shot.png'), 'png')
+    await fsp.writeFile(path.join(dsh, 'tmp', 'cache.bin'), 'cache')
+    // Unknown files in `.dsh` are not plugin data and must survive a reset.
+    await fsp.writeFile(path.join(dsh, 'notes.txt'), 'keep me')
+    const result = await resetWorkspaceDataAt(root)
+    assert.deepEqual(result.failed, [], 'reset must not fail on the allow-list')
+    for (const name of ['pipeline.json', 'acceptance.json', 'todos.json', 'memory.json', 'evidence', 'tmp']) {
+      await assert.rejects(fsp.access(path.join(dsh, name)), `${name} must be removed by default`)
+    }
+    assert.ok((await fsp.stat(dsh)).isDirectory(), '.dsh itself must stay')
+    assert.equal(await fsp.readFile(path.join(dsh, 'notes.txt'), 'utf8'), 'keep me', 'unknown files must stay')
+    // keepMemory / keepTmp preserve exactly those entries.
+    await fsp.writeFile(path.join(dsh, 'memory.json'), '{"memories":[]}')
+    await fsp.mkdir(path.join(dsh, 'tmp'), { recursive: true })
+    await fsp.writeFile(path.join(dsh, 'tmp', 'cache.bin'), 'cache')
+    await resetWorkspaceDataAt(root, { keepMemory: true, keepTmp: true })
+    assert.ok((await fsp.stat(path.join(dsh, 'memory.json'))).isFile(), 'keepMemory keeps memory.json')
+    assert.ok((await fsp.stat(path.join(dsh, 'tmp'))).isDirectory(), 'keepTmp keeps .dsh/tmp')
+    // A symlinked `.dsh` is refused rather than followed out of the workspace.
+    const external = await workspace('reset-external')
+    const linkRoot = await workspace('reset-link')
+    await fsp.writeFile(path.join(external, 'pipeline.json'), '{}')
+    await fsp.symlink(external, path.join(linkRoot, '.dsh'))
+    await assert.rejects(resetWorkspaceDataAt(linkRoot), (error) => error?.code === 'unsafe')
+    assert.ok((await fsp.stat(path.join(external, 'pipeline.json'))).isFile(), 'symlink target must be untouched')
+    // A workspace without `.dsh` is a no-op instead of an error.
+    const empty = await resetWorkspaceDataAt(await workspace('reset-empty'))
+    assert.deepEqual(empty.removed, [])
   })
 
   await test('v1.2.73 stage prompts carry research/quality/license/security requirements', async () => {

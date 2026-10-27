@@ -313,6 +313,8 @@ async function dispatch(ctx, op, body) {
       return copyPath(ctx, body)
     case 'delete':
       return deletePath(ctx, body)
+    case 'resetWorkspaceData':
+      return resetWorkspaceData(ctx, body)
     case 'stat':
       return statPath(ctx, body)
     case 'properties':
@@ -1867,6 +1869,95 @@ async function deletePath(ctx, body) {
   if (info.isSymbolicLink()) await fsp.unlink(absolute)
   else await fsp.rm(absolute, { recursive: true, force: false })
   return { path: body.path }
+}
+
+/** Plugin data files removed by one workspace reset (file name → panel label). */
+const WORKSPACE_RESET_FILES = [
+  ['pipeline.json', '交付流水线'],
+  ['acceptance.json', '验收清单'],
+  ['review.json', '复核与已审标记'],
+  ['todos.json', '工作区待办'],
+  ['runs.json', '运行历史'],
+  ['browser-bookmarks.json', '预览书签'],
+  ['agent-assignments.json', '角色指派记录'],
+  ['deliveries.json', '交付历史'],
+]
+
+/** Plugin data directories removed by one workspace reset (directory name → panel label). */
+const WORKSPACE_RESET_DIRS = [
+  ['deliveries', '交付包'],
+  ['evidence', '验收证据'],
+  ['verifications', '复测记录'],
+  ['intake', '需求附件'],
+  ['tmp', '临时文件'],
+]
+
+/** Workspace memory file kept unless the caller asks to clear it. */
+const WORKSPACE_RESET_MEMORY_FILE = 'memory.json'
+
+/**
+ * Remove this plugin's own state from one workspace `.dsh` directory.
+ * Only the fixed allow-list is touched: unknown files, `.dsh` itself and the
+ * user's source tree are never removed, and symlinked entries are unlinked
+ * instead of followed so a reset cannot escape the workspace.
+ * @param root - canonical local workspace root.
+ * @param options - `{ keepMemory, keepTmp }`; both default to `false`.
+ * @returns `{ removed, failed }` with removed entry names and per-entry errors.
+ */
+export async function resetWorkspaceDataAt(root, options = {}) {
+  const keepMemory = options.keepMemory === true
+  const keepTmp = options.keepTmp === true
+  const resolved = path.resolve(root)
+  const directory = path.join(resolved, '.dsh')
+  const removed = []
+  const failed = []
+  let info
+  try {
+    info = await fsp.lstat(directory)
+  } catch (error) {
+    if (error !== null && typeof error === 'object' && error.code === 'ENOENT') return { removed, failed }
+    throw error
+  }
+  if (info.isSymbolicLink()) throw new SideError('unsafe', '.dsh 目录是符号链接，已拒绝重置')
+  if (!info.isDirectory()) throw new SideError('unsafe', '.dsh 不是目录，已拒绝重置')
+  const real = await fsp.realpath(directory)
+  if (!isInside(resolved, real)) throw new SideError('outside-root', '.dsh 指向工作区之外，已拒绝重置')
+  const names = [
+    ...WORKSPACE_RESET_FILES.map((entry) => entry[0]),
+    WORKSPACE_RESET_MEMORY_FILE,
+    ...WORKSPACE_RESET_DIRS.map((entry) => entry[0]),
+  ]
+  for (const name of names) {
+    if (keepMemory && name === WORKSPACE_RESET_MEMORY_FILE) continue
+    if (keepTmp && name === 'tmp') continue
+    const target = path.join(directory, name)
+    let entry
+    try {
+      entry = await fsp.lstat(target)
+    } catch {
+      continue
+    }
+    try {
+      if (entry.isSymbolicLink()) await fsp.unlink(target)
+      else await fsp.rm(target, { recursive: true, force: false })
+      removed.push(name)
+    } catch (error) {
+      failed.push({ name, message: error instanceof Error ? error.message : String(error) })
+    }
+  }
+  return { removed, failed }
+}
+
+/**
+ * Host op: reset the plugin's workspace data for one registered workspace.
+ * @param ctx - Host context.
+ * @param body - `{ root, keepMemory, keepTmp }`.
+ * @returns reset summary.
+ */
+async function resetWorkspaceData(ctx, body) {
+  const root = await resolveRoot(ctx, body.root)
+  if (ssh.isSshRoot(root)) throw new SideError('ssh-unsupported', 'SSH 远程工作区暂不支持重置工作区数据')
+  return resetWorkspaceDataAt(root, { keepMemory: body.keepMemory === true, keepTmp: body.keepTmp === true })
 }
 
 /** Confirm the direct parent of a path is inside the root without following it. */

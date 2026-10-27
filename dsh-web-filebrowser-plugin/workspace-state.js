@@ -395,6 +395,9 @@ function buildPromptBriefing(ctx, assembly, services) {
     )
   }
   lines.push(`- 运行中任务：${String(running)}`)
+  if (pipelineState !== null && pipelineState.current.id.length === 0) {
+    lines.push('- 会话建议：上一轮已全部完成；开新需求前先建议 Owner 新建对话再录入（开工提示只发到当前对话）。')
+  }
   lines.push('完整状态请调用 workspace_status。')
   const text = lines.join('\n')
   return text.length > MAX_PROMPT_CHARS ? `${text.slice(0, MAX_PROMPT_CHARS - 1)}…` : text
