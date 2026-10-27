@@ -269,6 +269,14 @@ third-party runtime dependencies.
   design → development → testing → **acceptance (AI project-manager review)** →
   **approval (owner sign-off)** → release — with a dual-review gate before release
   and fast mode that auto-approves only the four implementation stages — **design mockups still need the owner's confirmation** (v1.2.83), and approval/release stay manual.
+- Since v1.2.86 the flow is explicitly **workbench-initiated**: only a requirement
+  submitted from the workbench (requirement intake or revision), or one the owner
+  explicitly asks to run through the pipeline, enters the seven stages. A
+  requirement typed straight into the chat is completed in the default DeepSeek
+  Harness flow — no `pipeline_*` calls, no acceptance checklist and no role agents —
+  because the full flow is token-expensive. The rule is part of the injected
+  system prompt, the pipeline tool descriptions and the `## 工作区状态` briefing,
+  so every installation gets it.
 - Since v1.2.73 each executing role has an explicit research-and-borrow discipline
   in its stage prompt and handbook: the product manager researches comparable
   requirements/standards (≥3 sources, decision table), the UI designer follows nine

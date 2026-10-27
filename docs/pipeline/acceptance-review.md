@@ -1,14 +1,15 @@
-# 验收复核报告（项目经理 Agent）— 第 11 轮 · v1.2.83「设计先确认：设计稿截图 / HTML 预览 + 开发前人工闸门」
+# 验收复核报告（项目经理 Agent）— 第 12 轮 · v1.2.84「验收台分区可收起：证据库/复测/交付默认折叠 + 全部收起 + 分组折叠」
 
-- 轮次 / 阶段：第 11 轮 · acceptance（双复核第一关；`gateMode=fast`、`roundScope=full`；前四阶段 product/design/development/testing 记录为 approved）
-- 复核时间：2026-10-27 20:08–20:20（Asia/Shanghai，含 20:10–20:12 的 P2 闭环复验）；复核人：项目经理 Agent（**只读复核**：未改业务代码/需求/设计/验收结论/测试报告，未审批、未发布、未 commit；P2 闭环由 Lead 修复 QA 临时脚本，复核人仅复跑并更新本报告）
-- 基线：Git HEAD **`2d3ebe0`**（`fix(workbench): 打包交付不再清空流水线快照，修复跳回需求录入`，已提交）
-- 未提交变更（复核时实测 `git status` / `git diff --stat HEAD`）：**36 个文件 = 17 个已改 + 19 个未跟踪新增**；`git diff` = **17 files, +2712 / −451**；写入本报告后为 37 个变更（+1 本报告）
-- 版本：插件 `dsh-web-filebrowser-plugin/package.json` **1.2.83**；根 `package.json` **1.2.83**（交付后 +1 至 1.2.84 属 release 阶段）；CHANGELOG `## 1.2.83`；`docs/ACCEPTANCE.md` 批次 20；design.md §16
-- 复核环境：Linux；Node **v24.22.0**；npm **11.19.1**；工作区无 `node_modules`（测试仅用 Node 内置能力）；本会话**无浏览器/无 GUI 点击能力**，GUI 视觉项一律不伪造 pass
-- 复核产物：本报告 `docs/pipeline/acceptance-review.md` + 复测日志 `.dsh/evidence/acceptance-retest-v1.2.83.log`（**880 行**：首轮全量复测 + P2 闭环复验，共 18 条命令原文/退出码/耗时）
+- 轮次 / 阶段：第 12 轮 · **acceptance（双复核第一关）**；`gateMode=fast`、`round=12`；上游 product/design/development/testing 均为 **approved**（design 为 Owner 人工确认，见 ①）
+- 复核时间：2026-10-27 22:11–22:2x（Asia/Shanghai，UTC 14:11–14:2x）；复核人：项目经理 Agent（**只读复核**：未改业务代码/需求/设计/测试报告/验收结论/`.dsh` 状态，未审批、未 commit、未发布、未改版本）
+- 基线：Git HEAD **`1d85de4`**（`v1.2.85 仓库/包瘦身：移除生成位图与 npm 包内 node_modules`，已提交）；本轮交付提交属 release 阶段，**HEAD 尚未提交本轮改动**
+- 工作树（复核时实测）：**11 个已跟踪修改 + 13 个未跟踪新增 = 24 个变更路径**（**写入本报告后为 25 个：12 已跟踪 + 13 未跟踪，+1 即本报告**）；`git diff --stat HEAD` = **11 files, +2346 / −976**（含测试报告自身 +287/−133；QA 报告「10 files +2059/−843」为排除其自身报告的口径，两套数字可对上）；**写入本报告并修复 OBS-1 后**为 **12 files，约 +2.5k/−1.2k**（本报告自身约 +200/−201、CHANGELOG 由 +34/−0 变 +33/−0；精确总数随本记录追加略有变化），见 ④-2
+- 版本：插件 `dsh-web-filebrowser-plugin/package.json` = **1.2.84**；根 `package.json` = **1.2.86**（交付后 +1 的工作区规定已在工作树完成，待 release 提交）；`CHANGELOG.md` 顶部 `## 1.2.84 — 2026-10-27`；`docs/ACCEPTANCE.md` 批次 22（11 条复测项）
+- 复核环境：Linux；Node **v24.22.0**；npm **11.19.1**；本机 DSH 3080 实际下发 v1.2.84 bundle；headless chromium 131（`FONTCONFIG_FILE=/tmp/fonts/fonts.conf`）
+- 复核产物：本报告 `docs/pipeline/acceptance-review.md`（旧版原样归档 `docs/pipeline/archive/v1.2.83-acceptance-review.md`，md5 `56f2a744…` 与原文件一致）+ 复测日志 `.dsh/evidence/acceptance-retest-v1.2.84.log`（修复前 459 行：21 条命令/断言原文 + 退出码 + 耗时，另含 GUI 复跑 44 条逐条结果；**末尾追加 §7 P2 闭环复验段**，现约 520 行）
+- 临时脚本（不随包发布、`git` 未跟踪）：`.dsh/tmp/review-v1284/{review-static.mjs, static-rerun.mjs, gui-rerun.mjs, dark-probe.mjs, linkcheck-review.mjs, run-retest.sh}`
 
-> **结论先行：建议放行（待 Owner 批次 20 复测 blocked 项）**。代码/功能阻断 **0**；原 **P2 证据链阻断已闭环**（Lead 20:09:58 为 `qa-static-v1283` 白名单补入插件 README，复核 20:10 复跑 **`STATIC PASS (246 assertions)`**，见 ④-1）；剩余 **6 条 blocked** 均为 GUI 视觉/人工回归，需 Owner 按 ACCEPTANCE 批次 20 复测；**未发现 fail**。若 Owner 批次 20 发现真实功能缺陷，则回退 **development**。
+> **结论先行：建议放行。** **代码 / 功能 / 证据链阻断 0**；本轮 10 条验收项 **pass 10 / fail 0**，evidence 18 条全部存在；质量门 3/3 全绿（`check` / `check:json` / `test 34/34`）；独立静态 55/56（唯一 FAIL 是 **CHANGELOG 重复的 `## 1.2.85` 标题行**——P2 文档缺陷，**不阻断验收**，但 **release 提交前必须删掉 1 行**）；独立 GUI 复跑 43/44（Q39 为 QA 脚本解析器对 `color(srgb …)` 的假阴性，已用独立探针证明深色对比 7.18–14.27 全部 ≥4.5:1，**非产品缺陷**）。blocked 23 条**全部为历史遗留**，本轮新增 blocked **0**。Owner 需按批次 22 复测**写操作**与实机观感后，在 approval 关人工确认。
 
 ---
 
@@ -17,242 +18,240 @@
 | 项 | 实测值 |
 |---|---|
 | 工作区 | `/data/dsh/home/dsh-web-powerfilebrowser/dsh-web-filebrowser` |
-| HEAD | `2d3ebe0`（提交信息见上）；HEAD 前一条 `c545d78` = 根版本 +1 至 1.2.83 |
-| 变更面 | 17 已跟踪 + 19 未跟踪 = 36；`+2712/−451`（不含未跟踪文件内容） |
-| 已跟踪改动 | `CHANGELOG.md`、`README.md`、`README.zh.md`、`docs/{ACCEPTANCE,AGENT_TEAM,PLAYBOOK}.md`、`docs/opc/{02-design,README}.md`、`docs/pipeline/{design,engineering-research,requirements,test-report}.md`、`dsh-web-filebrowser-plugin/{README,client.js,pipeline.js,package.json}`、`scripts/selftest/host-smoke.mjs` |
-| 未跟踪新增 | `docs/pipeline/archive/{v1.2.79-requirements.md, v1.2.82-test-report.md}`、`docs/pipeline/design/design-gate-*` 8 组 PNG+SVG、`docs/pipeline/design/gen-design-gate-mockups.mjs` |
-| 关键行数核对 | client.js `+1424/−42`、pipeline.js `+76/−21`、host-smoke `+58/−9`（与 dev summary 的 `+1461/−38` 有差：dev summary 记旧数，实测为准；测试报告 O8 已记录此 bookkeeping 差异） |
-| 验收清单（复核时） | **49 条 = 26 pass / 0 fail / 23 blocked / 0 pending** |
-| 证据挂载 | **44 条 evidence 全部存在（0 缺失）**；**10 条无 evidence**（3 条历史 pass + 7 条历史 blocked；本轮 #8/#9 已由 Lead 于 20:10:08 分别补挂 `docs/pipeline/test-report.md` / `CHANGELOG.md`） |
-| 审阅状态 | `.dsh/review.json`：acceptance 基线已捕获（`11:acceptance`，20:04:14，36 文件）；`marks = 0`、`comments = 0` → **已审 0/36**（Owner 尚未标记，属 approval 前的已知条件，不是阻断） |
-| 上游门禁 | product/design/development/testing = approved（fast 模式记录为「Owner 预授权自动通过」；design 的实际确认方式见 ⑨ OBS-1） |
+| HEAD | `1d85de4`（v1.2.85 仓库/包瘦身）；HEAD 前一条 `8e03d0c` = v1.2.83 设计先确认 |
+| 变更面 | 11 已跟踪修改 + 13 未跟踪新增 = 24（写入本报告后 25：12 已跟踪 + 13 未跟踪）；`+2346/−976`（未跟踪文件内容不计入 diff） |
+| 已跟踪改动 | `CHANGELOG.md`、`README.md`、`README.zh.md`、`docs/ACCEPTANCE.md`、`docs/pipeline/{requirements,design,engineering-research,test-report}.md`、`dsh-web-filebrowser-plugin/{client.js,package.json}`、`package.json` |
+| 未跟踪新增 | 归档 4 个 md（v1.2.83 requirements/engineering-research/test-report/acceptance-review）、设计稿 8 张 SVG、生成器 `gen-acceptance-collapse-mockups.mjs`（均为 docs 资产，无临时垃圾/位图回灌） |
+| 验收清单（复核时） | **64 条 = 41 pass / 0 fail / 0 pending / 23 blocked**；36 个分类分组 |
+| 本轮 10 条 | **全部 pass**；evidence **18 条全部存在且非空**（见 ③） |
+| 审阅状态 | `.dsh/review.json`：`12:acceptance` 基线 14:11:12Z 捕获 **23 文件**；**marks = 0、comments = 0 → 已审 0/23**（Owner 尚未逐文件标记，属 approval 前已知条件，不是阻断） |
+| 上游门禁 | product 13:14:57Z 起算 → design 提交 13:37:30Z → **Owner approve 13:38:32Z**（`reviews[].actor=owner, decision=approve`）→ development 13:38:33Z 启动 → testing 14:10:57Z 提交；**acceptance 14:11:12Z active** |
+| 版本事实 | 插件 1.2.84 / 根 1.2.86；CHANGELOG `## 1.2.84`；ACCEPTANCE 批次 22（11 checkbox）；design §17（663 行）；test-report 331 行；engineering-research 535 行 |
+| 上一轮归档 | v1.2.83 requirements / engineering-research / test-report / acceptance-review 均已归档（第四项为本关写入，md5 一致） |
+| `docs/pipeline/release.md` | 仍为 **v1.2.83**（发布说明属 release 阶段，本关不写；见 ⑦ OBS-9） |
+
+> 复核边界：本会话只读——不改 `client.js` / `package.json` / `CHANGELOG.md` / `docs/ACCEPTANCE.md` / `.dsh/acceptance.json` / `.dsh/pipeline.json` / 测试报告；GUI 复跑只写 localStorage 折叠偏好与只读选择/筛选（写操作未点）；复跑脚本的输出路径已重定向到 `.dsh/tmp/review-v1284/`，**未覆盖任何 QA 证据文件**。
 
 ---
 
-## ② 需求覆盖表（对照 `docs/pipeline/requirements.md` 第 11 轮 + `.dsh/pipeline.json` 需求全文）
+## ② 需求覆盖表（对照 `.dsh/pipeline.json` 需求全文 + `docs/pipeline/requirements.md` §7/§8）
 
-> 需求事实源：`.dsh/pipeline.json` 的 requirement（含 19:17 追加的打包热修需求）+ `docs/pipeline/requirements.md` §3 范围 / §4 约束 / §6 行为规格 / §7 验收标准 / §8 验收项清单（10 条）。逐点映射到验收项与测试证据。
+> 需求事实源：`.dsh/pipeline.json` requirement（8 条验收标准）+ `requirements.md` §3 范围 / §6 行为规格 / §7 10 条可追溯标准 / §8 10 条验收项。逐点映射到实现、测试与独立复核证据。
 
-| # | 需求目标 / 范围点 | 落库验收项（本轮新增） | 测试/证据 | 复核判定 |
+| # | 需求目标 / 验收标准 | 落库验收项 | 测试 / 独立复核证据 | 判定 |
 |---|---|---|---|---|
-| 1 | 闸门：design 改为强制人工确认；fast 只剩 product/development/testing/acceptance 自动通过；design 提交停 `review`；design 未 approved 时 `pipeline_start_stage('development')` 被拒 | `8e375b5dff`（停 review）、`2d2729bed2`（开发被拒/确认后解锁） | `dev-design-gate-check`（真实 Host 模块跑通）、`npm test` 34/34 新增用例、pipeline.js `PIPELINE_MANUAL_GATE_STAGES` | **覆盖（pass）**；实机生效需重启 Host（见 ⑨ OBS-1） |
-| 2 | 视觉评审：截图（PNG/JPG/SVG/WebP/GIF）在流水线卡与工作台卡显示缩略图并可打开大图 | `e6d0b2bb93` | `fe-render-smoke` 51/51（D1/D3 缩略图、lazy、alt）、qa-static 静态断言 | **代码覆盖**；GUI 实际呈现 → **blocked（批次 20）** |
-| 3 | 视觉评审：HTML 设计产物 iframe 内嵌渲染、`sandbox`、三档 360/768/1280、源码为次级入口 | `0f33968c3e` | `fe-render-smoke`（D2 dialog/iframe/sandbox=''/title/lazy/三档/查看源码）、qa-static | **代码覆盖**；GUI 渲染与切档 → **blocked（批次 20）** |
-| 4 | 待确认态：review 时两处显示「设计稿待你确认 · 确认后进入开发」+ 通过/打回/预览入口 | `da409176e3` | `fe-render-smoke`（review banner、确认/打回、approved 后消失） | **代码覆盖**；两处实际呈现 → **blocked（批次 20）** |
-| 5 | HTML 文件预览：`.html/.htm` 默认渲染预览、工具栏预览/源码切换、空/不可读退化 | `5c6cfc4eef` | `fe-render-smoke`（D4 预览/源码切换/空态）、代码核对 `modeOf→html`、`openFile` 默认 preview、`switchTabToSource`/`showHtmlPreview` | **代码覆盖**；GUI 默认渲染/保存切回 → **blocked（批次 20）** |
-| 6 | 模型侧纪律：design 提示词要求至少一张截图、HTML 不能替代、不贴源码；无截图 warning 文案准确；快速模式「四个自动/三个需人工」全副本同步 | `b75496c076`（提示词/warning）、`2f6c7001ee`（文案） | pipeline.js `STAGE_GUIDES.design` / `PIPELINE_SECTION` / 工具描述；host-smoke 新增 warning 用例；qa-static 静态断言；grep 旧口径 | **覆盖（pass）** |
-| 7 | §7-8 版本文档：插件 1.2.83、CHANGELOG、ACCEPTANCE 批次 20、docs 同步；交付后根 +1 至 1.2.84 | `2c499c8a82` | 逐项实测（版本/CHANGELOG/批次 20/§16/8 组设计稿非空/归档）；根 +1 属 release | **覆盖（pass）**，release 关动作待执行 |
-| 8 | §7-9 质量门全绿 + 既有功能不回归（含 GUI） | `58e9af9d1b` | `npm run check` / `check:json` / `npm test 34/34` / `fe-render-smoke 51/51` / packfix 18/18 / normal 七阶段回归 / `git diff --check`；GUI 项需 Owner | **自动化覆盖**；人工 GUI → **blocked（批次 20）** |
-| 9 | **追加需求（Owner 19:17 打包热修）**：打包不清空 pipeline 快照、不跳回需求录入；按钮立即「打包中…」；补源码级回归断言 | `4fe571422f`、`0f138bf31d`、`643d66d403` | HEAD `2d3ebe0` 已提交修复；`npm test` 含 `packaging keeps the pipeline snapshot…`；packfix 静态 18/18；`runPackDelivery()` 源码核对 | 前两条 **pass**；GUI 端到端点击 → **blocked（批次 20）** |
-| 10 | 约束：不改七阶段/闸门语义、不引入依赖/字体/服务、不改数据结构、不自动截图、不扩 SSH 边界、不复制第三方代码 | —— | `git diff` 无 `package.json` 依赖改动、无 Host/数据迁移；新 iframe `sandbox=""`；无第三方文件/许可头 | **覆盖（无超范围）** |
+| 1 | 证据库 / 复测中心 / 交付与预览分享默认收起，点头部展开/收起，头部有标题 + 摘要徽标 + 箭头，展开内容与现状一致 | `3f101fa562` | 静态 S1–S4/S29/S30（三块 `renderBlockHead`、button+aria、hidden、徽标 ≤2 与 96px）；GUI Q1–Q10（默认 44px 三收起、逐块展开、证据 40 项、复测无内层开关、交付 4 按钮）；截图 default/expand-evidence/expanded | **通过** |
+| 2 | 折叠状态写 localStorage，刷新/重开保持；损坏/不可用回退默认且不崩溃；「全部收起/全部展开」作用于所有可折叠区块 | `757fe8a4eb`、`1e429dfa5d` | 静态 S15–S20（单键、默认值、16 KiB、整份回退、危险键、256 组、写失败吞异常）、S11–S13；GUI Q11–Q13（幂等两轮）、Q25–Q29（混合态 783 B 持久化、not-json 回退、坏形状回退、写失败降级） | **通过** |
+| 3 | 清单默认展开并占满剩余高度；选中详情随选中展开、可收起、取消选中隐藏；分组可折叠且不影响勾选/批量/状态/筛选 | `c6f153e79e`、`7357e9e50b` | 静态 S5–S8/S18/S26（分组/详情 button+aria+hidden、48px、96px 保底）；GUI Q2（清单 492px）、Q5–Q6、Q14–Q22（36 组；折叠行不占位；四筛选 64→33/0/3→64；勾选/批量条只读） | **通过** |
+| 4 | 折叠头为 button，aria-expanded/aria-controls 同步，Enter/Space 可切换、焦点可见、收起内容不参与 Tab（hidden） | `dc5f5d8476` | 静态 S2/S5/S7/S9/S27/S32（button、aria、2px focus-visible、`[hidden]{display:none}`、`verificationOpen` 已删）；GUI Q30–Q35（39 个头合法、Tab/Enter/Space、焦点保持、隐藏 body 跳过 Tab） | **通过** |
+| 5 | 360px 与 691px 无横向滚动，长标题/徽标不撑破；浅/深主题分隔线与对比度正常（正文 ≥4.5:1） | `6a62bac296` | GUI Q36–Q40（345/260/691 均 `scrollWidth==clientWidth`；徽标 ellipsis）；**独立深色探针**（`.dsh/tmp/review-v1284/dark-probe.mjs`，支持 `color(srgb …)`）：block title 14.27 / badge 9.25 / group 9.90 / detail title 14.27 / selected row 7.18 / chevron 9.90，浅色 18.9/5.8/5.8 | **通过** |
+| 6 | 中英文折叠文案齐全、无硬编码中文、缺失回退合理 | `760e12d0ab` | 静态 S21–S24（14 对 zh/en 成对非空；全量词典 parity 1265=1265；渲染段 40 669 字符 CJK 0；新增 zh 全中文 / en 无 CJK）；GUI Q41（lang=en 无中文残留） | **通过**（zh 运行时切换未实测，见 ⑦ OBS-6） |
+| 7 | 回归：筛选/勾选/状态/证据/复测/打包/预览分享/导出不变；`check`/`check:json`/`test` 全绿 | `66b51b2f9b` | 质量门 3/3；diff 无 Host 模块（S43）、包 diff 仅 version 行（S44）、无依赖/数据文件（S42/S48）；GUI Q42（刷新/模板/四筛选/勾选/证据区/命令区/交付按钮只读冒烟）、Q43（4 个窗口段 **0 console error**）；QA 证据 `v1.2.84-qa-gui-results.json` 44/44 | **通过**（写操作未在真实数据执行 → Owner 批次 22） |
+| 8 | 版本：插件 1.2.84、CHANGELOG 1.2.84、ACCEPTANCE 批次 22、文档同步；交付后根 +1 至 1.2.86 | `d365d11c1e` | 静态 S34–S40（插件 1.2.84 / 根 1.2.86 / CHANGELOG / 批次 22 / design §17 / 8 张 SVG 非空 / 归档 3 份 / pipeline.json design approved）；本地链接 135 条 0 死链 | **基本通过**（CHANGELOG 有 1 行重复标题，P2 待 release 前修正，见 ⑦ OBS-1） |
+| 9 | 约束：只改 client.js + localStorage + i18n + 版本/文档；不动 Host API/数据结构/依赖/操作语义；不加第三方库 | —— | S42–S48 全过：11 个已跟踪文件全部在允许清单内；`acceptance.js/pipeline.js/ssh.js/index.js` 等 Host 模块 0 改动；两个 `package.json` 仅版本行；`.dsh/` 未被 git 跟踪（0 文件）；渲染段无 `fetch`/定时器/`innerHTML`/`eval`（S33）；engineering-research 4 候选、零依赖零复制 | **通过（无超范围）** |
 
-**未覆盖 / 部分覆盖 / 超范围**
+**未覆盖 / 部分覆盖（均为环境或只读边界，非缺陷）**
 
-- **部分覆盖（环境限制，非缺陷）**：GUI 视觉与人工点击（#2/#3/#4/#5/#8 的 GUI 部分、#9 打包 e2e）——本会话无浏览器，QA 与复核均不伪造 pass，统一 blocked 交 Owner 批次 20。
-- **文档缺口（P3）**：追加的打包热修需求只记录在 `.dsh/pipeline.json` 的 `requirementLog`（append，19:17 反馈）与验收清单 3 条中，`docs/pipeline/requirements.md` 未补该段（requirements.md 最后写入 19:14，早于 append）；不影响实现与验收，建议 release 前在 requirements.md §11 补一行溯源说明。
-- **超范围改动：无**。`docs/PLAYBOOK.md`、`docs/opc/*`、插件 `README.md` 的改动均由 requirements §6.5「README/docs 旧口径同步」要求；归档与设计稿资产属阶段交付物。
+- **写操作未实测**：状态修改、批量三操作、删除、备注保存、证据上传/删除、复测运行、打包/下载、预览分享创建/复制/打开/关闭、交付记录/包下载 —— QA 与复核均未在真实数据上执行（只读边界），列入 **Owner 批次 22 人工复测**；补偿为「相关 handler 未在 diff 中 + 质量门全绿 + 入口只读冒烟 + 0 console error」。
+- **zh 运行时切换、真实无痕模式、实机缩放下视觉**：未实测（见 ⑦ OBS-6）。
+- **历史 blocked 项**：23 条为旧轮 GUI/视觉项，不属于本轮范围，未复测（见 ⑦ OBS-5）。
 
 ---
 
-## ③ 验收清单逐项核对（本轮新增 13 条 = 设计闸门批 10 条 + 打包热修 3 条）
+## ③ 验收清单与证据链核对（本轮 10 条，只读 `.dsh/acceptance.json`）
 
-> 说明：Lead 下达的「10 条」指 design-gate 批次；本轮窗口（19:15–19:42）另有 3 条打包热修验收项（`createdAt` 19:35），一并核对。**blocked 不写成 pass**；每项核对 title / requirement / status / note / evidence / history（history 为 pending→verdict 两条，`round: 0`；本轮 schema 无独立 `retestRound` 字段，复测轮次以 history/`checkedAt` 体现）。
+**状态总计：64 条 = 41 pass / 0 fail / 0 pending / 23 blocked。** 本轮 10 条 = **pass 10 / fail 0 / blocked 0 / pending 0**；evidence 共 **18 条，逐条 `stat` 存在且非空（0 缺失）**。QA 于 22:10 前后把 10 条 pending 回填 pass（history 两条：pending 13:20:57Z → pass 14:10:41Z，`round: 0`，`by: agent`；note 写明了 QA 独立验证结论与证据路径，未伪造）。
 
-### ③-1 设计闸门批次 10 条
+| # | 验收项 id / 标题（简） | 状态 | evidence（条） | 文件核对 | 复核意见 |
+|---|---|---|---|---|---|
+| 1 | `3f101fa562` 三区块默认收起/区块头展开/徽标 | **pass** | 2 | `v1.2.84-qa-default.png`、`v1.2.84-qa-expand-evidence.png`（均存在） | **认可**。GUI 复跑 Q0–Q10 复现（默认三块 44px、aria=false、body hidden、徽标 40 evidence / No runs / No shares · none）；已抽检 default 截图（520×1904，三块收起头 + 清单为主） |
+| 2 | `757fe8a4eb` localStorage 持久化 / 坏值回退 | **pass** | 2 | `v1.2.84-qa-persist-after-reload.png`、`v1.2.84-qa-bad-value-fallback.png` | **认可**。复跑 Q25–Q29 复现：混合态 783 B、36 组、坏值/坏形状整份回退、写失败降级、0 console error；静态 S15–S20 交叉核对 |
+| 3 | `1e429dfa5d` 全部收起/全部展开（含分组与详情）且持久化 | **pass** | 2 | `v1.2.84-qa-all-collapsed.png`、`v1.2.84-qa-all-collapsed-selection.png` | **认可**。复跑 Q11–Q13/Q23–Q24：3 块 + 36 组全收起/全展开、两轮幂等、选中保留；静态 S11–S13 |
+| 4 | `c6f153e79e` 清单默认展开 + 详情随选中展开/收起/取消 | **pass** | 2 | `v1.2.84-qa-detail.png`、`v1.2.84-qa-detail-collapsed.png` | **认可**。复跑 Q2/Q6/Q10/Q18–Q21；已抽检 detail 截图（48px 详情头 + 验收条件/备注/证据/历史）；静态 S8/S18/S26 |
+| 5 | `7357e9e50b` 分组可折叠 + 数量徽标 + 不影响勾选/批量/状态/筛选 | **pass** | 1 | `v1.2.84-qa-group-collapsed.png` | **认可**。复跑 Q5/Q14–Q17/Q22：36 组、`aria-label="version-docs, 2 item(s)"`、组内行 64→62→64、隐藏组跳过 Tab、四筛选 64→33/0/3→64 |
+| 6 | `dc5f5d8476` button + aria-expanded/aria-controls + Enter/Space | **pass** | 1 | `v1.2.84-qa-keyboard-focus.png` | **认可**。复跑 Q30–Q35：39 个折叠头全部 `button[type=button]`、id 唯一、Enter/Space 切换且焦点保持、2px focus-visible |
+| 7 | `6a62bac296` 360/691 无横向溢出 + 浅/深主题可读 | **pass** | 3 | `v1.2.84-qa-narrow-260.png`、`v1.2.84-qa-wide-691.png`、`v1.2.84-qa-dark.png` | **认可**。复跑 Q36–Q40（345/260/691 均 344/344、259/259、690/690）；**独立深色探针** 6 处对比 7.18–14.27 全 ≥4.5:1（修复 QA 脚本解析器假阴性） |
+| 8 | `760e12d0ab` i18n 成对/无硬编码/回退 | **pass** | 1 | `v1.2.84-qa-static.log` | **认可**。QA 静态日志可读；独立静态 S21–S24 复核 14 对、全量 parity、渲染段 0 CJK；独立复跑 QA 静态 20/20 |
+| 9 | `66b51b2f9b` 既有操作无回归 + 质量门全绿 | **pass** | 3 | `v1.2.84-qa-quality-gates.log`、`docs/pipeline/test-report.md`、`.dsh/evidence/v1.2.84-qa-gui-results.json` | **认可（范围限制已注明）**。质量门 3/3 复跑一致；QA 44/44 结果 JSON 可读；写操作由 Owner 批次 22 补测 |
+| 10 | `d365d11c1e` 版本/文档 1.2.84 + 根 1.2.86，只改允许文件 | **pass** | 1 | `docs/pipeline/test-report.md` | **认可**（版本事实独立实测通过）。**注意**：CHANGELOG 有重复 `## 1.2.85` 标题行（P2，见 ⑦ OBS-1），建议 release 前修正后本项仍成立 |
 
-| # | 验收项 | 状态 | evidence 核对 | 复核意见 |
+**本轮之前 54 条 = 31 pass / 23 blocked**（不重复核验内容，只核对 blocked 归属，见 ⑦）。
+
+### ③-2 证据链缺口（分级）
+
+- **本轮 10 条：0 缺口。** 18 条 evidence 全部存在；截图可读（本轮抽检 `v1.2.84-qa-default.png`、`v1.2.84-qa-detail.png` 与复跑失败截图共 3 张，内容与描述一致；QA `v1.2.84-qa-gui-results.json` 44 条 0 失败）。
+- **历史遗留（非本轮、非阻断）**：全清单有 **10 条项无 evidence**（3 条历史 pass + 7 条历史 blocked，属 v1.2.79 以前记录），另有 **9 条历史 evidence 指向已删 PNG**（`workbench-v1279-*.png` 5 条、`design-gate-*.png` 4 条 —— 由 v1.2.85「移除生成位图」删掉，见 ⑦ OBS-4）。本轮不新增缺口，建议后续轮次清理/改指 SVG。
+
+---
+
+## ④ 测试与复测（独立重跑，不沿用 QA 结论）
+
+> 全部原文、退出码、耗时见 `.dsh/evidence/acceptance-retest-v1.2.84.log`（修复前 459 行 + §7 P2 闭环复验追加段）；GUI 复跑脚本复制到 `.dsh/tmp/review-v1284/gui-rerun.mjs` 并把输出重定向到复核临时目录，**未覆盖 QA 证据**。
+
+| # | 命令 / 复核动作 | 退出码 | 结果 | 判定 |
 |---|---|---|---|---|
-| 1 | `8e375b5dff` 快速模式下 design 提交停 review，不自动通过 | **pass** | `.dsh/evidence/testing-v1.2.83.log`（存在，24.6 KB，含 gate-check 原文与 prompt/test 结果） | **认可**。独立复跑 `dev-design-gate-check.mjs`：`design autoApproved: undefined status: review note: 设计确认闸门…`；`npm test` 34/34 含同名用例；pipeline.js `fastApproval` 已排除 `PIPELINE_MANUAL_GATE_STAGES` |
-| 2 | `2d2729bed2` design 未确认时 development 被拒，确认后可启动 | **pass** | 同上日志 | **认可**。复跑：`development blocked: bad-order | …必须等上一阶段「UI 设计」approved…设计阶段必须由 Owner…确认（approve）…`；approve 后 `active`；normal 全流程回归也覆盖 review/failed 两态 |
-| 3 | `2f6c7001ee` 快速模式文案「四个自动 / 三个需确认」 | **pass** | `.dsh/tmp/qa-static-v1283.mjs`（脚本存在；note 引用 qa-static 日志存在） | **认可（静态断言逐条通过）**。复跑 qa-static 时该段落（PIPELINE_SECTION / zh-en fastHint / 三个工具描述 / 无 five-intermediate）**全部 ok**；P2 闭环后整脚本复跑 **`STATIC PASS (246 assertions)`**（④-1），聚合结论可复现 |
-| 4 | `e6d0b2bb93` 设计截图缩略图 + 打开大图 | **blocked** | `docs/pipeline/design/design-gate-workbench-card-1440.svg`（存在，2880×2048） | **认可 blocked**。证据是设计依据 mockup（note 已如实标注「待 Owner GUI 复测」），不是实现截图；DOM/属性由 fe-render-smoke + qa-static 覆盖。实际缩略图与大图 → 批次 20 |
-| 5 | `0f33968c3e` HTML 内嵌预览 + 360/768/1280 + 源码次级 | **blocked** | `.../design-gate-preview-modal-1440.svg`（存在） | **认可 blocked**。iframe/sandbox=''/title/lazy/三档/源码入口均静态+渲染断言覆盖；真实渲染效果与三档切换 → 批次 20 |
-| 6 | `da409176e3` review 时两处待确认态 + 通过/打回/预览入口 | **blocked** | `.../design-gate-pipeline-review-1440.svg`（存在） | **认可 blocked**。两处同一 i18n 键、`reviewPipelineStage` 复用、approved 后 banner 消失均由 fe-render-smoke 覆盖；实机呈现 → 批次 20 |
-| 7 | `5c6cfc4eef` `.html/.htm` 默认预览 + 预览/源码切换 | **blocked** | `.../design-gate-html-file-preview-1440.svg`（存在） | **认可 blocked**。代码核对：`modeOf` 含 html、`openFile` 默认 `view:'preview'`、源码可编辑保存、SSH 降级、空/错态退路；实机 → 批次 20 |
-| 8 | `b75496c076` design 提示词要求截图、禁只交 HTML、warning 文案准确 | **pass** | `docs/pipeline/test-report.md`（Lead 20:10:08 补挂，存在） | **认可 pass**。代码核对：`STAGE_GUIDES.design` 含「至少一张可直接查看的截图」「不只交 HTML 源码」；warning `design-no-image` 文案含「缺少可直接查看的截图…HTML 只能预览，不能替代截图」；host-smoke 新增用例覆盖。原证据缺口（P3）已由 Lead 补挂，闭环 |
-| 9 | `2c499c8a82` 版本文档同步 1.2.83 + 交付后根 +1 | **pass** | `CHANGELOG.md`（Lead 20:10:08 补挂，存在） | **认可 pass**：版本事实逐项独立实测通过（plugin/root 1.2.83、CHANGELOG `## 1.2.83`、批次 20、design §16、8 组设计稿非空、engineering-research 3 候选、README/AGENT_TEAM/PLAYBOOK/opc 口径、插件 README 旧 five-intermediate 已修）；根 +1 至 1.2.84 属 release，尚未发生。note 中「静态 246 断言」现已可复现（④-1 闭环）；证据已补挂 |
-| 10 | `58e9af9d1b` 质量门全绿且既有功能不回归 | **blocked**（自动化部分全绿） | `docs/pipeline/test-report.md`（存在） | **认可 blocked**。独立复跑：check/check:json/npm test 34/34/fe-render-smoke 51/51/packfix 18/18/gate-check/`qa-static-v1283` **`STATIC PASS (246)`**/`git diff --check` 全绿（P2 已闭环）；人工 GUI 回归 → 批次 20 |
+| 1 | `npm run check`（21 模块 `node --check`） | **0** | 523 ms，无错误 | PASS |
+| 2 | `npm run check:json` | **0** | 98 ms，`JSON OK` | PASS |
+| 3 | `npm test`（host smoke） | **0** | 669 ms，**`PASS: 34/34`** | PASS |
+| 4 | `git diff --check` | **0** | 空输出 | PASS |
+| 5 | `node .dsh/tmp/review-v1284/review-static.mjs`（**本复核人自写**，56 条断言：结构/ARIA/i18n/storage/CSS/版本/diff 范围/证据链） | **1** | **55/56 PASS**；唯一 FAIL = **S37 CHANGELOG 版本标题不唯一（重复 `1.2.85`）**；1 条 OBS（历史 evidence 缺 9 文件） | **命中真实文档缺陷**（见 ⑦ OBS-1），其余全过 |
+| 6 | `node .dsh/tmp/review-v1284/static-rerun.mjs`（QA 静态脚本复跑，输出改指向复核临时目录） | **0** | **20/20 PASS**（含 S6 `verificationOpen` 已删、S8 14 对 i18n、S10 96/260/240/340、S14 storage 防护、S16 diff 范围） | PASS（QA 静态结论可复现） |
+| 7 | GUI E2E 复跑 `FONTCONFIG_FILE=/tmp/fonts/fonts.conf node .dsh/tmp/review-v1284/gui-rerun.mjs`（headless chromium 131，1400×1000@2×，3080 实际 bundle） | **1** | **43/44**；唯一 FAIL = **Q39 脚本 `TypeError: Cannot read properties of null (reading 'r')`**（非断言失败）；15 张截图；Q43 = 4 个窗口段 0 console error | **脚本假阴性**，见 ④-1 |
+| 8 | 独立深色对比探针 `.dsh/tmp/review-v1284/dark-probe.mjs`（支持 `rgb()` 与 `color(srgb …)`） | **0** | dark scheme 生效；block title **14.27**、badge **9.25**、group **9.90**、detail title **14.27**、selected row **7.18**、chevron **9.90**（全部 ≥4.5:1） | **PASS（产品达标）** |
+| 9 | 文档本地链接检查（本轮 8 份文档） | **0** | 178 链接、**135 条本地链接 0 死链** | PASS |
+| 10 | 归档一致性 `md5sum` | **0** | `docs/pipeline/archive/v1.2.83-acceptance-review.md` = `56f2a744f5c9b0663bfa7bb4701c5b83`，与旧报告一致 | PASS |
+| 11 | 证据链 / blocked / 版本事实脚本（见日志 §4–§5） | **0** | 10 条 pass + 18 evidence 存在；blocked 23 条最新 `updatedAt` 早于本轮起算；重复标题 1 个；批次 22 checkbox 11 条 | PASS（缺陷已记录） |
 
-### ③-2 打包热修批次 3 条（HEAD `2d3ebe0`）
+### ④-1 GUI 复跑 Q39 失败根因（脚本假阴性，不是产品缺陷）
 
-| # | 验收项 | 状态 | evidence 核对 | 复核意见 |
-|---|---|---|---|---|
-| 11 | `4fe571422f` 打包不再清空 pipeline 快照、不跳 intake | **pass** | 4 条：`qa-static.log`、`fix.diff`、`host-smoke.log`、`served-bundle.log`（全部存在） | **认可**。源码核对 `runPackDelivery()` 只 `setDeliveryBusy/setAcceptanceError/setDeliveryBundle`+`loadDeliveryHistory()`，**不再** touch `pipelineDoc/pipelineError/pipelineEditing/pipelineReviewNote`；`npm test` 含 `packaging keeps the pipeline snapshot…`；packfix 18/18 复跑通过 |
-| 12 | `0f138bf31d` 打包中按钮「打包中…/Packing…」 | **pass** | `qa-static.log`、`fix.diff`（存在） | **认可**。`acceptance.packing` zh/en 成对；工作台验收卡与验收面板两处按钮在 `deliveryBusy` 时使用（grep 命中 2 处）；i18n parity 0 差异 |
-| 13 | `643d66d403` GUI 实测打包链路 | **blocked** | `served-bundle.log`、`checks.log`（存在） | **认可 blocked**。note 如实记录 headless chromium 尝试失败与可复现步骤，未伪造 pass；实机点击 → 批次 20 |
+- **现象**：Q39（深色主题对比度）在 `blend()` 抛 `TypeError`，`parse()` 返回 `null` —— QA 解析器只匹配 `rgb()/rgba()`，而 **选中行是 pass 项**时标题颜色来自 `color-mix(...)`，Chromium 计算值为 `color(srgb 0.512745 0.866078 0.645686)`，正则不匹配 → 返回 null → `blend(null, bg)` 崩溃。
+- **数据顺序原因**：QA 原跑（22:07 CST / 14:07Z）时 10 条本轮验收项尚为 **pending**，第一行可见项是 pending（标题用普通变量颜色 → 可解析）→ 44/44；QA 在 22:10 把 10 条回填 pass 后，第一行选中项变 pass（`color-mix` 序列化）→ 同一脚本在**当前树**上复跑必然在 Q39 崩溃。**脚本对数据状态敏感，与产品无关**。
+- **独立验证**：复核人另写 `dark-probe.mjs`（解析 `rgb()` + `color(srgb …)`），同一深色态下 6 处对比度 7.18–14.27 全部 ≥4.5:1，与 QA 原报告数值（7.35/9.25/17.45 等）同量级、结论一致。**Q39 的产品主张成立。**
+- **处理**：不推翻本轮 #7 pass；建议 QA 后续把对比度解析器改为支持 `color(srgb …)`（或固定选 pending 行），避免数据回填后脚本假阴性（P3）。
 
-### ③-3 统计（全清单 49 条）
+### ④-2 P2 闭环复验（Lead 修复 CHANGELOG 重复标题行后，只读复验；2026-10-27 22:19 CST / 14:19Z）
 
-**状态总计：26 pass / 0 fail / 23 blocked / 0 pending。** 本轮 13 条 = **7 pass / 0 fail / 6 blocked**；本轮之前 36 条 = 19 pass / 0 fail / 17 blocked（即「历史 18 条 blocked」= 17 条旧轮 GUI/视口项 + 1 条本轮热修 GUI e2e `643d66d403`，旧 blocked 不伪造 pass）。Lead 已于 20:10:08 为 #8/#9 补挂 evidence（状态未变），本轮 pass 项证据缺口归零。
-
-| category | pass | fail | blocked | pending | 缺 evidence | 合计 |
-|---|---:|---:|---:|---:|---:|---:|
-| design-gate | 3 | 0 | 0 | 0 | 0 | 3 |
-| design-preview | 0 | 0 | 3 | 0 | 0 | 3 |
-| html-preview | 0 | 0 | 1 | 0 | 0 | 1 |
-| model-discipline | 1 | 0 | 0 | 0 | 0 | 1 |
-| version-docs | 1 | 0 | 0 | 0 | 0 | 1 |
-| regression | 0 | 0 | 1 | 0 | 0 | 1 |
-| e2e | 0 | 0 | 1 | 0 | 0 | 1 |
-| workbench | 4 | 0 | 1 | 0 | 3 | 5 |
-| workbench-layout | 4 | 0 | 2 | 0 | 0 | 6 |
-| workbench-hero | 1 | 0 | 1 | 0 | 0 | 2 |
-| workbench-visual | 1 | 0 | 1 | 0 | 0 | 2 |
-| workbench-gui | 0 | 0 | 3 | 0 | 0 | 3 |
-| workbench-responsive / workbench-a11y / workbench-regression | 0 | 0 | 1 / 1 / 1 | 0 | 0 | 3 |
-| structure | 0 | 0 | 2 | 0 | 2 | 2 |
-| visual | 0 | 0 | 3 | 0 | 3 | 3 |
-| a11y | 0 | 0 | 1 | 0 | 1 | 1 |
-| test | 1 | 0 | 0 | 0 | 1 | 1 |
-| i18n | 1 | 0 | 0 | 0 | 0 | 1 |
-| quality | 4 | 0 | 0 | 0 | 0 | 4 |
-| release | 1 | 0 | 0 | 0 | 0 | 1 |
-| workbench-team / -requirement / -acceptance / -delivery | 1 / 1 / 1 / 1 | 0 | 0 | 0 | 0 | 4 |
-| **合计** | **26** | **0** | **23** | **0** | **10** | **49** |
-
-**阻断项（blocked）清单（23 条，全部为需人工/GUI 的验证项）**：设计预览 4 条（`e6d0b2bb93`、`0f33968c3e`、`da409176e3`、`5c6cfc4eef`）+ 回归人工 1 条（`58e9af9d1b`）+ 打包 e2e 1 条（`643d66d403`）+ 历史 GUI/视口/布局 17 条（`structure` 2、`visual` 3、`a11y` 1、`workbench-gui` 3、`workbench-layout` 2、`workbench-hero` 1、`workbench-responsive` 1、`workbench-visual` 1、`workbench-a11y` 1、`workbench-regression` 1、`workbench` 1）。**无 fail、无伪造 pass。**
+- **修复内容**（Lead 执行；本复核人只读复验，未改该行）：删除 `CHANGELOG.md` 中重复的 `## 1.2.85 — 2026-10-27` 之一。现该标题**仅出现 1 次（第 38 行）**；`## 1.2.84` 条目完整（第 5–36 行）、1.2.85 正文未动；版本标题序列 = 1.2.84 / 1.2.85 / 1.2.83 / …，**无重复**。
+- **复验命令与结果**（2026-10-27 22:19 CST / 14:19Z，均实测）：
+  - `node .dsh/tmp/review-v1284/review-static.mjs` → **exit 0，56/56 PASS**：原唯一 FAIL **S37「CHANGELOG 版本标题唯一」已转 PASS**，其余 55 条断言不变（1 条历史 evidence OBS 仍为非阻断）；
+  - `npm run check` → **exit 0**（21 模块，560 ms）；`npm run check:json` → **exit 0**（`JSON OK`，115 ms）；`npm test` → **exit 0**（`PASS: 34/34`，652 ms）；
+  - `git diff --check` → **exit 0**（干净）；本地链接复检 135 条 **0 死链**；
+  - `CHANGELOG.md` 现 diff = **+33/−0**（修复前 +34/−0，差额 1 行即被删的重复标题行）。
+- **结论：P2 闭环，无需再修；放行建议不变（阻断 0，建议放行）**。⑧ 放行条件第 4 项（release 前删除重复行）已满足。本记录覆盖前文 OBS-1 的「待修」表述；①/⑤/⑦ 中 OBS-1 的原始记录保留为修复前时点审计。
 
 ---
 
-## ④ 复测记录（独立重跑，不沿用 QA 结论）
+## ⑤ Git 变更与已审
 
-环境：Node v24.22.0 / npm 11.19.1 / Linux；时间 2026-10-27 20:07:51（首轮）/ 20:10–20:12（P2 闭环复验）（CST）；日志 `.dsh/evidence/acceptance-retest-v1.2.83.log`（全部原文、退出码、耗时，共 18 条命令）。基线 `2d3ebe0`，根/插件 1.2.83。
-
-| # | 命令 | 退出码 | 耗时 | 输出末尾 / 关键结论 | 复核判定 |
-|---|---|---|---|---:|---|---|
-| 1 | `npm run check`（21 模块 `node --check`） | **0** | 552 ms | 无错误输出 | PASS |
-| 2 | `npm run check:json` | **0** | 100 ms | `JSON OK` | PASS |
-| 3 | `npm test`（`host-smoke.mjs`） | **0** | 632 ms | `PASS: 34/34 host smoke checks`（含 fast 四自动+design 闸门、manual gates、design-no-image、打包快照回归） | PASS |
-| 4 | `node .dsh/tmp/qa-static-v1283.mjs` | **0**（P2 闭环后） | 246 ms | **`STATIC PASS (246 assertions)`**，1 observation（仅未引用死 key `workbench.designHtmlOnly`，P3）——首轮 exit 1 见 ④-1，**已闭环** | **PASS** |
-| 5 | `node .dsh/tmp/qa-static-v1283-packfix.mjs` | **0** | 53 ms | `STATIC PASS: 18/18 checks`（含 runPackDelivery 不清快照、packing 文案、i18n parity） | PASS |
-| 6 | `node .dsh/tmp/fe-render-smoke.mjs` | **0** | 177 ms | `51/51 checks passed`（D1–D4 真实 client.js VM 渲染；iframe sandbox 空、title、lazy；三档；approved/HTML-only） | PASS |
-| 7 | `node .dsh/tmp/dev-design-gate-check.mjs` | **0** | 76 ms | `design autoApproved: undefined status: review`；`development blocked: bad-order … 上一阶段「UI 设计」…`；approve 后 `active`；warning 文案准确 | PASS |
-| 8 | `node --check pipeline.js` / `node --check client.js` | **0 / 0** | 28 / 37 ms | 无输出 | PASS |
-| 9 | `git diff --check` | **0** | 25 ms | 空输出 | PASS |
-
-> P2 闭环复验另追加 8 条命令（20:10–20:12，原文见日志 §「P2 证据链闭环复验」；命令/退出码见 ④-1），全部 exit 0；首轮的失败项 4 已转为 PASS。
-
-### ④-1 失败项已闭环（P2）：`qa-static-v1283` 白名单过期（Lead 20:09:58 修复，复核 20:10 复跑通过）
-
-- **首轮事实（保留，不删除）**：20:07 复核首跑 `node .dsh/tmp/qa-static-v1283.mjs` 退出码 1；245 ok / 1 FAIL（其余断言覆盖 design-gate 闸门、bad-order 文案、模型纪律、设计卡/预览 CSS、i18n、安全、回归测试存在性等），唯一失败是脚本第 465–475 行「变更范围」白名单：`allowed()` 只允许 `client.js / pipeline.js / package.json / host-smoke / CHANGELOG / README.md / README.zh.md / docs/**`，**不含 `dsh-web-filebrowser-plugin/README.md`**；另有 1 条 observation：`workbench.designHtmlOnly` 未引用（与测试报告 O7 一致，P3 死 key）。
-- **根因（时间线证据，均取自文件 mtime / 证据日志）**：
-  1. 20:00:44 写 `qa-static-v1283.mjs`；20:01 QA 主日志；**20:03:03** `testing-v1.2.83-qa-static.log` 记录 `STATIC PASS (246 assertions)`（当时树里插件 README 尚未改，白名单成立）；
-  2. **20:03:43** `dsh-web-filebrowser-plugin/README.md` 被修改——即测试报告 O6 指出的旧文案「five intermediate stages」→「four implementation stages + design 需 Owner 确认」（requirements §6.5 要求，属**合法修复**）；
-  3. 20:04:10 testing 阶段 approved，20:04:14 acceptance 起算；QA 未在 README 修复后重跑 qa-static，故快照「STATIC PASS」与当前树不一致。
-- **修复（Lead 执行，未改业务代码）**：**20:09:58** 在 `.dsh/tmp/qa-static-v1283.mjs` 的 `allowed()` 增加 `file === 'dsh-web-filebrowser-plugin/README.md'`（仅 QA 临时脚本；`.dsh/` 被 `.gitignore` 忽略，不随包发布、未进入 git）。
-- **复核（本次复验，20:10）**：重跑 → **exit 0，246 ms，`STATIC PASS (246 assertions)`**，1 observation（仅 `workbench.designHtmlOnly` 未引用）；追加复跑 `npm test` **0**/650 ms/34/34、`fe-render-smoke` **0**/189 ms/51/51、`dev-design-gate-check` **0**/83 ms（行为正确）、`packfix` **0**/54 ms/18/18、`npm run check` **0**/554 ms、`check:json` **0**/101 ms、`git diff --check` **0**/30 ms（干净）；结果已追加至 `.dsh/evidence/acceptance-retest-v1.2.83.log`（现 880 行）。
-- **定性（闭环后）**：原失败**不是** v1.2.83 产品缺陷，也不推翻 #1/#2/#3/#8 的 pass 结论（其实质断言始终通过）；它曾使 **测试报告 §3/§8「10 套全绿」与 ACCEPTANCE 批次 20 最后一条「qa-static-v1283 STATIC PASS 均 exit 0」在当前树不可复现**（DoD「测试报告可复现」）。**修复 + 复跑后该项已可复现，P2 关闭**；建议 release 备注记录「qa-static 白名单补入插件 README（O6 修复后）+ 复跑 PASS」。**不再需要为该项回退 testing。**
-- **遗留观察（P3）**：`workbench.designHtmlOnly` 死 key（qa-static observation / 测试报告 O7）仍存在，建议后续清理，不阻断。
-
-### ④-2 独立核验（不依赖 QA 脚本的交叉检查）
-
-- 设计闸门：`pipeline.js` 的 `PIPELINE_MANUAL_GATE_STAGES = ['design','approval','release']`、`fastApproval = gateMode==='fast' && !PIPELINE_MANUAL_GATE_STAGES.includes(id)`、design 提交写 `review` + 「设计确认闸门」note、`startStage('development')` 在 design 非 approved 时抛 `bad-order` 并附设计确认提示——与 `dev-design-gate-check.mjs`（真实模块、非 mock）行为一致。
-- 预览安全：D2 设计预览 iframe（`sandbox: ''`、`title`、`loading:'lazy'`）与 D4 `.html` 预览 iframe（`sandbox: ''`、`title`、`loading:'lazy'`）各一处；HTML tab 明确不提供「在浏览器打开」（`!isTextMode(tab.mode) && tab.mode !== 'html'`）；diff 未新增 `dangerouslySetInnerHTML` / `eval(` / `srcdoc` / `allow-scripts` 到设计预览块。
-- i18n：`pipeline.fastHint` zh「product/development/testing/acceptance 提交后自动通过；design/approval/release 始终需要 Owner 确认」、en 对应；新增 33 key；packfix 的 zh/en parity 0 差异；旧「五个中间阶段 / five intermediate」在代码/README/AGENT_TEAM/PLAYBOOK/opc 均已清除（残留仅历史 CHANGELOG 1.2.72 条、归档文档与「不得再出现」的规则表述）。
-- 版本：插件/根 1.2.83、CHANGELOG `## 1.2.83`、ACCEPTANCE 批次 20、design.md §16、归档 `v1.2.82-test-report.md` / `v1.2.79-requirements.md` 均实测存在；根 +1 至 1.2.84 留待 release。
-- 文档链接：对 design/requirements/engineering-research/test-report/ACCEPTANCE/CHANGELOG/README 相对链接做解析，**73 条本地链接 0 失效**。
-
----
-
-## ⑤ 变更与审阅
-
-### ⑤-1 文件清单与关键 diff 结论
+### ⑤-1 文件清单与逐文件复核结论（11 已跟踪 + 13 未跟踪；本报告写入后为 12 已跟踪）
 
 | 文件 | 变更 | 复核结论 |
 |---|---|---|
-| `dsh-web-filebrowser-plugin/pipeline.js` | +76/−21 | `PIPELINE_MANUAL_GATE_STAGES`；fast 排除 design；设计 review note；bad-order 设计提示；warning 文案按有无 HTML 分流（code 不变）；STAGE_GUIDES.design/development、buildStagePrompt 设计确认段、PIPELINE_SECTION/工具描述/工具返回文案同步。逻辑自洽，无新增依赖/数据结构 |
-| `dsh-web-filebrowser-plugin/client.js` | +1424/−42 | D1 流水线设计卡（banner/缩略图/预览/通过/打回）、D2 预览弹层（role=dialog、Esc/背板、tabs、360/768/1280、iframe sandbox=''/title/lazy、源码次级、复用 reviewPipelineStage）、D3 工作台设计卡/hero 待确认、D4 `.html` 默认预览+预览/源码切换、33 个 zh/en key、CSS。未新增 `dangerouslySetInnerHTML`/`eval`/调试输出 |
-| `scripts/selftest/host-smoke.mjs` | +58/−9 | 新增「fast 四自动 + design 闸门」「manual gate stages」「design-no-image 文案」用例；旧「五阶段」断言改为「四阶段 + design」；真实调用 pipeline 模块 |
-| 文档 | `CHANGELOG` +36；`ACCEPTANCE` +19/−3（批次 20）；`requirements` §11；`design` §16（+347）；`engineering-research` +376/−72；`test-report` +154/−54；`README*`、`AGENT_TEAM`、`PLAYBOOK`、`opc/*`、插件 `README` 口径同步 | 与本轮需求一致；无旧口径残留（历史 CHANGELOG 除外，不应改） |
-| 版本 | 插件 package.json 1.2.82→1.2.83 | 根 package.json 未改（1.2.83，release 再 +1） |
-| 未跟踪新增 | 2 个归档 + 8 组设计稿（PNG@2× 2880×2048/780×1688 等 + 对应 SVG，全部非空）+ 生成脚本 | 均为阶段交付/设计资产，非临时垃圾；生成脚本纯 SVG 无外部依赖 |
-| 临时/证据 | `.dsh/tmp/*`（qa-static/fe-render-smoke/gate-check 等）、`.dsh/evidence/*` | **未被 git 跟踪**（`.dsh/` 与 `*.log` 在 `.gitignore`）；`git ls-files .dsh` 为空；未被意外 `git add` |
+| `dsh-web-filebrowser-plugin/client.js` | **+669 / −394** | ① `renderBlockHead()` 单一全宽 button（44px、aria-expanded/aria-controls、chevron）；② evidence/verify/delivery 三块体 `hidden` 保留挂载 + 面板内滚动（260/240/340）+ 清单 `min-height:96`；③ 分组头 button + 数量徽标 + 分类原值 key；④ 详情 48px 折叠头 + 收起提示 + 选中保留；⑤ 工具区单按钮动态 Collapse/Expand all（含分组+详情，不取消选中）；⑥ 删除 `verificationOpen` 与内层开关，预选命令逻辑移入区块切换；⑦ localStorage 单键 + 16 KiB + 危险键过滤 + 整份回退 + 写失败静默；⑧ 14 对 zh/en key；⑨ D8 对比度 CSS。未新增 `eval/innerHTML/fetch/定时器`；未改任何既有 handler 语义 |
+| `dsh-web-filebrowser-plugin/package.json` | +1 / −1 | 1.2.83 → **1.2.84**，仅 version 行 |
+| `package.json` | +1 / −1 | 1.2.85 → **1.2.86**，仅 version 行；无依赖变化 |
+| `CHANGELOG.md` | +33 / −0（P2 修复后；原 +34/−0 见 ④-2） | 1.2.84 条目内容与实现一致（44px/徽标/单键持久化/96px/260·240·340/14 key/对比度）；**第 39 行曾多出一行重复 `## 1.2.85 — 2026-10-27`（P2，已修复，见 ④-2 / ⑦ OBS-1）** |
+| `docs/ACCEPTANCE.md` | +19 / −1 | 批次 22（11 条复测项）；含 v1.2.84 已知限制段 |
+| `docs/pipeline/requirements.md` | +253 / −171 | 第 12 轮需求重写（旧轮已归档）；§7 10 条标准、§8 10 条验收项、§5 7 来源 + 13 条借鉴决策 |
+| `docs/pipeline/design.md` | +664 / −0 | 追加 §17（663 行，不改旧章节）：6 来源、D1–D8、八态矩阵、360/691/768/1280、a11y 契约、14 对 i18n、自检 4.8/5、R1 迭代证据 |
+| `docs/pipeline/engineering-research.md` | +416 / −275 | 4 候选（W3C APG / GOV.UK / Radix / Headless UI）、许可证矩阵（3×MIT+W3C）、OSV/GHSA/npm 0 CVE、build-vs-borrow 决策、安全/性能/a11y 契约、不复制声明 |
+| `docs/pipeline/test-report.md` | +287 / −133 | 第 12 轮报告（331 行）：质量门 3/3、静态 20/20、GUI 44/44、10 条 pass、4 条脚本修正如实记录、3 条观察项、7 条残余风险 |
+| `README.md` / `README.zh.md` | 各 +1 | 各新增一句 v1.2.84 亮点，口径与实现一致 |
+| **本报告** `docs/pipeline/acceptance-review.md` | 覆盖旧版（旧版已归档） | 本次复核唯一写入的已跟踪文件；不进入业务代码/数据 |
+| 未跟踪（13） | — | 4 份归档 md（v1.2.83 requirements/engineering-research/test-report/acceptance-review，后两者本次复核写入）、8 张 `acceptance-collapse-*.svg`（均 >1 KB，可打开）、1 个纯 SVG 生成器脚本（无外部依赖） |
 
-### ⑤-2 审阅状态
+### ⑤-2 范围 / 依赖 / 数据 / 安全核对（独立静态断言）
 
-- `.dsh/review.json`：acceptance 基线已捕获 36 文件，**`marks = 0` → 已审 0/36**，`comments = 0`；本轮 Owner 未在 Git 更改列表逐文件标记「已审」。
-- 复核人已逐文件审阅 diff（含上述关键 diff），未发现调试残留、密钥、第三方侵权文件或超范围二进制。**「已审 0/36」按 Lead 指示如实记录为「人工确认前的已知条件」，不是阻断项**；建议 Owner 在 approval 关之前补标或显式接受。
+- **无 Host 模块改动**：`acceptance.js / pipeline.js / ssh.js / index.js / tasks.js / delivery.js / preview.js / assignments.js / review.js / memory.js / …` **均不在 diff**（S43）；`git diff` 中无 `.js` Host 文件。
+- **无依赖变化**：两个 `package.json` 的 diff **只有 4 行 version**（S44）；无 `package-lock`/`vendor/`/构建脚本变化。
+- **无数据文件改动**：`git ls-files .dsh` = **0**（`.dsh/` 被 gitignore）；`.dsh/tmp`、`.dsh/evidence` 未被跟踪，不会进入提交（release 需复核）。
+- **无临时/调试/密钥残留**：新增行无 `console.log/debugger/TODO/FIXME`（S50）；无 `.log/.orig/.bak` 被跟踪；未新增二进制（本轮设计稿全为 SVG 文本）。
+- **渲染安全**：验收台渲染切片无 `fetch`/定时器/动态 import/`innerHTML`/`dangerouslySetInnerHTML`/`eval`（S33）；分组 body id 用索引不拼分类名（S6）；徽标文本走 React 文本节点 + `title`。
 
-### ⑤-3 调试 / 临时 / 密钥检查
+### ⑤-3 审阅状态
 
-- 对 `git diff` 新增行做 `console.log|console.debug|debugger|TODO|FIXME|password|token|secret|/tmp/` 扫描：**无代码调试残留**；仅文档中出现 `/tmp/fonts`（设计稿渲染环境说明，属历史说明）。
-- 无新增 `.log/.orig/.rej/.bak/.tmp` 被跟踪；`.dsh/` 未跟踪；未发现密钥/凭据；`git diff --check` 干净。
-
----
-
-## ⑥ DoD 检查（对照 `docs/opc/00-charter.md` §6；8 项，含本关自身）
-
-| # | DoD 项 | 判定 | 说明 / 由哪一关补齐 |
-|---|---|---|---|
-| 1 | 验收清单：must 全 pass，无 fail/blocked | **有条件通过（未满足全绿）** | 49 条 = 26 pass / 0 fail / **23 blocked**；本轮 13 条 = 7 pass / 6 blocked。blocked 全为 GUI/人工验证（环境限制，不伪造 pass）→ **Owner 按 ACCEPTANCE 批次 20 复测**；实机发现缺陷则回退 development |
-| 2 | 测试报告：覆盖正常/异常/边界，证据齐全且**可复现** | **通过** | 报告齐全（正常/异常/边界/回归/deviation 均有）；**P2 闭环后 10 套自动化可复现**：`qa-static-v1283` 复跑 `STATIC PASS (246 assertions)`、`npm test` 34/34、`fe-render-smoke` 51/51、`packfix` 18/18、gate-check、check/check:json、`git diff --check` 均 exit 0（④ 已记录） |
-| 3 | 验收复核报告齐全，结论「建议放行」 | **通过** | 本报告（本次覆盖 v1.2.82 旧报告），结论见 ⑧ |
-| 4 | 变更审阅：Git 变更逐文件「已审」，无未审改动 | **有条件通过** | 复核人已逐文件审阅 diff；`.dsh/review.json` **已审 0/36**（Owner 未标记）→ **Owner 在 approval 关补标或显式接受**；无超范围/调试/密钥 |
-| 5 | 文档：需求/设计/实现/测试/验收复核/发布记录齐全 | **有条件通过** | requirements/design/engineering-research/test-report/ACCEPTANCE/CHANGELOG/README/AGENT_TEAM/PLAYBOOK/opc 已同步、链接 0 失效、v1.2.82 旧报告已归档；**P3 缺口**：追加的打包热修需求未写入 requirements.md（仅 pipeline requirementLog 与验收清单）；**发布记录 release.md 仍为 v1.2.82** → release 阶段重写 |
-| 6 | 发布：approval 已人工确认，发布记录含环境/URL/版本/回滚 | **pending（本关不可判）** | approval/release 未开始；release 需写 release.md + `pipeline_record_release`，并确认根版本 +1 至 1.2.84；前置条件见 ⑧ |
-| 7 | 交付：报告 + 证据 + 交付包 + 链接已交付客户 | **pending（release 后）** | 待 release 后打包交付（delivery bundle）与验收报告导出 |
-| 8 | Owner 最终确认 | **pending（approval 关）** | 人工确认闸门属 Owner；本关仅建议。另见 ⑨ OBS-1：本轮 design 的「Owner 确认」发生在对话中，未落在新代码闸门上 |
-
-**本关小结**：8 项中 **2 项通过**（本报告 + 测试报告）、3 项有条件通过（验收清单/变更审阅/文档）、3 项 pending（发布/交付/Owner 确认）。**本关无代码/功能阻断，无证据链阻断（P2 已闭环）。**
+- `.dsh/review.json`：`12:acceptance` 基线 14:11:12Z 捕获 **23 文件**（11 已跟踪 + 12 未跟踪）；**marks = 0、comments = 0 → 已审 0/23**。
+- 复核人已逐文件审阅上述 diff（含 `client.js` 全量 diff 1 317 行、文档 diff、未跟踪资产）；未发现超范围/调试/密钥/侵权文件。**「已审 0/23」按惯例如实记录为 approval 前已知条件，不是阻断项**；建议 Owner 在 approval 关补标或显式接受。
 
 ---
 
-## ⑦ 专业质量复核（调研 / 设计质量 / 工程调研与许可证）
+## ⑥ DoD 检查（对照 `docs/opc/00-charter.md` §6；8 项）
 
-| 项 | 要求 | 实测证据 | 判定 |
+| # | DoD 项 | 判定 | 说明 |
 |---|---|---|---|
-| 需求调研 | ≥3 来源 + 借鉴决策表 | `requirements.md` §5：**6 个来源**（Figma / GitHub Docs / Storybook / MDN iframe / MDN sandbox / HITL）均 2026-10-27 访问、URL 齐全、决策表区分采用/不采用、已验证模式 vs 创新假设、无 blocked；来源结论与验收项 #1/#2 的强制闸门设计一致 | **通过** |
-| 设计质量 | ≥2 来源、自检均分 ≥4、至少一轮迭代、状态/响应式/对比度/ARIA | `design.md` §16：**4 来源**（Figma / Storybook / GitHub / MDN sandbox）决策表；**八态矩阵**（8 态 × 9 行，含 N/A 理由）；响应式 360/768/1280/1024–1279；对比度计算表（正文 ≥4.5、非文本 ≥3）；ARIA/键盘/44px；**R1→R2→R3 三轮迭代记录**（含 r1 证据图）；自检五维 **4.8/5**、must 0 失败；8 组 PNG/SVG 设计稿实测非空（PNG 2880×2048@2× 等）；已知 deviation（1280 横向滚动、iframe 高度、无完整焦点陷阱、D3 无截图禁通过、404 检测有限）在 §16.13 明示并与实现一致 | **通过**（注：文档实际为「八态矩阵（9 行组件）」，与 MUST 清单一致；Lead 口径中的「九态」应按八态理解） |
-| 工程调研与许可证 | ≥2 候选 + 许可证矩阵 + 来源 URL/commit；禁止 GPL/AGPL/无许可证复制 | `engineering-research.md`：**3 候选** = `microsoft/vscode`（MIT，commit `e809cab…`，release 1.143.1）、`storybookjs/storybook`（MIT，commit `04d17e4…`，v10.6.4）、`jupyterlab/jupyterlab`（BSD-3-Clause，commit `7dfda76…`，v4.6.4），含 §6 全量 URL+commit+访问日期（13 条来源）、§2.5 blocked 说明（无候选 blocked，raw.githubusercontent 受限已用 API 绕开）、§3 许可证矩阵（含 GPL/AGPL/无许可证禁止复制）、§7 不复制声明与风险登记册；实现侧 `git diff` **零依赖变更**、未引入第三方文件/许可头、设计预览 `sandbox=""` 比 JupyterLab 更严；结论「Build, don't borrow code」与代码一致 | **通过**（零依赖、零复制） |
-| 安全 / 性能 / 可访问性 | — | 两个新 iframe 均 `sandbox=''`+`title`+`lazy`；HTML tab 禁止顶层打开；三档只改宽度不重拉；产物 ≤20；ARIA/44px/focus-visible/reduced-motion 静态断言通过；无新增请求/依赖 | **通过（静态/渲染层面）**；实机观感 → 批次 20 |
+| 1 | 验收清单：must 全 pass，无 fail/blocked | **通过（本轮范围）** | 本轮 10/10 pass；全清单 41 pass / 0 fail / 0 pending / **23 blocked（历史遗留，0 新增）**；blocked 全为旧轮 GUI/视觉项，需 Owner 批次复测（见 ⑦） |
+| 2 | 测试报告：覆盖正常/异常/边界，证据齐全且**可复现** | **通过** | 3 套质量门独立复跑全绿；QA 静态 20/20 可复现；GUI 43/44（唯一失败为 QA 脚本对 `color(srgb)` 的解析假阴性，产品由独立探针证明达标）；报告自述 44/44 与复跑差异已如实记录（④-1） |
+| 3 | 验收复核报告齐全，结论「建议放行」 | **通过** | 本报告；旧报告已归档且字节一致 |
+| 4 | 变更审阅：Git 变更逐文件「已审」，无未审改动 | **有条件通过** | 复核人逐文件审阅；`.dsh/review.json` **已审 0/23**（Owner 未标记）→ approval 关补标或显式接受；无超范围/调试/密钥 |
+| 5 | 文档：需求/设计/实现/测试/复核/发布记录齐全 | **有条件通过** | requirements §7/§8、design §17、engineering-research、test-report、ACCEPTANCE 批次 22、CHANGELOG 1.2.84、README 已同步；链接 0 死链；归档齐全。**缺口：CHANGELOG 重复标题行（P2）+ release.md 仍为 v1.2.83（属 release 阶段重写）** |
+| 6 | 发布：approval 已人工确认，发布记录含环境/URL/版本/回滚 | **pending（本关不可判）** | approval/release 未开始；release 需重写 release.md、`pipeline_record_release`、确认根版本 1.2.86 随提交落地 |
+| 7 | 交付：报告 + 证据 + 交付包 + 链接已交付客户 | **pending（release 后）** | 待 release 打包/交付与报告导出 |
+| 8 | Owner 最终确认 | **pending（approval 关）** | 本关仅建议；Owner 按批次 22 复测后在面板确认 |
+
+### ⑥-1 需求 8 条验收标准逐条对照（`.dsh/pipeline.json` requirement）
+
+| 标准 | 实现证据 | 测试 / 复核证据 | 判定 |
+|---|---|---|---|
+| 1) 三区块可点击折叠/展开，头部有摘要与数量徽标，展开内容与现状一致 | `client.js` `renderBlockHead` / 三块体 / `renderBlockBadges`（≤2、+n、96px） | S1–S4/S29/S30；GUI Q1–Q10 | **通过** |
+| 2) 折叠状态写 localStorage 刷新保持；全部收起/展开一次作用全部可折叠区块 | 单键 `dsh-web-filebrowser:acceptance-collapse` + `toggleAllAcceptanceBlocks` | S11–S20；GUI Q11–Q13/Q25–Q29 | **通过** |
+| 3) 清单默认展开随面板伸缩；选中详情展开/取消隐藏；分组可折叠不影响勾选/状态 | `.ds-acc-list{min-height:96}`、详情头、分组头 + 原 handler 未改 | S5–S8/S18/S26；GUI Q2/Q6/Q10/Q14–Q22 | **通过** |
+| 4) 键盘可达：Tab/Enter/Space、aria 同步、收起内容不进 Tab | 三个头 button + `[hidden]{display:none}` + focus-visible | S2/S5/S7/S9/S27/S32；GUI Q30–Q35 | **通过** |
+| 5) 360/691 无横向滚动、长标题/徽标不撑破、浅/深主题 ≥4.5:1 | ellipsis max-width 96/62%、D8 color-mix 文字色 | Q36–Q40；独立深色探针 7.18–14.27 | **通过** |
+| 6) i18n 中英齐全、无硬编码中文、缺失回退合理 | 14 对 key、渲染段 0 CJK、`t()` 既有回退 | S21–S24；GUI Q41 | **通过**（zh 运行时未实测） |
+| 7) 回归不变 + 质量门全绿 | handler 未改、diff 无 Host/依赖 | 3 套门 + S42–S48 + Q42/Q43；写操作待 Owner | **通过（范围限制）** |
+| 8) 版本/文档同步，交付后根 1.2.86，只改允许文件 | plugin 1.2.84 / root 1.2.86 / CHANGELOG / 批次 22 / 11 文件全允许 | S34–S49；链接 0 死链；**CHANGELOG 重复标题需修** | **基本通过（1 处 P2 文档待修）** |
+
+---
+
+## ⑦ 风险、blocked 与观察项
+
+### ⑦-1 阻断项
+
+- **代码 / 功能 / 证据链阻断：0。** 本轮 10/10 pass、evidence 0 缺失、质量门全绿、无 Host/依赖/数据改动、无回归迹象。
+- **非阻断、release 前待修（P2，1 项，已闭环）**：见 OBS-1（CHANGELOG 重复标题行）。不构成回退 development 的理由，但不建议带病提交/发布。**该行已由 Lead 于 22:1x CST 修复，22:19 CST 复验 PASS，见 ④-2；release 前已无待修项。**
+
+### ⑦-2 blocked 项（23 条，全部历史遗留，本轮新增 0）
+
+统计：**23 条 blocked**，最新 `updatedAt` = 2026-10-27T12:03:59Z（**早于本轮起算 13:14:55Z**），本轮新增 **0**。归属（按验收项 category）：
+
+- **第 11 轮（v1.2.83）6 条**：设计预览 3（`e6d0b2bb93`/`0f33968c3e`/`da409176e3`）+ HTML 文件预览 1（`5c6cfc4eef`）+ 回归人工 1（`58e9af9d1b`）+ 打包 e2e 1（`643d66d403`）。
+- **旧轮（≤10）17 条**：workbench 结构/hero/布局/视觉/响应式/a11y/回归/实机 GUI 等（`b4d6cd2e33`、`dc651f1f45`、`60c8493783`、`1902af2ad1`、`47d54ee97e`、`61289ca00a`、`4939bdcb62`、`f2276bbaad`、`d2e803c08e`、`1db92733b0`、`34b966a4a8`、`cda93230ed`、`b6ebf8148d`、`60d7d3a430`、`1c1b66989d`、`9b18175f4d`、`21b6ebc49e`）。
+- 结论：**blocked 未清是历史清单悬挂，不是第 12 轮缺陷**；本轮 10 条均为 pass，未新增 blocked。建议 Owner 借批次 22 顺带扫一遍历史 blocked（可选，非本轮放行条件）。
+
+### ⑦-3 观察项（非阻断，按严重度排序）
+
+| # | 级别 | 观察 | 建议 |
+|---|---|---|---|
+| OBS-1 | **P2 文档（已闭环，见 ④-2）** | `CHANGELOG.md` 第 38–39 行连续两行 `## 1.2.85 — 2026-10-27`（第 39 行为本轮新增的重复行；HEAD 版本只有一行）。内容本身正确（1.2.84 条目完整），但重复标题破坏版本章节唯一性 | **release 提交前删除多余的一行**（1 行改动）；修掉后本轮 #10 pass 与 DoD#5 完整成立。不建议因此回退 development |
+| OBS-2 | **P3 设计偏差** | 设计 §17.8 与 §17.3 D6 声明「面板宽 < 420px 时降为 1 个徽标 + `+n`」，实现未加该窄面板规则：始终最多 2 枚徽标（CSS `.ds-acc-block-badges{max-width:62%}` + 单枚 96px ellipsis 兜底）。260/345/360 下无横向溢出（已验证），仅「第二枚徽标显示方式」与设计稿不同 | 本轮不阻断（需求未要求 1 vs 2；无溢出）；建议在 design §17.8 标注「本期实现为 CSS 省略兜底，窄面板 1+`+n` 规则留作后续」或下一轮补齐 container query |
+| OBS-3 | **P3 测试脚本** | QA GUI 脚本 Q39 的 `parse()` 只支持 `rgb()/rgba()`，当前数据（10 条回填 pass）下选中行标题为 `color(srgb …)` → 复跑 43/44 崩溃；QA 原跑 44/44 因当时选中行为 pending。**属脚本假阴性** | 建议 QA 脚本支持 `color(srgb …)` 并固定选择 pending/blocked 行；本轮以独立探针复核产品达标 |
+| OBS-4 | **P3 历史证据** | 全清单 **9 条历史 evidence 指向被 v1.2.85 删除的 PNG**（`workbench-v1279-*.png` ×5、`design-gate-*.png` ×4）+ **10 条历史项无 evidence**；均为旧轮记录，本轮 10 条不受影响 | 后续轮次把历史 evidence 改指 SVG 或补挂/作废，避免清单长期悬挂 |
+| OBS-5 | P3 历史 blocked | 23 条 blocked 长期未复测（v1.2.79–v1.2.83 的 GUI/视觉项） | 建议 Owner 批次 22 顺带复测回填；非本轮放行条件 |
+| OBS-6 | P3 未覆盖 | QA/复核均未实测 **zh 运行时切换**（当前 GUI locale=en）与**真实无痕模式**；写操作未在真实数据执行 | Owner 批次 22 复测清单已列；`t()` 机制未改动 + 14 对 key 静态成对，风险低 |
+| OBS-7 | P3 已知口径 | 证据库徽标 = 客户端 `loadEvidence()` 最近 40 条直接条目（含子目录名，上限 40），与 Host `listEvidenceFiles`（仅普通文件）口径不同；当前显示恒为 `40 evidence` | 已由 QA O2 记录，属既有证据列表实现；建议后续单独立项统一口径 |
+| OBS-8 | P3 bookkeeping | QA 报告 §2 用「10 files +2059/−843」（排除其自身报告）与当前 `git diff` 的「11 files +2346/−976」看似不一致，**差额恰为 test-report 自身 +287/−133，可对上**；QA §2 表内 requirements「+424/−?」、engineering-research「+691/−?」是 `--stat` 的「变更行数」而非 add/del，属表述口径差异 | 以实测 `git diff --numstat` 为准；不影响验收 |
+| OBS-9 | P3 阶段产物 | `docs/pipeline/release.md` 仍为 v1.2.83（上一轮发布说明） | release 阶段重写（环境/URL/版本/回滚/SHA256），本关 N/A |
+| OBS-10 | P3 文档基线引用 | requirements §1 审计行号与 design §17.3 的 `verificationOpen 约 8533` 等行号是**改动前基线**，当前树已漂移（该变量已删） | 属设计/需求文档写作时点引用，非错误；后续文档变更宜注明基线 commit |
 
 ---
 
 ## ⑧ 放行建议
 
-**建议：「建议放行（待 Owner 批次 20 复测 blocked 项）」；代码/功能阻断 0，原 P2 证据链阻断已闭环。**
+**建议：「建议放行」**（双复核第一关通过；最终由 Owner 在 approval 关人工确认）。
 
-- **阻断项（当前 0）**
-  - 原 **[P2 · 证据链 · 1 项]** `qa-static-v1283` 白名单过期 → **已闭环**：Lead 20:09:58 在 QA 临时脚本 `allowed()` 补入 `dsh-web-filebrowser-plugin/README.md`（未改业务代码），复核 20:10 复跑 **`STATIC PASS (246 assertions)`** 并追加证据日志；测试报告「10 套全绿」与批次 20 末条已可复现。详见 ④-1。
-- **待 Owner 复测（6 条 blocked，非阻断项）**：`e6d0b2bb93`、`0f33968c3e`、`da409176e3`、`5c6cfc4eef`、`58e9af9d1b`、`643d66d403` —— 需 Owner 按 `docs/ACCEPTANCE.md` **批次 20** 在重启 Harness（加载新 `pipeline.js` 闸门）+ 重建客户端 bundle + 强刷后复测；未复测前保持 blocked，不伪造 pass。
-- **流程待办（非阻断）**：`.dsh/review.json` 已审 **0/36**，Owner 未逐文件标记；属人工确认前已知条件，建议 approval 关前补标或显式接受。
-- **建议回退阶段**
-  - P2 已闭环，**不需**为证据链回退 testing；
-  - 若 Owner 批次 20 发现 design 闸门/预览/`.html` 预览/打包链路的真实功能缺陷 → **回退 development**（对应缺陷修复后重走 testing → acceptance）；
-  - 不建议因 blocked 项本身回退（属环境限制）。
-- **放行条件（建议写入 approval 关备注）**
-  1. **Owner 批次 20 完成 6 条 blocked 复测并回填状态**（本报告建议放行的核心前提）；
-  2. approval 关 Owner 人工确认；
-  3. review marks 补标（已审 0/36）或显式接受；
-  4. release 关根 `package.json` +1 至 **1.2.84**、重写 `docs/pipeline/release.md`（环境/URL/版本/回滚）、`pipeline_record_release` 落库、Git 提交**不含** `.dsh/tmp` 与 `.dsh/evidence`；
-  5. （可选 P3）release 前补 requirements.md 的追加需求溯源。
-- **版本与生效**：插件/根 1.2.83；生效需重启 Harness + 重建客户端 bundle + 强刷；无数据迁移；回滚可 revert 本轮交付提交（release 前基线 `2d3ebe0`）。
-
----
-
-## ⑨ 观察与 P3（非阻断）
-
-| # | 观察 | 处理建议 |
-|---|---|---|
-| OBS-1 | **本轮 design 的实际确认方式**：`.dsh/pipeline.json` 的 design 阶段 `note` 为「快速模式：Owner 预授权自动通过」，`submittedAt == reviewedAt`（19:42:17），`reviews: []` —— 说明本轮 design 是**旧 Host 代码的 fast 自动通过**，Owner 的确认发生在**对话中**（Lead 提供设计稿截图），新的 design 强制闸门代码**在本轮完成后才随 v1.2.83 生效**。 | 如实记录，不据此判 fail；批次 20 必须在重启后验证新闸门真实生效；release 说明需写「需重启 Host 才生效」 |
-| OBS-2 | `qa-static-v1283` 白名单过期（④-1）：根因是 QA 定稿后为修 O6 改了插件 README，未重跑脚本。**已闭环**：Lead 20:09:58 补 allowlist（未改业务代码），复核 20:10 复跑 `STATIC PASS (246 assertions)`，证据日志已追加。 | 已关闭；建议后续 QA 脚本把「本轮允许的 README/docs 同步」显式列举，避免同类漂移 |
-| OBS-3 | 6 条 blocked 全部需 Owner 批次 20；另历史 17 条 GUI blocked 长期未复测 | 建议批次 20 顺带扫一遍历史 blocked，避免清单长期悬挂 |
-| OBS-4 | 追加的打包热修需求未写入 `requirements.md`（在 `pipeline.json` requirementLog 与验收清单中） | release 前在 requirements.md §11 补一行溯源（P3） |
-| OBS-5 | **已闭环（原 P3）**：`b75496c076`/`2c499c8a82` 未挂 evidence 的问题已由 Lead 于 20:10:08 补挂（`docs/pipeline/test-report.md` / `CHANGELOG.md`），状态未变；剩余 10 条无 evidence 均为历史项（3 pass + 7 blocked） | 本轮 pass 项证据缺口归零；历史项可随批次 20 一并补/作废 |
-| OBS-6 | `workbench.designHtmlOnly` 为未引用死 key（qa-static observation） | 后续清理，不阻断 |
-| OBS-7 | 已知 deviation：1280 档容器内横向滚动、iframe 固定高度 640/560/480、无完整焦点陷阱、D3 无截图时禁用「通过」、iframe 404 检测有限 | 已在 design §16.13 明示并在 test-report O1–O5 记录；建议 Owner 在批次 20 目检确认可接受 |
-| OBS-8 | 设计文档使用「八态矩阵（9 行组件）」，与 Lead 口径「九态」表述不同 | 以 design.md §16.6 与 MUST 清单为准（八态、N/A 写理由），非缺陷 |
-| OBS-9 | dev summary 行数与实测有差（client.js +1461/−38 vs 实测 +1424/−42；docs 清单漏列 PLAYBOOK/opc） | 以实测为准（test-report O8 已记录），不影响验收 |
-| OBS-10 | `docs/pipeline/release.md` 仍为 v1.2.82 | release 阶段重写（本关 N/A） |
+- **阻断项：0**（无代码/功能/证据链阻断）。
+  - 唯一需处理的是 **P2 文档缺陷 OBS-1**：`CHANGELOG.md` 多一行 `## 1.2.85`；**建议 Lead/运维在 release 提交前删除 1 行**，不因此回退 development。**（已于 2026-10-27 22:19 CST 修复并复验通过，见 ④-2）**
+- **blocked：23 条，全部历史遗留（第 11 轮 6 + 旧轮 17），本轮新增 0**；本轮 10 条全部 pass。blocked 不视为本轮 fail，也不伪造 pass。
+- **质量门**：`npm run check` / `npm run check:json` / `npm test` **3/3 exit 0（34/34）**；独立静态 55/56（唯一 FAIL 为 OBS-1）；QA 静态复跑 20/20；GUI 复跑 43/44（Q39 脚本假阴性，产品由独立探针证明 7.18–14.27 全 ≥4.5:1）；`git diff --check` 干净；本地链接 0 死链。
+- **证据链缺口**：本轮 **0**（10 条 × 18 evidence 全部存在）；历史遗留 9 条失效 PNG + 10 条无 evidence（OBS-4，非本轮）。
+- **Owner 批次 22 需人工复测的写操作 / 实机清单**（`docs/ACCEPTANCE.md` 批次 22 的 11 条中，自动化无法覆盖的部分）：
+  1. **状态与批量**：单项四状态按钮、批量通过/不通过/重置、删除、备注保存（会写 `.dsh/acceptance.json`）；
+  2. **证据**：上传（截图/PDF/日志）与删除、缩略图打开；
+  3. **复测**：运行复测、发送失败给 agent、重新检测命令；
+  4. **交付**：打包交付（zip）、下载构建产物、发送失败清单、导出验收报告（会写 `.dsh/deliveries.json` / 产生交付物）；
+  5. **预览分享**：创建/复制/打开/关闭分享链接、交付记录下载、交付包下载（占用端口）；
+  6. **全局冒烟**：工作台/流水线/任务/待办/文件树/SSH/Git/预览分享面板；
+  7. **界面观感**：实机浅/深主题、**中文界面运行时切换**、真实无痕模式、260–691px 侧栏拖动、缩放；
+  8. （可选）顺带复测 23 条历史 blocked（OBS-5）。
+  - 复测前：**重建客户端 bundle + 强刷**（本轮 Host 无改动，无需重启 Harness；v1.2.84 是纯客户端）。设计基线：`docs/pipeline/design/acceptance-collapse-*.svg`。
+- **建议回退阶段**：**无需回退**。若 Owner 批次 22 发现折叠/持久化/键盘/窄栏的真实功能缺陷 → 回退 **development**（修复后重走 testing → acceptance）；若仅为 OBS-1 文档行 → release 前直接修正即可。
+- **放行条件（建议写入 approval 关备注）**：
+  1. **Owner 按批次 22 完成写操作与实机复测并回填**（本轮 10 条 pass 基于只读 GUI 与自动化，写操作尚未实机验证）；
+  2. approval 关 Owner 人工确认（本关不审批）；
+  3. `.dsh/review.json` 已审 **0/23** → approval 前补标或显式接受；
+  4. ~~release 提交前删除 CHANGELOG 重复标题行（OBS-1）~~ → **已修复并复验通过（④-2）**；
+  5. release 关重写 `docs/pipeline/release.md`（环境/URL/版本/回滚）、`pipeline_record_release` 落库、确认**根 1.2.86** 随提交落地；提交**不含** `.dsh/tmp` 与 `.dsh/evidence`（`.dsh/` 已 gitignore）；
+  6. 发布后重建 bundle + 强刷复测；无数据迁移。
+- **版本与生效**：插件 1.2.84 / 根 1.2.86；纯客户端改动，**重建客户端 bundle + 强刷** 即生效；回滚可 revert 本轮交付提交（release 前基线 `1d85de4`），无数据结构变更。
 
 ---
 
 ## 附：证据索引
 
-- 本关复测日志：`.dsh/evidence/acceptance-retest-v1.2.83.log`（880 行：环境/HEAD/版本 + 首轮复测 + P2 闭环复验，共 18 条命令原文+退出码+耗时）
-- 本关复核报告：`docs/pipeline/acceptance-review.md`（本文件；P2 闭环后更新 ①/③/④/⑥/⑧/⑨）
-- QA 证据：`.dsh/evidence/testing-v1.2.83.log`（24.6 KB）、`testing-v1.2.83-qa-static.log`、`testing-v1.2.83-normal-flow.log`
-- 热修证据：`.dsh/evidence/pack-fix/{qa-static.log,fix.diff,host-smoke.log,served-bundle.log,checks.log}`
-- QA 脚本：`.dsh/tmp/qa-static-v1283.mjs`、`qa-static-v1283-packfix.mjs`、`fe-render-smoke.mjs`、`dev-design-gate-check.mjs`（均不随包发布）
-- 上游文档：`docs/pipeline/requirements.md`、`design.md` §16、`engineering-research.md`、`test-report.md`、`docs/ACCEPTANCE.md` 批次 20、`CHANGELOG.md` `## 1.2.83`
-- 设计稿：`docs/pipeline/design/design-gate-*.png|svg`（8 组，PNG@2× 实测非空）
+- 本关复核报告：`docs/pipeline/acceptance-review.md`（本文件）；旧版归档 `docs/pipeline/archive/v1.2.83-acceptance-review.md`
+- 本关复测日志：`.dsh/evidence/acceptance-retest-v1.2.84.log`（环境/HEAD/版本 + 质量门 + 独立静态 + QA 静态复跑 + GUI 复跑 44 条逐条 + 深色探针 + 证据链/blocked/版本检查 + 链接/归档校验，均含退出码与耗时；末尾 §7 为 P2 闭环复验）
+- 复核临时脚本与复跑产物（不随包发布、未跟踪）：`.dsh/tmp/review-v1284/`（`review-static.mjs`、`static-rerun.mjs`、`gui-rerun.mjs`+`cdp.mjs`、`dark-probe.mjs`、`linkcheck-review.mjs`、`run-retest.sh`、`gui-rerun.log`、`gui-results.json`、`shots/` 15 张）
+- QA 证据（只读引用，未改动）：`.dsh/evidence/v1.2.84-qa-*.png`（18 张）、`v1.2.84-qa-quality-gates.log`、`v1.2.84-qa-static.log`、`v1.2.84-qa-gui.log`、`v1.2.84-qa-gui-results.json`
+- 上游文档：`docs/pipeline/requirements.md` §7/§8、`design.md` §17、`engineering-research.md` §5–§7、`test-report.md`、`docs/ACCEPTANCE.md` 批次 22、`CHANGELOG.md` `## 1.2.84`
+- 验收清单：`.dsh/acceptance.json`（64 条 = 41 pass / 23 blocked；本轮 10 条全 pass）
+- 设计稿：`docs/pipeline/design/acceptance-collapse-*.svg`（8 张，另 PNG@2× 供审阅、gitignored）

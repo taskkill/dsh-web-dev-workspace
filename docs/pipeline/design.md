@@ -805,3 +805,667 @@ r1 五维评分：视觉层级 **4**、清晰度 **3**、一致性 **3**、反�
 2. 三档是否足够？若 Owner 需要 1024 档，宽度常量集中定义，后续加一档即可。
 3. 是否需要「设计稿版本对比」？本轮不做，记为后续需求。
 4. 深色主题下 HTML 稿自身可能是浅色 → 预览画布保持中性浅底，不强制反转设计稿。
+
+## 17. v1.2.84 验收台分区可收起（第 12 轮）
+
+> 角色：UI 设计师｜上游：[requirements.md](requirements.md)（第 12 轮，§3 范围 / §6 行为规格 / §7 验收 10 条）｜下游：全栈开发（`client.js` `renderAcceptancePanel` + `ds-acc-*` CSS + zh/en i18n + localStorage）→ QA → 验收复核。
+> 结论先行：验收台拆成 **「主内容清单 + 三个可折叠次要区块 + 可折叠分组 + 可收起详情」** 四层信息结构。证据库 / 复测中心 / 交付与预览分享**默认收起**，区块头 = 标题 + 摘要徽标 + 箭头，整行一个 `button`（无嵌套按钮）；工具区只放**一个动态文案**的「全部收起 ⇄ 全部展开」；复测中心**去掉内层开关、扁平化为一层**；分组头改为 `button` 并持久化；详情头带状态徽标与选中标题、收起后保留选中高亮。间距回到 4/8px 体系，正文对比度 ≥4.5:1（浅色 5.80:1 / 深色 9.90:1），折叠头的 `aria-expanded` / `aria-controls` / `hidden` / 键盘 / 焦点全部按 W3C APG 契约。本阶段只交设计与设计稿，**未改任何产品代码**。
+> 效果图（SVG 源入库；PNG 由 sharp 2× 渲染，`.gitignore` 已忽略）：[默认态 360](design/acceptance-collapse-default-360.svg) / [三区块展开 360](design/acceptance-collapse-expanded-360.svg) / [全部收起 360](design/acceptance-collapse-all-collapsed-360.svg) / [详情展开 360](design/acceptance-collapse-detail-360.svg) / [691px](design/acceptance-collapse-691.svg) / [深色片段 900](design/acceptance-collapse-dark-900.svg) / 迭代证据：[R1 默认](design/acceptance-collapse-default-r1-360.svg) / [R1 展开](design/acceptance-collapse-expanded-r1-360.svg)。
+
+### 17.1 目标与设计原则
+
+本轮不是「加功能」，而是**把已有内容重新分层**：验收项清单 + 状态计数是每天要看的主内容，证据库 / 复测中心 / 交付与预览分享是低频工具。需求 §1 的根因判断是「同一层竖向流 + 低频块固定占位」，所以设计只做三件事——**分层、默认收起、一键复原**，不改任何既有操作。
+
+1. **主内容常显**：清单默认展开、吃掉剩余高度并独立滚动；三区块收在清单下方，只露 44px 区块头。主内容永远不进折叠（GOV.UK 明确「所有用户都要看的内容不要放进手风琴」）。
+2. **一层只做一件事**：区块头只负责「展开/收起」，操作按钮（添加证据、复测运行、打包、分享、下载）全部留在展开后的内容区顶部；**不嵌套手风琴**，因此复测中心原有的内层「复测」开关被去掉。
+3. **一键复原、随时可比**：允许三区块同时展开（不互斥），并提供「全部收起 ⇄ 全部展开」；默认值可被用户一键翻面，刷新后保持。
+4. **键盘与视觉同步**：每个折叠头都是真 `button`，`aria-expanded` 与箭头方向、内容显隐三者永远一致；收起内容 `hidden`，不进 Tab。
+5. **窄侧栏优先**：先在 360px 把「标题 + 徽标 + 箭头」跑通，再向上适配 691 / 768 / 537（1280 视口下的面板宽）与 1440；不出现横向滚动。
+
+**验收项 → 设计落点映射**（验收项按 requirements §8 编号；本会话无工作区绑定，`acceptance_list` 不可用，故用编号 + category 对应）
+
+| # | 验收项（category） | 设计落点 |
+|---|---|---|
+| 1 | 三区块默认收起、点头部展开、头部含徽标与箭头（acceptance-collapse） | 17.3 D1/D6、17.5 A1/A2、17.7、[default-360](design/acceptance-collapse-default-360.svg) |
+| 2 | 折叠状态持久化 + 损坏回退（acceptance-collapse） | 17.4 存储模型、17.5 A1 状态、17.12 给开发 `readCollapseState()/writeCollapseState()` |
+| 3 | 全部收起 / 全部展开作用于区块 + 分组 + 详情（acceptance-collapse） | 17.3 D3、17.5 A3、[all-collapsed-360](design/acceptance-collapse-all-collapsed-360.svg) |
+| 4 | 清单占满剩余高度；详情可展开/收起/取消选中（acceptance-collapse） | 17.3 D4、17.4 高度预算、[detail-360](design/acceptance-collapse-detail-360.svg) |
+| 5 | 分组头可折叠 + 数量徽标 + 不影响勾选批量（acceptance-collapse） | 17.3 D5、17.5 A5、17.7 分组头 |
+| 6 | button + aria-expanded/aria-controls + Enter/Space + 焦点 + hidden 不进 Tab（acceptance-a11y） | 17.9 契约、17.7 focus 列 |
+| 7 | 360 / 691 无横向溢出，浅深主题可读（acceptance-layout） | 17.8、17.6 对比度表、[691](design/acceptance-collapse-691.svg) / [dark-900](design/acceptance-collapse-dark-900.svg) |
+| 8 | 中英文文案齐全、无硬编码（acceptance-i18n） | 17.10 i18n 键表（zh/en 成对） |
+| 9 | 既有操作不回归（acceptance-regression） | 17.3 D2 对 `verificationOpen` 的处理、17.12 「不可偏离」清单 |
+| 10 | 版本与文档 1.2.84 / 只改允许文件（version-docs） | 本文件 §17 + 17.12 交付边界（设计与实现都不碰 Host/数据/依赖） |
+
+### 17.2 调研与借鉴
+
+> 调研时间 **2026-10-27**（Asia/Shanghai）。本轮用 `web_search` 定位、`web_fetch` 读取正文并逐条核对可引用结论；下表 6 个来源当日均返回 **HTTP 200 且有正文**，**无 blocked**。只借鉴信息结构、交互与可访问性契约，不复制受版权保护的文案/素材/整段源码。
+
+#### 17.2.1 来源表
+
+| # | 来源 | URL | 访问日期 | 类型 | 关键结论（对本设计的直接落点） |
+|---|---|---|---|---|---|
+| 1 | W3C WAI-ARIA APG · Accordion Example | https://www.w3.org/WAI/ARIA/apg/patterns/accordion/examples/accordion/ | 2026-10-27 | 标准（W3C APG） | 手风琴头是 heading 内的 `button`，由它控制面板显隐；`aria-expanded` 展开 `true` / 收起 `false`；`aria-controls="ID"` 指向面板；键盘只有 Enter / Space 两条要求，切换后焦点留在按钮；面板可用 `region` + `aria-labelledby` 关联头部。→ 三个区块头、分组头、详情头统一 `button` + `aria-expanded` + `aria-controls`；不加 `role="tablist"`。 |
+| 2 | W3C WAI-ARIA APG · Disclosure (Show/Hide) Pattern | https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/ | 2026-10-27 | 标准（W3C APG） | disclosure = 一个 disclosure button + 受控内容区；按钮带 `aria-expanded`，`aria-controls` 可选但推荐；键盘只有 Enter / Space；箭头方向用于提示「展开后会出现内容」。→ 单块开合用 disclosure 语义即可，不需要手风琴角色；三块可独立开合（非互斥）。 |
+| 3 | GOV.UK Design System · Accordion | https://design-system.service.gov.uk/components/accordion/ | 2026-10-27 | 设计系统（政府公共服务） | 手风琴通常**所有区块初始隐藏**；标题按钮 = 标题 + 摘要行（可选，但**必须尽量短**）+ 显示/隐藏动作，屏幕阅读器读成一句；持久展开状态需要**稳定唯一 id**；**不要嵌套手风琴**；**不要把所有用户都需要看的内容放进手风琴**；内容多时先考虑拆分/精简而不是折叠。→ 只用徽标做短摘要；清单不折叠；复测中心去内层开关；稳定 id + 稳定存储 key。 |
+| 4 | Nielsen Norman Group · Progressive Disclosure | https://www.nngroup.com/articles/progressive-disclosure/ | 2026-10-27 | UX 研究（行业权威） | 初始只显示最重要的少量选项，次要功能按需展开；必须做对两件事：① 初始/二级的切分正确（高频留首屏）② 从一级到二级的路径明显；**超过 2 层披露可用性急剧下降**。→ 验收台最多两层：区块层（证据/复测/交付/详情）+ 分组层；分组层内不再折叠；初始只露区块头，点击路径是整行按钮。 |
+| 5 | MDN · `hidden` HTML global attribute | https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/hidden | 2026-10-27 | Web 标准 | `hidden` 表示内容不应被呈现；浏览器通常用 `display:none` 实现，元素不参与布局；`hidden` 对**所有呈现**生效（含读屏）；隐藏元素里的脚本仍会执行、表单仍可提交；`hidden="until-found"` 是另一种「可被页内查找发现」的状态。→ 收起内容用 `hidden`（保留 DOM 挂载，不丢端口输入/命令勾选/备注草稿），并且会自然退出 Tab 顺序；不使用 `visibility`/`height:0` 之类「仍可聚焦」的隐藏。 |
+| 6 | W3C WAI · Understanding SC 1.4.11 Non-text Contrast | https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html | 2026-10-27 | 标准（WCAG 2.2 AA 解释文档） | 用于识别控件与**状态**的视觉信息需 ≥3:1；如果控件已有可见文本能识别，不强制画边界；**聚焦指示器必须与相邻背景 ≥3:1**；作者无力控制抗锯齿时，细线/浅色更危险，应留余量。→ 箭头、焦点环用 `label-secondary`/`brand`（浅色 5.80 / 18.90，深色 9.90 / 14.27）；徽标文字按文本 4.5:1 处理，不用 `label-caption`（浅色仅 2.13:1）。 |
+
+#### 17.2.2 借鉴决策表
+
+| 借鉴点 | 来源 | 采用 / 调整 / 不采用 | 理由与落点 |
+|---|---|---|---|
+| 折叠头是 `button` + `aria-expanded` + `aria-controls`，内容容器有稳定 id | #1 #2 | **采用** | 三区块头、分组头、详情头统一；`aria-controls` 指向 `hidden` 容器（17.9） |
+| Enter / Space 切换，焦点留在按钮 | #1 #2 | **采用** | 不发明快捷键；Tab 顺序 = 阅读顺序 |
+| 区块头文本 = 标题 + 短摘要，读屏读成一句 | #3 | **调整采用** | 摘要压成**数量徽标**（证据 n / 最近 pass·fail / 分享 n·交付 n），既满足摘要作用又不撑破 360（17.3 D6） |
+| 次要内容默认收起、高频内容常显 | #3 #4 | **采用** | 三区块默认收起；清单/计数/筛选常显（验收项 1、4） |
+| 多个区块允许同时展开，不做互斥自动关闭 | #4 #1（反向） | **采用** | 「全部展开」需要同时可见；`<details name>` 式互斥不采用（验收项 3） |
+| 不嵌套手风琴 / 不超过两层披露 | #3 #4 | **采用** | 复测中心内层 `verificationOpen` 开关删除（17.3 D2）；分组层内不再折叠 |
+| 持久化需要稳定 id / key | #3 | **采用** | 单键 JSON + 分类原值作分组 key（17.3 D5） |
+| 收起内容用 `hidden`，保留挂载 | #5 | **采用** | 不丢端口输入/命令勾选/备注草稿；不触发额外请求 |
+| 允许同时展开 → 折叠头用 heading 包裹 | #1 | **不采用** | 侧栏工具面板不是文档大纲；`button` 具名 + `aria-controls` 已足够，不额外加 h2/h3 与 `region`（避免与侧栏既有 landmark 冲突） |
+| 折叠高度动画 | — | **不采用** | requirements §3.2 明确不做高度动画；只做 150ms 颜色/图标切换，`prefers-reduced-motion` 下全关 |
+| 原生 `<details>/<summary>` | #5 关联 | **不采用** | 受控 React 渲染 + 需要持久化与既有 `aria-expanded` 真值断言；`<summary>` 内放徽标与嵌套按钮的浏览器行为不一致 |
+| 折叠头加「显示/隐藏」隐藏文案（GOV.UK 做法） | #3 | **不采用（用 aria-expanded 代替）** | APG 模式下 `aria-expanded` 会被读屏播报「已展开/已收起」；额外隐藏文案会与徽标文本重复。若读屏抽查发现播报不清，再补 `acceptance.toggleShow/Hide`（记为后续微调，不阻塞） |
+| 徽标用 `label-caption`（现有 `.ds-acc-cat` 风格） | #6（反向） | **不采用** | `--dsw-alias-label-caption` 浅色 #ADB2B8 / 白 = **2.13:1**，做 9.5px 文字必失败；改用 `label-secondary`（5.80:1），徽标底色用 brand/ink 6% 叠加 |
+
+#### 17.2.3 已验证模式 vs 创新假设
+
+**已验证模式（有来源）**
+
+1. disclosure 的 ARIA/键盘契约（#1、#2）→ 三区块头 + 详情头 + 分组头。
+2. 初始只显示高频内容、低频内容按需展开，且不超过 2 层（#3、#4）→ 清单常显 + 三区块默认收起 + 分组层。
+3. 允许多块同时展开、避免互斥（#4）→ 三块独立开合 + 「全部展开」。
+4. 默认收起是常见默认值（#3）→ 三区块默认 `false`。
+5. `hidden` 的语义与副作用（#5）→ 收起保留挂载、退出 Tab、无额外请求。
+6. 非文本/聚焦对比 ≥3:1、文本 ≥4.5:1（#6）→ 箭头/焦点环/徽标取值与实测表。
+
+**创新假设（需验证，写验证方式与失败预案）**
+
+| # | 假设 | 验证方式 | 失败预案 |
+|---|---|---|---|
+| 1 | 区块头只做 disclosure（操作按钮内移）不会让 Owner 找不到「添加证据/复测/打包」 | 360 默认态 + 展开态对照；Owner 按 `docs/ACCEPTANCE.md` 批次 22 复测 | 展开体顶行固定放主操作（本设计已如此）；若仍难找，给「证据库」区块头加 +N 快捷图标（下轮） |
+| 2 | 数量徽标足以替代 GOV.UK 式整句摘要 | 360 / 691 渲染 + 徽标 96px 上限实测 | 徽标只留数字，完整文本进 `title`；或徽标移到第二行（会增高区块头，不优） |
+| 3 | 单按钮动态文案（全部收起 ⇄ 全部展开）比两个按钮更省认知 | 360 工具区实测 + Owner 复测 | 改回两个按钮并把当前位置改成「全部收起/全部展开」并列（仍在同一位置，不新增行） |
+| 4 | 详情可收起不会被误认为「选中丢了」 | 收起态截图 + 清单行高亮对照 | 详情头保留「详情已收起 · 选中保留」文案（已做）+ 选中行 2px 左条 |
+| 5 | 691 与 360 之间不需要额外断点 | 360 / 691 / 768 / 537 四档渲染 | 若 480–560 出现徽标挤压，按「面板宽 <420 → 1 徽标 + `+n`」规则兜底 |
+
+#### 17.2.4 抓取受限 / 无网络说明
+
+- 无。上表 6 个来源当日均 HTTP 200 且读取到正文（其中 GOV.UK 页面正文在「summary line」段落后被截断，但「不要嵌套手风琴 / 不要把所有用户都要看的内容放进手风琴 / 稳定 id / 摘要必须短」四条结论均在被读取到的正文内，未引用截断之后的段落）。
+- 未引用 product 阶段 §5.4 中抓取失败的来源（Ant Design Collapse、Material 3 Expansion panels 等），也未据此编造任何结论；本设计对它们的判断不构成依据。
+- 本轮不需要外部服务/无头浏览器截图，无能力型 blocked。
+
+### 17.3 设计决策（6 项必须拍板 + 2 项补强）
+
+#### D1 区块头结构：单一全宽 `button`，操作按钮移入展开体
+
+**结论**：三个区块头 = 一个占满整行的 `<button type="button">`，内部只有「标题（12/600）+ 摘要徽标（≤2 个，9.5/600）+ 箭头（12，`aria-hidden`）」。**头部内不出现任何其它按钮**。「添加截图 / 证据」「运行复测」「打包交付 / 导出报告 / 下载构建产物」「创建分享链接 / 复制 / 打开 / 关闭」全部保留在展开后的内容区顶部，沿用既有按钮与既有 handler。
+
+**理由**：① 头部一旦放按钮就变成「button 套 button」，HTML 不允许、读屏与点击语义都会坏（需 `stopPropagation` 打补丁）；② 双层开关（头部 + 内层「复测」）正是 GOV.UK 明确反对的嵌套手风琴；③ 收起态只需要「标题 + 数量」告知有什么，不需要操作入口；④ 收起态仍可操作会与「整行点击切换」抢点击。
+
+**否决的备选**：头部右侧放 icon 按钮（☰ / +）。理由：44px 头部里塞 3 个 24px 图标后，360px 下标题只剩 ~120px；且 `aria-expanded` 的按钮内含其它可聚焦元素会被读屏读成复合控件。
+
+**对既有实现的影响**：`renderAcceptancePanel()` 里证据块的 `.ds-acc-evidence-head`（17564 起）、复测块的 `.ds-acc-evidence-head` 复用（17626 起）、交付块不再渲染标题行，改为统一 `blockHead()`；三块内容整体包进 `<div id="ds-acc-<block>-body" hidden>`。
+
+#### D2 复测中心双层开关：扁平化（去掉内层「复测」按钮）
+
+**结论**：**删除内层开关**。复测区块展开后直接显示：最近一次复测摘要（时间 + `pass 通过 / fail 失败` + 失败时「把失败发给 agent」）→ 命令选择列表（checkbox）→ `[运行复测]` 主按钮 + 「重新检测命令」。区块头是唯一开关。
+
+**对既有状态的处理（明确交接）**：
+- 删除 `verificationOpen` state（`client.js` 约 **8533**）与内层切换按钮 `.ds-acc-verify-toggle`（约 **17639–17654**）、以及条件渲染包装 `verificationOpen ? … : null`（约 17679）。
+- 把内层开关里「展开时若未选命令则自动预选前 3 个 test/build/lint 建议」的逻辑**搬到 verify 区块头的切换函数**（`toggleBlock('verify')` 展开分支执行一次）；其余逻辑不动。
+- 不复用、不迁移该状态：它是会话内 state、无持久化，刷新即回默认；新状态 `blocks.verify` 有持久化（默认 `false`）。
+- 视觉上只有一个开关，`verificationOpen` 不再出现在 DOM；`acceptance.retest`（复测）文案继续用于**运行按钮**，不作为开关文案。
+- **兼容退路**（若开发坚持最小 diff）：允许保留 `verificationOpen` 变量但恒为 `true`（区块展开即是命令区），**不得渲染第二个可见开关**；验收项 1/6 只检查可观察结果与 DOM 中折叠头数量。
+
+**理由**：一个内容块只应有一个开合入口（APG disclosure 的最小模型）；双层开关会让「点开区块还要再点一次才看到命令」，且默认收起状态下用户看到的是「复测」二字而不知道区块已展开。
+
+#### D3 「全部收起 / 全部展开」：单按钮动态文案，刷新右侧，无 disabled
+
+**结论**：工具区 `[刷新] [⟰ 全部收起]` —— **一个按钮、动态文案**，位置在刷新按钮右侧，间距 8px，`ds-linkbtn` 级视觉（无边框、10.5/600、`label-secondary`），左侧带双箭头图标（全部收起 = 双上箭头，全部展开 = 双下箭头）。
+
+- 文案判定：`anyOpen = blocks.evidence || blocks.verify || blocks.delivery || detailOpen || 任一已展开分组` → `anyOpen ? 全部收起 : 全部展开`。
+- 点击行为：`anyOpen` 为真 → 三区块收起 + 全部分组收起 + 详情收起（**不取消选中**）；否则反之（三区块展开 + 全部分组展开 + 详情展开，若有选中）。
+- **不做 disabled**：按钮永远可执行且结果幂等（重复点同一态 → 状态不变、只写一次存储）；理由：动态文案已经把「下一步会发生什么」表达清楚，加 disabled 会出现「按钮灰着但用户想要复原」的死路。requirement §6.3 允许「始终可用但幂等」。
+- `title` / `aria-label` 说明作用域：「收起三个分区、所有分类分组与详情」/「展开三个分区、所有分类分组与详情」；避免首次进入时（分组默认展开、三区块已收起）按钮显示「全部收起」造成的困惑——它确实会收起分组与详情。
+- 不改变清单的展开状态（清单不是可折叠区块）。
+
+**否决的备选**：两个并列按钮（全部收起 / 全部展开）——占用 2 个点击位、在同一时刻总有一个是无效动作，且 360 工具区会挤占「保存中…」提示位；本设计在 R1 里画过（见 17.11），评审后合并。
+
+#### D4 详情区头部：状态徽标 + 选中标题 + 收起反馈
+
+**结论**：详情块（有选中才渲染）头部 = 48px 的整行 `button`：
+
+```
+[通过] 证据库、复测中心、交付与预览分享默认收起，点区块头展开     ⌃
+详情已收起 · 选中保留，点此展开                               (仅收起态，9px)
+```
+
+- 左起：状态徽标（16 高，`通过/不通过/阻塞/待验收` 四色语义底色 + 同色系深色文字）→ 选中项标题（12/600，**展开态最多 2 行**、**收起态 1 行**，超出省略，完整文本进 `title`）→ 右侧箭头（展开 ⌃ / 收起 ⌄）。
+- 收起态额外一行 9px `label-secondary` 文案「详情已收起 · 选中保留，点此展开」，直接消除「选中丢了」的误判；同时清单里该行保持 **brand 8% 底 + 2px 左指示条**。
+- 取消选中（现有「取消」按钮，约 17517）→ 详情整块消失；**选中另一项 → 自动重新展开**（避免「点了没反应」）；手动收起后再次点同一行 → 保持收起（点同一项不强制弹回，减少抖动）——两种行为都可观察，验收项 4 覆盖「选中另一项重新展开」。
+- 不新增详情持久化键：`detailOpen` 随会话，有选中时默认展开，刷新后按现状不记忆选中项（requirements §3.2）。
+
+#### D5 分组折叠：`button` + 数量徽标 + 以分类原值持久化
+
+**结论**：分组头从 `div` 改为 `<button type="button" class="ds-acc-group-head" aria-expanded aria-controls>`，高度 28，左侧分类名（9.5/600，`label-secondary`，不用 `label-caption` 以免 3.71:1 不达标）+ 数量徽标（9/600，14 高，`badgeBg`）+ 右侧 12px 箭头。
+
+- 持久化 key：**数据里的分类原值**（如 `验收 · 折叠与持久化`、英文界面下仍是该数据值），空/缺失统一 `__uncat__`；不用显示语言派生，避免切 zh/en 后状态丢失。
+- DOM id：`ds-acc-group-body-<index>`（index = 当前筛选结果里的分组序号，保证唯一且当次渲染稳定）；筛选改变时 id 会随渲染重排，但 `aria-controls` 永远指向当前 body，功能不受影响。
+- 新分类出现默认展开；分类消失不清理旧 key（无害，体积可控）。
+- 折叠只影响该组条目显隐：全选/批量/状态/删除/筛选逻辑一行不改（全选仍按筛选结果，包含被收起分组中的项）。
+
+#### D6 徽标截断规则（360 优先）
+
+**结论**：徽标 = 16 高、`border-radius: 8`、左右 padding 5、字号 9.5/600、**单行不换行**；**最多 2 个**；每个 `max-width: 96px`，超出 `text-overflow: ellipsis`（完整文本进 `title`）；第 3 个及以后合并成 `+n`（`title` 列出被折叠项）；`+n` 自身不省略。
+
+- 优先级：`状态/结果` > `一级计数` > `二级计数`。例如交付区块 = `3 个分享` + `5 个交付`；若再加「交付包已生成」就变成 `3 个分享` + `+2`。
+- 布局让位顺序：标题 `flex: 1 1 auto; min-width: 0`（先省略）→ 徽标 `flex: 0 0 auto` 但 `max-width: 96px`（再省略自身文本）→ 箭头 `flex: 0 0 auto` 永不压缩。
+- **面板宽 < 420px** 时降为「1 个徽标 + `+n`」；≥420px 显示 2 个完整；691 / 768 / 1440 不触发省略。
+- 数值口径：证据徽标 = `evidenceFiles.length`；复测徽标 = 最近一次 verification 的 `passed/failed`（无记录 → `无记录`）；交付徽标 = `previewShares.length` / `deliveryHistory.length`（为 0 时只显示另一项；都为 0 → `无分享 · 无交付`）。
+
+#### D7 内容高度预算与滚动（补强，防止「清单被压没」）
+
+- 清单：`.ds-acc-list { flex: 1 1 auto; min-height: 96px; overflow: auto }`（现有 `flex:1 1 auto; min-height:0` 基础上把 `min-height` 提到 96px）。
+- 区块体：`.ds-acc-block-body { flex: 0 0 auto; overflow: auto }`，max-height 分别为 **证据库 260 / 复测中心 240 / 交付与预览分享 340**；三块同时展开时超出部分在区块体内滚动，不把面板整体撑长、不把清单压到 0。
+- 三块收起时（默认态）面板高度 = 工具区 + 清单（弹性）+ 3×44 区块头；360×900 实测清单拿到约 430px。
+
+#### D8 颜色与对比度修正（补强，直接影响 must）
+
+- 新增/改造文字**不用** `--dsw-alias-label-caption`（浅色 2.13:1、深色 4.02:1 均不达 4.5:1），次级文字统一 `--dsw-alias-label-secondary`（5.80 / 9.90）；`label-caption` 只留给装饰性分隔与占位。
+- 行标题保留「状态着色」语义（`data-status`），但把原 `state-success-primary`(#22C55E)/`state-error-primary`(#EC1313) 换成 **与 `label-primary` 混色后的深色版**（浅色 #19743D 5.82 / #891214 9.72），否则 2.28:1 不达 AA。
+- 徽标底色 = 语义色 12% 叠加 + 文字 = 语义色 55% 与 `label-primary` 混合（浅色 5.04–8.00，深色 4.55–7.88 全部 ≥4.5）。
+- 焦点环：`outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: -2px`（整行按钮用**内缩 2px**，避免被面板 `overflow:hidden` 裁掉）；浅色 18.90:1、深色 14.27:1。
+
+### 17.4 信息架构与关键流程
+
+**层级（不新增导航，全部在 `paneView='acceptance'` 内）**
+
+```
+验收台面板（.ds-side-view.ds-acceptance-view）
+├─ 工具区        [刷新] [⟰ 全部收起/全部展开]                    （常显）
+├─ 提示 + 计数 + 添加 + 筛选 + 模板                              （常显，既有）
+├─ 验收项清单（主内容，flex:1，min-height:96，独立滚动）          （常显）
+│   ├─ 分组头 button（分类名 + 数量 + 箭头）                      （可折叠，默认展开，持久化）
+│   └─ 验收项行（勾选 / 标题 / 状态按钮 / 删除；选中高亮）
+├─ 详情块 button 头 + 详情体                                     （有选中即出现；可收起）
+├─ 证据库   区块头(44) / 区块体(≤260 滚动)                       （默认收起，持久化）
+├─ 复测中心 区块头(44) / 区块体(≤240 滚动)                       （默认收起，持久化；扁平化）
+└─ 交付与预览分享 区块头(44) / 区块体(≤340 滚动)                  （默认收起，持久化）
+```
+
+**存储模型（localStorage 单键）**
+
+```json
+{
+  "blocks": { "evidence": false, "verify": false, "delivery": false },
+  "groups": { "验收 · 折叠与持久化": true, "__uncat__": true }
+}
+```
+
+- 键：`dsh-web-filebrowser:acceptance-collapse`（与现有 `dsh-web-filebrowser:*` 命名一致）。
+- 读取：面板首次渲染读一次；`JSON.parse` + 类型校验（`blocks` 必须是对象、值必须是 boolean；`groups` 必须是对象），任一不符 → **整份回退默认**（三块收起、分组展开、详情展开），不抛错、不写坏值。
+- 写入：任一区块/分组切换、「全部收起/展开」后立即写；`setItem` 包 try/catch，失败（隐私模式/配额）→ 静默降级为内存态，UI 不报错。
+- `detailOpen` **不写入**（随选中状态；不持久化选中项）。
+
+**关键流程**
+
+1. **打开面板**：读偏好 → 缺省 `evidence/verify/delivery=false`、分组全 `true` → 渲染；清单占满剩余高度。
+2. **展开证据库**：点区块头任意位置（或 Tab 到该头按 Enter/Space）→ `aria-expanded=true` + 移除 body `hidden` + 箭头变 ⌃ + 写存储；内容区顶行即「添加截图 / 证据」。
+3. **全部收起**：`anyOpen` 为真时点工具区按钮 → 三区块 + 全部分组 + 详情收起、选中保留 → 文案变「全部展开」→ 写存储。
+4. **选中验收项**：详情块出现（头 + 体展开）；再点详情头 → 收起（保留选中 + 头文案）；再点清单另一项 → 详情重新展开。
+5. **折叠分组**：点分组头 → 组内条目 `hidden`；行内状态/勾选/删除不受影响；刷新后组仍收起。
+6. **异常**：存储损坏 → 回退默认并覆盖写新值；数据接口失败 → 既有 `.ds-errorline` + 刷新按钮重试，折叠功能仍可用（纯本地状态）。
+
+**空/加载/错误态在区块层的表现**：证据 0 条 → 徽标 `0 条证据`，展开体显示既有 `acceptance.evidenceEmpty`；复测无记录 → 徽标 `无记录`，展开体 `acceptance.retestEmpty`；分享/交付 0 → 徽标按 D6 省略，展开体既有空态文案；请求中 → 徽标显示 `—`，展开体一行「加载中…」；失败 → 徽标 `—`，展开体沿用 `previewError`/`acceptanceError` 的 errorline（不新增错误文案）。
+
+### 17.5 组件清单（A1–A10）
+
+> 全部复用现有 `ds-*` 组件与 `--dsw-alias-*` token，作用域挂在 `.ds-acc-*` 下，不影响其它面板。新增组件的内边距/间距只用 4/8/12/16；沿用既有 `.ds-acc-*` 的 5/6/7px 微间距处已在 §17.6 标注为「既有值，不改」。
+
+| # | 组件 | 尺寸 / 间距 | 字号 / 字重 | 颜色 token | 关键交互 |
+|---|---|---|---|---|---|
+| A1 | 区块头（证据库 / 复测中心 / 交付与预览分享共用） | 高 **44**、左右 padding **8**、整行宽；标题与徽标 gap 8；箭头 12×12 固定右列（距右 8） | 标题 **12/600**；徽标 9.5/600 | 底色面板（`bg-layer-1` 混色）；标题 `label-primary`；徽标见 A4；箭头 `label-secondary`；上边线 `border-l1` | 整行 `button`；click / Enter / Space 切换；hover 底色 = `label-primary` 6%；focus 环 2px `brand`（inset -2） |
+| A2 | 区块体容器 | `flex:0 0 auto; overflow:auto`；max-height：证据 **260** / 复测 **240** / 交付 **340**；内边距 8；顶部无额外边框（区块头已有） | 沿用既有 body 字号（9–11） | 底 `bg-layer-1` 混色；内部沿用既有组件 | 展开才渲染内容（保留挂载，`hidden`）；滚动条仅竖向；不发额外请求 |
+| A3 | 「全部收起 / 全部展开」按钮 | 高 26（视觉）/ 点击区 26×≥84；与刷新 gap 8；图标 13 + 文案，图标/文字 gap 4 | **10.5/600** | 无边框；文字 `label-secondary`；hover 文字 `label-primary`；focus 环 2px `brand` | 单按钮动态文案；点击后批量切换 + 写存储；无 disabled（幂等） |
+| A4 | 摘要徽标 | 高 **16**、rx 8、左右 padding 5；`max-width 96`、单行、`text-overflow ellipsis`；最多 2 个；gap 5 | **9.5/600** | 中性：底 `label-primary` 6%（浅 #F1F1F1 / 深 #343436）+ 文字 `label-secondary`；通过：底 success 12% + 文字 success 55% 混 `label-primary`；失败：error 12% + error 55% 混；阻塞：warn 12% + warn 55% 混；`+n` 用中性 | 纯展示（在 button 内，随按钮可读名称播报）；完整文本进 `title` |
+| A5 | 分组头 | 高 **28**、左右 padding **8**；分类名 + 数量徽标 gap 5；箭头 12 距右 8；行宽整行 | 分类名 **9.5/600**；数量 **9/600** | 分类名 `label-secondary`；数量底 `badgeBg` + 文字 `label-secondary`；箭头 `label-secondary`；hover 底色 `label-primary` 6% | `button`；click/Enter/Space；`aria-expanded` + `aria-controls`；持久化（分类原值 key） |
+| A6 | 详情头 / 详情体 | 头高 **48**、padding 8；状态徽标 16 + 标题 gap 6；箭头距右 8；体沿用既有 `.ds-acc-detail`（padding 6/8） | 标题 **12/600**（展开 2 行、收起 1 行 clamp）；收起提示 **9/400** | 头底 `bg-layer-2` 混色；标题 `label-primary`；徽标按状态；提示 `label-secondary`；上边线 `border-l1` | 有选中才渲染；`button` 头；收起保留选中；选中另一项自动展开；不持久化 |
+| A7 | 清单选中行强化 | 行内既有布局不变；选中底 + 左条 **2px** | 行标题 11（既有）；状态着色见 D8 | 选中底 brand **8%**（浅 #ECECEC / 深 #38383A）+ 左条 `brand`；标题 `label-primary`（通过/不通过用 D8 的深色版） | 选中态与详情头文案互为反馈；hover 仍为 4%（既有） |
+| A8 | 折叠箭头 | 12×12（16 viewBox 缩放 0.75），`aria-hidden="true"` | — | `label-secondary`（浅 5.80 / 深 9.90，均 ≥3 非文本） | 展开 ⌃ / 收起 ⌄；切换即时，无高度动画 |
+| A9 | 区块内空/加载/错误行 | 一行 hint，padding 2/0；错误行沿用 `.ds-errorline` | 9.5/400 | 空/加载 `label-secondary`；错误 `state-error-primary` | 不吞错误；重试入口仍是工具区「刷新」 |
+| A10 | 折叠状态存储（非视觉） | 单键 JSON；读写包 try/catch | — | — | 损坏 → 整份回退默认；写入失败 → 内存态 |
+
+### 17.6 设计 tokens
+
+**间距（4/8 体系）**
+
+| 值 | 用途（新增/改造组件） |
+|---|---|
+| 4 | 图标与文字 gap、徽标间距下限、行内元素微间距 |
+| 8 | 区块头左右 padding、组头左右 padding、区块体内边距、按钮与刷新间距、标题/徽标间距 |
+| 12 | 区块体分区块之间的纵向间距（如证据网格与提示行） |
+| 16 | 展开体主按钮行与下一分区之间 |
+| 24 | 区块体顶部/底部留白上限（内容少时） |
+| 44 / 48 | 区块头 / 详情头高度（同时也是触控目标） |
+| 既有 5/6/7/10 | **不改**：`.ds-acc-counts gap 5`、`.ds-acc-badges gap 4`、`.ds-acc-evidence-list gap 5`、`.ds-acc-hint padding 6 10`、`.ds-acc-toolbar gap 6` 等为既有值，本轮不动以免视觉漂移；新增元素不引入 5/6/7 |
+
+**字号阶梯与行高**
+
+| 用途 | 字号/行高 | 说明 |
+|---|---|---|
+| 区块头标题、详情标题 | **12 / 18（1.5）** | 取自 12 阶梯（侧栏可用的最小阶梯值） |
+| 工具区动态按钮 | 10.5 / 16（1.52） | 沿用 `.ds-acc-toolbar` 既有按钮字号 |
+| 徽标 / 分组名 / 分组数量 | 9.5 或 9 / 16（≥1.68） | 沿用现有徽标字号，单行 |
+| 区块体内正文 | 10–11 / 15–16.5（1.5） | 沿用既有 body 字号，正文行高 ≥1.4 |
+| 次要说明（详情收起提示、meta） | 9 / 13.5（1.5） | 仅用于非关键说明，颜色用 `label-secondary` |
+| 既有微阶 8.5 | **例外**：证据文件名、行内徽标沿用 v1.2.83 既有值 | 属密集侧栏既有样式；新增组件不新增 8.5px 文本 |
+
+字重只用 400（正文）/600（标题、标签、按钮），面板内不使用 700（避免与侧栏 pane head 争层级）。
+
+**颜色 token 映射（值取自 DSH 主题 CSS 实测）**
+
+| 语义 | token | 浅色 | 深色 | 用途 |
+|---|---|---|---|---|
+| 面板底 | `bg-layer-2` 46% + `bg-layer-1`（同 `.ds-side` 背景式） | #FFFFFF | #272729 | 区块头/清单底色 |
+| 区块体内底 | `bg-layer-2` 混 `bg-layer-1` | #FAFAFB | #232324 | 展开体底（与头部区分） |
+| 主文字 | `label-primary` | #0F1115 | #F9FAFB | 区块标题、行标题、详情标题 |
+| 次文字 | `label-secondary` | #61666B | #CFD3D6 | 徽标文字、分组名、提示、meta、箭头 |
+| 装饰文字 | `label-caption` | #ADB2B8 | #81858C | **只做装饰**（不承载信息），本轮不用于新文本 |
+| 焦点/品牌 | `brand-primary` | #0F1115 | #F9FAFB | 焦点环、选中左条、主按钮底（深色为白底深字） |
+| 成功 | `state-success-primary` 55% + `label-primary` | #19743D | #4ED17E | 「通过 / 复测通过」徽标文字、通过行标题 |
+| 失败 | `state-error-primary` 55% + `label-primary` | #891214 | #F25A5A | 「不通过」徽标文字、失败行标题 |
+| 阻塞 | `state-warn-primary` 55% + `label-primary` | #8E5F10 | #F7AD31 | 「阻塞」徽标文字 |
+| 分隔 | `border-l1` | #0000000A | #FFFFFF0F | 区块头/分组/详情之间的 1px 分隔（装饰） |
+| 控件边界 | `border-l2` | #0000001A | #FFFFFF1F | 输入框、按钮边框 |
+| 输入框边界 | `label-tertiary` 档 | #7F8287 | #8A8D92 | 输入/端口框边线（非文本 3.86 / 4.48） |
+
+**对比度实测（sRGB 计算值；浅色底 #FFFFFF、深色底 #272729）**
+
+| 前景 / 背景 | 比值 | 用途 | 结论 |
+|---|---|---|---|
+| #0F1115 / #FFFFFF | **18.90** | 浅色主文字 / 区块标题 | ✅ 正文 |
+| #61666B / #FFFFFF | **5.80** | 浅色次文字 / 徽标 / 分组名 | ✅ 正文 |
+| #81858C / #FFFFFF | 3.71 | 浅色 `label-tertiary`（装饰/图标） | ⚠️ 仅非文本 |
+| #ADB2B8 / #FFFFFF | 2.13 | `label-caption` | ❌ 不用于文字 |
+| #0F1115 / #F1F1F2（hover 底） | 16.74 | 区块头 hover 时标题 | ✅ |
+| #61666B / #F1F1F2（hover 底） | 5.14 | hover 时徽标 | ✅ |
+| #0F1115 / #ECECEC（选中底） | 16.00 | 选中行标题 | ✅ |
+| #61666B / #ECECEC | 4.91 | 选中行 meta | ✅ |
+| #61666B / #F1F1F1（徽标底 6%） | 5.13 | 中性徽标文字 | ✅ |
+| #19743D / #FFFFFF | 5.82 | 浅色「通过」文字 | ✅ |
+| #19743D / #E4F8EC（success 12%） | 5.25 | 通过徽标 | ✅ |
+| #891214 / #FFFFFF | 9.72 | 浅色「不通过」文字 | ✅ |
+| #891214 / #FDE3E3 | 8.00 | 不通过徽标 | ✅ |
+| #8E5F10 / #FFFFFF | 5.53 | 浅色「阻塞」文字 | ✅ |
+| #8E5F10 / #FEF3E2 | 5.04 | 阻塞徽标 | ✅ |
+| #FFFFFF / #0F1115（主按钮） | 18.90 | 「运行复测」主按钮 | ✅ |
+| #61666B / #F7F7F8（输入底） | 5.42 | 输入 placeholder | ✅ |
+| #7F8287 / #FFFFFF | 3.86 | 输入框边界（非文本） | ✅ |
+| #0F1115 / #FFFFFF（focus 环） | 18.90 | 浅色焦点环 | ✅ |
+| #F9FAFB / #272729 | **14.27** | 深色主文字 | ✅ |
+| #CFD3D6 / #272729 | **9.90** | 深色次文字 | ✅ |
+| #ADB2B8 / #272729 | 6.98 | 深色 `label-tertiary` | ✅ |
+| #81858C / #272729 | 4.02 | 深色 `label-caption` | ❌ 不用于文字 |
+| #CFD3D6 / #343436（徽标底 6%） | 8.25 | 深色中性徽标 | ✅ |
+| #4ED17E / #233C2C | 6.13 | 深色通过徽标 | ✅ |
+| #F25A5A / #3C1F1B | 4.55 | 深色不通过徽标 | ✅ |
+| #F7AD31 / #2A261D | 7.88 | 深色阻塞徽标 | ✅ |
+| #F9FAFB / #38383A（选中底 8%） | 11.20 | 深色选中行 | ✅ |
+| #F9FAFB / #272729（focus 环） | 14.27 | 深色焦点环 | ✅ |
+| #0F1115 / #F9FAFB（深色主按钮反转） | 18.08 | 「运行复测」深色 | ✅ |
+
+> 结论：新增/改造文字全部 ≥4.5:1；箭头、焦点环、输入边界等非文本 ≥3:1（箭头 5.80 / 9.90，焦点 18.90 / 14.27）；`label-caption` 明确禁止承载新信息。
+
+**圆角 / 焦点 / 动效**
+
+| 项 | 值 |
+|---|---|
+| 圆角 | 6（输入/按钮/区块内小控件，沿用既有 6）、8（徽标 pill、focus 环圆角）、999（筛选 chip，既有 11 → 视觉等价） |
+| 焦点环 | `outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: -2px; border-radius: 6px`；整行按钮用 inset 避免被 `overflow:hidden` 裁切；行内小按钮用 `outline-offset: 2px` |
+| 动效 | `transition: color 150ms ease-out, background-color 150ms ease-out`；**不做高度/位移动画**（需求禁止高度动画，避免与 `hidden` 语义冲突）；箭头用图标切换而非 transform 旋转（无过渡抖动） |
+| reduced-motion | `@media (prefers-reduced-motion: reduce) { transition: none }`；无 shimmer / 无 pulse / 无自动播放 |
+| 层级 | 不新增 z-index；全部在面板内常规流 |
+
+### 17.7 八态状态矩阵
+
+> 八态 = default / hover / focus / active / disabled / loading / empty / error；N/A 必须写理由。交互组件统一 focus = 2px `brand` 环。
+
+| 组件 | default | hover | focus | active | disabled | loading | empty | error |
+|---|---|---|---|---|---|---|---|---|
+| **A1 区块头** | 44 高、标题 12/600 + ≤2 徽标 + ⌄ 箭头；上边线 1px | 底色 `label-primary` 6%（浅 #F1F1F2 / 深 #343436）；文字/箭头不变 | 2px `brand` 环 inset -2（浅 18.90 / 深 14.27），环不被裁 | 底色 8%；**箭头仍指向当前状态**（按下不翻转，松开才切换） | **N/A**：折叠头永远可操作（内容为空时展开仍看得到空态说明，不需要禁用） | 内容区首次加载：徽标 `—`，展开体一行「加载中…」+ `aria-busy="true"`；头部不转圈 | 数据为空：徽标 `0 条证据` / `无记录` / `无分享`；展开体既有空态文案；仍可展开 | 数据失败：徽标 `—`；展开体 `previewError`/`acceptanceError` errorline；点「刷新」重试；节点仍在 |
+| **A2 区块体** | 展开时无 `hidden`，内容与 v1.2.83 一致；max-height 内滚动 | N/A（容器） | N/A（容器；内部控件各自 focus） | N/A | N/A | 一行「加载中…」/骨架；不发额外请求 | 空态一行 `label-secondary` | errorline + 重试（刷新）；不自动收起 |
+| **A3 全部收起/展开按钮** | 26 高；双上箭头 +「全部收起」（任一项已展开）；双下箭头 +「全部展开」（全部收起时） | 文字 `label-primary` + 下划线（沿用 `ds-linkbtn:hover`） | 2px `brand` 环 + 2px offset | 文字/图标 8% 底 | **N/A**：永远可执行且幂等（重复点同状态不改结果）；无「全部已收起所以禁用」的死路 | N/A（纯本地同步切换） | N/A（始终有文案；本面板恒有三区块） | N/A（不触发请求，无失败路径） |
+| **A4 摘要徽标** | 16 高、单行、≤96px；中性/成功/失败/阻塞四类；`+n` 合并 | 随父级 hover | 随父级 focus 环（不单独聚焦） | 随父级按下 | N/A（非交互） | `—`（数据未到） | `0 条证据` / `无记录` / `无分享 · 无交付` | `—` |
+| **A5 分组头** | 28 高；分类名 + 数量徽标 + ⌄；组内条目常显 | 底色 `label-primary` 6% | 2px `brand` 环 inset -2 | 底色 8% | N/A：分组折叠不影响勾选/批量，永远可点 | N/A（纯本地分组） | 组内 0 项时不渲染该组（不显示空分组头） | N/A（无异步源） |
+| **A6 详情头** | 48 高；状态徽标 + 标题（展开 2 行 / 收起 1 行）+ ⌃；收起态加 9px「详情已收起 · 选中保留，点此展开」 | 底色加深（4%） | 2px `brand` 环 inset -2 | 底色 8% | N/A：无选中时整块不渲染（不是禁用） | N/A（详情随选中同步渲染） | 无选中 → 不渲染（即空态）；有选中但无备注/证据 → 体内各自空态文案 | N/A（详情无异步加载；保存失败走既有 toast/errorline） |
+| **A7 选中行** | 未选中：透明底；选中：brand 8% 底 + 2px 左条 | 4% 底（既有） | 行内 `button` 2px `brand` 环（既有） | 8% 底 | N/A（行本身不禁用；状态按钮各自禁用逻辑不变） | N/A | N/A（行不承载空态） | N/A |
+| **A8 箭头图标** | 12×12，`label-secondary`（5.80 / 9.90）；⌄ 收起 / ⌃ 展开；`aria-hidden` | 随父级 | 随父级 | 随父级 | N/A | N/A | N/A | N/A |
+| **A10 存储层** | 读到合法 JSON → 应用 | — | — | — | N/A | N/A | 无键 → 默认值 | 解析失败/类型不符/`setItem` 抛错 → 整份回退默认 + 静默降级内存态（不 toast、不崩溃） |
+
+### 17.8 响应式规格（360 / 768 / 1280 + 691）
+
+> 关键事实：验收台是**侧栏面板**，宽度 = `min(treeWidth, max(220, containerWidth × 0.42))`，`treeWidth` 可拖 180–560；`containerWidth < 900` 时进入 compact，侧栏 = 100% 视口宽。所以设计按**面板宽度**定规则，而不是只看视口。
+
+| 视口 / 面板宽 | 形态 | 区块头 | 徽标 | 详情头 | 清单 / 区块体 |
+|---|---|---|---|---|---|
+| **360**（下限；或 compact 360 手机） | 单列 | 44 高单行；标题 `flex:1` 省略；箭头固定右 | **1 个 + `+n`**（面板宽 <420 走窄规则）；每个 ≤96px | 标题 **2 行 clamp**（展开）；收起 1 行 + 提示行 | 清单 min-height 96；证据 4 列（68×60/项）；区块体内滚动 |
+| **691**（Owner 本机截图宽，compact 全宽） | 单列 | 44 高；标题完整 | **2 个完整**（不省略） | 2 行 clamp → 实际 1–2 行 | 清单 470；证据 8 列；三分组全展开 |
+| **768**（compact 全宽） | 单列 | 同 691；内容左对齐、右侧箭头不拉伸 | 2 个完整 | 同 691 | 清单占比更大；证据 8–9 列 |
+| **1280 视口（桌面侧栏默认 260 / 可拖 220–537）** | 侧栏 + 主区 | 面板 <420 时等同 360 窄规则；480–537 时 2 徽标完整 | 视面板宽按上述规则 | 同 360/691 | `.ds-acc-list` 弹性；三块 44 高固定底部 |
+| **1440 视口（面板 ≤537）** | 侧栏 + 主区 | 内容左对齐、中间弹性留白，箭头最右；不出现「徽标被拉到屏幕另一边」的拉伸 | 同 1280 | 同 1280 | 面板宽仍 ≤537，布局与 1280 一致 |
+
+**断点行为细则**
+
+1. 所有折叠头/行：`display:flex; min-width:0`；标题 `min-width:0; overflow:hidden; text-overflow:ellipsis`；徽标 `flex:0 0 auto; max-width:96px`；箭头 `flex:0 0 auto`。任一层都不允许把父容器撑宽（验收项 7 用 `scrollWidth ≤ clientWidth` 断言）。
+2. 面板 `overflow-x: hidden`；验收台视图不产生横向滚动；长分类名（>12 字）分组头同样省略，完整名进 `title`。
+3. 清单滚动发生在 `.ds-acc-list` 内部；区块体滚动发生在各区块体内部；两者不嵌套争抢滚轮（三块都收起时只有清单滚动）。
+4. 360 与 691 都验证过：三区块收起 + 分组 2–3 个 + 详情收起/展开 + 全部收起态四种组合均无横向溢出；具体见 17.11 渲染检查记录与 17.13 资源清单。
+
+### 17.9 可访问性
+
+**语义 / ARIA 契约（三区块头、分组头、详情头统一）**
+
+| 要求 | 实现 |
+|---|---|
+| 元素 | `<button type="button" class="ds-acc-block-toggle / ds-acc-group-head / ds-acc-detail-toggle">`，整行宽 |
+| 展开状态 | `aria-expanded="true"` / `"false"`，与内容显隐、箭头方向三者同步 |
+| 关联 | `aria-controls="ds-acc-evidence-body / ds-acc-verify-body / ds-acc-delivery-body / ds-acc-detail-body / ds-acc-group-body-<i>"`，内容容器有同名 `id` |
+| 隐藏 | 收起内容加 `hidden`（等价 `display:none`），**不参与 Tab**；保留 DOM 挂载以保住输入态 |
+| 键盘 | Tab 可到每个头；Enter / Space 切换；切换后焦点留在按钮；不拦截其它按键；无自定义快捷键 |
+| 焦点可见 | `:focus-visible` 2px `brand` 环（整行 inset -2，行内元素 offset 2）；鼠标点击不残留环 |
+| 可读名称 | 按钮文本 = 标题 + 徽标文本（如「证据库 20 条证据」）；箭头 `aria-hidden="true"`；读屏会补「已收起/已展开」 |
+| 不新增语义 | 不加 `role="tablist"/"region"/aria-modal`；不做 roving tabindex |
+| 不给颜色单独表意 | 箭头方向 + `aria-expanded` + 文字；状态用「通过/不通过/阻塞」文字 + 徽标文字，颜色只是辅助 |
+
+**Tab 顺序（自上而下 = 阅读顺序）**：工具区「刷新」→「全部收起/展开」→ 提示/计数（不可聚焦）→ 添加输入 → 添加 → 全选 → 筛选 chips → 模板 → 清单分组头 → 行内（勾选 → 标题 → 4 个状态按钮 → 删除）→ 详情头（若有）→ 详情体（保存备注 → 取消 → 添加证据 → 证据项…）→ 证据库块头 →（展开时）添加证据 → 证据项 → 复测块头 →（展开时）命令 checkbox → 运行 → 交付块头 →（展开时）交付按钮 → 端口 → 创建分享 → 分享行 → 交付记录 → 交付包。
+
+**屏幕阅读器抽查（设计侧预估 + QA 实测）**
+
+- 焦点到证据库头：「证据库，20 条证据，已收起，按钮」；按 Space 后「已展开」。（若实测播报未含状态，再补 `acceptance.toggleShow/Hide` 隐藏文案，见 17.2.2 的「调整」行。）
+- 分组头：「验收 · 折叠与持久化，7 项，已展开，按钮」。
+- 详情头：「通过，证据库、复测中心、交付与预览分享默认收起…，已展开，按钮」+（收起态）「详情已收起 · 选中保留，点此展开」。
+- 工具区按钮：「全部收起，按钮」；`title`/`aria-label` 补充作用域「收起三个分区、所有分类分组与详情」。
+- 收起区块的 body 不在 Tab 序列；用读屏「表单控件列表」确认端口输入、checkbox、按钮都不出现。
+
+**触控目标（含声明的例外）**
+
+| 控件 | 实测尺寸 | 判定 |
+|---|---|---|
+| 区块头 | 整行 × **44**（360 下 344×44；691 下 675×44） | ✅ ≥44×44 |
+| 详情头 | 整行 × **48** | ✅ ≥44×44 |
+| 分组头 | 整行 × 28 | ⚠️ **例外声明**：指针密集桌面（面板内控件普遍 20–26 高，如状态按钮 20、刷新 26），按 SOP §5.1#4「24×24 + 8px 间距」条款；28 ≥24、整行宽 ≥220、与相邻行间距 ≥8 |
+| 全部收起/展开 | 84×26 | ⚠️ 同上例外（≥24 + 与刷新按钮 8px 间距） |
+| 行内状态按钮 / 删除 | 20 高（既有） | ⚠️ 既有值，本轮不改（改了会挤爆 360 行宽，属范围外） |
+
+**颜色以外 / 动效 / 缩放**
+
+- 状态不只靠颜色：箭头方向 + `aria-expanded`；选中行 = 底色 + 2px 左条 + 详情头标题；徽标均为「文字 + 底色」，颜色仅辅助。
+- 动效：150ms 颜色切换；无高度动画、无 shimmer；`prefers-reduced-motion` 下 `transition:none`。
+- 200% 缩放 / 文字放大：面板宽 360 下标题换行、徽标省略，无横向滚动（flex + ellipsis 兜底）；验收项 7 的静态断言以 360 宽度为基线。
+- 不做拖拽排序、不做 hover-only 操作、不做长按操作。
+
+### 17.10 文案与 i18n
+
+**新增 i18n 键（zh / en 必须成对，不删旧键）**
+
+| key | zh | en | 用途 |
+|---|---|---|---|
+| `acceptance.collapseAll` | 全部收起 | Collapse all | 工具区动态按钮（可执行收起时） |
+| `acceptance.expandAll` | 全部展开 | Expand all | 工具区动态按钮（全部已收起时） |
+| `acceptance.collapseAllTitle` | 收起三个分区、所有分类分组与详情 | Collapse the three sections, all category groups and the detail panel | 按钮 `title` / `aria-label`（收起态） |
+| `acceptance.expandAllTitle` | 展开三个分区、所有分类分组与详情 | Expand the three sections, all category groups and the detail panel | 按钮 `title` / `aria-label`（展开态） |
+| `acceptance.block.delivery` | 交付与预览分享 | Delivery & preview sharing | 交付区块头标题（新键；证据/复测复用既有 `acceptance.evidenceLibrary` / `acceptance.retestTitle`） |
+| `acceptance.badge.evidence` | {count} 条证据 | {count} evidence | 证据徽标（可复用 `acceptance.evidenceCount`，复用则此键不新增） |
+| `acceptance.badge.retest` | {pass} 通过 / {fail} 失败 | {pass} passed / {fail} failed | 复测徽标（比 `acceptance.retestDone` 短） |
+| `acceptance.badge.retestEmpty` | 无记录 | No runs | 复测徽标空态 |
+| `acceptance.badge.share` | {count} 个分享 | {count} share(s) | 交付区块徽标 1 |
+| `acceptance.badge.delivery` | {count} 个交付 | {count} deliverable(s) | 交付区块徽标 2 |
+| `acceptance.badge.more` | +{count} | +{count} | 徽标溢出合并 |
+| `acceptance.detailToggle` | 选中项详情 | Selected item detail | 详情块可读名称前缀（或 `aria-label` 前缀） |
+| `acceptance.detailCollapsed` | 详情已收起 · 选中保留，点此展开 | Detail collapsed · selection kept, activate to expand | 详情收起态提示行 |
+| `acceptance.groupToggle` | {name}，{count} 项 | {name}, {count} item(s) | 分组头 `aria-label` 模板（保证读屏听到数量） |
+
+**复用既有键（不新增）**：`acceptance.evidenceLibrary`（证据库）、`acceptance.retestTitle`（复测中心）、`acceptance.evidenceCount`（{count} 条证据）、`acceptance.evidenceAdd`（添加截图 / 证据）、`acceptance.retest`（复测 = 运行按钮）、`acceptance.retestRunning`、`acceptance.retestLatest`、`acceptance.retestSend`、`acceptance.retestEmpty`、`acceptance.retestNoCommands`、`tasks.detect`、`acceptance.preview`、`acceptance.previewCreate`、`acceptance.history`、`acceptance.download`、`acceptance.bundleReady`、`acceptance.evidenceEmpty`、`acceptance.historyEmptyState`、`action.cancel`、`acceptance.groupOther`、`acceptance.saving`。
+
+**文案规则**
+
+- 徽标：数字 + 单位，不写整句；为 0 时仍显示 `0 条证据` / `无记录`，不隐藏（隐藏会让「收起后一无所知」，违背 GOV.UK 摘要的作用）。
+- 「全部收起 / 全部展开」用**动词 + 范围**，与按钮实际作用一致；中文不加句号，英文首字母大写。
+- 详情收起提示用「·」分隔两个信息（已收起 / 选中保留），不写成一句长话（360 会折行）。
+- 英文按 `{count} item(s)` 这类现有仓库惯例处理单复数（避免新增复数规则与依赖）；如需严格单复数，记后续需求（不阻塞本轮）。
+- 新增文案不得硬编码中文到渲染逻辑；所有可见文本（含 `title`、`aria-label`）走 `t()`；`grep` 渲染段无中文字面量。
+
+### 17.11 自检评分与迭代记录
+
+#### 17.11.1 迭代第 1 版（R1）渲染 → 检查
+
+R1 = 第一版草稿（按需求逐条直译）：三块包成可折叠容器，但为了「省一次点击」把操作按钮留在了区块头；复测中心保留了原有的内层「复测」开关；工具区放了两个并列按钮；分组头还是原来的 `div`；详情区没有折叠头；区块展开时没有高度预算。
+
+效果图：[R1 默认 360](design/acceptance-collapse-default-r1-360.svg) / [R1 展开 360](design/acceptance-collapse-expanded-r1-360.svg)。
+
+| 轮次 | 触发（渲染/走查） | 发现（对照标准条目） | 修正 | 证据路径 | 复评分 |
+|---|---|---|---|---|---|
+| R1 | 渲染 `default-r1-360` / `expanded-r1-360` 后逐张 `read_image` | ① **操作按钮塞进区块头**：360 下「证据库 + 添加证据 + 20 条证据 + 箭头」互相压字，标题只剩 3–6 字（SOP §5.1#9 层级、#1 间距）→ 嵌套 `button` 违规；② **复测中心双层开关**：区块展开后仍要再点内层「复测」才见命令（GOV.UK 不嵌套手风琴）；③ **区块体无 max-height**：三块全展开时清单只剩 **24px**，主内容不可用（requirements §6.4「禁止塌成 0」）；④ **工具区两个按钮**（全部收起/全部展开）语义重复、无当前态反馈，且挤占「保存中…」位；⑤ **分组头仍是 `div`**：无箭头、不可点（违反验收项 5）；⑥ **行标题与状态按钮只差 1px**：360 下文字贴住按钮边框（4/8px 体系 + 触控间距）；⑦ **详情无折叠头**：选中后没有「已选中/可收起」反馈（验收项 4）；⑧ **徽标无上限**：交付头 2 徽标 + 2 按钮 + 标题互相挤压、右侧裁切 | 见 17.11.2 逐条修正 | [R1 默认](design/acceptance-collapse-default-r1-360.svg) / [R1 展开](design/acceptance-collapse-expanded-r1-360.svg) | 视觉层级 3、清晰度 3、一致性 3、反馈 2、可访问性 2 → 均分 **2.6**（未达门槛，must 失败：间距/触控/状态/层级） |
+| R1 工具位 | R1 渲染 + 生成器自检 | ⑨ **渲染器缺 `translate`**：三个区块头叠在同一 y，只看到最后一块（自检工具问题，非设计本身）；⑩ **断行按字符硬切**：`aria-expan` / `ded` 被切开，与真实 `overflow-wrap:anywhere`（优先词边界）不符；中文行首出现「，」 | 生成器改为**栈式布局**（每块独立 `translate`）；断行改为「优先空格/CJK 边界 + 硬断兜底」；中文避头标点（，。、；：！？」等不落行首）；清单视口用 `clipPath` 裁剪最后一行，模拟真实滚动 | 生成器 `gen-acceptance-collapse-mockups.mjs`（R1 模式可复现） | 复评：渲染与真实 CSS 行为一致 |
+
+#### 17.11.2 R2 修正（最终稿）
+
+| R1 问题 | R2 修正 | 落点 |
+|---|---|---|
+| ① 头内嵌操作按钮 / 嵌套 button | 区块头 = **单一全宽 button**，只放标题 + 徽标 + 箭头（44 高）；操作按钮移到展开体顶行（添加证据 / 运行复测 / 打包·导出·下载 / 创建分享） | D1、A1、A2；[default-360](design/acceptance-collapse-default-360.svg) / [expanded-360](design/acceptance-collapse-expanded-360.svg) |
+| ② 复测双层开关 | 删除内层 `verificationOpen` 与 `.ds-acc-verify-toggle`；区块展开 = 最近结果 + 命令列表 + 运行按钮；自动预选逻辑搬到 verify 头切换 | D2、A1；[expanded-360](design/acceptance-collapse-expanded-360.svg) |
+| ③ 清单被压到 24px | 区块体 max-height（260/240/340）+ 内部滚动；清单 `min-height:96px`；三块收起时清单占满剩余高度（360×900 约 430px） | D7、A2；[default-360](design/acceptance-collapse-default-360.svg) / [detail-360](design/acceptance-collapse-detail-360.svg) |
+| ④ 两个工具区按钮 | 合并为**单按钮动态文案**（全部收起 ⇄ 全部展开），放刷新右侧 8px；无 disabled；`title` 说明作用域 | D3、A3；[default-360](design/acceptance-collapse-default-360.svg) / [all-collapsed-360](design/acceptance-collapse-all-collapsed-360.svg) |
+| ⑤ 分组头是 div | 改 `button`：分类名（9.5/600 `label-secondary`）+ 数量徽标 + 12px 箭头；持久化用分类原值 | D5、A5；[detail-360](design/acceptance-collapse-detail-360.svg) |
+| ⑥ 行标题贴住状态按钮 | 行内左侧（勾选+标题）与右侧（状态按钮+删除）之间留 **6px** 间距，重算标题换行宽度（360 下标题 14–15 字/行，最多 3 行） | 17.5 A7、17.6 间距；[default-360](design/acceptance-collapse-default-360.svg) |
+| ⑦ 详情无折叠头 | 48px 详情头：状态徽标 + 选中标题（展开 2 行 / 收起 1 行）+ 箭头；收起态「详情已收起 · 选中保留，点此展开」；选中行 8% 底 + 2px 左条 | D4、A6、A7；[detail-360](design/acceptance-collapse-detail-360.svg) |
+| ⑧ 徽标无上限 | 最多 2 个、每个 ≤96px 省略、超 2 个合并 `+n`；面板 <420px 降为 1 个 + `+n`；标题先让位 | D6、A4；[default-360](design/acceptance-collapse-default-360.svg) / [691](design/acceptance-collapse-691.svg) |
+| R1 未覆盖：深色 / 691 / 全部收起 | 补 3 张稿：全部收起（含分组 + 详情收起 + 选中保留）、691、深色片段（含对比度实测标注）；深色下徽标/箭头/焦点环全部复算 | 17.8、17.13；[all-collapsed](design/acceptance-collapse-all-collapsed-360.svg) / [691](design/acceptance-collapse-691.svg) / [dark-900](design/acceptance-collapse-dark-900.svg) |
+| R2 二轮目检发现 | ① 深色徽标三处对比度标注写错（6.42/4.72/7.34 → 实测 6.13/4.55/7.88）、主按钮 15.99 → 18.08；② 691 复测徽标文案过长被省略 → 改为 `2 通过 / 0 失败`；③ 全部收起态清单区大段留白 → 清单高 300 → 200 并给「全部分组已收起」提示行；④ 证据/交付体内部滚动没有视觉提示 → 区块体右缘加 2px 滚动条示意；⑤ 选中行文字改为保留状态色（绿/红），选中只靠底色 + 左条表达。以上均已修正并重渲染 | 最终 6 张 PNG（检查记录见 17.13） |
+
+> 说明：R2 重新渲染后对 6 张稿逐张 `read_image` 目检（中文无豆腐块、无文字溢出/重叠、层级正确），并用脚本扫描全部 `<rect>/<text>` 的右边界：**8 个 SVG 均无横向溢出**（rect/text `x+width ≤ canvas width`）。对比度数值由脚本按 sRGB 相对亮度重算（见 17.6 表），非手抄。
+
+#### 17.11.3 五维自检评分（附证据）
+
+| 维度 | 分数 | 证据 | 说明 / 扣分点 |
+|---|---|---|---|
+| 视觉层级 | **5** | [default-360](design/acceptance-collapse-default-360.svg) / [691](design/acceptance-collapse-691.svg) | 一屏一个主行动（默认态 = 清单勾选；展开态 = 运行复测）；三个 44px 区块头在清单下方形成清晰的第二层；详情块独立成层 |
+| 清晰度 | **5** | [all-collapsed](design/acceptance-collapse-all-collapsed-360.svg) / [detail-360](design/acceptance-collapse-detail-360.svg) + 17.10 文案表 | 收起/展开、选中保留、徽标数值都为可读文案；空态与 0 值有明确写法（0 条证据 / 无记录 / 无分享） |
+| 一致性 | **4** | 17.6 token 表 + [dark-900](design/acceptance-collapse-dark-900.svg) | 复用 `--dsw-alias-*` 与既有 `ds-*`；但面板内仍保留 v1.2.83 的 8.5–11px 微阶与 5/6/7px 既有间距、26px 工具按钮 → 与 12/14/16 全阶梯不完全一致，扣 1 分并已在 17.6 显式声明例外 |
+| 反馈 | **5** | 17.7 八态矩阵 + [all-collapsed](design/acceptance-collapse-all-collapsed-360.svg) | 折叠即时有视觉与 `aria-expanded` 双反馈；详情收起保留选中；存储损坏静默回退；数据失败沿用 errorline + 刷新重试 |
+| 可访问性 | **5** | 17.9 + 17.6 对比度表 + [691](design/acceptance-collapse-691.svg)（含 focus 环示例） | 正文 4.5:1 全达成（浅 5.80/深 9.90）；焦点环 18.90/14.27；区块头 44、详情头 48；键盘/ARIA/`hidden` 契约完备；分组头例外已声明 |
+
+**均分 = (5+5+4+5+5)/5 = 4.8 / 5；must 项 0 失败 → 结论：可提交 Owner 评审。**（自评不替代 Owner 评审与 acceptance 复核。）
+
+#### 17.11.4 MUST 核对（SOP §5.6 十条）
+
+| # | MUST | 结果 | 证据 |
+|---|---|---|---|
+| 1 | 调研 ≥2 来源（URL + 日期 + 结论） | ✅ 6 个来源均 2026-10-27 HTTP 200 | 17.2.1 / 17.2.4 |
+| 2 | 间距只用 4 的倍数 | ✅ 新组件 4/8/12/16/24；既有 5/6/7/10 已声明不改 | 17.6 间距表 |
+| 3 | 字号出自阶梯、正文行高 ≥1.4 | ✅ 新增标题 12/18；徽标 9.5/16；正文 10–11/15–16.5；8.5px 为例外（既有） | 17.6 字号表 |
+| 4 | 正文 ≥4.5:1、大字 ≥3:1（记录计算值） | ✅ 浅 5.80 / 深 9.90（正文），18.90 / 14.27（焦点环） | 17.6 对比度表 |
+| 5 | 控件边界/焦点环非文本 ≥3:1 | ✅ 箭头 5.80/9.90；焦点 18.90/14.27；输入边界 3.86/4.48 | 17.6 / 17.9 |
+| 6 | 触控 ≥44×44（或 24×24 + 8px 并声明） | ✅ 区块头 44、详情头 48；分组头 28 / 工具按钮 26 已按例外条款声明 | 17.9 触控表 |
+| 7 | focus/disabled/loading/empty/error 五态齐备 | ✅ 17.7 矩阵含 8 行；disabled 均给 N/A 理由（折叠头永不需禁用） | 17.7 |
+| 8 | 360/768/1280 三档不溢出、可完成核心任务 | ✅ 360 / 691 / 768 / 1280 / 1440 规则 + 6 张稿；脚本扫描无横向溢出 | 17.8 / 17.13 |
+| 9 | 150–300ms 动效 + reduced-motion | ✅ 150ms 颜色过渡；无高度动画；reduced-motion 全关 | 17.6 / 17.9 |
+| 10 | 键盘可达 + 焦点可见 + ARIA + 一轮「渲染→检查→修正」 | ✅ 17.9 契约 + R1→R2 记录 + 8 张稿逐张目检 | 17.9 / 17.11 |
+
+#### 17.11.5 Nielsen 10 启发式走查（设计阶段）
+
+| # | 启发式 | 发现 / 处理 |
+|---|---|---|
+| 1 | 系统状态可见 | 每个折叠头的箭头 + 徽标 + `aria-expanded` 三重表达状态；「全部收起/展开」文案随当前态变化；无异步加载歧义（折叠不发请求） |
+| 2 | 贴合真实世界 | 用业务词「证据库 / 复测中心 / 交付与预览分享 / 分享 / 交付记录」；徽标用「20 条证据」「2 通过 / 0 失败」的人类读法 |
+| 3 | 用户可控自由 | 折叠随手可逆；「全部展开」一键复原；不强制流程、不阻塞清单操作；不做二次确认（折叠不是危险操作） |
+| 4 | 一致性与标准 | 三区块头/分组头/详情头统一 44/28/48 与同一箭头语义；复用既有 `ds-*` 与 token；中英术语一致 |
+| 5 | 错误预防 | 折叠不产生数据写入；存储损坏回退默认；收起不丢失输入（备注草稿、端口、命令勾选仍在 DOM） |
+| 6 | 识别优于回忆 | 收起态仍显示数量徽标（证据 20 / 复测结果 / 分享 3 · 交付 5）；详情头显示选中项标题；不需要记住上次状态 |
+| 7 | 灵活高效 | 熟手一键全部收起/展开；单区块点一次即开；键盘用户 Tab + Enter/Space 同样 1 步 |
+| 8 | 美学与极简 | 默认态只有清单 + 三个 44px 头；没有多余边框（只留 1px 分隔）；一屏一个主行动 |
+| 9 | 错误识别/恢复 | 存储失败静默降级（不打扰）；数据失败沿用 errorline + 刷新重试；错误文案不新增、不丢失 |
+| 10 | 帮助与文档 | 区块头 `title` 给完整文本；「全部收起」`title` 说明作用域；详情收起提示就地解释；不依赖外部文档 |
+
+### 17.12 给开发 / 测试的交接
+
+#### 17.12.1 给开发：组件 → 代码对照与插入点
+
+> 行号为 **v1.2.83 / 根 1.2.85 基线**（requirements §1 口径，允许 ±2 行漂移；并行会话可能改动 `client.js`，实现时以**符号/类名**为准）。本轮只改 `client.js`（渲染 + CSS + i18n），不改 Host、数据结构、依赖。
+
+| 设计组件 | 建议实现位置 | 状态规则 | 要点 / token |
+|---|---|---|---|
+| A1 区块头 | 新增 `renderBlockHead({ id, title, badges, open, onToggle })`；证据块 17564–17625、复测块 17626–17728、交付块 17729–17859 各用一次 | `aria-expanded={open}`、`aria-controls={'ds-acc-'+id+'-body'}`；点击写存储 | 44 高、`padding: 0 8`、标题 12/600、徽标 9.5/600、箭头 12 `ChevronUpIcon`/`ChevronDownIcon`（复用 4026/4030） |
+| A2 区块体 | 三块内容包 `h('div', { id: 'ds-acc-<id>-body', hidden: open ? undefined : true, className: 'ds-acc-block-body' })` | `hidden` 用布尔；保留挂载（**不要**条件卸载，否则丢端口/命令勾选/备注草稿） | max-height 260/240/340；`overflow:auto`；不新增请求 |
+| A3 全部收起/展开 | 工具区 17248–17262 内、刷新按钮之后 | `anyOpen` 计算见 D3；点击 `setAllCollapsed(!anyOpen)`；文案 + `title` 双 key | 26 高、10.5/600、`ds-linkbtn` 风格 + 双箭头图标（新增 `ChevronsUpIcon/ChevronsDownIcon`，或复用两个 Chevron 叠放） |
+| A4 徽标 | 区块头内 `renderBadge(kind, text)` | 规则见 D6；`title=完整文本`；`+n` 的 `title` 列出被折叠项 | 16 高、rx 8、padding 0 5、max-width 96px |
+| A5 分组头 | 17410–17415 的 `div` → `button`；`groups.map` 内 | `aria-expanded={groups[rawCategory] !== false}`；`aria-controls={'ds-acc-group-body-'+index}`；组体包一层 `div` + `hidden`（整组一个容器，别逐行加 `hidden`） | 28 高、`label-secondary`、数量徽标 9/600、箭头 12 |
+| A6 详情头 + 体 | 17469–17563 外层加头：`h('button', { className:'ds-acc-detail-toggle', 'aria-expanded': detailOpen, 'aria-controls':'ds-acc-detail-body' })` | 选中变化（`acceptanceSelected` 从 A→B 且 B!==null）时 `setDetailOpen(true)`；「取消」清空选中；手动收起时保留选中 | 48 高；标题 2 行/1 行 clamp；收起提示 9px `label-secondary` |
+| A7 选中行 | 25641 `.ds-acc-row[data-selected="true"]` | 现有 8% 底保留，加 `box-shadow: inset 2px 0 0 var(--dsw-alias-brand-primary)` 或 `border-left` | 行标题状态色改混合色（D8） |
+| A8 状态色 | 25642 `.ds-acc-title` 的 `state-*` → 混合色 | `color-mix(in srgb, var(--dsw-alias-state-success-primary) 55%, var(--dsw-alias-label-primary))`、error 同式 | 保证 5.82 / 9.72（浅）、7.63 / 4.53（深） |
+| A9 CSS 落点 | 追加在 `.ds-acc-*` 块内（25578–25700 之后） | 新类：`.ds-acc-block`、`.ds-acc-block-toggle`、`.ds-acc-block-body[hidden]`、`.ds-acc-block-badges`、`.ds-acc-block-badge`、`.ds-acc-block-badge[data-kind]`、`.ds-acc-group-head`（改 button 后重置 `border:0;background:transparent;width:100%`）、`.ds-acc-detail-toggle`、`.ds-acc-detail-caption`、`.ds-acc-chevron`、`.ds-acc-toolbar-toggle` | 全部 `:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: -2px }`；`@media (prefers-reduced-motion: reduce) { transition: none }` |
+| A10 存储 | 键常量区 33–61；`readStorage`/`writeStorage` 4244–4258 可复用 | `COLLAPSE_KEY = 'dsh-web-filebrowser:acceptance-collapse'`；`readCollapseState()` 返回 `{blocks, groups}`，**任何异常 → 默认值**；`writeCollapseState(next)` try/catch 静默 | 不写 `.dsh/`、不过 Host、不做版本迁移；分组 key 用 `item.category?.trim() \|\| '__uncat__'` |
+
+**建议的实现骨架（伪代码，按仓库风格用 `h()`）**
+
+```js
+const COLLAPSE_DEFAULT = { blocks: { evidence: false, verify: false, delivery: false }, groups: {} }
+const groupKeyOf = (item) => (typeof item.category === 'string' && item.category.trim().length > 0 ? item.category.trim() : '__uncat__')
+// 读：一次；坏值 → 默认
+function readCollapse() {
+  try {
+    const raw = readStorage(COLLAPSE_KEY)
+    if (!raw) return COLLAPSE_DEFAULT
+    const doc = JSON.parse(raw)
+    const blocks = {}
+    for (const key of ['evidence', 'verify', 'delivery']) blocks[key] = doc?.blocks?.[key] === true
+    const groups = {}
+    if (doc && typeof doc.groups === 'object' && doc.groups !== null) {
+      for (const [key, value] of Object.entries(doc.groups)) if (typeof value === 'boolean') groups[key] = value
+    }
+    return { blocks, groups }
+  } catch { return COLLAPSE_DEFAULT }
+}
+// 写：每次切换后
+const writeCollapse = (next) => { try { writeStorage(COLLAPSE_KEY, JSON.stringify(next)) } catch {} }
+// 全部收起/展开：anyOpen 见 D3；一次写
+```
+
+**可自由调整 vs 不可偏离**
+
+- 可自由调整：徽标之间的 gap（4–8）、箭头尺寸（12±2）、区块体 max-height（±40）、证据网格列宽（保持 68±8）、详情标题 clamp 行数、块间距、`title` 文案措辞。
+- **不可偏离**：区块头是单按钮且**不嵌套**其它可聚焦元素；三个折叠头/分组头/详情头必须 `button` + `aria-expanded` + `aria-controls` + 内容 `hidden`；切换后焦点留在按钮；`localStorage` 键名与 JSON 形状、默认值、分组 key 用分类原值；不做高度动画、不加依赖、不改 Host/数据结构；折叠不发网络请求；收起时保留挂载；中英文案成对；颜色只用 token/`color-mix`（不得硬编码语义色）。
+
+**防重复与错误恢复**
+
+- 折叠是同步本地状态，无 busy 态、无请求；连续快速点击按 `current => !current` 写法天然幂等。
+- 「全部收起/展开」一次写一次存储；不要在循环里逐块写（避免多次 `JSON.stringify`）。
+- 存储读失败 → 默认态；写失败 → 内存态（功能可用，不提示，不阻塞）；不做 toast。
+- 数据失败沿用既有 `acceptanceError`/`previewError` errorline，折叠头徽标显示 `—`，用户可「刷新」重试；**失败不自动收起**已展开的区块。
+
+**性能与兼容**
+
+- 收起只是加 `hidden`：54 条项 + 20 证据 + 24 命令仍在 DOM，`hidden` 不参与布局、不触发请求；不新增每帧计算；不改数据结构。
+- 目标：切换 <16ms（一次 state 更新 + 一次 `localStorage.setItem`）；不做防抖（折叠是低频操作）。
+- Chrome / Safari / Firefox 现代版本；`color-mix` 与 `:focus-visible` 已在 v1.2.8x 系列使用；`hidden` 全支持。
+
+#### 17.12.2 给测试：视觉基线与复测步骤
+
+**视觉基线（浅色，逐张对照）**
+
+1. [default-360](design/acceptance-collapse-default-360.svg)：三区块收起、只露 44px 头（标题 + 徽标 + ⌄）；清单占满剩余高度并独立滚动；工具区「刷新 + 全部收起」；分组头带数量与箭头。
+2. [expanded-360](design/acceptance-collapse-expanded-360.svg)：三块展开内容与 v1.2.83 一致（证据网格、命令列表 + 运行、4 个交付按钮、端口 + 3 条分享、交付记录、交付包）；复测中心**没有**内层开关；清单仍可滚动（本图 132px）。
+3. [all-collapsed-360](design/acceptance-collapse-all-collapsed-360.svg)：三块 + 全部分组 + 详情均收起；详情头仍显示状态徽标 + 标题 + 「详情已收起 · 选中保留」；清单行高亮仍在；按钮变「全部展开」。
+4. [detail-360](design/acceptance-collapse-detail-360.svg)：详情头 48px（状态徽标 + 标题 2 行 + ⌃）；详情体完整（分类/验收条件/备注/保存/取消/证据/状态历史）；选中行 8% 底 + 2px 左条。
+5. [691](design/acceptance-collapse-691.svg)：徽标 2 个完整显示；证据库为 hover 态；复测中心为 `:focus-visible` 态（2px 环）；无省略。
+6. [dark-900](design/acceptance-collapse-dark-900.svg)：深色下徽标/箭头/焦点环/选中行/主按钮（白底深字）与对比度标注一致。
+
+**可观察断言（建议复制给 QA 脚本/手测）**
+
+| 项 | 断言 |
+|---|---|
+| 默认态 | `localStorage` 无键时：三块 body 都有 `hidden`；三个块的 `aria-expanded="false"`；`.ds-acc-list` 高度 > 300px（360 宽 900 高时约 430） |
+| 无横向溢出 | `panel.scrollWidth <= panel.clientWidth`（面板容器）；360 / 691 各测一次；长分类名（>12 字）也测 |
+| 持久化 | 展开证据库 + 收起复测 → 刷新 → 两块状态保持；`localStorage.getItem('dsh-web-filebrowser:acceptance-collapse')` 可 `JSON.parse` |
+| 损坏回退 | 写入 `{"blocks":{"evidence":"bad"}}` → 刷新 → 三块收起、分组展开、无报错；写入 `not-json` 同样回退 |
+| 全部收起 | 点「全部收起」→ 三块 + 全部分组 + 详情收起；选中行仍 `data-selected="true"`；按钮文案变「全部展开」；刷新保持 |
+| 全部展开 | 再点 → 三块展开、分组展开、详情（若有选中）展开；刷新保持 |
+| 详情 | 选中 → 出现；点详情头 → 收起但选中保留（头文案 + 行高亮）；取消选中 → 整块消失；选另一项 → 自动展开 |
+| 分组 | 点组头 → 组内条目不可见且不在 Tab 序列；勾选/批量/状态/删除/筛选行为与折叠前一致；刷新保持 |
+| 键盘/ARIA | Tab 到每个折叠头 → Enter 与 Space 均可切换、焦点不跳走；`aria-expanded` 与视觉一致；`aria-controls` 命中唯一 `id`；`getComputedStyle(focused).outlineWidth === '2px'` |
+| 读屏 | 证据库头读「证据库 20 条证据 已收起」；分组头含分类名与数量；详情头含状态与标题 |
+| 主题 | 切深色：徽标/箭头/分隔线/焦点环可见；正文对比 ≥4.5（对照 17.6 表抽查 3 处） |
+| reduced-motion | 系统开启「减少动态效果」后，折叠切换无过渡（`transition-duration` 为 0s） |
+| 回归 | requirements §8 第 9 条全列（刷新/添加/模板/筛选/全选/批量/状态/删除/备注/证据上传删除/复测/导出/打包下载/分享增删/交付记录/交付包）+ 其它面板冒烟 + `npm run check` / `check:json` / `npm test` 退出码 0 |
+
+**常见误判（不要当 bug）**：折叠**没有高度动画**（需求明确不做）；区块收起时 DOM 仍在（用 `hidden` 判断，不要用元素是否存在判断）；分组 id 会随筛选变化（`aria-controls` 仍正确）；详情收起后仍保留选中（这是设计）。
+
+### 17.13 资源清单与渲染环境
+
+| 文件 | 说明 |
+|---|---|
+| [acceptance-collapse-default-360.svg](design/acceptance-collapse-default-360.svg) | 默认态：三区块收起、清单为主、2 个分组、工具区「全部收起」（360×846） |
+| [acceptance-collapse-expanded-360.svg](design/acceptance-collapse-expanded-360.svg) | 三区块展开：证据网格 20 项、复测命令列表 + 运行、交付按钮 + 预览分享 3 条 + 交付记录 + 交付包（360×1324，连续绘制完整内容，真实面板内区块体滚动） |
+| [acceptance-collapse-all-collapsed-360.svg](design/acceptance-collapse-all-collapsed-360.svg) | 全部收起：三分组 + 详情 + 三区块均收起，选中保留，按钮变「全部展开」（360×640） |
+| [acceptance-collapse-detail-360.svg](design/acceptance-collapse-detail-360.svg) | 详情展开：48px 详情头 + 验收条件/备注/证据/状态历史，选中行高亮（360×999） |
+| [acceptance-collapse-691.svg](design/acceptance-collapse-691.svg) | 691px 截图宽度（compact 全宽）：徽标 2 个完整、hover 与 focus 示例（691×885） |
+| [acceptance-collapse-dark-900.svg](design/acceptance-collapse-dark-900.svg) | 深色主题片段 + 对比度实测标注（900×658） |
+| [acceptance-collapse-default-r1-360.svg](design/acceptance-collapse-default-r1-360.svg) | R1 迭代证据（头内嵌操作按钮、双工具按钮、分组 div）（360×727） |
+| [acceptance-collapse-expanded-r1-360.svg](design/acceptance-collapse-expanded-r1-360.svg) | R1 迭代证据（复测双层开关、无 max-height、清单被压到 24px）（360×1094） |
+| [gen-acceptance-collapse-mockups.mjs](design/gen-acceptance-collapse-mockups.mjs) | 生成器（纯 SVG 字符串，无外部依赖）：`node gen-acceptance-collapse-mockups.mjs` 生成 6 张最终稿；`R1=1 node …` 生成 2 张 R1 稿 |
+
+> PNG 导出不入库（`.gitignore` 已忽略 `docs/pipeline/design/*.png`），需要位图时按下述命令重建（逻辑坐标 → @2× 位图）。
+
+**渲染环境与命令**
+
+```bash
+# 字体：Noto Sans SC 装在 /tmp/notofonts，fontconfig 配置 /tmp/fonts/fonts.conf
+cd <repo>
+node docs/pipeline/design/gen-acceptance-collapse-mockups.mjs          # 6 张最终 SVG
+R1=1 node docs/pipeline/design/gen-acceptance-collapse-mockups.mjs     # 2 张 R1 SVG
+FONTCONFIG_FILE=/tmp/fonts/fonts.conf \
+  NODE_PATH=/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules \
+  node -e "const s=require('sharp'); s('docs/pipeline/design/acceptance-collapse-default-360.svg',{density:144}).png().toFile('docs/pipeline/design/acceptance-collapse-default-360.png').then(i=>console.log(i.width,i.height))"
+```
+
+- 输出尺寸（逻辑 × 2）：360 稿 → 720 宽；691 稿 → 1382；900 稿 → 1800；全部 `density:144`。
+- SVG 内字体栈：`Noto Sans SC, PingFang SC, sans-serif`；字号/间距与 17.6 一致（1:1 CSS px，便于对照实现）。
+- 本轮已逐张 `read_image` 目检：中文无豆腐块、无文字溢出/重叠、层级与选中高亮正确；并脚本扫描 8 个 SVG 的 rect/text 右边界 → 无横向溢出。
+
+### 17.14 风险与未决 / 给 Owner 的确认清单
+
+**风险**
+
+| 风险 | 影响 | 处理 |
+|---|---|---|
+| 用户找不到证据/复测/交付入口（默认收起） | 需要多点一次 | 区块头常显 + 数量徽标（20 条证据 / 2 通过·0 失败 / 3 分享·5 交付）+ 「全部展开」；创新假设 1 已写失败预案 |
+| 单按钮动态文案被误读 | 不知道当前是「全收起」还是「全展开」 | 文案随状态变化 + `title` 说明作用域；若 Owner 反馈，退回两个按钮（**仍占用同一位置**，不新增行） |
+| 复测中心扁平化改动既有行为 | 回归风险 | 只删内层开关并把自动预选搬到 verify 头；运行/发送失败逻辑不动；验收项 9 覆盖 |
+| 区块展开时清单变短 | 用户觉得「清单被挤压」 | 清单 `min-height:96` + 三块体滚动上限；展开态稿标出「保底 96px」 |
+| 360 徽标省略导致数值不可见 | 信息缺失 | 完整文本进 `title`；`+n` 只合并第 3 个以后；面板 <420 时至少保留 1 个最重要徽标 |
+| 深色徽标对比 | 低视力不可读 | 徽标文字用「语义色 55% + label-primary」混合；实测 4.55–7.88 全部 ≥4.5，见 17.6 |
+| 存储写入失败（隐私模式） | 偏好不持久 | 静默降级内存态，功能可用；验收项 2 覆盖 |
+| 并行会话改动 `client.js` 导致行号漂移 | 交接误差 | 以类名/符号为准；本设计只给插入点建议，不改代码 |
+
+**未决问题（不阻塞本轮设计，交 Owner/Lead）**
+
+1. 快速模式（TDD，fast gate）下 design 是否也需要 Owner 点确认？本轮按既有流水线（design 始终人工确认），不改。
+2. 「全部展开」是否也应展开清单内所有分组的**滚动位置**（跳到顶部）？默认**不滚动**（避免打断），若 Owner 需要可后续加 `scrollTop=0`。
+3. 是否给折叠头加键盘快捷键（如 `[` 全部收起）？默认不加（不新增快捷键，避免冲突）。
+4. 详情「点同一项」是否应切换展开/收起？当前设计为「保持收起、选中不变」；若 Owner 更希望「点标题即开合」，改 `selectAcceptanceItem` 分支即可，不改变验收项 4 的可观察结果。
+
+**给 Owner 的确认清单（design 闸门逐条看）**
+
+- [ ] 验收台默认打开时：**清单在上、证据库/复测中心/交付与预览分享只在底部露 44px 区块头**，符合「清单成为主内容」的预期（[default-360](design/acceptance-collapse-default-360.svg)）。
+- [ ] 区块头只有「标题 + 数量徽标 + 箭头」，**没有把添加证据/复测/打包塞进头部**；展开后按钮在原位且都能用（[expanded-360](design/acceptance-collapse-expanded-360.svg)）。
+- [ ] 工具区只有**一个**「全部收起/全部展开」按钮（在刷新右侧），文案随状态变化，没有两个并列按钮。
+- [ ] 复测中心展开即见「最近复测 + 命令 + 运行」，**没有内层开关要点第二次**。
+- [ ] 选中项详情有 48px 头（状态 + 标题 + 箭头）；收起后仍能在头里看到「详情已收起 · 选中保留」且清单行高亮（[detail-360](design/acceptance-collapse-detail-360.svg)）。
+- [ ] 「全部收起」后三区块 + 全部分组 + 详情都收起、选中不丢（[all-collapsed-360](design/acceptance-collapse-all-collapsed-360.svg)）。
+- [ ] 691px 截图宽度下标题/徽标完整、无横向滚动（[691](design/acceptance-collapse-691.svg)）；深色主题可读（[dark-900](design/acceptance-collapse-dark-900.svg)）。
+- [ ] 文案口径可接受：`全部收起 / 全部展开`、`详情已收起 · 选中保留，点此展开`、徽标 `20 条证据` / `2 通过 / 0 失败` / `3 个分享` / `5 个交付`（zh + en 见 17.10）。
+
+> 审批通过后由全栈开发按 17.12 实现；实现完成交 QA 按 17.12.2 复测，再由项目经理复核、Owner 确认。

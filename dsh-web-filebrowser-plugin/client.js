@@ -59,6 +59,8 @@ window.__ModuleLoader__.load({
     /** Todo panel preferences and enumerations. */
     const TODO_FILTER_KEY = 'dsh-web-filebrowser:todo-filter'
     const TODO_SORT_KEY = 'dsh-web-filebrowser:todo-sort'
+    /** Acceptance panel collapse preference (v1.2.84): blocks + category groups. */
+    const ACCEPTANCE_COLLAPSE_KEY = 'dsh-web-filebrowser:acceptance-collapse'
     const TODO_FILTERS = ['open', 'done', 'all']
     const TODO_SORTS = ['priority', 'due', 'updated', 'created']
     const TODO_PRIORITIES = ['low', 'normal', 'high', 'urgent']
@@ -942,6 +944,20 @@ window.__ModuleLoader__.load({
       'acceptance.retestSend': '把失败发给 agent',
       'acceptance.retestNoCommands': '还没有检测到可运行命令，请先在任务面板检测。',
       'acceptance.evidenceLibrary': '证据库',
+      'acceptance.collapseAll': '全部收起',
+      'acceptance.expandAll': '全部展开',
+      'acceptance.collapseAllTitle': '收起三个分区、所有分类分组与详情',
+      'acceptance.expandAllTitle': '展开三个分区、所有分类分组与详情',
+      'acceptance.block.delivery': '交付与预览分享',
+      'acceptance.badge.retest': '{pass} 通过 / {fail} 失败',
+      'acceptance.badge.retestEmpty': '无记录',
+      'acceptance.badge.share': '{count} 个分享',
+      'acceptance.badge.delivery': '{count} 个交付',
+      'acceptance.badge.deliveryEmpty': '无分享 · 无交付',
+      'acceptance.badge.more': '+{count}',
+      'acceptance.detailToggle': '选中项详情',
+      'acceptance.detailCollapsed': '详情已收起 · 选中保留，点此展开',
+      'acceptance.groupToggle': '{name}，{count} 项',
       'acceptance.emptyFiltered': '没有符合筛选的验收项。',
       'acceptance.tpl.web.0': '首页与主流程可打开',
       'acceptance.tpl.web.1': '主要链接与按钮可点击',
@@ -2206,6 +2222,20 @@ window.__ModuleLoader__.load({
       'acceptance.retestSend': 'Send failures to agent',
       'acceptance.retestNoCommands': 'No commands detected; detect them in the Tasks panel first.',
       'acceptance.evidenceLibrary': 'Evidence library',
+      'acceptance.collapseAll': 'Collapse all',
+      'acceptance.expandAll': 'Expand all',
+      'acceptance.collapseAllTitle': 'Collapse the three sections, all category groups and the detail panel',
+      'acceptance.expandAllTitle': 'Expand the three sections, all category groups and the detail panel',
+      'acceptance.block.delivery': 'Delivery & preview sharing',
+      'acceptance.badge.retest': '{pass} passed / {fail} failed',
+      'acceptance.badge.retestEmpty': 'No runs',
+      'acceptance.badge.share': '{count} share(s)',
+      'acceptance.badge.delivery': '{count} deliverable(s)',
+      'acceptance.badge.deliveryEmpty': 'No shares · none',
+      'acceptance.badge.more': '+{count}',
+      'acceptance.detailToggle': 'Selected item detail',
+      'acceptance.detailCollapsed': 'Detail collapsed · selection kept, activate to expand',
+      'acceptance.groupToggle': '{name}, {count} item(s)',
       'acceptance.emptyFiltered': 'No acceptance items match this filter.',
       'acceptance.tpl.web.0': 'Home page and main flow open',
       'acceptance.tpl.web.1': 'Primary links and buttons work',
@@ -4031,6 +4061,14 @@ window.__ModuleLoader__.load({
       return icon(14, h('path', { d: 'M3.5 6.25 8 10.75l4.5-4.5' }))
     }
 
+    function ChevronsUpIcon() {
+      return icon(14, h('path', { d: 'M3.5 7.75 8 3.25l4.5 4.5' }), h('path', { d: 'M3.5 12.25 8 7.75l4.5 4.5' }))
+    }
+
+    function ChevronsDownIcon() {
+      return icon(14, h('path', { d: 'M3.5 1.75 8 6.25l4.5-4.5' }), h('path', { d: 'M3.5 6.75 8 11.25l4.5-4.5' }))
+    }
+
     function FolderIcon({ open }) {
       return open
         ? icon(15, h('path', { d: 'M1.75 4.5h4l1.2 1.5h7.3v6.25a1 1 0 0 1-1 1H2.75a1 1 0 0 1-1-1Z' }), h('path', { d: 'M1.75 4.5V3.25a1 1 0 0 1 1-1h3l1.2 1.5' }))
@@ -4254,6 +4292,54 @@ window.__ModuleLoader__.load({
         window.localStorage.setItem(key, value)
       } catch {
         /* storage may be unavailable; the UI still works for this mount */
+      }
+    }
+
+    /** Default open state of the collapsible acceptance sections. */
+    function defaultAcceptanceCollapse() {
+      return { blocks: { evidence: false, verify: false, delivery: false }, groups: {} }
+    }
+
+    /** Read the persisted acceptance collapse preference; corrupt values fall back. */
+    function readAcceptanceCollapse() {
+      const fallback = defaultAcceptanceCollapse()
+      try {
+        const raw = readStorage(ACCEPTANCE_COLLAPSE_KEY)
+        if (typeof raw !== 'string' || raw.length === 0) return fallback
+        if (raw.length > 16 * 1024) return fallback
+        const parsed = JSON.parse(raw)
+        if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return fallback
+        const blocks = { evidence: false, verify: false, delivery: false }
+        if (parsed.blocks !== null && typeof parsed.blocks === 'object' && !Array.isArray(parsed.blocks)) {
+          for (const key of ['evidence', 'verify', 'delivery']) {
+            if (typeof parsed.blocks[key] === 'boolean') blocks[key] = parsed.blocks[key]
+          }
+        }
+        const groups = {}
+        const dangerous = new Set(['__proto__', 'constructor', 'prototype'])
+        if (parsed.groups !== null && typeof parsed.groups === 'object' && !Array.isArray(parsed.groups)) {
+          let kept = 0
+          for (const [key, value] of Object.entries(parsed.groups)) {
+            if (typeof key !== 'string' || key.length === 0 || key.length > 120) continue
+            if (dangerous.has(key)) continue
+            if (typeof value !== 'boolean') continue
+            groups[key] = value
+            kept += 1
+            if (kept >= 256) break
+          }
+        }
+        return { blocks, groups }
+      } catch {
+        return fallback
+      }
+    }
+
+    /** Persist the acceptance collapse preference; storage failures keep the in-memory state. */
+    function writeAcceptanceCollapse(value) {
+      try {
+        writeStorage(ACCEPTANCE_COLLAPSE_KEY, JSON.stringify(value))
+      } catch {
+        /* private mode or quota: the panel still works for this mount */
       }
     }
 
@@ -8530,7 +8616,11 @@ window.__ModuleLoader__.load({
         const [verifications, setVerifications] = useState([])
         const [verificationBusy, setVerificationBusy] = useState(false)
         const [verificationSelection, setVerificationSelection] = useState([])
-        const [verificationOpen, setVerificationOpen] = useState(false)
+        const [acceptanceCollapse, setAcceptanceCollapse] = useState(() => readAcceptanceCollapse())
+        const [acceptanceDetailOpen, setAcceptanceDetailOpen] = useState(false)
+        useEffect(() => {
+          writeAcceptanceCollapse(acceptanceCollapse)
+        }, [acceptanceCollapse])
         const [reviewState, setReviewState] = useState(null)
         const [reviewBusy, setReviewBusy] = useState(false)
         const [preflightOpen, setPreflightOpen] = useState(false)
@@ -11730,13 +11820,14 @@ ${tail}
           }
         }
 
-        /** Select one item for note editing. */
+        /** Select one item for note editing; a new selection reopens the detail block. */
         function selectAcceptanceItem(item) {
           if (item === null || typeof item !== 'object') {
             setAcceptanceSelected(null)
             setAcceptanceNoteDraft('')
             return
           }
+          if (item.id !== acceptanceSelected) setAcceptanceDetailOpen(true)
           setAcceptanceSelected(item.id)
           setAcceptanceNoteDraft(typeof item.note === 'string' ? item.note : '')
         }
@@ -12148,7 +12239,7 @@ ${tail}
             return
           }
           setVerificationBusy(true)
-          setVerificationOpen(true)
+          setAcceptanceBlockOpen('verify', true)
           setAcceptanceError(null)
           try {
             try {
@@ -12246,6 +12337,76 @@ ${tail}
             if (acceptanceFilter === 'gap') return itemHasEvidenceGap(item)
             return true
           })
+        }
+
+        /** Open state of one collapsible acceptance section. */
+        function acceptanceBlockOpen(key) {
+          return acceptanceCollapse.blocks[key] === true
+        }
+
+        /** Open state of one acceptance category group (default open). */
+        function acceptanceGroupOpen(key) {
+          return acceptanceCollapse.groups[key] !== false
+        }
+
+        /** Every category key present in the current acceptance list. */
+        function acceptanceGroupKeys() {
+          const keys = new Set()
+          for (const item of Array.isArray(acceptanceItems) ? acceptanceItems : []) {
+            if (item === null || typeof item !== 'object') continue
+            const raw = typeof item.category === 'string' ? item.category.trim() : ''
+            keys.add(raw.length > 0 ? raw : '__uncat__')
+          }
+          return Array.from(keys)
+        }
+
+        /** Open or close one collapsible acceptance section. */
+        function setAcceptanceBlockOpen(key, open) {
+          setAcceptanceCollapse((current) => ({
+            blocks: { ...current.blocks, [key]: open === true },
+            groups: { ...current.groups },
+          }))
+        }
+
+        /** Toggle one collapsible acceptance section (retest preselects commands). */
+        function toggleAcceptanceBlock(key) {
+          const open = acceptanceBlockOpen(key)
+          if (!open && key === 'verify' && verificationSelection.length === 0) {
+            const suggestions = Array.isArray(taskSuggestions) ? taskSuggestions : []
+            setVerificationSelection(
+              suggestions
+                .filter((suggestion) => suggestion !== null && typeof suggestion === 'object' && ['test', 'build', 'lint'].includes(suggestion.group))
+                .slice(0, 3)
+                .map((suggestion) => suggestion.id),
+            )
+          }
+          setAcceptanceBlockOpen(key, !open)
+        }
+
+        /** Toggle one acceptance category group, persisting the raw category key. */
+        function toggleAcceptanceGroup(key) {
+          setAcceptanceCollapse((current) => ({
+            blocks: { ...current.blocks },
+            groups: { ...current.groups, [key]: current.groups[key] === false },
+          }))
+        }
+
+        /** Whether any acceptance section, category group or the detail block is open. */
+        function acceptanceAnyOpen() {
+          if (acceptanceCollapse.blocks.evidence === true || acceptanceCollapse.blocks.verify === true || acceptanceCollapse.blocks.delivery === true) return true
+          if (acceptanceDetailOpen) return true
+          const groupKeys = acceptanceGroupKeys()
+          if (groupKeys.length === 0) return Object.values(acceptanceCollapse.groups).some((open) => open !== false)
+          return groupKeys.some((key) => acceptanceCollapse.groups[key] !== false)
+        }
+
+        /** Collapse or expand every acceptance section, category group and the detail block. */
+        function toggleAllAcceptanceBlocks() {
+          const collapseNow = acceptanceAnyOpen()
+          const groups = {}
+          for (const key of acceptanceGroupKeys()) groups[key] = !collapseNow
+          setAcceptanceCollapse({ blocks: { evidence: !collapseNow, verify: !collapseNow, delivery: !collapseNow }, groups })
+          setAcceptanceDetailOpen(!collapseNow && acceptanceSelected !== null)
         }
 
         /** Toggle one acceptance row in the batch selection. */
@@ -17172,10 +17333,11 @@ ${tail}
           const filtered = acceptanceFilteredItems()
           const groups = []
           for (const item of filtered) {
-            const category = typeof item.category === 'string' && item.category.trim().length > 0 ? item.category.trim() : t('acceptance.groupOther')
-            let bucket = groups.find((entry) => entry.category === category)
+            const rawCategory = typeof item.category === 'string' && item.category.trim().length > 0 ? item.category.trim() : ''
+            const groupKey = rawCategory.length > 0 ? rawCategory : '__uncat__'
+            let bucket = groups.find((entry) => entry.key === groupKey)
             if (bucket === undefined) {
-              bucket = { category, items: [] }
+              bucket = { key: groupKey, category: rawCategory.length > 0 ? rawCategory : t('acceptance.groupOther'), items: [] }
               groups.push(bucket)
             }
             bucket.items.push(item)
@@ -17195,6 +17357,56 @@ ${tail}
           const selectedEvidence = selected === null ? [] : itemEvidence(selected)
           const selectedHistory = selected !== null && Array.isArray(selected.history) ? selected.history : []
           const verifySuggestions = Array.isArray(taskSuggestions) ? taskSuggestions : []
+          const blocksOpen = acceptanceCollapse.blocks
+          const anyCollapsibleOpen = acceptanceAnyOpen()
+          const evidenceBadge = { key: 'evidence', kind: 'neutral', text: t('acceptance.evidenceCount', { count: String(evidenceFiles.length) }) }
+          const verifyBadge =
+            latestVerify === null
+              ? { key: 'verify', kind: 'neutral', text: t('acceptance.badge.retestEmpty') }
+              : {
+                  key: 'verify',
+                  kind: Number(latestVerify.failed ?? 0) > 0 ? 'warn' : 'ok',
+                  text: t('acceptance.badge.retest', { pass: String(latestVerify.passed ?? 0), fail: String(latestVerify.failed ?? 0) }),
+                }
+          const deliveryBadges = []
+          if (previewShares.length > 0) deliveryBadges.push({ key: 'share', kind: 'neutral', text: t('acceptance.badge.share', { count: String(previewShares.length) }) })
+          if (deliveryHistory.length > 0) deliveryBadges.push({ key: 'delivery', kind: 'neutral', text: t('acceptance.badge.delivery', { count: String(deliveryHistory.length) }) })
+          if (deliveryBadges.length === 0) deliveryBadges.push({ key: 'empty', kind: 'neutral', text: t('acceptance.badge.deliveryEmpty') })
+          const renderBlockBadges = (badges) => {
+            const shown = badges.slice(0, 2)
+            const hiddenCount = badges.length - shown.length
+            return h(
+              'span',
+              { className: 'ds-acc-block-badges' },
+              shown.map((badge) =>
+                h('span', { key: badge.key, className: 'ds-acc-block-badge', 'data-kind': badge.kind, title: badge.title ?? badge.text }, badge.text),
+              ),
+              hiddenCount > 0
+                ? h(
+                    'span',
+                    { key: 'more', className: 'ds-acc-block-badge', 'data-kind': 'neutral', title: badges.slice(2).map((badge) => badge.text).join(' · ') },
+                    t('acceptance.badge.more', { count: String(hiddenCount) }),
+                  )
+                : null,
+            )
+          }
+          const renderBlockHead = (key, title, badges) => {
+            const open = blocksOpen[key] === true
+            return h(
+              'button',
+              {
+                type: 'button',
+                className: 'ds-acc-block-toggle',
+                'data-open': open ? 'true' : undefined,
+                'aria-expanded': open ? 'true' : 'false',
+                'aria-controls': 'ds-acc-' + key + '-body',
+                onClick: () => toggleAcceptanceBlock(key),
+              },
+              h('span', { className: 'ds-acc-block-title' }, title),
+              badges,
+              h('span', { className: 'ds-acc-chevron', 'aria-hidden': 'true' }, open ? h(ChevronUpIcon) : h(ChevronDownIcon)),
+            )
+          }
           const renderEvidenceChip = (entry, removable = false) =>
             h(
               'div',
@@ -17257,6 +17469,19 @@ ${tail}
                   onClick: () => void loadAcceptance(),
                 },
                 t('action.refresh'),
+              ),
+              h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'ds-linkbtn ds-acc-toolbar-toggle',
+                  title: anyCollapsibleOpen ? t('acceptance.collapseAllTitle') : t('acceptance.expandAllTitle'),
+                  'aria-label': anyCollapsibleOpen ? t('acceptance.collapseAllTitle') : t('acceptance.expandAllTitle'),
+                  'data-collapsed': anyCollapsibleOpen ? undefined : 'true',
+                  onClick: toggleAllAcceptanceBlocks,
+                },
+                anyCollapsibleOpen ? h(ChevronsUpIcon) : h(ChevronsDownIcon),
+                h('span', null, anyCollapsibleOpen ? t('acceptance.collapseAll') : t('acceptance.expandAll')),
               ),
               h('span', { className: 'ds-spacer' }),
               acceptanceSaving ? h('span', { className: 'ds-acc-saving' }, t('acceptance.saving')) : null,
@@ -17403,459 +17628,473 @@ ${tail}
                 ? h('div', { className: 'ds-hint' }, t('acceptance.empty'))
                 : groups.length === 0
                   ? h('div', { className: 'ds-hint' }, t('acceptance.emptyFiltered'))
-                  : groups.map((bucket) =>
-                      h(
+                  : groups.map((bucket, groupIndex) => {
+                      const groupOpen = acceptanceGroupOpen(bucket.key)
+                      const groupBodyId = 'ds-acc-group-body-' + String(groupIndex)
+                      return h(
                         'div',
-                        { key: bucket.category, className: 'ds-acc-group' },
+                        { key: bucket.key, className: 'ds-acc-group' },
                         h(
-                          'div',
-                          { className: 'ds-acc-group-head' },
+                          'button',
+                          {
+                            type: 'button',
+                            className: 'ds-acc-group-head',
+                            'aria-expanded': groupOpen ? 'true' : 'false',
+                            'aria-controls': groupBodyId,
+                            'aria-label': t('acceptance.groupToggle', { name: bucket.category, count: String(bucket.items.length) }),
+                            onClick: () => toggleAcceptanceGroup(bucket.key),
+                          },
                           h('span', { className: 'ds-acc-group-name' }, bucket.category),
                           h('span', { className: 'ds-acc-group-count' }, String(bucket.items.length)),
+                          h('span', { className: 'ds-acc-chevron', 'aria-hidden': 'true' }, groupOpen ? h(ChevronUpIcon) : h(ChevronDownIcon)),
                         ),
-                        bucket.items.map((item) =>
-                          h(
-                            'div',
-                            {
-                              key: item.id,
-                              className: 'ds-acc-row',
-                              'data-status': item.status,
-                              'data-selected': item.id === acceptanceSelected ? 'true' : undefined,
-                            },
-                            h('input', {
-                              type: 'checkbox',
-                              className: 'ds-acc-check',
-                              checked: acceptanceSelection.includes(item.id),
-                              'aria-label': String(item.title ?? ''),
-                              onChange: () => toggleAcceptanceSelection(item.id),
-                            }),
+                        h(
+                          'div',
+                          { id: groupBodyId, className: 'ds-acc-group-body', hidden: groupOpen ? undefined : true },
+                          bucket.items.map((item) =>
                             h(
-                              'button',
-                              { type: 'button', className: 'ds-acc-row-main', onClick: () => selectAcceptanceItem(item) },
-                              h('span', { className: 'ds-acc-title' }, String(item.title ?? '')),
-                              typeof item.note === 'string' && item.note.trim().length > 0
-                                ? h('span', { className: 'ds-acc-note-pre' }, item.note.trim())
-                                : null,
-                              h(
-                                'span',
-                                { className: 'ds-acc-badges' },
-                                typeof item.category === 'string' && item.category.trim().length > 0 ? h('span', { className: 'ds-acc-cat' }, item.category.trim()) : null,
-                                itemHasEvidenceGap(item)
-                                  ? h('span', { className: 'ds-acc-badge', 'data-kind': 'gap' }, t('acceptance.evidenceGap'))
-                                  : itemEvidence(item).length > 0
-                                    ? h('span', { className: 'ds-acc-badge' }, t('acceptance.evidenceCount', { count: String(itemEvidence(item).length) }))
-                                    : null,
-                                Number.isInteger(item.retestRound) && item.retestRound > 0
-                                  ? h('span', { className: 'ds-acc-badge', 'data-kind': 'retest' }, t('acceptance.retestRound', { round: String(item.retestRound) }))
-                                  : null,
-                              ),
-                            ),
-                            h('div', { className: 'ds-acc-row-status' }, statuses.map((status) => renderStatusButton(item, status))),
-                            h(
-                              'button',
+                              'div',
                               {
-                                type: 'button',
-                                className: 'ds-acc-delete',
-                                title: t('acceptance.delete'),
-                                onClick: () => deleteAcceptanceItem(item),
+                                key: item.id,
+                                className: 'ds-acc-row',
+                                'data-status': item.status,
+                                'data-selected': item.id === acceptanceSelected ? 'true' : undefined,
                               },
-                              h(TrashIcon),
+                              h('input', {
+                                type: 'checkbox',
+                                className: 'ds-acc-check',
+                                checked: acceptanceSelection.includes(item.id),
+                                'aria-label': String(item.title ?? ''),
+                                onChange: () => toggleAcceptanceSelection(item.id),
+                              }),
+                              h(
+                                'button',
+                                { type: 'button', className: 'ds-acc-row-main', onClick: () => selectAcceptanceItem(item) },
+                                h('span', { className: 'ds-acc-title' }, String(item.title ?? '')),
+                                typeof item.note === 'string' && item.note.trim().length > 0
+                                  ? h('span', { className: 'ds-acc-note-pre' }, item.note.trim())
+                                  : null,
+                                h(
+                                  'span',
+                                  { className: 'ds-acc-badges' },
+                                  typeof item.category === 'string' && item.category.trim().length > 0 ? h('span', { className: 'ds-acc-cat' }, item.category.trim()) : null,
+                                  itemHasEvidenceGap(item)
+                                    ? h('span', { className: 'ds-acc-badge', 'data-kind': 'gap' }, t('acceptance.evidenceGap'))
+                                    : itemEvidence(item).length > 0
+                                      ? h('span', { className: 'ds-acc-badge' }, t('acceptance.evidenceCount', { count: String(itemEvidence(item).length) }))
+                                      : null,
+                                  Number.isInteger(item.retestRound) && item.retestRound > 0
+                                    ? h('span', { className: 'ds-acc-badge', 'data-kind': 'retest' }, t('acceptance.retestRound', { round: String(item.retestRound) }))
+                                    : null,
+                                ),
+                              ),
+                              h('div', { className: 'ds-acc-row-status' }, statuses.map((status) => renderStatusButton(item, status))),
+                              h(
+                                'button',
+                                {
+                                  type: 'button',
+                                  className: 'ds-acc-delete',
+                                  title: t('acceptance.delete'),
+                                  onClick: () => deleteAcceptanceItem(item),
+                                },
+                                h(TrashIcon),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
+                      )
+                    }),
             ),
             selected === null
               ? null
               : h(
                   'div',
-                  { className: 'ds-acc-detail' },
+                  { className: 'ds-acc-detail', 'data-open': acceptanceDetailOpen ? 'true' : 'false' },
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-acc-detail-toggle',
+                      'aria-expanded': acceptanceDetailOpen ? 'true' : 'false',
+                      'aria-controls': 'ds-acc-detail-body',
+                      title: t('acceptance.detailToggle'),
+                      onClick: () => setAcceptanceDetailOpen((open) => !open),
+                    },
+                    h('span', { className: 'ds-acc-detail-status', 'data-status': selected.status }, statusLabels[selected.status] ?? String(selected.status ?? '')),
+                    h(
+                      'span',
+                      { className: 'ds-acc-detail-main' },
+                      h('span', { className: 'ds-acc-detail-title', title: String(selected.title ?? '') }, String(selected.title ?? '')),
+                      acceptanceDetailOpen ? null : h('span', { className: 'ds-acc-detail-caption' }, t('acceptance.detailCollapsed')),
+                    ),
+                    h('span', { className: 'ds-acc-chevron', 'aria-hidden': 'true' }, acceptanceDetailOpen ? h(ChevronUpIcon) : h(ChevronDownIcon)),
+                  ),
                   h(
                     'div',
-                    { className: 'ds-acc-detail-meta' },
-                    typeof selected.category === 'string' && selected.category.trim().length > 0
+                    { id: 'ds-acc-detail-body', className: 'ds-acc-detail-body', hidden: acceptanceDetailOpen ? undefined : true },
+                    h(
+                      'div',
+                      { className: 'ds-acc-detail-meta' },
+                      typeof selected.category === 'string' && selected.category.trim().length > 0
+                        ? h(
+                            'span',
+                            { className: 'ds-acc-meta-item' },
+                            h('span', { className: 'ds-acc-detail-label' }, t('acceptance.categoryLabel')),
+                            h('span', { className: 'ds-acc-meta-value' }, selected.category.trim()),
+                          )
+                        : null,
+                      Number.isInteger(selected.retestRound) && selected.retestRound > 0
+                        ? h('span', { className: 'ds-acc-meta-item' }, t('acceptance.retestRound', { round: String(selected.retestRound) }))
+                        : null,
+                      selected.status === 'pass' && selectedEvidence.length === 0
+                        ? h('span', { className: 'ds-acc-badge', 'data-kind': 'gap' }, t('acceptance.evidenceGap'))
+                        : null,
+                    ),
+                    typeof selected.requirement === 'string' && selected.requirement.trim().length > 0
                       ? h(
-                          'span',
-                          { className: 'ds-acc-meta-item' },
-                          h('span', { className: 'ds-acc-detail-label' }, t('acceptance.categoryLabel')),
-                          h('span', { className: 'ds-acc-meta-value' }, selected.category.trim()),
+                          'div',
+                          { className: 'ds-acc-requirement' },
+                          h('div', { className: 'ds-acc-detail-label' }, t('acceptance.requirementLabel')),
+                          h('div', { className: 'ds-acc-requirement-text' }, selected.requirement.trim()),
                         )
                       : null,
-                    Number.isInteger(selected.retestRound) && selected.retestRound > 0
-                      ? h('span', { className: 'ds-acc-meta-item' }, t('acceptance.retestRound', { round: String(selected.retestRound) }))
-                      : null,
-                    selected.status === 'pass' && selectedEvidence.length === 0
-                      ? h('span', { className: 'ds-acc-badge', 'data-kind': 'gap' }, t('acceptance.evidenceGap'))
-                      : null,
-                  ),
-                  typeof selected.requirement === 'string' && selected.requirement.trim().length > 0
-                    ? h(
-                        'div',
-                        { className: 'ds-acc-requirement' },
-                        h('div', { className: 'ds-acc-detail-label' }, t('acceptance.requirementLabel')),
-                        h('div', { className: 'ds-acc-requirement-text' }, selected.requirement.trim()),
-                      )
-                    : null,
-                  h('div', { className: 'ds-acc-detail-label' }, t('acceptance.note')),
-                  h('textarea', {
-                    className: 'ds-acc-note',
-                    value: acceptanceNoteDraft,
-                    rows: 3,
-                    placeholder: t('acceptance.notePlaceholder'),
-                    onChange: (event) => setAcceptanceNoteDraft(event.target.value),
-                  }),
-                  h(
-                    'div',
-                    { className: 'ds-acc-detail-actions' },
+                    h('div', { className: 'ds-acc-detail-label' }, t('acceptance.note')),
+                    h('textarea', {
+                      className: 'ds-acc-note',
+                      value: acceptanceNoteDraft,
+                      rows: 3,
+                      placeholder: t('acceptance.notePlaceholder'),
+                      onChange: (event) => setAcceptanceNoteDraft(event.target.value),
+                    }),
                     h(
-                      'button',
-                      { type: 'button', className: 'ds-btn', disabled: acceptanceSaving, onClick: () => void saveAcceptanceNote() },
-                      t('acceptance.saveNote'),
-                    ),
-                    h('span', { className: 'ds-spacer' }),
-                    h('button', { type: 'button', className: 'ds-linkbtn', onClick: () => selectAcceptanceItem(null) }, t('action.cancel')),
-                  ),
-                  h(
-                    'div',
-                    { className: 'ds-acc-detail-head' },
-                    h('span', { className: 'ds-acc-detail-label' }, t('acceptance.evidence')),
-                    h(
-                      'button',
-                      { type: 'button', className: 'ds-linkbtn', disabled: evidenceBusy, onClick: () => evidenceInputRef.current?.click() },
-                      evidenceBusy ? t('acceptance.evidenceUploading') : t('acceptance.evidenceAdd'),
-                    ),
-                  ),
-                  selectedEvidence.length === 0
-                    ? h('div', { className: 'ds-hint ds-acc-evidence-empty' }, t('acceptance.evidenceEmpty'))
-                    : h(
-                        'div',
-                        { className: 'ds-acc-evidence-list' },
-                        selectedEvidence.map((entry) => renderEvidenceChip(entry, true)),
-                      ),
-                  h('div', { className: 'ds-acc-detail-label' }, t('acceptance.historyTitle')),
-                  selectedHistory.length === 0
-                    ? h('div', { className: 'ds-hint ds-acc-evidence-empty' }, t('acceptance.historyEmptyState'))
-                    : h(
-                        'div',
-                        { className: 'ds-acc-history ds-acc-item-history' },
-                        selectedHistory
-                          .slice()
-                          .reverse()
-                          .map((entry, index) =>
-                            h(
-                              'div',
-                              { key: String(entry.at ?? index) + ':' + String(index), className: 'ds-acc-history-row' },
-                              h(
-                                'span',
-                                { className: 'ds-acc-history-status', 'data-status': entry.status },
-                                statusLabels[entry.status] ?? String(entry.status ?? ''),
-                              ),
-                              h('span', { className: 'ds-acc-history-note' }, typeof entry.note === 'string' ? entry.note : ''),
-                              h(
-                                'span',
-                                { className: 'ds-acc-history-meta' },
-                                Number.isFinite(entry.at) ? new Date(entry.at).toLocaleString() : '',
-                              ),
-                            ),
-                          ),
-                      ),
-                ),
-            h(
-              'div',
-              { className: 'ds-acc-evidence' },
-              h(
-                'div',
-                { className: 'ds-acc-evidence-head' },
-                h('span', { className: 'ds-acc-detail-label' }, t('acceptance.evidenceLibrary')),
-                h(
-                  'button',
-                  {
-                    type: 'button',
-                    className: 'ds-linkbtn ds-acc-evidence-add',
-                    disabled: evidenceBusy,
-                    onClick: () => evidenceInputRef.current?.click(),
-                  },
-                  evidenceBusy ? t('acceptance.evidenceUploading') : t('acceptance.evidenceAdd'),
-                ),
-              ),
-              h(
-                'div',
-                { className: 'ds-hint ds-acc-evidence-empty' },
-                selected === null ? t('acceptance.evidenceNeedItem') : t('acceptance.evidenceHint'),
-              ),
-              h('input', {
-                ref: evidenceInputRef,
-                type: 'file',
-                multiple: true,
-                accept: 'image/*,.pdf,.txt,.log,.json',
-                style: { display: 'none' },
-                onChange: (event) => void handleEvidenceFiles(event),
-              }),
-              evidenceFiles.length === 0
-                ? h('div', { className: 'ds-hint ds-acc-evidence-empty' }, t('acceptance.evidenceEmpty'))
-                : h(
-                    'div',
-                    { className: 'ds-acc-evidence-list' },
-                    evidenceFiles.map((entry) =>
+                      'div',
+                      { className: 'ds-acc-detail-actions' },
                       h(
                         'button',
-                        {
-                          key: entry.path,
-                          type: 'button',
-                          className: 'ds-acc-evidence-item',
-                          title: entry.path,
-                          onClick: () => void openFileAt(entry.path, 1, 1),
-                        },
-                        /\.(?:png|jpe?g|gif|webp|avif|bmp|svg)$/iu.test(entry.name)
-                          ? h('img', {
-                              className: 'ds-acc-evidence-thumb',
-                              src: new URL(
-                                `${API_PATH}?op=raw&root=${encodeURIComponent(state.root ?? '')}&path=${encodeURIComponent(entry.path)}`,
-                                document.baseURI,
-                              ).href,
-                              alt: entry.name,
-                              loading: 'lazy',
-                            })
-                          : h(FileGlyph, { name: entry.name, size: 18 }),
-                        h('span', { className: 'ds-acc-evidence-name' }, entry.name),
+                        { type: 'button', className: 'ds-btn', disabled: acceptanceSaving, onClick: () => void saveAcceptanceNote() },
+                        t('acceptance.saveNote'),
+                      ),
+                      h('span', { className: 'ds-spacer' }),
+                      h('button', { type: 'button', className: 'ds-linkbtn', onClick: () => selectAcceptanceItem(null) }, t('action.cancel')),
+                    ),
+                    h(
+                      'div',
+                      { className: 'ds-acc-detail-head' },
+                      h('span', { className: 'ds-acc-detail-label' }, t('acceptance.evidence')),
+                      h(
+                        'button',
+                        { type: 'button', className: 'ds-linkbtn', disabled: evidenceBusy, onClick: () => evidenceInputRef.current?.click() },
+                        evidenceBusy ? t('acceptance.evidenceUploading') : t('acceptance.evidenceAdd'),
                       ),
                     ),
-                  ),
-            ),
-            h(
-              'div',
-              { className: 'ds-acc-verify' },
-              h(
-                'div',
-                { className: 'ds-acc-evidence-head' },
-                h('span', { className: 'ds-acc-detail-label' }, t('acceptance.retestTitle')),
-                h('span', { className: 'ds-spacer' }),
-                h(
-                  'button',
-                  {
-                    type: 'button',
-                    className: 'ds-linkbtn ds-acc-verify-toggle',
-                    onClick: () =>
-                      setVerificationOpen((open) => {
-                        const next = !open
-                        if (next && verificationSelection.length === 0) {
-                          setVerificationSelection(
-                            verifySuggestions
-                              .filter((suggestion) => suggestion !== null && typeof suggestion === 'object' && ['test', 'build', 'lint'].includes(suggestion.group))
-                              .slice(0, 3)
-                              .map((suggestion) => suggestion.id),
-                          )
-                        }
-                        return next
-                      }),
-                  },
-                  verificationOpen ? t('action.cancel') : t('acceptance.retest'),
-                ),
-              ),
-              latestVerify === null
-                ? h('div', { className: 'ds-hint ds-acc-evidence-empty' }, t('acceptance.retestEmpty'))
-                : h(
-                    'div',
-                    { className: 'ds-acc-verify-latest' },
-                    h(
-                      'span',
-                      { className: 'ds-acc-history-meta' },
-                      t('acceptance.retestLatest') + ' · ' + new Date(Number(latestVerify.createdAt) || Date.now()).toLocaleString(),
-                    ),
-                    h(
-                      'span',
-                      { className: 'ds-acc-badge', 'data-kind': Number(latestVerify.failed ?? 0) > 0 ? 'gap' : undefined },
-                      t('acceptance.retestDone', { pass: String(latestVerify.passed ?? 0), fail: String(latestVerify.failed ?? 0) }),
-                    ),
-                    Number(latestVerify.failed ?? 0) > 0
-                      ? h(
-                          'button',
-                          { type: 'button', className: 'ds-linkbtn', onClick: () => void sendVerificationToAgent(latestVerify) },
-                          t('acceptance.retestSend'),
-                        )
-                      : null,
-                  ),
-              verificationOpen
-                ? h(
-                    'div',
-                    { className: 'ds-acc-verify-body' },
-                    verifySuggestions.length === 0
-                      ? h(
-                          React.Fragment,
-                          null,
-                          h('div', { className: 'ds-hint ds-acc-evidence-empty' }, t('acceptance.retestNoCommands')),
-                          h('button', { type: 'button', className: 'ds-linkbtn', onClick: () => void loadTasks() }, t('tasks.detect')),
-                        )
+                    selectedEvidence.length === 0
+                      ? h('div', { className: 'ds-hint ds-acc-evidence-empty' }, t('acceptance.evidenceEmpty'))
                       : h(
-                          React.Fragment,
-                          null,
-                          h(
-                            'div',
-                            { className: 'ds-acc-verify-list' },
-                            verifySuggestions.slice(0, 24).map((suggestion) =>
+                          'div',
+                          { className: 'ds-acc-evidence-list' },
+                          selectedEvidence.map((entry) => renderEvidenceChip(entry, true)),
+                        ),
+                    h('div', { className: 'ds-acc-detail-label' }, t('acceptance.historyTitle')),
+                    selectedHistory.length === 0
+                      ? h('div', { className: 'ds-hint ds-acc-evidence-empty' }, t('acceptance.historyEmptyState'))
+                      : h(
+                          'div',
+                          { className: 'ds-acc-history ds-acc-item-history' },
+                          selectedHistory
+                            .slice()
+                            .reverse()
+                            .map((entry, index) =>
                               h(
-                                'label',
-                                { key: suggestion.id, className: 'ds-acc-verify-item' },
-                                h('input', {
-                                  type: 'checkbox',
-                                  checked: verificationSelection.includes(suggestion.id),
-                                  onChange: () => toggleVerificationCommand(suggestion.id),
-                                }),
-                                h('span', null, String(suggestion.label ?? suggestion.command ?? '')),
+                                'div',
+                                { key: String(entry.at ?? index) + ':' + String(index), className: 'ds-acc-history-row' },
+                                h(
+                                  'span',
+                                  { className: 'ds-acc-history-status', 'data-status': entry.status },
+                                  statusLabels[entry.status] ?? String(entry.status ?? ''),
+                                ),
+                                h('span', { className: 'ds-acc-history-note' }, typeof entry.note === 'string' ? entry.note : ''),
+                                h(
+                                  'span',
+                                  { className: 'ds-acc-history-meta' },
+                                  Number.isFinite(entry.at) ? new Date(entry.at).toLocaleString() : '',
+                                ),
                               ),
                             ),
-                          ),
-                          h(
-                            'div',
-                            { className: 'ds-acc-detail-actions' },
-                            h(
-                              'button',
-                              {
-                                type: 'button',
-                                className: 'ds-btn ds-btn-primary',
-                                disabled: verificationBusy || verificationSelection.length === 0,
-                                onClick: () => void runVerification(),
-                              },
-                              verificationBusy ? t('acceptance.retestRunning') : t('acceptance.retest'),
-                            ),
-                            h('span', { className: 'ds-spacer' }),
-                            h('button', { type: 'button', className: 'ds-linkbtn', onClick: () => void loadTasks() }, t('tasks.detect')),
-                          ),
                         ),
-                  )
-                : null,
+                  ),
+                ),
+            h(
+              'div',
+              { className: 'ds-acc-block ds-acc-evidence' },
+              renderBlockHead('evidence', t('acceptance.evidenceLibrary'), renderBlockBadges([evidenceBadge])),
+              h(
+                'div',
+                { id: 'ds-acc-evidence-body', className: 'ds-acc-block-body', hidden: blocksOpen.evidence === true ? undefined : true },
+                h(
+                  'div',
+                  { className: 'ds-acc-block-tools' },
+                  h('span', { className: 'ds-hint ds-acc-evidence-empty' }, selected === null ? t('acceptance.evidenceNeedItem') : t('acceptance.evidenceHint')),
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-linkbtn ds-acc-evidence-add',
+                      disabled: evidenceBusy,
+                      onClick: () => evidenceInputRef.current?.click(),
+                    },
+                    evidenceBusy ? t('acceptance.evidenceUploading') : t('acceptance.evidenceAdd'),
+                  ),
+                ),
+                h('input', {
+                  ref: evidenceInputRef,
+                  type: 'file',
+                  multiple: true,
+                  accept: 'image/*,.pdf,.txt,.log,.json',
+                  style: { display: 'none' },
+                  onChange: (event) => void handleEvidenceFiles(event),
+                }),
+                evidenceFiles.length === 0
+                  ? h('div', { className: 'ds-hint ds-acc-evidence-empty' }, t('acceptance.evidenceEmpty'))
+                  : h(
+                      'div',
+                      { className: 'ds-acc-evidence-list' },
+                      evidenceFiles.map((entry) =>
+                        h(
+                          'button',
+                          {
+                            key: entry.path,
+                            type: 'button',
+                            className: 'ds-acc-evidence-item',
+                            title: entry.path,
+                            onClick: () => void openFileAt(entry.path, 1, 1),
+                          },
+                          /\.(?:png|jpe?g|gif|webp|avif|bmp|svg)$/iu.test(entry.name)
+                            ? h('img', {
+                                className: 'ds-acc-evidence-thumb',
+                                src: new URL(
+                                  `${API_PATH}?op=raw&root=${encodeURIComponent(state.root ?? '')}&path=${encodeURIComponent(entry.path)}`,
+                                  document.baseURI,
+                                ).href,
+                                alt: entry.name,
+                                loading: 'lazy',
+                              })
+                            : h(FileGlyph, { name: entry.name, size: 18 }),
+                          h('span', { className: 'ds-acc-evidence-name' }, entry.name),
+                        ),
+                      ),
+                    ),
+              ),
             ),
             h(
               'div',
-              { className: 'ds-acc-delivery' },
+              { className: 'ds-acc-block ds-acc-verify' },
+              renderBlockHead('verify', t('acceptance.retestTitle'), renderBlockBadges([verifyBadge])),
               h(
                 'div',
-                { className: 'ds-acc-actions' },
-                h(
-                  'button',
-                  {
-                    type: 'button',
-                    className: 'ds-btn',
-                    disabled: counts.fail === 0,
-                    onClick: () => void sendAcceptanceFailures(),
-                  },
-                  t('acceptance.sendFailures'),
-                ),
-                h('button', { type: 'button', className: 'ds-btn', onClick: () => void exportAcceptanceReport() }, t('acceptance.report')),
-                h(
-                  'button',
-                  { type: 'button', className: 'ds-btn', disabled: deliveryBusy, onClick: () => void packDeliveryBundle() },
-                  deliveryBusy ? t('acceptance.packing') : t('acceptance.pack'),
-                ),
-                h('button', { type: 'button', className: 'ds-btn', onClick: () => downloadBuildZip() }, t('acceptance.buildZip')),
+                { id: 'ds-acc-verify-body', className: 'ds-acc-block-body', hidden: blocksOpen.verify === true ? undefined : true },
+                latestVerify === null
+                  ? h('div', { className: 'ds-hint ds-acc-evidence-empty' }, t('acceptance.retestEmpty'))
+                  : h(
+                      'div',
+                      { className: 'ds-acc-verify-latest' },
+                      h(
+                        'span',
+                        { className: 'ds-acc-history-meta' },
+                        t('acceptance.retestLatest') + ' · ' + new Date(Number(latestVerify.createdAt) || Date.now()).toLocaleString(),
+                      ),
+                      h(
+                        'span',
+                        { className: 'ds-acc-badge', 'data-kind': Number(latestVerify.failed ?? 0) > 0 ? 'gap' : undefined },
+                        t('acceptance.retestDone', { pass: String(latestVerify.passed ?? 0), fail: String(latestVerify.failed ?? 0) }),
+                      ),
+                      Number(latestVerify.failed ?? 0) > 0
+                        ? h(
+                            'button',
+                            { type: 'button', className: 'ds-linkbtn', onClick: () => void sendVerificationToAgent(latestVerify) },
+                            t('acceptance.retestSend'),
+                          )
+                        : null,
+                    ),
+                verifySuggestions.length === 0
+                  ? h(
+                      React.Fragment,
+                      null,
+                      h('div', { className: 'ds-hint ds-acc-evidence-empty' }, t('acceptance.retestNoCommands')),
+                      h('button', { type: 'button', className: 'ds-linkbtn', onClick: () => void loadTasks() }, t('tasks.detect')),
+                    )
+                  : h(
+                      React.Fragment,
+                      null,
+                      h(
+                        'div',
+                        { className: 'ds-acc-verify-list' },
+                        verifySuggestions.slice(0, 24).map((suggestion) =>
+                          h(
+                            'label',
+                            { key: suggestion.id, className: 'ds-acc-verify-item' },
+                            h('input', {
+                              type: 'checkbox',
+                              checked: verificationSelection.includes(suggestion.id),
+                              onChange: () => toggleVerificationCommand(suggestion.id),
+                            }),
+                            h('span', null, String(suggestion.label ?? suggestion.command ?? '')),
+                          ),
+                        ),
+                      ),
+                      h(
+                        'div',
+                        { className: 'ds-acc-detail-actions' },
+                        h(
+                          'button',
+                          {
+                            type: 'button',
+                            className: 'ds-btn ds-btn-primary',
+                            disabled: verificationBusy || verificationSelection.length === 0,
+                            onClick: () => void runVerification(),
+                          },
+                          verificationBusy ? t('acceptance.retestRunning') : t('acceptance.retest'),
+                        ),
+                        h('span', { className: 'ds-spacer' }),
+                        h('button', { type: 'button', className: 'ds-linkbtn', onClick: () => void loadTasks() }, t('tasks.detect')),
+                      ),
+                    ),
               ),
+            ),
+            h(
+              'div',
+              { className: 'ds-acc-block ds-acc-delivery' },
+              renderBlockHead('delivery', t('acceptance.block.delivery'), renderBlockBadges(deliveryBadges)),
               h(
                 'div',
-                { className: 'ds-acc-preview' },
-                h('div', { className: 'ds-acc-detail-label' }, t('acceptance.preview')),
+                { id: 'ds-acc-delivery-body', className: 'ds-acc-block-body', hidden: blocksOpen.delivery === true ? undefined : true },
                 h(
                   'div',
-                  { className: 'ds-acc-preview-create' },
-                  h('span', { className: 'ds-acc-preview-port-label' }, t('acceptance.previewPort')),
-                  h('input', {
-                    className: 'ds-acc-preview-port',
-                    value: previewPortDraft,
-                    inputMode: 'numeric',
-                    spellCheck: false,
-                    onChange: (event) => setPreviewPortDraft(event.target.value.replace(/[^0-9]/gu, '').slice(0, 5)),
-                    onKeyDown: (event) => {
-                      if (event.key !== 'Enter') return
-                      event.preventDefault()
-                      void createPreviewShare()
-                    },
-                  }),
+                  { className: 'ds-acc-actions' },
                   h(
                     'button',
                     {
                       type: 'button',
                       className: 'ds-btn',
-                      disabled: previewBusy,
-                      onClick: () => void createPreviewShare(),
+                      disabled: counts.fail === 0,
+                      onClick: () => void sendAcceptanceFailures(),
                     },
-                    previewBusy ? t('acceptance.saving') : t('acceptance.previewCreate'),
+                    t('acceptance.sendFailures'),
                   ),
+                  h('button', { type: 'button', className: 'ds-btn', onClick: () => void exportAcceptanceReport() }, t('acceptance.report')),
+                  h(
+                    'button',
+                    { type: 'button', className: 'ds-btn', disabled: deliveryBusy, onClick: () => void packDeliveryBundle() },
+                    deliveryBusy ? t('acceptance.packing') : t('acceptance.pack'),
+                  ),
+                  h('button', { type: 'button', className: 'ds-btn', onClick: () => downloadBuildZip() }, t('acceptance.buildZip')),
                 ),
-                previewError === null ? null : h('div', { className: 'ds-errorline' }, previewError),
-                previewShares.length === 0
-                  ? h('div', { className: 'ds-hint ds-acc-evidence-empty' }, t('acceptance.previewEmpty'))
-                  : previewShares.map((share) =>
-                      h(
-                        'div',
-                        { key: String(share.id ?? share.url ?? ''), className: 'ds-acc-preview-row' },
-                        h(
-                          'span',
-                          { className: 'ds-acc-preview-target', title: `${String(share.target ?? '')}:${String(share.targetPort ?? '')}` },
-                          `${String(share.target ?? '')}:${String(share.targetPort ?? '')} → :${String(share.port ?? '')}`,
-                        ),
-                        h('button', { type: 'button', className: 'ds-linkbtn', onClick: () => copyPreviewLink(share) }, t('acceptance.previewCopy')),
-                        h(
-                          'button',
-                          {
-                            type: 'button',
-                            className: 'ds-linkbtn',
-                            onClick: () => window.open(previewShareUrl(share), '_blank', 'noopener,noreferrer'),
-                          },
-                          t('acceptance.previewOpen'),
-                        ),
-                        h('button', { type: 'button', className: 'ds-linkbtn', onClick: () => void closePreviewShare(share.id) }, t('acceptance.previewClose')),
-                      ),
-                    ),
-                h('div', { className: 'ds-hint ds-acc-evidence-empty' }, t('acceptance.previewHint')),
-              ),
-              deliveryHistory.length === 0
-                ? null
-                : h(
+                h(
+                  'div',
+                  { className: 'ds-acc-preview' },
+                  h('div', { className: 'ds-acc-detail-label' }, t('acceptance.preview')),
+                  h(
                     'div',
-                    { className: 'ds-acc-history' },
-                    h('div', { className: 'ds-acc-detail-label' }, t('acceptance.history')),
-                    deliveryHistory.slice(0, 5).map((record) =>
-                      h(
-                        'div',
-                        { key: record.id ?? record.relative, className: 'ds-acc-history-row' },
-                        h(
-                          'span',
-                          { className: 'ds-acc-history-name', title: String(record.relative ?? '') },
-                          String(record.name ?? record.relative ?? ''),
-                        ),
-                        h('span', { className: 'ds-acc-history-meta' }, `${String(record.fileCount ?? 0)} · ${new Date(Number(record.createdAt) || Date.now()).toLocaleString()}`),
-                        h(
-                          'button',
-                          {
-                            type: 'button',
-                            className: 'ds-linkbtn',
-                            onClick: () => {
-                              const root = store.get().root
-                              if (root === null || typeof record.relative !== 'string') return
-                              const url = new URL(
-                                `${API_PATH}?op=raw&root=${encodeURIComponent(root)}&path=${encodeURIComponent(record.relative)}&download=1`,
-                                document.baseURI,
-                              )
-                              window.open(url.href, '_blank', 'noopener,noreferrer')
-                            },
-                          },
-                          t('acceptance.download'),
-                        ),
-                      ),
-                    ),
-                  ),
-              deliveryBundle === null
-                ? null
-                : h(
-                    'div',
-                    { className: 'ds-acc-bundle' },
+                    { className: 'ds-acc-preview-create' },
+                    h('span', { className: 'ds-acc-preview-port-label' }, t('acceptance.previewPort')),
+                    h('input', {
+                      className: 'ds-acc-preview-port',
+                      value: previewPortDraft,
+                      inputMode: 'numeric',
+                      spellCheck: false,
+                      onChange: (event) => setPreviewPortDraft(event.target.value.replace(/[^0-9]/gu, '').slice(0, 5)),
+                      onKeyDown: (event) => {
+                        if (event.key !== 'Enter') return
+                        event.preventDefault()
+                        void createPreviewShare()
+                      },
+                    }),
                     h(
-                      'span',
-                      { className: 'ds-acc-bundle-path', title: String(deliveryBundle.path ?? '') },
-                      `${t('acceptance.bundleReady')}: ${String(deliveryBundle.relative ?? deliveryBundle.name ?? '')}`,
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'ds-btn',
+                        disabled: previewBusy,
+                        onClick: () => void createPreviewShare(),
+                      },
+                      previewBusy ? t('acceptance.saving') : t('acceptance.previewCreate'),
                     ),
-                    h('button', { type: 'button', className: 'ds-linkbtn', onClick: () => downloadDeliveryBundle() }, t('acceptance.download')),
                   ),
+                  previewError === null ? null : h('div', { className: 'ds-errorline' }, previewError),
+                  previewShares.length === 0
+                    ? h('div', { className: 'ds-hint ds-acc-evidence-empty' }, t('acceptance.previewEmpty'))
+                    : previewShares.map((share) =>
+                        h(
+                          'div',
+                          { key: String(share.id ?? share.url ?? ''), className: 'ds-acc-preview-row' },
+                          h(
+                            'span',
+                            { className: 'ds-acc-preview-target', title: `${String(share.target ?? '')}:${String(share.targetPort ?? '')}` },
+                            `${String(share.target ?? '')}:${String(share.targetPort ?? '')} → :${String(share.port ?? '')}`,
+                          ),
+                          h('button', { type: 'button', className: 'ds-linkbtn', onClick: () => copyPreviewLink(share) }, t('acceptance.previewCopy')),
+                          h(
+                            'button',
+                            {
+                              type: 'button',
+                              className: 'ds-linkbtn',
+                              onClick: () => window.open(previewShareUrl(share), '_blank', 'noopener,noreferrer'),
+                            },
+                            t('acceptance.previewOpen'),
+                          ),
+                          h('button', { type: 'button', className: 'ds-linkbtn', onClick: () => void closePreviewShare(share.id) }, t('acceptance.previewClose')),
+                        ),
+                      ),
+                  h('div', { className: 'ds-hint ds-acc-evidence-empty' }, t('acceptance.previewHint')),
+                ),
+                deliveryHistory.length === 0
+                  ? null
+                  : h(
+                      'div',
+                      { className: 'ds-acc-history' },
+                      h('div', { className: 'ds-acc-detail-label' }, t('acceptance.history')),
+                      deliveryHistory.slice(0, 5).map((record) =>
+                        h(
+                          'div',
+                          { key: record.id ?? record.relative, className: 'ds-acc-history-row' },
+                          h(
+                            'span',
+                            { className: 'ds-acc-history-name', title: String(record.relative ?? '') },
+                            String(record.name ?? record.relative ?? ''),
+                          ),
+                          h('span', { className: 'ds-acc-history-meta' }, `${String(record.fileCount ?? 0)} · ${new Date(Number(record.createdAt) || Date.now()).toLocaleString()}`),
+                          h(
+                            'button',
+                            {
+                              type: 'button',
+                              className: 'ds-linkbtn',
+                              onClick: () => {
+                                const root = store.get().root
+                                if (root === null || typeof record.relative !== 'string') return
+                                const url = new URL(
+                                  `${API_PATH}?op=raw&root=${encodeURIComponent(root)}&path=${encodeURIComponent(record.relative)}&download=1`,
+                                  document.baseURI,
+                                )
+                                window.open(url.href, '_blank', 'noopener,noreferrer')
+                              },
+                            },
+                            t('acceptance.download'),
+                          ),
+                        ),
+                      ),
+                    ),
+                deliveryBundle === null
+                  ? null
+                  : h(
+                      'div',
+                      { className: 'ds-acc-bundle' },
+                      h(
+                        'span',
+                        { className: 'ds-acc-bundle-path', title: String(deliveryBundle.path ?? '') },
+                        `${t('acceptance.bundleReady')}: ${String(deliveryBundle.relative ?? deliveryBundle.name ?? '')}`,
+                      ),
+                      h('button', { type: 'button', className: 'ds-linkbtn', onClick: () => downloadDeliveryBundle() }, t('acceptance.download')),
+                    ),
+              ),
             ),
           )
         }
@@ -25588,12 +25827,12 @@ h(
 .ds-acc-add { display: flex; gap: 5px; padding: 0 8px 6px; }
 .ds-acc-add-input { flex: 1 1 auto; min-width: 0; height: 26px; padding: 0 8px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 6px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary); font: inherit; font-size: 11px; }
 .ds-acc-add-input:focus { outline: none; border-color: var(--dsw-alias-brand-primary); }
-.ds-acc-list { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 2px 6px 6px; }
+.ds-acc-list { flex: 1 1 auto; min-height: 96px; overflow: auto; padding: 2px 6px 6px; }
 .ds-acc-row { display: flex; align-items: center; gap: 4px; padding: 3px; border-radius: 6px; }
 .ds-acc-row:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent); }
 .ds-acc-row[data-selected="true"] { background: color-mix(in srgb, var(--dsw-alias-brand-primary) 8%, transparent); }
-.ds-acc-row[data-status="pass"] .ds-acc-title { color: var(--dsw-alias-state-success-primary); }
-.ds-acc-row[data-status="fail"] .ds-acc-title { color: var(--dsw-alias-state-error-primary); }
+.ds-acc-row[data-status="pass"] .ds-acc-title { color: color-mix(in srgb, var(--dsw-alias-state-success-primary) 55%, var(--dsw-alias-label-primary)); }
+.ds-acc-row[data-status="fail"] .ds-acc-title { color: color-mix(in srgb, var(--dsw-alias-state-error-primary) 55%, var(--dsw-alias-label-primary)); }
 .ds-acc-row-main { display: flex; flex-direction: column; gap: 1px; flex: 1 1 auto; min-width: 0; padding: 2px 3px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .ds-acc-title { font-size: 11px; line-height: 1.35; overflow-wrap: anywhere; }
 .ds-acc-note-pre { color: var(--dsw-alias-label-caption); font-size: 9.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -25605,12 +25844,52 @@ h(
 .ds-acc-status[data-active="true"][data-status="pending"] { color: var(--dsw-alias-brand-primary); border-color: currentColor; }
 .ds-acc-delete { flex: 0 0 auto; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--dsw-alias-label-caption); cursor: pointer; }
 .ds-acc-delete:hover { color: var(--dsw-alias-state-error-primary); }
-.ds-acc-detail { flex: 0 0 auto; border-top: 1px solid var(--dsw-alias-border-l1); padding: 6px 8px; }
+/* v1.2.84 collapsible acceptance sections */
+.ds-acc-toolbar-toggle { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 6px; border-radius: 6px; font-size: 10.5px; font-weight: 600; }
+.ds-acc-toolbar-toggle:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: 2px; }
+.ds-acc-block { flex: 0 0 auto; border-top: 1px solid var(--dsw-alias-border-l1); }
+.ds-acc-block-toggle { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 0 8px; border: 0; background: transparent; color: var(--dsw-alias-label-primary); font: inherit; text-align: left; cursor: pointer; }
+.ds-acc-block-toggle:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent); }
+.ds-acc-block-toggle:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: -2px; }
+.ds-acc-block-title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; }
+.ds-acc-block-badges { display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; max-width: 62%; }
+.ds-acc-block-badge { flex: 0 0 auto; max-width: 96px; height: 16px; line-height: 16px; padding: 0 5px; border-radius: 8px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-secondary); font-size: 9.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-acc-block-badge[data-kind="ok"] { background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 12%, transparent); color: color-mix(in srgb, var(--dsw-alias-state-success-primary) 55%, var(--dsw-alias-label-primary)); }
+.ds-acc-block-badge[data-kind="warn"] { background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 14%, transparent); color: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 55%, var(--dsw-alias-label-primary)); }
+.ds-acc-chevron { display: inline-flex; flex: 0 0 auto; color: var(--dsw-alias-label-secondary); }
+.ds-acc-block-body { flex: 0 0 auto; overflow: auto; padding: 6px 8px; }
+.ds-acc-block-body[hidden] { display: none; }
+.ds-acc-block.ds-acc-evidence .ds-acc-block-body { max-height: 260px; }
+.ds-acc-block.ds-acc-verify .ds-acc-block-body { max-height: 240px; }
+.ds-acc-block.ds-acc-delivery .ds-acc-block-body { max-height: 340px; padding-bottom: 8px; }
+.ds-acc-block-tools { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 4px; }
+.ds-acc-block-tools .ds-hint { flex: 1 1 auto; min-width: 0; }
+.ds-acc-detail-toggle { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 48px; padding: 0 8px; border: 0; background: transparent; color: var(--dsw-alias-label-primary); font: inherit; text-align: left; cursor: pointer; }
+.ds-acc-detail-toggle:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 5%, transparent); }
+.ds-acc-detail-toggle:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: -2px; }
+.ds-acc-detail-main { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
+.ds-acc-detail-title { font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-acc-detail[data-open="true"] .ds-acc-detail-title { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.ds-acc-detail-caption { color: var(--dsw-alias-label-secondary); font-size: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-acc-detail-status { flex: 0 0 auto; height: 16px; line-height: 16px; padding: 0 5px; border-radius: 8px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-secondary); font-size: 9px; font-weight: 600; }
+.ds-acc-detail-status[data-status="pass"] { background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 12%, transparent); color: color-mix(in srgb, var(--dsw-alias-state-success-primary) 55%, var(--dsw-alias-label-primary)); }
+.ds-acc-detail-status[data-status="fail"] { background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent); color: color-mix(in srgb, var(--dsw-alias-state-error-primary) 55%, var(--dsw-alias-label-primary)); }
+.ds-acc-detail-status[data-status="blocked"] { background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 14%, transparent); color: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 55%, var(--dsw-alias-label-primary)); }
+.ds-acc-detail-status[data-status="pending"] { color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent); }
+.ds-acc-detail-body { padding: 0 8px 6px; }
+.ds-acc-detail-body[hidden] { display: none; }
+.ds-acc-group-head { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 28px; padding: 0 8px; border: 0; background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 9.5px; font-weight: 600; text-align: left; cursor: pointer; }
+.ds-acc-group-head:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 4%, transparent); }
+.ds-acc-group-head:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: -2px; }
+.ds-acc-group-head .ds-acc-chevron { margin-left: auto; }
+.ds-acc-group-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-acc-group-count { flex: 0 0 auto; padding: 0 5px; border-radius: 6px; background: var(--dsw-alias-bg-layer-2); font-size: 8.5px; }
+.ds-acc-group-body[hidden] { display: none; }
+.ds-acc-detail { flex: 0 0 auto; border-top: 1px solid var(--dsw-alias-border-l1); }
 .ds-acc-detail-label { color: var(--dsw-alias-label-caption); font-size: 9.5px; margin-bottom: 3px; }
 .ds-acc-note { width: 100%; box-sizing: border-box; resize: vertical; min-height: 52px; padding: 5px 7px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 6px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary); font: inherit; font-size: 11px; }
 .ds-acc-note:focus { outline: none; border-color: var(--dsw-alias-brand-primary); }
 .ds-acc-detail-actions { display: flex; align-items: center; gap: 5px; margin-top: 5px; }
-.ds-acc-delivery { flex: 0 0 auto; border-top: 1px solid var(--dsw-alias-border-l1); padding: 6px 8px 8px; }
 .ds-acc-actions { display: flex; flex-wrap: wrap; gap: 4px; }
 .ds-acc-actions .ds-btn { height: 24px; padding: 0 7px; font-size: 10px; }
 .ds-acc-bundle { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
@@ -25633,8 +25912,6 @@ h(
 .ds-acc-badge[data-kind="gap"] { background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 16%, transparent); color: var(--dsw-alias-state-warn-primary); }
 .ds-acc-badge[data-kind="retest"] { background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-caption); }
 .ds-acc-group { display: flex; flex-direction: column; }
-.ds-acc-group-head { display: flex; align-items: center; gap: 6px; padding: 4px 8px 2px; color: var(--dsw-alias-label-caption); font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
-.ds-acc-group-count { padding: 0 5px; border-radius: 6px; background: var(--dsw-alias-bg-layer-2); font-size: 8.5px; }
 .ds-acc-detail-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
 .ds-acc-meta-item { display: flex; align-items: center; gap: 4px; font-size: 9.5px; color: var(--dsw-alias-label-secondary); }
 .ds-acc-meta-value { color: var(--dsw-alias-label-primary); }
@@ -25650,7 +25927,6 @@ h(
 .ds-acc-history-status[data-status="blocked"] { color: var(--dsw-alias-state-warn-primary); }
 .ds-acc-history-note { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; color: var(--dsw-alias-label-secondary); }
 .ds-acc-item-history { max-height: 120px; overflow: auto; }
-.ds-acc-verify { flex: 0 0 auto; border-top: 1px solid var(--dsw-alias-border-l1); padding: 6px 8px; }
 .ds-acc-verify-latest { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin-bottom: 3px; }
 .ds-acc-verify-body { margin-top: 4px; }
 .ds-acc-verify-list { display: flex; flex-direction: column; gap: 2px; max-height: 150px; overflow: auto; margin-bottom: 4px; }
@@ -25676,7 +25952,6 @@ h(
 .ds-wb-change-path { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: none; background: transparent; color: var(--dsw-alias-label-primary); font: inherit; font-size: 9.5px; text-align: left; cursor: pointer; padding: 0; }
 .ds-wb-change-path:hover { color: var(--dsw-alias-brand-primary); text-decoration: underline; }
 .ds-wb-review-toggle { flex: 0 0 auto; font-size: 9px; }
-.ds-acc-evidence { flex: 0 0 auto; max-height: 32%; overflow: auto; border-top: 1px solid var(--dsw-alias-border-l1); padding: 6px 8px; }
 .ds-acc-evidence-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 4px; }
 .ds-acc-evidence-add { flex: 0 0 auto; font-size: 9.5px; }
 .ds-acc-evidence-empty { padding: 2px 0; font-size: 9.5px; }

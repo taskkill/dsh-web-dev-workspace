@@ -379,6 +379,7 @@ function buildPromptBriefing(ctx, assembly, services) {
   if (!hasProject) return ''
 
   const lines = ['## 工作区状态']
+  lines.push('- 流程约定：只有工作台发起的交付需求走七阶段流水线；对话框直接提出的需求按默认 Harness 方式直接完成（除非 Owner 明确要求走流水线）。')
   if (pipelineState !== null && pipelineState.title.length > 0) {
     lines.push(`- 需求：${pipelineState.title}（第 ${String(pipelineState.round)} 轮）`)
   }

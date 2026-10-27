@@ -2,6 +2,70 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.86 — 2026-10-27
+
+### Pipeline trigger policy: workbench requests run the seven stages, chat requests stay in the default flow
+
+- **The seven-stage OPC flow is explicitly workbench-initiated.** The guidance
+  section injected into every workspace session now opens with a trigger rule:
+  only a requirement submitted from the Dev Workspace workbench — recognisable by
+  the panel's own prompts (`需求收件箱已提交…`, `请按 OPC 一人公司流程处理这条需求`,
+  `需求已更新（第 N 轮…）`) — or a request where the owner explicitly asks for the
+  delivery pipeline enters product → design → development → testing → acceptance
+  → approval → release.
+- **Chat-typed requests are completed directly.** A requirement typed straight
+  into the chat is finished with the default DeepSeek Harness flow: no
+  `pipeline_*` calls, no `.dsh/pipeline.json` rewrite, no acceptance checklist
+  and no role agents, unless the owner asks for the pipeline. The acceptance
+  guide carries the same rule, and the `pipeline_set_requirement` /
+  `pipeline_update_requirement` / `pipeline_start_stage` / `pipeline_dispatch`
+  descriptions repeat it — so the behaviour ships with the package instead of
+  depending on a per-workspace memory entry.
+- **The status briefing reminds the model.** The injected `## 工作区状态`
+  briefing now starts with the routing line, so a session resumed inside a
+  workspace that already has a project no longer defaults to spawning the whole
+  team for a chat message.
+- **Why:** the pipeline is token-expensive (role prompts, subagents, acceptance
+  evidence, review reports, release records); workbench intake is the explicit
+  "start a delivery" signal, plain chat is not. The system prompt, tool
+  descriptions and briefing are all covered by a new host-smoke test.
+- No Host API, data format, client-bundle or dependency change. Plugin `1.2.85`,
+  root `1.2.87` (workspace rule: +1 after each change). `npm run check`,
+  `npm run check:json` and `npm test` pass.
+
+## 1.2.84 — 2026-10-27
+
+### Collapsible acceptance-board sections
+
+- **The acceptance board stops stacking everything vertically.** The evidence
+  library, verification center and delivery & preview sharing blocks are now
+  collapsible sections: title + compact count badges, 44px headers, chevron,
+  `aria-expanded` / `aria-controls`, Enter/Space and a visible focus ring.
+  They start collapsed, their bodies scroll inside the panel instead of
+  stretching it (260 / 240 / 340px caps) and the acceptance list keeps a 96px
+  floor so it stays the main content.
+- **One toolbar toggle covers the whole board.** `Collapse all` / `Expand all`
+  acts on the three sections, every category group and the selected-item detail;
+  the label switches with the current state, the state is persisted in
+  `localStorage` (`dsh-web-filebrowser:acceptance-collapse`) and survives a
+  reload. Corrupt or unavailable storage falls back to the defaults.
+- **Grouping and detail are collapsible too.** Category headers are buttons with
+  count badges and a persisted open state; selecting an item opens a 48px detail
+  header (status badge + title + chevron) whose body can be folded away while the
+  selection stays highlighted and reachable from the header. The verification
+  center is flattened to a single disclosure: expanding it shows the latest
+  result, the command list and the run button (the nested "Retest" toggle is
+  gone).
+- **i18n and accessibility.** 14 new zh/en key pairs, no hardcoded strings; the
+  collapsed bodies leave the tab order (`hidden`), headers keep readable names,
+  and pass/fail row titles now mix semantic colours with the label colour so the
+  contrast stays ≥4.5:1 in light and dark themes.
+- **Verification.** Plugin `1.2.84`, root `1.2.86` (workspace rule: +1 after
+  each change); `npm run check`, `npm run check:json` and `npm test` pass; a live
+  headless-browser pass covers the default, expanded, all-collapsed, detail,
+  345px and dark states (screenshots and checks in
+  `docs/ACCEPTANCE.md` batch 22). No Host API, data format or dependency change.
+
 ## 1.2.85 — 2026-10-27
 
 ### Repository and package slimming (no runtime changes)

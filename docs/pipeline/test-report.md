@@ -1,177 +1,331 @@
-# 测试报告 —— 设计先确认：设计稿截图 / HTML 预览 + 开发前人工闸门（v1.2.83）
+# 测试报告 —— 验收台分区可收起：证据库/复测/交付默认折叠 + 全部收起 + 分组折叠（v1.2.84）
 
-- 角色：测试工程师（QA）；日期：2026-10-27 20:0x（Asia/Shanghai）；阶段：testing（第 4/7，第 11 轮）。
-- 被测版本：插件 `dsh-web-filebrowser-plugin/package.json` **1.2.83**；根 `package.json` **1.2.83**（按工作区规定，交付后由 release 阶段 +1 至 1.2.84，本轮测试时点尚未 bump，符合阶段顺序）。
-- 基线 commit：`2d3ebe0 fix(workbench): 打包交付不再清空流水线快照，修复跳回需求录入`（并行热修已在 HEAD，未回退；本报告把它作为回归项）。
-- 上游：`docs/pipeline/requirements.md`（§7/§8，10 条验收项）、`docs/pipeline/design.md` §16、dev 阶段 summary。
-- 结论：**自动化 10 套全绿、零失败**；`qa-static-v1283` **STATIC PASS（246 断言）**。10 条验收项建议 **5 pass / 0 fail / 5 blocked**（blocked 均为 GUI 视觉/交互与人工回归，需 Owner 按 `docs/ACCEPTANCE.md` 批次 20 复测）。无阻断缺陷。**建议进入 acceptance 阶段。**
-
-> 本报告覆盖 v1.2.82 的旧 `test-report.md`。按工作区归档惯例，旧报告应移入 `docs/pipeline/archive/v1.2.82-test-report.md`；本次 testing 的写入范围限定为 `docs/pipeline/test-report.md` + `.dsh/tmp/` + `.dsh/evidence/`，未新建归档文件，建议 release 阶段随交付归档。
+- 角色：测试工程师（QA）；日期：2026-10-27 21:5x–22:0x（Asia/Shanghai）；阶段：testing（第 4/7，第 12 轮）。
+- 被测版本：插件 `dsh-web-filebrowser-plugin/package.json` **1.2.84**；根 `package.json` **1.2.86**（工作区规定：交付后根版本 +1，当前已是交付前目标值）。
+- 基线 commit：`1d85de4 v1.2.85 仓库/包瘦身：移除生成位图与 npm 包内 node_modules`（工作树未提交，本报告按未提交工作树测试）。
+- 上游：`docs/pipeline/requirements.md`（§7 验收标准、§8 10 条验收项）、`docs/pipeline/design.md` §17（决策 D1–D8 / §17.9 a11y / §17.12.2 QA 断言）、`docs/ACCEPTANCE.md` 批次 22、`docs/pipeline/engineering-research.md` §5–§7（安全/性能/可访问性契约）。
+- 结论：**质量门 3/3 全绿；静态断言 20/20；真实 GUI E2E 44/44；10 条验收项 pass 10 / fail 0 / blocked 0；未发现产品缺陷。建议进入 acceptance 阶段。**
+- 旧报告已按工作区归档惯例原样归档到 `docs/pipeline/archive/v1.2.83-test-report.md`（v1.2.83 报告，20 578 B），本文件为第 12 轮新报告。
 
 ---
 
-## 1. 基线与环境
+## 1. 测试环境与数据快照
 
 | 项 | 值 |
 |---|---|
 | 工作区 | `/data/dsh/home/dsh-web-powerfilebrowser/dsh-web-filebrowser` |
-| 被测版本 | 插件 1.2.83 / 根 1.2.83（CHANGELOG `## 1.2.83 — 2026-10-27`） |
-| 基线 commit | `2d3ebe0`（含 v1.2.83「打包不再清空流水线快照」热修） |
-| 运行环境 | Node v24.22.0；npm 11.19.1；Linux；无 `node_modules`（本项目测试仅用 Node 内置能力，未安装依赖） |
-| 测试时间 | 2026-10-27 20:01（Asia/Shanghai） |
-| 浏览器/GUI | 本 QA 会话无浏览器外观与人工点击能力 → GUI 视觉/交互不伪造 pass，逐项标 blocked |
-| 证据日志 | `.dsh/evidence/testing-v1.2.83.log`（全部命令、退出码、耗时、输出）；`.dsh/evidence/testing-v1.2.83-normal-flow.log`（normal 全流程回归原文） |
-| 静态断言脚本 | `.dsh/tmp/qa-static-v1283.mjs`（本轮新增，246 断言，不随包发布） |
-| 并行热修回归 | `.dsh/tmp/qa-static-v1283-packfix.mjs`（既有，18/18） |
+| 被测版本 | 插件 `1.2.84` / 根 `1.2.86` / CHANGELOG `## 1.2.84 — 2026-10-27` / ACCEPTANCE「批次 22」 |
+| 基线 commit | `1d85de4`（v1.2.85 仓库/包瘦身） |
+| 运行时 | Node **v24.22.0**、npm **11.19.1**、Linux |
+| Harness / GUI | 本机 DSH web 进程在 `127.0.0.1:3080` 运行（未重启、未改 Host）；页面 `lang=en`（英文界面） |
+| 无头浏览器 | Playwright 缓存的 `chromium_headless_shell-1148` → **HeadlessChrome/131.0.6778.33**；`--headless --no-sandbox`；视口 1400×1000（deviceScaleFactor=2）；驱动 `.dsh/tmp/qa-v1284/cdp.mjs`（自 `gui-check/cdp.mjs` 加固：CDP 命令 25 s 超时 + JS dialog 自动 dismiss） |
+| 字体 | Noto Sans SC（`FONTCONFIG_FILE=/tmp/fonts/fonts.conf`），中文数据分类名无豆腐块 |
+| 客户端 bundle | 直接抓取本机实际下发的 `@local/dsh-web-dev-workspace/client.js` bundle，包含 `dsh-web-filebrowser:acceptance-collapse`、`No shares · none`、`Detail collapsed · selection kept, activate to expand` 等新文案 → 确认为 v1.2.84 新构建（QA 未重启/未重建，仅验证既有 3080 实际加载的版本） |
+| 数据快照（只读） | `.dsh/acceptance.json` **64 条**（pending 10 / pass 31 / fail 0 / blocked 23），**36 个分类分组**；`.dsh/evidence/` 直接条目在测试前 30 个（≤40 上限），无 verification 记录 → 复测徽标 `No runs`，无 preview share / delivery → 交付徽标 `No shares · none` |
+| 测试时间 | 2026-10-27 21:50–22:0x（Asia/Shanghai） |
+
+> **只读边界**：QA 只写 `localStorage` 折叠偏好、UI 选中/筛选/模板开合与刷新，不点击状态按钮、删除、证据上传/删除、复测运行、打包、下载、预览分享等会改真实数据的操作；未修改 `client.js` / `package.json` / `CHANGELOG.md` / `docs/ACCEPTANCE.md` / `.dsh/acceptance.json` / `.dsh/pipeline.json`。
 
 ---
 
-## 2. 本轮变更面（`git diff --stat` / `git status`，未提交）
+## 2. 本轮变更面核对（测试时点）
 
-**已跟踪改动（16 文件，+2711 / −450，含本报告自身 +154/−54）**
+`git diff --stat`：**10 个已跟踪文件，+2059 / −843**（不含本报告写入）。
 
 | 文件 | 变更 | 说明 |
 |---|---|---|
-| `dsh-web-filebrowser-plugin/client.js` | **+1424 / −42** | D1 流水线设计卡、D2 预览弹层、D3 工作台卡/hero、D4 `.html/.htm` 预览与预览/源码切换、CSS、33 个 zh/en i18n key |
-| `dsh-web-filebrowser-plugin/pipeline.js` | **+76 / −21** | `PIPELINE_MANUAL_GATE_STAGES`、design 闸门提示、warning 文案、STAGE_GUIDES.development、工具描述/PIPELINE_SECTION、阶段提示词 |
-| `scripts/selftest/host-smoke.mjs` | **+58 / −9** | 新增 fast design 闸门、manual gate stages、design-no-image、打包快照回归用例 |
-| `CHANGELOG.md` | +36 | 1.2.83 条目 |
-| `docs/pipeline/design.md` | +347 | §16 设计确认闸门与预览（含 8 组设计稿引用） |
-| `docs/pipeline/engineering-research.md` | +376 / −72 | 3 个候选（VS Code / Storybook / JupyterLab）+ 许可证矩阵 |
-| `docs/pipeline/requirements.md` | +209 / −241 | 第 11 轮需求分析与 10 条验收项 |
-| `docs/ACCEPTANCE.md` | +19 / −3 | 批次 20 复测步骤 |
-| `docs/AGENT_TEAM.md` | +1 / −1 | 快速模式「四个中间阶段 + design 人工闸门」 |
-| `README.md` / `README.zh.md` | +2/−1 各 | 一键录入/设计先确认说明 |
-| `docs/PLAYBOOK.md` | +2 / −2 | 旧「中间五阶段」口径同步（dev summary 未列出，但属 requirement §6.5 的 README/docs 同步范围） |
-| `docs/opc/02-design.md` | +3 / −1 | 设计交付要求改为截图优先、HTML 仅补充 |
-| `docs/opc/README.md` | +1 / −1 | 三道人工闸门文案 |
-| 插件 `package.json` | +1 / −1 | 1.2.82 → **1.2.83** |
+| `dsh-web-filebrowser-plugin/client.js` | **+669 / −394** | 折叠区块渲染、分组/详情头、工具区单按钮、CSS、14 对 zh/en i18n、localStorage 读写 |
+| `dsh-web-filebrowser-plugin/package.json` | +1 / −1 | 1.2.83 → **1.2.84** |
+| `package.json` | +1 / −1 | 1.2.85 → **1.2.86** |
+| `CHANGELOG.md` | +34 | 1.2.84 条目 |
+| `docs/ACCEPTANCE.md` | +20 / −3 | 批次 22（11 条复测项） |
+| `docs/pipeline/requirements.md` | +424 / −? | 第 12 轮需求 + 10 条验收项 |
+| `docs/pipeline/design.md` | +664 | §17 设计（决策/a11y/QA 断言/视觉基线） |
+| `docs/pipeline/engineering-research.md` | +691 / −? | 安全/性能/a11y 工程契约 |
+| `README.md` / `README.zh.md` | 各 +1 | 一句说明同步 |
 
-**未跟踪新增（18 项，均为本轮文档资产）**：`docs/pipeline/design/design-gate-*.svg/png` 8 对（16 文件，均 >10 KB）、`docs/pipeline/design/gen-design-gate-mockups.mjs`（生成脚本）、`docs/pipeline/archive/v1.2.79-requirements.md`（归档）。
-
-- `git diff --check` 干净；无被跟踪的 `.log/.orig/.rej/.bak/.tmp` 或调试文件；`.dsh/`（evidence/tmp）被 `.gitignore` 忽略，未进入 git。
-- 说明：dev summary 列的 docs 清单未写 `PLAYBOOK.md` / `opc/*`，实际改动包含它们且内容与本轮「旧五阶段口径同步」一致，属正常范围扩大，见 §7 O8。
+- **无 Host 模块改动**：`acceptance.js` / `pipeline.js` / `ssh.js` / `tasks.js` / `delivery.js` / `preview.js` / `index.js` 等均未在 diff 中（静态 S16 断言）。
+- **无依赖变化**：`package.json` 与插件 `package.json` 的 diff 仅 `"version"` 一行（静态 S16 断言），无新增 npm 包、无 `vendor/` 变化。
+- 未跟踪新增仅文档资产：`docs/pipeline/archive/v1.2.83-{requirements,engineering-research,test-report}.md`、`docs/pipeline/design/acceptance-collapse-*.svg` 8 张、生成脚本 `gen-acceptance-collapse-mockups.mjs`（静态 S16 断言）。
+- `git diff --check` exit 0（无空白/冲突标记错误）。
 
 ---
 
-## 3. 自动化结果
+## 3. 自动化结果（质量门）
 
-命令均在 repo 根执行；耗时取自 `.dsh/evidence/testing-v1.2.83.log`。
+命令均在 repo 根执行；原文见 `.dsh/evidence/v1.2.84-qa-quality-gates.log`。
 
-| # | 命令 | 退出码 | 耗时 | 结果/断言数 | 结论 |
+| # | 命令 | 退出码 | 结果 | 结论 |
+|---|---|---|---|---|
+| 1 | `npm run check` | **0** | 21 个 Host/客户端/IO/Git 模块 `node --check` 全部通过 | PASS |
+| 2 | `npm run check:json` | **0** | `JSON OK` | PASS |
+| 3 | `npm test`（`scripts/selftest/host-smoke.mjs`） | **0** | **PASS 34/34** host smoke checks | PASS |
+| 4 | `node .dsh/tmp/qa-v1284/static-assert.mjs` | **0** | **20/20** 静态断言（见 §4） | PASS |
+| 5 | `node .dsh/tmp/qa-v1284/gui-e2e.mjs` | **0** | **44/44** 真实 GUI 断言（见 §5） | PASS |
+| 6 | `node .dsh/tmp/qa-v1284/extra-shots.mjs` | **0** | 补充视觉基线：三区块全展开 / 360px / 691px（见 §6） | PASS |
+| 7 | `git diff --check` | **0** | 空输出 | PASS |
+
+- 测试脚本（不随包发布，`.dsh/` 已被 `.gitignore` 忽略）：
+  - `.dsh/tmp/qa-v1284/static-assert.mjs` —— 20 条静态断言（结构/ARIA/i18n/CSS/storage/版本/diff）
+  - `.dsh/tmp/qa-v1284/gui-e2e.mjs` —— 44 条真实 GUI 断言（headless chromium + CDP）
+  - `.dsh/tmp/qa-v1284/cdp.mjs` —— 加固版 CDP 驱动（命令超时、dialog 自动处理、`waitFor`）
+  - `.dsh/tmp/qa-v1284/extra-shots.mjs` —— 补充截图脚本
+  - `.dsh/tmp/qa-v1284/{static-results,gui-results,extra-shots-results}.json` —— 机器可读结果
+
+---
+
+## 4. 静态断言结果（20/20）
+
+扫描对象：`dsh-web-filebrowser-plugin/client.js`（含 `renderAcceptancePanel()` 渲染段切片）、两个 `package.json`、`CHANGELOG.md`、`docs/ACCEPTANCE.md`、`docs/pipeline/{requirements,design}.md`、`git diff`。
+
+| # | 断言点 | 结果 | 实测证据 |
+|---|---|---|---|
+| S1 | 三区块折叠头由 `renderBlockHead` 渲染为**单一** `<button type="button">`，含 `aria-expanded` / `aria-controls`，头部不嵌套其它可聚焦控件 | PASS | `renderBlockHead` 内仅 title/badges/chevron span；无 input/按钮 |
+| S2 | evidence / verify / delivery 三个区块头均渲染 | PASS | 3 处 `renderBlockHead(...)` 调用 |
+| S3 | 三个区块体 id 与 `aria-controls` 一一对应，由 `hidden` 控制显隐 | PASS | `ds-acc-{evidence,verify,delivery}-body` + `hidden: blocksOpen.<x> === true ? undefined : true` |
+| S4 | 分组头是 button，含 `aria-expanded` / `aria-controls` / `aria-label`（名称+数量）与计数徽标；持久化 key 用分类原值 | PASS | `ds-acc-group-head`、`groupToggle` 模板、`toggleAcceptanceGroup(key)` |
+| S5 | 详情头是 button（48px），`aria-expanded`/`aria-controls` + 收起提示 + body `hidden` | PASS | `ds-acc-detail-toggle`、`detailCollapsed` 文案、CSS `min-height:48px` |
+| S6 | `verificationOpen` 已删除且无内层「复测」开关；预选命令逻辑移到区块切换 | PASS | 全文件无 `verificationOpen` / `.ds-acc-verify-toggle`；`if (!open && key === 'verify' && verificationSelection.length === 0)` |
+| S7 | 徽标最多 2 个、超出合并 `+n`、`title` 有完整文本、单枚 `max-width:96px` | PASS | `badges.slice(0, 2)`、`acceptance.badge.more`、96px |
+| S8 | **14 对新 i18n key** 中英文成对且非空 | PASS | collapseAll / expandAll / collapseAllTitle / expandAllTitle / block.delivery / badge.retest / badge.retestEmpty / badge.share / badge.delivery / badge.deliveryEmpty / badge.more / detailToggle / detailCollapsed / groupToggle |
+| S9 | `renderAcceptancePanel()` 渲染段**无硬编码中文** | PASS | 40 568 字符切片，CJK 命中 0 |
+| S10 | CSS：清单 `min-height:96px`；三区块体 `max-height` 260/240/340；区块头 44 / 详情头 48 / 分组头 28 | PASS | 5 条规则逐条命中 |
+| S11 | 区块头/分组头/详情头/工具按钮均 `:focus-visible` 2px brand 环；含 `prefers-reduced-motion` | PASS | 4 条 outline 规则 + reduced-motion |
+| S12 | 折叠头不用 `label-caption`，次级文字用 `label-secondary`（对比度 D8） | PASS | v1.2.84 CSS 段检查 |
+| S13 | localStorage 键名与默认值符合设计（三块收起、分组默认展开） | PASS | `dsh-web-filebrowser:acceptance-collapse`、`{blocks:{evidence:false,verify:false,delivery:false},groups:{}}`、`useState(read)` + `useEffect(write)` |
+| S14 | localStorage 解析：**16 KiB 上限**、坏值**整份回退**、type 校验、危险键过滤、组数上限、写失败静默 | PASS | `raw.length > 16*1024`、`JSON.parse` try/catch、`dangerous = new Set(['__proto__','constructor','prototype'])`、key≤120、`kept>=256`、写 `catch {}` |
+| S15 | 版本与文档：插件 1.2.84、根 1.2.86、CHANGELOG 1.2.84、ACCEPTANCE 批次 22、pipeline 文档同步 | PASS | 全部命中 |
+| S16 | `git diff` 不含 Host 模块与依赖变化，工作树变更仅限允许文件；未跟踪仅 docs | PASS | `changed=10` 全部允许；包 diff 仅 version 行 |
+| S17 | 「全部收起/展开」单按钮动态文案、`anyOpen` 含分组与详情、按钮不 disabled、不取消选中 | PASS | `acceptanceAnyOpen()` / `toggleAllAcceptanceBlocks()` / 两组 title 文案 |
+| S18 | 详情：选中新项自动展开、手动收起保留选中、取消选中清空 | PASS | `if (item.id !== acceptanceSelected) setAcceptanceDetailOpen(true)` 等 |
+| S19 | ARIA 目标唯一、分组 body id 按索引、收起保留挂载（`hidden` 而非卸载） | PASS | 3 个区块 body + detail body 各 1 个 id；`groupBodyId = 'ds-acc-group-body-' + index` |
+| S20 | 渲染段无 `fetch` / 定时器 / 动态 import，折叠为纯本地状态 | PASS | forbidden token 扫描 0 命中 |
+
+---
+
+## 5. 真实 GUI E2E 用例表（44/44）
+
+环境：headless chromium 131，1400×1000（@2×），本机 3080 实际下发的 v1.2.84 bundle。完整输出见 `.dsh/evidence/v1.2.84-qa-gui.log`，机器可读结果 `.dsh/evidence/v1.2.84-qa-gui-results.json`。覆盖验收项列对应 §8 的 10 条（A1–A10）。
+
+### 5.1 默认态与三区块（A1/A4）
+
+| # | 覆盖 | 步骤 | 预期 | 实际 | 结论 |
 |---|---|---|---|---|---|
-| 1 | `node --check dsh-web-filebrowser-plugin/pipeline.js` | 0 | 21 ms | 语法通过 | PASS |
-| 2 | `node --check dsh-web-filebrowser-plugin/client.js` | 0 | 33 ms | 语法通过 | PASS |
-| 3 | `npm run check` | 0 | 526 ms | 21 个 Host/客户端模块语法通过 | PASS |
-| 4 | `npm run check:json` | 0 | 109 ms | `JSON OK` | PASS |
-| 5 | `npm test`（`host-smoke.mjs`） | 0 | 656 ms | **PASS 34/34**（含本轮 3 个 design 用例 + 打包快照回归） | PASS |
-| 6 | `node .dsh/tmp/fe-render-smoke.mjs` | 0 | 174 ms | **51/51**（真实渲染 D1–D4、approved 态、HTML-only、三档按钮、iframe 属性） | PASS |
-| 7 | `node .dsh/tmp/dev-design-gate-check.mjs` | 0 | 85 ms | 7 项行为输出全部符合（见下） | PASS |
-| 8 | `node .dsh/tmp/qa-static-v1283.mjs`（本轮新增） | 0 | 244 ms | **STATIC PASS（246 断言，1 observation）** | PASS |
-| 9 | `node .dsh/tmp/qa-static-v1283-packfix.mjs`（热修回归，既有） | 0 | 56 ms | **STATIC PASS 18/18** | PASS |
-| 10 | `git diff --check` | 0 | 56 ms | 空输出（干净） | PASS |
-| 11 | normal 模式全流程回归（内联 Node，不落盘） | 0 | — | 16 行行为断言全符合（7 阶段逐阶段 review/打回/重提/闸门） | PASS |
+| Q0 | A1 | 打开 Dev Workspace → 侧栏 more → Acceptance；清 localStorage 后 reload 重开 | 验收台可见，64 条/36 组 | view=259×835，rows=64，groups=36 | PASS |
+| Q1 | A1 | 读三区块头 DOM | 3 头 `aria-expanded=false` + body hidden + 头高≈44 | 44px，三块全部收起 | PASS |
+| Q2 | A4 | 默认态量 `.ds-acc-list` | 清单 clientHeight > 300 | **492 px**（scrollHeight 19 634） | PASS |
+| Q3 | A1 | 读三块徽标、证据项数 | 证据数 / `No runs` / `No shares · none`；每块 ≤2 枚且有 title | `40 evidence`（=40 items，上限 40）/ `No runs` / `No shares · none` | PASS |
+| Q4 | A3 | 读工具区按钮 | 单按钮 `Collapse all`、可用、title/aria 说明作用域 | 文案/title/aria 全符合，非 disabled | PASS |
+| Q5 | A5 | 读 36 个分组头 | 默认全部展开，计数徽标合计=64 | 36 组全展开，合计 64 | PASS |
+| Q6 | A4 | 无选中时查详情 | 不渲染详情块 | 无 `.ds-acc-detail` | PASS |
+| Q7 | A1 | 点证据头展开→再点收起 | aria/hidden 同步 | false→true→false，hidden true→false→true | PASS |
+| Q8 | A1/A6 | 点复测头展开 | 无内层「复测」开关，直接显示最近结果+命令区+运行按钮 | 无 `.ds-acc-verify-toggle`；按钮 `Retest` / `Detect again` | PASS |
+| Q9 | A1 | 点交付头展开 | 4 个交付按钮 + 端口输入 + 空态提示 | 4 按钮 + port 5173 输入 + 空态 | PASS |
+| Q10 | A4 | 三区块同开量清单 | 清单保底 96px（不被压到 0） | 139 px（≥96） | PASS |
 
-**关键行为输出（命令 7，原文见日志）**
+### 5.2 全部收起 / 展开（A3）
 
-```
-product autoApproved: true approved
-design autoApproved: undefined status: review note: 设计确认闸门：Owner 查看截图 / HTML 预览并确认后才进入开发
-development blocked: bad-order | 阶段「开发实现」开始前必须等上一阶段「UI 设计」approved；当前状态是 review；设计阶段必须由 Owner 在面板查看截图 / HTML 预览并确认（approve）后才能开始开发
-development started after approval: active
-design warnings: [{"code":"missing",...},{"path":"","code":"design-no-image","message":"设计阶段只提交了可预览 HTML，缺少可直接查看的截图（PNG/JPG/SVG/WebP/GIF）；HTML 只能预览，不能替代截图"}]
-```
+| # | 覆盖 | 步骤 | 预期 | 实际 | 结论 |
+|---|---|---|---|---|---|
+| Q11 | A3 | 点 `Collapse all` | 三区块+36 分组全收起，按钮变 `Expand all` | blocks 3/3、groups 36/36 收起；visible rows=0；按钮 `Expand all` | PASS |
+| Q12 | A3 | 点 `Expand all` | 三区块+分组全展开，按钮回 `Collapse all` | 3/3 + 36/36 展开 | PASS |
+| Q13 | A3 | 连续 2 轮全收起/全展开 | 状态与 storage 一致、不漂移 | 2 轮一致，storage 每次同步 | PASS |
+| Q23 | A3 | 选中一行后点 `Collapse all` | 选中不被取消；详情收起且提示；行高亮仍在 | 选中保留，detail collapsed + caption，行 `data-selected=true` | PASS |
+| Q24 | A3 | 再点 `Expand all` | 三区块+分组+详情（有选中）全展开 | 全部展开，详情恢复 | PASS |
 
-**normal 模式回归要点（命令 11，原文见 `.dsh/evidence/testing-v1.2.83-normal-flow.log`）**
-- 默认 `gateMode=normal`；product 提交 → review（无 autoApproved），design 在 product 未 approved 时启动被 `bad-order` 拒绝。
-- design 提交 → review（无 autoApproved），development 被拒绝且消息含「上一阶段」「设计」；approve 后 development `active`。
-- 打回 → design `failed`（note 保留「配色需调整」）；`startStage('design')` 重开 → `active` 且保留驳回 note；重提 → 再次 `review`，再 approve 后开发才解锁（不存在一次通过永久有效）。
-- acceptance 通过后 approval 可直接在 active 态 review；approval 未 approved 时 release 被 `bad-order` 拒绝，approve 后 release 可启动。
-- 最终阶段状态：`product/design/development/testing/acceptance/approval: approved`，`release: active`；design `reviews` 历史 2 条（reject + approve）完整。
+### 5.3 持久化 / 坏值回退（A2）
+
+| # | 覆盖 | 步骤 | 预期 | 实际 | 结论 |
+|---|---|---|---|---|---|
+| Q25 | A2 | 设混合态（证据展开、复测/交付收起、分组#0 收起、#1 展开） | 写入可解析 JSON，blocks/groups 均为 boolean，与 UI 一致 | `{"blocks":{"evidence":true,"verify":false,"delivery":false},"groups":{...36}}`，783 B | PASS |
+| Q26 | A2 | reload 并重开验收台 | 三块+分组混合态保持，选中不持久化 | blocks=true,false,false；groups[0]=false、[1]=true；无 detail | PASS |
+| Q27 | A2 | `localStorage=not-json` → reload | 整份回退默认（三块收起/分组展开），无控制台错误 | 回退默认；0 console errors | PASS |
+| Q28 | A2 | 坏形状 `{"blocks":{"evidence":"bad"},"groups":{"constructor":true,"prototype":true}}` → reload | 回退默认、无异常、危险键不生效 | 回退默认，0 异常 | PASS |
+| Q29 | A2 | 模拟 `Storage.prototype.setItem` 抛异常（隐私模式/配额） | UI 仍可切换、异常被吞、不崩溃 | 区块头正常展开，无未捕获异常 | PASS |
+
+### 5.4 分组折叠（A5）
+
+| # | 覆盖 | 步骤 | 预期 | 实际 | 结论 |
+|---|---|---|---|---|---|
+| Q14 | A5 | 读 36 个分组头 | button[type=button]，名称+数量徽标+aria-label，高 28 | 36 个按钮，例 `"version-docs, 2 item(s)"`，28px | PASS |
+| Q15 | A5 | 点分组#0 收起→展开 | 组内行不可见/不占位，再点恢复 | visible rows 64→62→64，组内可见行 0 | PASS |
+| Q16 | A5/A6 | 收起分组后组头 focus + Tab | 组内条目不参与 Tab，直接到下一组头 | 组头 #0 → #1（body 被跳过） | PASS |
+| Q17 | A5 | 折叠组内勾选一行→批量条出现→清除 | 勾选/批量条/清除正常，不写数据 | 批量条出现并可清除 | PASS |
+| Q22 | A5/A9 | 依次点 All/Open/Failed/No evidence → 回 All | 不报错、分组重建、行数随筛选变化、回 All=64 | Open 33/21、Failed 0/0、No evidence 3/2、All 64/36 | PASS |
+
+### 5.5 清单与详情（A4）
+
+| # | 覆盖 | 步骤 | 预期 | 实际 | 结论 |
+|---|---|---|---|---|---|
+| Q18 | A4 | 点第一条可见行 | 详情头 48px + 标题 + aria-expanded=true + body 可见 + 选中行高亮 | 48px，标题与行一致 | PASS |
+| Q19 | A4 | 点详情头收起 | body hidden、出现「Detail collapsed · selection kept…」、选中行仍高亮 | caption 正确，`data-selected=true` 保留 | PASS |
+| Q20 | A4 | 选另一条 | 详情自动重新展开、标题更新 | aria-expanded=true，标题更新 | PASS |
+| Q21 | A4 | 点 Cancel 取消选中 | 详情整块消失，清单高度不塌（≥96） | detail 移除，selected 清除，list 96→96 | PASS |
+
+### 5.6 键盘 / ARIA（A6）
+
+| # | 覆盖 | 步骤 | 预期 | 实际 | 结论 |
+|---|---|---|---|---|---|
+| Q30 | A6 | 读 live DOM 三个区块头 + 36 分组头 + 详情头 | 全为 button[type=button]，`aria-expanded`/`aria-controls` 齐全、id 唯一 | 39 个头合法；detail head → `#ds-acc-detail-body` | PASS |
+| Q31 | A6 | 键盘 Tab 到区块头 | 可到达，`:focus-visible` 2px 环 | outline 2px（rgb(15,17,21) 环） | PASS |
+| Q32 | A6 | Enter 切换 | aria-expanded 同步、焦点留在按钮 | false→true，焦点保持 | PASS |
+| Q33 | A6 | Space 切换 | 同上 | false→true，焦点保持 | PASS |
+| Q34 | A6 | 收起态证据头 Tab | 隐藏 body 被跳过，到复测头 | evidence head → verify head | PASS |
+| Q35 | A6 | 分组头 Enter/Space | 切换且焦点保留 | Enter false→true，Space true→false | PASS |
+
+### 5.7 响应式 / 主题（A7）
+
+| # | 覆盖 | 步骤 | 预期 | 实际 | 结论 |
+|---|---|---|---|---|---|
+| Q36 | A7 | `.ds-side` 宽 345px | `.ds-acceptance-view` `scrollWidth ≤ clientWidth` | 344/344，side 344/344，overflowX=hidden | PASS |
+| Q37 | A7 | 宽 260px | 无横向溢出；标题/徽标 ellipsis 不撑破 | 259/259；所有 block title/badge `textOverflow=ellipsis` | PASS |
+| Q38 | A7 | 宽 691px（截图宽度） | 无横向溢出 | 690/690 | PASS |
+| Q39 | A7 | `prefers-color-scheme: dark` + reload | 深色生效；头/徽标/箭头/选中行可读，正文对比 ≥4.5 | 对比：block title 17.45、badge 9.25、group 12.11、detail title 17.45、selected row 17.45、chevron 12.11 | PASS |
+| Q40 | A7 | 浅色主题 | 正文/徽标/次级文字对比 ≥4.5 | block title 18.9、badge 5.8、group name 5.8 | PASS |
+
+### 5.8 i18n / 只读回归 / 控制台（A8/A9）
+
+| # | 覆盖 | 步骤 | 预期 | 实际 | 结论 |
+|---|---|---|---|---|---|
+| Q41 | A8 | 英文界面读折叠文案 | 区块标题/工具按钮/徽标/分组 aria 全英文、无中文残留 | lang=en；`Collapse all`；`Evidence library / Verification center / Delivery & preview sharing`；无 CJK | PASS |
+| Q42 | A9 | 只读冒烟：刷新、模板开合、四种筛选、勾选/清除、展开证据区/命令区/交付区 | 全部可用、无 JS 错误、无内层复测开关、交付 4 按钮 | refresh/templates/filters ok；evidence 40 项；verify 2 按钮；delivery 4 按钮 | PASS |
+| Q43 | A9 | 全程 console 跟踪（4 个窗口段：初始 + 3 次 reload 关键段） | 无未处理异常/console.error | 0 runtime errors | PASS |
 
 ---
 
-## 4. 10 条验收项逐项结论
+## 6. 证据截图清单（工作区相对路径，18 张 PNG + 4 份日志/结果）
 
-> GUI 视觉/交互类按事实标 **blocked**，并给出可直接复跑的命令或 Owner 批次 20 复测路径，不伪造 pass。
-
-| # | 验收项（category） | verdict | 证据 / 复现 |
-|---|---|---|---|
-| 1 | 快速模式下 design 提交后停在 review，不自动通过（design-gate） | **pass** | `node .dsh/tmp/dev-design-gate-check.mjs` → `design autoApproved: undefined status: review` + note「设计确认闸门」；`npm test` 用例 `fast mode auto-approves four intermediate stages and keeps the design review gate manual`；静态 246 断言中的 8 条（`.dsh/tmp/qa-static-v1283.mjs`）。日志 `.dsh/evidence/testing-v1.2.83.log` |
-| 2 | design 未确认时 development 启动被拒绝，确认后可启动（design-gate） | **pass** | 同一命令 → `development blocked: bad-order ... 上一阶段「UI 设计」... 设计阶段必须由 Owner ... 确认`；approve 后 `development started after approval: active`；normal 流程回归同样验证 review/failed 两种状态均被拒。日志同上 |
-| 3 | 快速模式提示明确「四个自动 / 三个需确认」（design-gate） | **pass** | `qa-static-v1283` 覆盖 `PIPELINE_SECTION`（四个中间阶段 / 设计确认（design）/ 永远是人工闸门 / 无「五个中间阶段」）、zh/en `pipeline.fastHint`、三个工具描述（status/start/submit 均含 design、无 five intermediate）、`README.md`/`README.zh.md`/`docs/AGENT_TEAM.md` 新口径。证据：`node .dsh/tmp/qa-static-v1283.mjs` 输出（246 断言） |
-| 4 | 设计截图在流水线卡与工作台卡显示缩略图并可打开大图（design-preview） | **blocked** | 自动化已覆盖 DOM/属性：`fe-render-smoke` 51/51（`D1 banner rendered`、`D1 preview button`、`D3 design card`、`D3 warn badge`、`D3 hero banner`）；静态断言覆盖 `ds-pipe-shot`/`ds-wb-shot`、`loading="lazy"`、`alt`、`isImagePath` 含 webp/gif。**缩略图实际显示、点击打开应用内大图需 Owner 在 GUI 按批次 20 复测** |
-| 5 | HTML 设计产物内嵌渲染预览且支持 360/768/1280，不默认打开源码（design-preview） | **blocked** | `fe-render-smoke` 验证 `D2 iframe present`、`sandbox empty`、`title present`、`loading lazy`、`frame width 1280`、`three device buttons`、`device labels 360,768,1280`；静态验证三档状态、0 请求切换、`查看源码` 走 `openFileAt`。**实际 iframe 渲染效果、逐档切换视觉需 Owner 批次 20 复测** |
-| 6 | design review 时面板与工作台显示待确认状态及通过/打回/预览入口（design-preview） | **blocked** | `fe-render-smoke` 验证 D1 banner、D2 banner/tabs/footer/confirm/reject、D3 design actions/hero banner、approved 后 `no review banner`；静态验证两处同用 `pipeline.designPendingTitle`、通过/打回走 `reviewPipelineStage`、note 输入。**两处提示是否「一眼可见」需 Owner 批次 20 复测** |
-| 7 | 工作区打开 `.html/.htm` 默认渲染预览，工具栏可切预览/源码（html-preview） | **blocked** | `fe-render-smoke` 验证 `D4 preview container/bar/iframe`（sandbox 空、title、lazy、raw src）、空文件空态、预览/源码切换按钮；静态验证 `modeOf→'html'`、`openFile` 默认 `view preview`、`switchTabToSource`/`showHtmlPreview`（保存后再预览）、SSH 降级。**默认渲染、可编辑保存、深色主题需 Owner 批次 20 复测** |
-| 8 | design 提示词要求交付截图且禁止只交 HTML，warning 文案准确（model-discipline） | **pass** | `qa-static-v1283` 覆盖 `STAGE_GUIDES.design`（至少一张 / 不能替代截图 / 不只交 HTML 源码 / mission 闸门）、`STAGE_GUIDES.development`（design 必须 approved / 未确认不得开工）、design/development 阶段提示词、Lead 纪律；`dev-design-gate-check` 输出 `design-no-image` 准确文案（无「HTML 截图」）。日志 `.dsh/evidence/testing-v1.2.83.log` |
-| 9 | 版本与文档同步到 1.2.83 且交付后根版本 +1（version-docs） | **pass** | 插件/根 `package.json` 1.2.83；CHANGELOG `## 1.2.83 — 2026-10-27`；`docs/ACCEPTANCE.md` 批次 20；`docs/pipeline/design.md` §16；8 对 `design-gate-*` SVG/PNG 非空；`engineering-research.md` 3 候选 + MIT/BSD-3-Clause 结论；静态断言逐项通过。根 +1 至 1.2.84 属 release 阶段动作，届时核对（工作区硬性规定） |
-| 10 | 质量门全绿且既有功能不回归（regression） | **blocked**（自动化部分全绿） | 自动化部分：`npm run check` / `check:json` / `npm test 34/34` / `fe-render-smoke 51/51` / `qa-static 246` / packfix 18/18 / normal 全流程回归 全部 exit 0；Host 回归覆盖 review/打回/启动/assignments（13 用例）/tasks/acceptance/delivery/preview 代码路径。**人工 GUI 回归（通过/打回点击、需求四操作、交付打包下载、任务与指派面板、预览分享、浅深主题、360/1440 布局）需 Owner 批次 20 复测**，见 §6 |
-
-**统计：pass 5（#1/#2/#3/#8/#9）· fail 0 · blocked 5（#4/#5/#6/#7/#10）。**
-
----
-
-## 5. 安全 / 性能 / 可访问性核查
-
-| 项 | 结论 | 证据 |
+| 文件 | 内容 | 对应验收项 / 检查 |
 |---|---|---|
-| iframe 沙箱 | D2 设计稿预览与 D4 HTML 文件预览均 `sandbox: ''`（恰好两个），D2/D4 iframe 块内无 `allow-scripts` / `allow-same-origin` / `allow-forms`；不执行设计稿脚本、不获取同源权限 | `qa-static-v1283`「安全」小节；`fe-render-smoke` `D2/D4 iframe sandbox empty` |
-| 顶层打开 HTML | HTML tab 工具栏按 `tab.mode !== 'html'` 排除「在浏览器打开」（避免脚本在 Harness 源下执行）；其它非文本类型保留该按钮 | 静态断言 + 代码 `client.js`（`isTextMode(tab.mode) && tab.mode !== 'html'`） |
-| 注入面 | diff 未新增 `dangerouslySetInnerHTML`、`eval(`、`debugger`；HTML 仅经 `rawUrl` 喂 iframe | `qa-static-v1283` 安全断言 |
-| 依赖 | 未新增/变更 npm 依赖（root `ssh2`；插件 `@xterm/*` + `ssh2` 与 HEAD 一致）；未引入第三方 UI 库/字体/运行时 | 静态断言（对 HEAD 比对 dependencies） |
-| 懒加载 | 设计缩略图 `loading="lazy"`、D2/D4 iframe `loading="lazy"` | `qa-static-v1283` + `fe-render-smoke` |
-| 0 请求切档 | 360/768/1280 只 `setDesignPreview({device})` 改宽度，切片内无 `rawUrl`/网络调用，不重复拉取 | 静态断言 `D2 切宽度只改状态、不重复拉取（0 请求）` |
-| 产物上限 | 流水线产物渲染沿用 `artifacts.slice(0, 20)`；设计卡最多前 20 个 | 静态断言 + 代码 |
-| 可访问性 | D2 `role="dialog"` / `aria-modal` / `aria-labelledby` / review 时 `aria-describedby`；iframe 必有 `title`；状态条 `role="status"`（不只颜色表意）；产物 tab `role="tab"` + `aria-selected`；宽度按钮 `aria-pressed`；按钮 ≥44px；Esc 关闭 + 初始焦点 + 关闭后焦点还原；`focus-visible` | `qa-static-v1283`；`fe-render-smoke` |
-| 性能 | 纯前端状态切换；无新请求/轮询/依赖；D2 默认 1280（只改容器宽） | 同上 |
+| `.dsh/evidence/v1.2.84-qa-default.png` | 默认态：三区块 44px 收起、徽标、清单 492px、分组头、`Collapse all` | A1/Q1–Q4 |
+| `.dsh/evidence/v1.2.84-qa-expand-evidence.png` | 证据区块展开（40 项证据列表） | A1/Q7 |
+| `.dsh/evidence/v1.2.84-qa-expanded.png` | 复测中心 + 交付与预览分享展开（无内层开关、4 交付按钮、端口/创建分享） | A1/Q8–Q10 |
+| `.dsh/evidence/v1.2.84-qa-expanded-all.png` | 三区块全部展开（补充基线：list 96px、徽标三枚） | A1/A4/Q10 |
+| `.dsh/evidence/v1.2.84-qa-all-collapsed.png` | 全部收起：36 分组全部收起、按钮变 `Expand all` | A3/Q11 |
+| `.dsh/evidence/v1.2.84-qa-all-collapsed-selection.png` | 全收起 + 选中保留：详情头收起提示、选中行高亮 | A3/Q23 |
+| `.dsh/evidence/v1.2.84-qa-group-collapsed.png` | 分组#0 收起（组内行消失，其余组正常） | A5/Q15 |
+| `.dsh/evidence/v1.2.84-qa-detail.png` | 详情展开：48px 详情头 + 验收条件/备注/证据/状态历史、选中行 8% 底 + 2px 左条 | A4/Q18 |
+| `.dsh/evidence/v1.2.84-qa-detail-collapsed.png` | 详情收起：body hidden + 「Detail collapsed · selection kept…」+ 选中行仍高亮 | A4/Q19 |
+| `.dsh/evidence/v1.2.84-qa-mixed.png` | 混合折叠态（证据展开/复测收起/交付收起/分组#0 收起），持久化前 | A2/Q25 |
+| `.dsh/evidence/v1.2.84-qa-persist-after-reload.png` | reload 后混合态保持 | A2/Q26 |
+| `.dsh/evidence/v1.2.84-qa-bad-value-fallback.png` | 写 `not-json` 后 reload 回退默认（三块收起、分组展开） | A2/Q27 |
+| `.dsh/evidence/v1.2.84-qa-keyboard-focus.png` | 键盘 Tab 聚焦区块头，`:focus-visible` 2px 环 | A6/Q31 |
+| `.dsh/evidence/v1.2.84-qa-narrow-345.png` | 侧栏 345px 无横向溢出 | A7/Q36 |
+| `.dsh/evidence/v1.2.84-qa-narrow-260.png` | 侧栏 260px 无横向溢出、徽标省略 | A7/Q37 |
+| `.dsh/evidence/v1.2.84-qa-narrow-360.png` | 侧栏 360px（补充）：view/side 359/359 无溢出 | A7 |
+| `.dsh/evidence/v1.2.84-qa-wide-691.png` | 侧栏 691px（补充截图宽度）：690/690 无溢出 | A7 |
+| `.dsh/evidence/v1.2.84-qa-dark.png` | 深色主题：区块头/徽标/箭头/选中行/详情头，对比度抽检全 ≥4.5 | A7/Q39 |
+| `.dsh/evidence/v1.2.84-qa-quality-gates.log` | check / check:json / npm test 命令原文 + 退出码 | A9 |
+| `.dsh/evidence/v1.2.84-qa-static.log` | 静态断言 20/20 完整输出 | A1–A8/A10 |
+| `.dsh/evidence/v1.2.84-qa-gui.log` | GUI E2E 44/44 完整输出（含每条实际值） | A1–A9 |
+| `.dsh/evidence/v1.2.84-qa-gui-results.json` | GUI 断言机器可读结果（44 条） | A1–A9 |
+
+> 说明：截图均由无头 Chromium 1400×1000 @2× 截取后按 `.ds-side` 面板区域裁剪；中文数据分类名（如「版本与记录」）按数据原值显示，非 UI 硬编码。
 
 ---
 
-## 6. 回归清单（自动化覆盖 vs 需 Owner GUI 复测）
+## 7. 发现的问题与复现步骤
 
-| 回归项 | 自动化覆盖 | 需 Owner 批次 20 GUI 复测 |
-|---|---|---|
-| 通过 / 打回（阶段 review 决策） | ✅ `npm test`（normal 流程 approve/reject、failed 后重开、review history）；normal 回归脚本 | ☑ 面板按钮实际点击、提示条消失 |
-| 启动阶段 / 顺序守卫 | ✅ `npm test`（stage order gate、change scopes）、normal 回归 | — |
-| review note | ✅ normal 回归（reject note 保留、重提 note 追加）；静态 note 输入复用 | ☑ 输入框实际交互 |
-| 需求查看/追加/修改/新轮 | ✅ `npm test`（change round scopes、requirement 相关 Host 用例） | ☑ 工作台四个操作按钮 |
-| 验收 / 交付打包 / 下载 | ✅ `npm test` 34/34（acceptance 证据链、delivery bundle）；`packfix` 18/18（打包不清空流水线快照，热修 `2d3ebe0` 未回退） | ☑ 打包→下载闭环、不跳回需求录入 |
-| 任务与指派 | ✅ `npm test`（assignments 13 个用例，含并发/上限/SSH 拒写/不写 pipeline.json） | ☑ 面板交互 |
-| 预览分享 | ❌ 无自动化（需 GUI + 端口/网络） | ☑ 必测 |
-| 快速模式其它四阶段仍自动通过 | ✅ `npm test` fast 用例 + `dev-design-gate-check`（product/development `autoApproved: true`） | — |
-| 浅 / 深主题、360 / 1440 无溢出 | ❌ 无法在无头环境断言视觉 | ☑ 必测（含 1280 预览横向滚动） |
-| 打包热修不回退 | ✅ `npm test` `packaging keeps the pipeline snapshot...` + `packfix` 18/18 + HEAD `2d3ebe0` | ☑ 实际打包确认 |
+### 7.1 产品缺陷
 
----
+**未发现产品缺陷（P0/P1/P2 = 0）。** 所有 44 条 GUI 断言与 20 条静态断言通过；`npm run check` / `check:json` / `npm test 34/34` 全绿；无控制台异常。
 
-## 7. 缺陷 / 观察（含 dev 已知 deviations 处理结论）
+### 7.2 测试侧修正记录（非产品问题，如实记录）
 
-**无阻断缺陷（P0/P1=0）。** 以下观察均为非阻断，Owner 批次 20 复测时顺带确认：
-
-| # | 类型 | 内容 | 处理结论 |
+| # | 类型 | 内容 | 处理 |
 |---|---|---|---|
-| O1 | 已知 deviation | **D2 1280 档在窄容器内横向滚动**（`.ds-dp-canvas` overflow auto），非布局溢出 | design §16.7 与 requirement §4 允许「大宽度预览容器内横向滚动」；接受，批次 20 目检 |
-| O2 | 已知 deviation | **D2 iframe 固定高度 640/560/480px**（桌面/平板/窄屏） | 与 design §16.7 一致（≥640/降档）；接受 |
-| O3 | 已知 deviation | **D2 未做完整焦点陷阱**：有 Esc、初始焦点、关闭后焦点还原，但 Tab 可离开弹层 | 验收标准只要求键盘可达/可读名称/`title`/≥44px，不要求 trap；建议后续 a11y 增强，本轮接受 |
-| O4 | 已知 deviation | **D3 无截图时「通过」按钮禁用**，但 D2 弹层对 HTML-only 仍可确认（仅提示 + `design-no-image` warning） | 与「HTML 不能替代截图」的提示策略一致（Host 不阻断提交，只警告）；接受，批次 20 确认交互是否符合 Owner 预期 |
-| O5 | 已知 deviation | **iframe 404/不可读检测有限**：`onError` 对部分缺失文件不触发；已有「查看源码/重试」退路 | 接受；SSH 根另有降级源码路径 |
-| O6 | 文档小缺口 | `dsh-web-filebrowser-plugin/README.md:271` 仍写 “fast mode that only auto-approves the **five intermediate stages**”（需求 §6.5 要求 README/docs 同步旧口径）。根 README/README.zh/AGENT_TEAM/PLAYBOOK/opc 均已改；CHANGELOG 第 315 行的旧表述属历史发布记录，**不应改** | 非阻断（不在 10 条验收项显式 docs 清单内），建议 release 前顺手修正该行或记为 follow-up |
-| O7 | i18n 洁净度 | 新增 33 个 key 中 `workbench.designHtmlOnly` 未被引用（实际用的是 `pipeline.designPreviewHtmlOnly`） | 无害死 key；建议后续清理，不阻断 |
-| O8 | 记录差异 | dev summary 写 `client.js +1461/−38`，实测 `git diff --numstat` 为 **+1424/−42**；另 dev summary 的 docs 清单未列 `PLAYBOOK.md` / `opc/*`（实际已改且内容正确） | 属 bookkeeping 差异，不影响验收；以实测为准 |
-| O9 | 基线说明 | 本报告覆盖 v1.2.82 `test-report.md`；`docs/pipeline/archive/` 尚未有 v1.2.82 报告归档 | 建议 release 阶段归档（本次写入范围不含 archive/） |
+| T1 | 测试脚本假阴性 | 首版 Q8 断言写成 `(() => ({...})())`，返回的是箭头函数本身而非对象，`bodyVisible` 恒为 `undefined`，误报「verify body still hidden」；聚焦复跑脚本证明复测区块点击后**立即**展开（`hidden=false` 在 t+0ms 成立） | 修正为 `(() => ({...}))()` 后 Q8 PASS；不属于产品缺陷 |
+| T2 | 测试脚本假阴性 | 首版 Q11 把「全部分组收起后可见行」误期望为 36（组头不是 `.ds-acc-row`），实际应为 0 | 修正断言后 PASS |
+| T3 | 测试脚本假阴性 | 首版 Q21 在「三区块全展开」状态下期望清单高度恢复 >100，实际为 96（min-height 保底，符合设计 D7） | 改为与取消前对比 + ≥96 后 PASS |
+| T4 | 测试脚本时序 | 无头环境下 reload 场景的 `openPanel` 曾因等待条件选错（`.ds-side-tab-more` 需先打开工作区才存在）而每次慢 30 s | 改为等待 `button[aria-label="Dev Workspace"]` 后正常；最终 44/44 一次通过 |
+
+### 7.3 观察项（非阻断，供 acceptance / Owner 参考）
+
+| # | 观察 | 影响 | 建议 |
+|---|---|---|---|
+| O1 | 默认态（三区块收起、分组默认展开）下工具按钮显示 **`Collapse all`** 而非 `Expand all` | 设计 §17.3 D3 明确采用「anyOpen（含分组/详情）→ Collapse all」；首次进入点它会同时收起 36 个分组，可能与「三块已收起」的直觉略有出入 | 与设计一致，非缺陷；`title`/`aria-label` 已写明作用域（「收起三个分区、所有分类分组与详情」）。Owner 实机确认体验即可 |
+| O2 | 证据徽标数字取客户端 `loadEvidence()` 的最近 40 条直接条目，该列表包含 `.dsh/evidence/` 下的**子目录名**（如 `pack-fix/`、`v1285/`）；截图随证据目录增长会自增 | 徽标数与 `acceptance.js` 的 `listEvidenceFiles`（仅普通文件）口径不同；上限 40 时徽标恒为 40 | 属既有证据列表实现（非本轮新增语义）+ 新徽标展示；建议后续单独需求统一口径（按文件过滤/排序）；本轮不阻断 |
+| O3 | 无头截图顶部偶见「Reading Harness information…」提示（工作区信息仍在加载） | 与折叠功能无关，最终截图（等待后）已稳定；个别早期截图保留该提示 | 无影响 |
 
 ---
 
-## 8. 结论
+## 8. 10 条验收项结论
 
-- **自动化质量门：10 套全绿、0 失败**（`node --check`×2、`npm run check`、`check:json`、`npm test 34/34`、`fe-render-smoke 51/51`、`dev-design-gate-check`、`qa-static-v1283 246 断言`、`packfix 18/18`、normal 全流程回归、`git diff --check` 干净；表 3 共 11 行命令全部 exit 0）。
-- **验收项建议：pass 5 / fail 0 / blocked 5**（blocked 全部是 GUI 视觉/交互与人工回归：#4/#5/#6/#7/#10）。没有可归因于本轮的 fail。
-- **阻断缺陷：0**。观察项 O1–O9 均非阻断（O6 建议 release 前修一行文档）。
-- **建议：进入 acceptance（第 5/7 阶段）**；acceptance 复核时可引用本报告与 `.dsh/evidence/testing-v1.2.83.log`。Owner 复测入口：`docs/ACCEPTANCE.md` **批次 20**（重启 Harness → 重建客户端 bundle → 强刷）。
-- 证据路径（工作区相对）：
-  - `.dsh/evidence/testing-v1.2.83.log` —— 全部命令退出码/耗时/输出
-  - `.dsh/evidence/testing-v1.2.83-qa-static.log` —— `qa-static-v1283` 完整输出（246 断言）
-  - `.dsh/evidence/testing-v1.2.83-normal-flow.log` —— normal 七阶段全流程回归原文
-  - `.dsh/tmp/qa-static-v1283.mjs` —— 本轮 246 条静态断言（可复跑：`node .dsh/tmp/qa-static-v1283.mjs`）
-  - `.dsh/tmp/fe-render-smoke.mjs` / `.dsh/tmp/dev-design-gate-check.mjs` —— 既有渲染/Host 行为验证
+| # | 验收项（category） | 结论 | 主要证据 | 备注 / 限制 |
+|---|---|---|---|---|
+| 1 | 证据库、复测中心、交付与预览分享默认收起，点区块头即可展开/收起并显示数量徽标（acceptance-collapse） | **pass** | Q1–Q10、S1–S3/S7；截图 default / expanded-all / expand-evidence | 证据徽标=40 为「最近 40 条」上限口径（见 O2） |
+| 2 | 折叠状态持久化到 localStorage，刷新与重开面板后保持，损坏或不可用时回退默认且不崩溃（acceptance-collapse） | **pass** | Q25–Q29、S13–S14；截图 mixed / persist-after-reload / bad-value-fallback | 隐私模式用 `Storage.prototype.setItem` 抛错模拟，未开真实无痕窗口 |
+| 3 | 「全部收起 / 全部展开」一次作用于所有可折叠区块（含分组与详情）且持久化（acceptance-collapse） | **pass** | Q11–Q13、Q23–Q24、S17；截图 all-collapsed / all-collapsed-selection | 单按钮动态文案，重复两轮幂等 |
+| 4 | 验收项清单默认展开并占满剩余高度；选中详情随选中展开、可收起、取消选中即收起（acceptance-collapse） | **pass** | Q2、Q6、Q10、Q18–Q21、S10/S18/S19；截图 default/detail/detail-collapsed | 三块收起时清单 492px；三块全开时保底 96–139px |
+| 5 | 分类分组头可折叠且带数量徽标，折叠不影响勾选、批量、状态操作与筛选（acceptance-collapse） | **pass** | Q5、Q14–Q17、Q22、S4；截图 group-collapsed | 勾选/批量条/清除为只读选择，未执行批量三操作写数据 |
+| 6 | 折叠头为 button 且 aria-expanded/aria-controls 同步，Enter/Space 可切换，焦点可见，收起内容不参与 Tab（acceptance-a11y） | **pass** | Q30–Q35、S1–S6/S11；截图 keyboard-focus | 焦点环 2px；隐藏 body 跳过 Tab 已实测 |
+| 7 | 360px 侧栏与 691px 截图宽度下无横向溢出，浅/深主题可读（acceptance-layout） | **pass** | Q36–Q40 + 补充 360/691（359/359、690/690）；截图 narrow-345/260/360、wide-691、dark | 深色对比抽检 9.25–17.45，浅色 5.8–18.9（均 ≥4.5） |
+| 8 | 中英文折叠文案齐全、无硬编码中文、缺失回退合理（acceptance-i18n） | **pass** | S8（14 对 key 成对非空）、S9（渲染段 0 CJK）、Q41（英文界面无中文残留） | GUI 当前语言为 en；**zh 运行时切换未实测**（静态键值成对 + 英文渲染已验证）；「删一个 en 键回退」未在运行时执行（`t()` 既有回退机制未改动） |
+| 9 | 验收台既有操作与全局功能无回归，质量门全绿（acceptance-regression） | **pass** | `check`/`check:json`/`test 34/34`（§3）、S16（diff 仅 client.js/版本/文档，Host 与依赖未动）、Q42（刷新/模板/筛选/勾选/证据区/命令区/交付按钮只读冒烟）、Q43（0 console error） | 受 QA 只读边界限制：状态修改、删除、证据上传/删除、复测运行、打包/下载、预览分享创建/关闭等**写操作未在真实数据上执行**；依据为「相关 handler 未被 diff 触及 + 质量门全绿 + 只读冒烟」 |
+| 10 | 版本与文档同步到 1.2.84 且交付后根版本 1.2.86，只改允许文件（version-docs） | **pass** | S15/S16；`git diff --stat`（§2） | 根版本 1.2.86 已是当前值；`git diff` 无 Host/依赖变更 |
+
+**统计：pass 10 · fail 0 · blocked 0。**
+
+---
+
+## 9. 安全 / 性能 / 可访问性核查
+
+| 维度 | 结论 | 证据 |
+|---|---|---|
+| localStorage 解析安全 | 16 KiB 上限、`JSON.parse` try/catch、根/字段类型白名单、`__proto__`/`constructor`/`prototype` 跳过、分类 key ≤120/最多 256 条、任何不符整份回退、写失败静默 | S14；Q27–Q29 |
+| 无新增网络/Host 面 | 折叠仅 `setState` + `localStorage.setItem`；渲染段无 `fetch`/定时器/动态 import；diff 无 Host 模块 | S16/S20；Q43 |
+| 注入/XSS | 折叠头标题/徽标/分类名全部走 React 文本节点与 `title`，渲染段无 `innerHTML`/`dangerouslySetInnerHTML`/`insertAdjacentHTML`/`eval` | 静态扫描渲染切片；全文件 `dangerouslySetInnerHTML` 0 命中 |
+| DOM id 安全 | 区块 id 固定字面量；分组 id 用数字索引（不拼分类名）；`aria-controls` 断言命中唯一 id | S19；Q30 |
+| a11y | 三头+分组头+详情头均为 `button[type=button]`；`aria-expanded`/`aria-controls` 同步；Enter/Space 切换且焦点保留；`:focus-visible` 2px；隐藏 body 跳过 Tab；触控高度 44/48/28（28 为设计声明的既有指针密集例外） | Q30–Q35、S10/S11、design §17.9 |
+| 对比度 | 深色 block title 17.45 / badge 9.25 / group 12.11 / detail title 17.45 / selected row 17.45 / chevron 12.11；浅色 title 18.9 / badge 5.8 / group 5.8（全部 ≥4.5:1） | Q39/Q40 |
+| 响应式 | 侧栏 260 / 345 / 360 / 691 / 默认 259 宽度下 `view.scrollWidth == clientWidth`，无横向滚动；长标题/徽标 ellipsis | Q36–Q38 + 补充截图 |
+| 性能 | 折叠不新增请求、不卸载 DOM（`hidden`）、无动画/定时器；未做 16ms 级基准与长任务录制（见 §11 残余风险） | S20/工程契约 §6 |
+| 版本/依赖 | 插件 1.2.84、根 1.2.86、CHANGELOG/ACCEPTANCE 批次 22；无 npm 依赖变化 | S15/S16 |
+
+---
+
+## 10. 回归覆盖与未覆盖项
+
+**已覆盖（本 QA 轮次）**
+
+- 质量门：`npm run check` / `npm run check:json` / `npm test`（34/34）。
+- 验收台折叠相关全部交互：默认态、三区块展开/收起、全部收起/展开（含分组/详情）、混合持久化、坏值回退、写失败降级、分组折叠、详情展开/收起/自动展开/取消、四种筛选、键盘 ARIA、260/345/360/691 响应式、浅/深主题、英文 i18n、只读操作冒烟、控制台 0 错误。
+- 版本与文档、diff 边界（无 Host/依赖/数据改动）。
+
+**未覆盖（原因）**
+
+| 项 | 原因 | 补偿证据 |
+|---|---|---|
+| 验收项状态修改、删除、备注保存 | 会改真实 `.dsh/acceptance.json`（QA 只读边界） | 相关 handler 未在 diff 中；Host smoke 覆盖 acceptance 数据层用例 |
+| 证据上传/删除、复测运行、打包/下载、预览分享创建/复制/打开/关闭、交付记录/交付包下载 | 同上（写数据/占用端口/产生交付物） | diff 未触及这些 handler；`npm test` 覆盖 delivery/acceptance/preview Host 路径；Q42 验证入口存在且可展开、无 JS 错误 |
+| 工作台/流水线/任务/文件树/SSH/Git 面板冒烟 | 本轮为纯 client.js 验收台渲染改动，其它面板无 diff | 静态 S16（无 Host 模块改动）+ 质量门；建议 Owner 按批次 22「既有功能无回归」复测清单确认 |
+| zh 运行时界面切换 | GUI 当前 locale 为 en，切换语言属于设置交互（不在只读范围） | S8 静态 14 对 key 成对 + Q41 英文无中文；`t()` 机制未改动 |
+| 100%/200% 缩放、真实多标签并发、真实无痕模式、`prefers-reduced-motion` 实际效果、16ms 切换耗时 | 无头环境/超出本轮只读范围 | `prefers-reduced-motion` CSS 静态断言；设计未要求高度动画；建议 Owner 实机顺带目检 |
+
+---
+
+## 11. 残余风险
+
+1. **中文界面运行时验证**：zh 文案只做了静态成对断言，未在 GUI 中实际切换到中文后目检；若 `t()` 的 zh 映射与 en 渲染存在运行时差异，理论上仍可能漏检（概率低：两 locale 同文件、14 对 key 均非空）。
+2. **写操作回归未实测**：验收项状态/批量/删除/备注、证据上传删除、复测运行、打包下载、预览分享均为真实写操作，本轮按边界未执行；建议 Owner 在批次 22 复测时按清单点一遍。
+3. **证据徽标口径**（O2）：`40 evidence` 为「最近 40 条直接条目（含子目录名）」上限值，与 Host `listEvidenceFiles` 的「仅普通文件」口径不同；后续若统一口径需另立需求。
+4. **无头 vs 实机**：截图与对比度来自 headless Chromium + Noto 字体，真实显示器/系统主题/字体设置下视觉可能有细微差异；建议 Owner 实机按 `docs/ACCEPTANCE.md` 批次 22 复测一次。
+5. **性能未量化**：未实测「切换 <16ms」与长任务；依据为无动画/无请求/无卸载的代码结构 + GUI 交互无卡顿观感，属设计目标而非实测数据。
+6. **多标签并发写 localStorage**：设计接受「最后写入者生效、无 storage 事件同步」，本轮未测；不影响单标签使用。
+7. **证据目录自增长**：QA 证据截图本身进入 `.dsh/evidence`（40 上限）——非产品问题，但会让徽标显示 40、并可能挤掉更早的证据条目；建议后续清理/归档策略。
+
+---
+
+## 12. 结论与建议
+
+- **质量门：3/3 exit 0**（`npm run check`、`npm run check:json`、`npm test 34/34`）。
+- **静态断言：20/20 PASS；真实 GUI E2E：44/44 PASS**（0 console error）。
+- **10 条验收项：pass 10 / fail 0 / blocked 0**（第 8、9 条附运行范围说明，见 §8）。
+- **缺陷：未发现产品缺陷**；测试侧 4 条脚本假阴性/时序问题已修正并在最终一轮全绿（§7.2），3 条非阻断观察项见 §7.3。
+- **建议：进入 acceptance（第 5/7 阶段）**；acceptance 复核可引用本报告、§6 截图与 `.dsh/evidence/v1.2.84-qa-*.log`。
+- **Owner 复测入口**：`docs/ACCEPTANCE.md` 批次 22（11 条）；重点人工确认 O1（默认 `Collapse all` 文案直觉）、真实写操作回归、中文界面、实机浅深主题。重启 Harness / 重建 bundle 本轮未执行（既有 3080 已是 v1.2.84 bundle，QA 已验证实际下发的 bundle 含新文案）。
+- **归档**：旧 v1.2.83 报告已原样保存为 `docs/pipeline/archive/v1.2.83-test-report.md`；本报告覆盖 `docs/pipeline/test-report.md`。
+- **可复跑命令**：
+  - `node .dsh/tmp/qa-v1284/static-assert.mjs`（20 断言，exit 0）
+  - `FONTCONFIG_FILE=/tmp/fonts/fonts.conf node .dsh/tmp/qa-v1284/gui-e2e.mjs`（44 断言，exit 0；会写 `.dsh/evidence/v1.2.84-qa-*.png`）
+  - `FONTCONFIG_FILE=/tmp/fonts/fonts.conf node .dsh/tmp/qa-v1284/extra-shots.mjs`（补充 3 张视觉基线）

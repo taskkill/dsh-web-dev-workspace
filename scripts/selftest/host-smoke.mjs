@@ -735,6 +735,39 @@ try {
     assert.ok(submitDescription.includes('release'))
   })
 
+  await test('v1.2.85 pipeline trigger policy: workbench requests only, chat stays in the default flow', async () => {
+    // The injected system-prompt section states the trigger rule up front.
+    assert.ok(pipeline.PIPELINE_SECTION.includes('触发条件'))
+    assert.match(pipeline.PIPELINE_SECTION, /工作台/u)
+    assert.match(pipeline.PIPELINE_SECTION, /对话框（聊天）/u)
+    assert.ok(pipeline.PIPELINE_SECTION.includes('默认方式直接完成'))
+    assert.ok(pipeline.PIPELINE_SECTION.includes('不调用 pipeline_* 工具'))
+    // The acceptance guide repeats the same scope so chat sessions skip the checklist.
+    assert.ok(acceptance.ACCEPTANCE_SECTION.includes('触发条件'))
+    assert.match(acceptance.ACCEPTANCE_SECTION, /对话框/u)
+    // The entry tools carry the routing rule in their descriptions.
+    const routeHost = makeHost()
+    const disposeRoute = pipeline.registerPipelineTools(routeHost.ctx)
+    for (const name of ['pipeline_set_requirement', 'pipeline_update_requirement', 'pipeline_start_stage', 'pipeline_dispatch']) {
+      const description = routeHost.tools.find((definition) => definition.name === name).description
+      assert.match(description, /workbench/iu, `${name} must scope the pipeline to workbench requests`)
+      assert.match(description, /chat/iu, `${name} must scope the pipeline away from chat requests`)
+    }
+    disposeRoute()
+    // The dynamic workspace briefing carries the routing line even when a project
+    // already exists (a resumed chat session must not default to the full flow).
+    const root = await workspace('pipeline-trigger')
+    await writeRawPipeline(root, rawPipelineDocument(STAGE_ORDER, { product: 'approved' }, { title: '工作台需求' }))
+    const briefingHost = makeHost()
+    const disposeBriefing = workspaceState.registerWorkspaceStatePrompt(briefingHost.ctx, {})
+    const briefing = briefingHost.contexts.find((context) => context.name === 'dsh-web-filebrowser:workspace-state')
+    assert.ok(briefing !== undefined)
+    const briefingText = briefing.text({ agent: { id: 'qa', session: { meta: { cwd: root } } } })
+    assert.ok(briefingText.includes('流程约定'), 'workspace briefing must carry the pipeline trigger rule')
+    assert.ok(briefingText.includes('对话框'), 'workspace briefing must mention chat requests')
+    disposeBriefing()
+  })
+
   await test('v1.2.73 stage prompts carry research/quality/license/security requirements', async () => {
     const doc = pipeline.emptyPipeline()
     const prompts = {}
