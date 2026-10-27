@@ -122,4 +122,5 @@ f71eabc297b5dc1a2dbdac711ab1f004a3c861ce1cde4d907768720ef7ae30a4  docs/pipeline/
   - v1.2.75 工作台 Agent 指派器 MVP：commit `eff0c76`（基线 `322064c`），35 个文件，自测 check + test 31/31 + pipeline 38/38 + review 22/22 + assignments 27/27；`releases` 已记录。
   - v1.2.73 团队三 Agent 能力升级：commit `0e764b2`（基线 `b3c1e77`），26 个文件，test 18/18 + pipeline 38/38 + review 22/22；`releases` 已记录。
   - v1.2.72 双复核模式：commit `2d8c761`（基线 `a504f99`），30 个文件，test 17/17 + pipeline 36/36 + review 22/22；`releases` 已记录。
-  - 本轮 v1.2.76 的 `releases` 记录由 Lead 补写；交付后根版本 +1 至 1.2.77。
+  - 本轮 v1.2.76 发布提交：commit `0d841f4`（基线 `97316d2`），24 个文件（+1576/−1290），自测 check + test 31/31 + pipeline 38/38 + review 22/22 + assignments 27/27 + qa-static STATIC PASS；`releases` 已由 Lead 记录（environment=`local-workspace`，url=`http://127.0.0.1:3080`）。
+- **交付后版本规则**：按工作区硬性规定「每次修改完成后根 `package.json` 版本 +1」，发布审批通过后由 Lead 提交 `chore` 将根从 1.2.76 升至 **1.2.77**（代表下一轮迭代号）；插件 `package.json` 保持本次发布的 1.2.76；下一轮发布时插件对齐 1.2.77。
