@@ -1,0 +1,232 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1024" viewBox="0 0 1440 1024" role="img" aria-labelledby="title desc">
+  <title id="title">派发后「团队与指派」状态卡高保真效果图</title>
+  <desc id="desc">工作台派发后的状态卡：4 条指派任务，分别展示关联阶段执行中、临时任务待你确认、已完成、已打回；每条含 Agent/角色、任务标题、已派发→等待 Lead→执行中→待你确认→已完成 进度、关联阶段、时间与查看对话/催办/打回/再指派操作。</desc>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif; }
+    .page-title { font-size: 24px; font-weight: 700; fill: #0f1115; }
+    .sub { font-size: 13px; fill: #61666b; }
+    .card-title { font-size: 13px; font-weight: 600; fill: #61666b; letter-spacing: 0.04em; }
+    .label { font-size: 12px; font-weight: 600; fill: #61666b; }
+    .body { font-size: 14px; fill: #0f1115; }
+    .body-b { font-size: 14px; font-weight: 600; fill: #0f1115; }
+    .meta { font-size: 12px; fill: #61666b; }
+    .link { font-size: 13px; fill: #2563eb; }
+    .link-s { font-size: 12px; fill: #2563eb; }
+    .btn-p { font-size: 13px; font-weight: 600; fill: #ffffff; }
+    .btn-s { font-size: 13px; font-weight: 600; fill: #0f1115; }
+    .status { font-size: 12px; font-weight: 600; }
+    .step { font-size: 12px; fill: #61666b; }
+    .step-on { font-size: 12px; font-weight: 600; fill: #0f1115; }
+    .step-done { font-size: 12px; fill: #1a7f37; }
+    .nav { font-size: 13px; fill: #61666b; }
+    .nav-active { font-size: 13px; font-weight: 600; fill: #0f1115; }
+    .nav-group { font-size: 12px; font-weight: 600; fill: #61666b; }
+    .white { fill: #ffffff; }
+  </style>
+
+  <rect width="1440" height="1024" fill="#eceff3"/>
+  <rect x="24" y="24" width="1392" height="976" rx="12" fill="#ffffff"/>
+  <rect x="24" y="24" width="1392" height="56" fill="#ffffff"/>
+  <line x1="24" y1="80" x2="1416" y2="80" stroke="#e3e8ef"/>
+
+  <!-- top bar -->
+  <circle cx="52" cy="52" r="11" fill="#0f1115"/><circle cx="52" cy="52" r="4" fill="#ffffff"/>
+  <text x="72" y="57" class="body-b">Dev Workspace</text>
+  <text x="196" y="57" class="meta">工作区 / dsh-web-filebrowser</text>
+  <text x="1180" y="57" text-anchor="end" class="meta">项目：工作台指派 Agent 提案 · 第 1 轮</text>
+  <circle cx="1360" cy="52" r="14" fill="#eef4ff"/>
+  <text x="1360" y="57" text-anchor="middle" class="meta" style="fill:#2563eb;font-weight:600">你</text>
+
+  <!-- sidebar -->
+  <rect x="24" y="80" width="212" height="920" fill="#f9fafb"/>
+  <line x1="236" y1="80" x2="236" y2="1000" stroke="#e3e8ef"/>
+  <text x="44" y="108" class="nav-group">工作区</text>
+  <rect x="36" y="120" width="188" height="36" rx="8" fill="#ffffff" stroke="#e3e8ef"/>
+  <path d="M48 144 L54 138 L60 144 V150 H48 Z" fill="none" stroke="#0f1115" stroke-width="1.5" stroke-linejoin="round"/>
+  <text x="70" y="144" class="nav-active">工作台</text>
+  <path d="M50 166 H58 L62 170 V180 H50 Z" fill="none" stroke="#61666b" stroke-width="1.5" stroke-linejoin="round"/>
+  <text x="70" y="180" class="nav">文件</text>
+  <circle cx="53" cy="205" r="4.5" fill="none" stroke="#61666b" stroke-width="1.5"/>
+  <line x1="56.5" y1="208.5" x2="60" y2="212" stroke="#61666b" stroke-width="1.5"/>
+  <text x="70" y="216" class="nav">搜索</text>
+  <circle cx="50" cy="251" r="1.6" fill="#61666b"/><circle cx="55" cy="251" r="1.6" fill="#61666b"/><circle cx="60" cy="251" r="1.6" fill="#61666b"/>
+  <text x="70" y="255" class="nav">更多</text>
+  <line x1="40" y1="278" x2="220" y2="278" stroke="#e3e8ef"/>
+  <text x="44" y="302" class="nav-group">项目</text>
+  <rect x="48" y="318" width="10" height="3" rx="1.5" fill="#61666b"/><rect x="48" y="324" width="10" height="3" rx="1.5" fill="#61666b"/><rect x="48" y="330" width="10" height="3" rx="1.5" fill="#61666b"/>
+  <text x="70" y="332" class="nav">流水线</text>
+  <rect x="48" y="352" width="10" height="10" rx="2" fill="none" stroke="#61666b" stroke-width="1.5"/>
+  <polyline points="50,357 52.5,360 56,355" fill="none" stroke="#61666b" stroke-width="1.5"/>
+  <text x="70" y="362" class="nav">验收</text>
+  <line x1="48" y1="378" x2="58" y2="378" stroke="#61666b" stroke-width="1.5"/><line x1="48" y1="384" x2="58" y2="384" stroke="#61666b" stroke-width="1.5"/>
+  <text x="70" y="388" class="nav">待办</text>
+  <line x1="40" y1="410" x2="220" y2="410" stroke="#e3e8ef"/>
+  <text x="44" y="434" class="nav-group">开发</text>
+  <rect x="48" y="448" width="10" height="10" rx="2" fill="none" stroke="#61666b" stroke-width="1.5"/><polygon points="51,451 51,455 55,453" fill="#61666b"/>
+  <text x="70" y="458" class="nav">任务</text>
+  <circle cx="50" cy="481" r="2.5" fill="none" stroke="#61666b" stroke-width="1.5"/><circle cx="58" cy="488" r="2.5" fill="none" stroke="#61666b" stroke-width="1.5"/>
+  <path d="M52 483 L56 486" stroke="#61666b" stroke-width="1.5"/>
+  <text x="70" y="490" class="nav">Git</text>
+  <rect x="48" y="514" width="10" height="10" rx="2" fill="none" stroke="#61666b" stroke-width="1.5"/><line x1="51" y1="517" x2="55" y2="517" stroke="#61666b" stroke-width="1"/><line x1="51" y1="520" x2="55" y2="520" stroke="#61666b" stroke-width="1"/>
+  <text x="70" y="523" class="nav">记忆</text>
+  <rect x="36" y="928" width="188" height="40" rx="8" fill="#eef4ff"/>
+  <text x="76" y="953" class="nav-active" style="fill:#2563eb">团队面板入口</text>
+
+  <!-- main -->
+  <rect x="236" y="80" width="1180" height="920" fill="#f7f8fa"/>
+  <text x="286" y="120" class="page-title">工作台</text>
+  <text x="286" y="144" class="sub">项目：工作台指派 Agent 提案 · 第 1 轮 · 最近指派</text>
+  <text x="1326" y="120" text-anchor="end" class="link">刷新</text>
+
+  <!-- project status mini -->
+  <rect x="286" y="164" width="1080" height="120" rx="12" fill="#ffffff" stroke="#e3e8ef"/>
+  <text x="306" y="190" class="card-title">项目状态</text>
+  <rect x="1198" y="172" width="148" height="28" rx="14" fill="#f1f3f5"/>
+  <text x="1272" y="191" text-anchor="middle" class="meta">第 1 轮 · 已完成 4/7</text>
+  <rect x="306" y="204" width="1040" height="8" rx="4" fill="#eef0f3"/>
+  <rect x="306" y="204" width="594" height="8" rx="4" fill="#4176e6"/>
+  <text x="306" y="236" class="body">当前：验收复核 · 待评审 · 负责：项目经理 Agent</text>
+  <text x="1346" y="236" text-anchor="end" class="link">查看流水线 →</text>
+  <text x="306" y="258" class="meta">2 条指派进行中，1 条待你确认；成员实时状态以团队面板为准。</text>
+
+  <!-- status card -->
+  <rect x="286" y="296" width="1080" height="680" rx="12" fill="#ffffff" stroke="#e3e8ef"/>
+  <text x="306" y="326" class="card-title">团队与指派</text>
+  <text x="306" y="346" class="meta">进行中 2 · 待你确认 1 · 已完成 8 · 本周共 12 条 · 打回 1</text>
+  <text x="1204" y="336" text-anchor="end" class="link">团队面板入口</text>
+  <rect x="1216" y="312" width="130" height="40" rx="8" fill="#0f1115"/>
+  <text x="1281" y="337" text-anchor="middle" class="btn-p">指派任务</text>
+  <line x1="306" y1="362" x2="1346" y2="362" stroke="#eef0f3"/>
+
+  <!-- filter chips -->
+  <rect x="306" y="374" width="92" height="32" rx="16" fill="#0f1115"/>
+  <text x="352" y="395" text-anchor="middle" style="font-size:12px;font-weight:600;fill:#ffffff">全部 4</text>
+  <rect x="406" y="374" width="96" height="32" rx="16" fill="#f1f3f5"/>
+  <text x="454" y="395" text-anchor="middle" class="meta">进行中 2</text>
+  <rect x="510" y="374" width="96" height="32" rx="16" fill="#f1f3f5"/>
+  <text x="558" y="395" text-anchor="middle" class="meta">待确认 1</text>
+  <rect x="614" y="374" width="96" height="32" rx="16" fill="#f1f3f5"/>
+  <text x="662" y="395" text-anchor="middle" class="meta">已完成 1</text>
+  <text x="1346" y="395" text-anchor="end" class="meta">状态由指派记录与关联阶段推导；点击行查看时间线</text>
+
+  <!-- ============ task row 1 : linked stage, running ============ -->
+  <rect x="306" y="418" width="1040" height="126" rx="10" fill="#ffffff" stroke="#e3e8ef"/>
+  <circle cx="336" cy="454" r="18" fill="#eef4ff"/>
+  <text x="336" y="459" text-anchor="middle" style="font-size:13px;font-weight:600;fill:#2563eb">测</text>
+  <text x="366" y="450" class="body-b">修复登录态回归</text>
+  <text x="366" y="470" class="meta">测试工程师 · opc-qa · 关联：测试验收 · 指派于 3 分钟前</text>
+  <rect x="1150" y="432" width="78" height="24" rx="12" fill="#eef4ff"/>
+  <text x="1189" y="448" text-anchor="middle" class="status" style="fill:#2563eb">执行中</text>
+  <text x="1346" y="449" text-anchor="end" class="link-s">复制派单</text>
+  <text x="1268" y="449" text-anchor="end" class="link-s" style="fill:#61666b">催办</text>
+  <rect x="1176" y="462" width="64" height="28" rx="6" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="1208" y="480" text-anchor="middle" style="font-size:12px;font-weight:600;fill:#0f1115">打回</text>
+  <rect x="1248" y="462" width="64" height="28" rx="6" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="1280" y="480" text-anchor="middle" style="font-size:12px;font-weight:600;fill:#0f1115">取消</text>
+
+  <!-- stepper -->
+  <line x1="356" y1="512" x2="724" y2="512" stroke="#bfe6cc" stroke-width="2"/>
+  <line x1="724" y1="512" x2="1092" y2="512" stroke="#e3e8ef" stroke-width="2"/>
+  <g>
+    <circle cx="356" cy="512" r="8" fill="#1a7f37"/><polyline points="352,512 355,515 360,508" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="356" y="538" text-anchor="middle" class="step-done">已派发</text>
+    <circle cx="540" cy="512" r="8" fill="#1a7f37"/><polyline points="536,512 539,515 544,508" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="540" y="538" text-anchor="middle" class="step-done">等待 Lead</text>
+    <circle cx="724" cy="512" r="12" fill="#eef4ff"/><circle cx="724" cy="512" r="6" fill="#4176e6"/>
+    <text x="724" y="538" text-anchor="middle" class="step-on">执行中</text>
+    <circle cx="908" cy="512" r="8" fill="#ffffff" stroke="#b6bdc7" stroke-width="2"/>
+    <text x="908" y="538" text-anchor="middle" class="step">待你确认</text>
+    <circle cx="1092" cy="512" r="8" fill="#ffffff" stroke="#b6bdc7" stroke-width="2"/>
+    <text x="1092" y="538" text-anchor="middle" class="step">已完成</text>
+  </g>
+  <text x="1150" y="540" class="meta">关联阶段仍需你在流水线审批</text>
+
+  <!-- ============ task row 2 : temp task, review ============ -->
+  <rect x="306" y="552" width="1040" height="126" rx="10" fill="#fffaf0" stroke="#f0b74a"/>
+  <circle cx="336" cy="588" r="18" fill="#eef4ff"/>
+  <text x="336" y="593" text-anchor="middle" style="font-size:13px;font-weight:600;fill:#2563eb">设</text>
+  <text x="366" y="584" class="body-b">补充空态截图</text>
+  <text x="366" y="604" class="meta">UI 设计师 · opc-design · 临时任务 · 提交于 12 分钟前</text>
+  <rect x="1150" y="566" width="78" height="24" rx="12" fill="#fef5e7"/>
+  <text x="1189" y="582" text-anchor="middle" class="status" style="fill:#b45309">待你确认</text>
+  <text x="1346" y="583" text-anchor="end" class="link-s">复制派单</text>
+  <text x="1268" y="583" text-anchor="end" class="link-s" style="fill:#61666b">取消</text>
+  <rect x="1080" y="596" width="88" height="28" rx="6" fill="#0f1115"/>
+  <text x="1124" y="614" text-anchor="middle" style="font-size:12px;font-weight:600;fill:#ffffff">通过并完成</text>
+  <rect x="1176" y="596" width="64" height="28" rx="6" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="1208" y="614" text-anchor="middle" style="font-size:12px;font-weight:600;fill:#0f1115">打回</text>
+
+  <line x1="356" y1="646" x2="908" y2="646" stroke="#bfe6cc" stroke-width="2"/>
+  <line x1="908" y1="646" x2="1092" y2="646" stroke="#e3e8ef" stroke-width="2"/>
+  <g>
+    <circle cx="356" cy="646" r="8" fill="#1a7f37"/><polyline points="352,646 355,649 360,642" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="356" y="672" text-anchor="middle" class="step-done">已派发</text>
+    <circle cx="540" cy="646" r="8" fill="#1a7f37"/><polyline points="536,646 539,649 544,642" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="540" y="672" text-anchor="middle" class="step-done">等待 Lead</text>
+    <circle cx="724" cy="646" r="8" fill="#1a7f37"/><polyline points="720,646 723,649 728,642" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="724" y="672" text-anchor="middle" class="step-done">执行中</text>
+    <circle cx="908" cy="646" r="12" fill="#fef5e7"/><circle cx="908" cy="646" r="6" fill="#f59e0b"/>
+    <text x="908" y="672" text-anchor="middle" class="step-on">待你确认</text>
+    <circle cx="1092" cy="646" r="8" fill="#ffffff" stroke="#b6bdc7" stroke-width="2"/>
+    <text x="1092" y="672" text-anchor="middle" class="step">已完成</text>
+  </g>
+  <text x="1150" y="674" class="meta">临时任务：仅在对话汇报</text>
+
+  <!-- ============ task row 3 : linked stage, completed ============ -->
+  <rect x="306" y="686" width="1040" height="126" rx="10" fill="#ffffff" stroke="#e3e8ef"/>
+  <circle cx="336" cy="722" r="18" fill="#eef4ff"/>
+  <text x="336" y="727" text-anchor="middle" style="font-size:13px;font-weight:600;fill:#2563eb">开</text>
+  <text x="366" y="718" class="body-b">检查依赖许可证</text>
+  <text x="366" y="738" class="meta">全栈开发 · opc-dev · 关联：开发实现 · 完成于昨天 16:40</text>
+  <rect x="1150" y="700" width="78" height="24" rx="12" fill="#e6faed"/>
+  <text x="1189" y="716" text-anchor="middle" class="status" style="fill:#1a7f37">已完成</text>
+  <text x="1346" y="717" text-anchor="end" class="link-s">复制派单</text>
+  <rect x="1250" y="736" width="72" height="28" rx="6" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="1286" y="754" text-anchor="middle" style="font-size:12px;font-weight:600;fill:#0f1115">再指派</text>
+
+  <line x1="356" y1="780" x2="1096" y2="780" stroke="#bfe6cc" stroke-width="2"/>
+  <g>
+    <circle cx="356" cy="780" r="8" fill="#1a7f37"/><polyline points="352,780 355,783 360,776" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="356" y="806" text-anchor="middle" class="step-done">已派发</text>
+    <circle cx="540" cy="780" r="8" fill="#1a7f37"/><polyline points="536,780 539,783 544,776" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="540" y="806" text-anchor="middle" class="step-done">等待 Lead</text>
+    <circle cx="724" cy="780" r="8" fill="#1a7f37"/><polyline points="720,780 723,783 728,776" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="724" y="806" text-anchor="middle" class="step-done">执行中</text>
+    <circle cx="908" cy="780" r="8" fill="#1a7f37"/><polyline points="904,780 907,783 912,776" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="908" y="806" text-anchor="middle" class="step-done">待你确认</text>
+    <circle cx="1092" cy="780" r="8" fill="#1a7f37"/><polyline points="1088,780 1091,783 1096,776" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="1092" y="806" text-anchor="middle" class="step-done">已完成</text>
+  </g>
+  <text x="1150" y="808" class="meta">以流水线闸门为准</text>
+
+  <!-- ============ task row 4 : failed ============ -->
+  <rect x="306" y="820" width="1040" height="126" rx="10" fill="#ffffff" stroke="#e3e8ef"/>
+  <circle cx="336" cy="856" r="18" fill="#eef4ff"/>
+  <text x="336" y="861" text-anchor="middle" style="font-size:13px;font-weight:600;fill:#2563eb">设</text>
+  <text x="366" y="852" class="body-b">移动端截图缺暗色</text>
+  <text x="366" y="872" class="meta">UI 设计师 · opc-design · 临时任务 · 打回于昨天 17:20</text>
+  <rect x="1150" y="834" width="78" height="24" rx="12" fill="#fef2f2"/>
+  <text x="1189" y="850" text-anchor="middle" class="status" style="fill:#d1242f">已打回</text>
+  <text x="1346" y="851" text-anchor="end" class="link-s">查看原因 →</text>
+  <rect x="1250" y="864" width="72" height="28" rx="6" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="1286" y="882" text-anchor="middle" style="font-size:12px;font-weight:600;fill:#0f1115">再指派</text>
+
+  <line x1="356" y1="914" x2="724" y2="914" stroke="#bfe6cc" stroke-width="2"/>
+  <line x1="724" y1="914" x2="1092" y2="914" stroke="#e3e8ef" stroke-width="2"/>
+  <g>
+    <circle cx="356" cy="914" r="8" fill="#1a7f37"/><polyline points="352,914 355,917 360,910" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="356" y="940" text-anchor="middle" class="step-done">已派发</text>
+    <circle cx="540" cy="914" r="8" fill="#1a7f37"/><polyline points="536,914 539,917 544,910" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="540" y="940" text-anchor="middle" class="step-done">等待 Lead</text>
+    <circle cx="724" cy="914" r="8" fill="#1a7f37"/><polyline points="720,914 723,917 728,910" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="724" y="940" text-anchor="middle" class="step-done">执行中</text>
+    <circle cx="908" cy="914" r="12" fill="#fef2f2"/><circle cx="908" cy="914" r="6" fill="#d1242f"/>
+    <text x="908" y="940" text-anchor="middle" style="font-size:12px;font-weight:600;fill:#d1242f">已打回</text>
+    <circle cx="1092" cy="914" r="8" fill="#ffffff" stroke="#b6bdc7" stroke-width="2"/>
+    <text x="1092" y="940" text-anchor="middle" class="step">已完成</text>
+  </g>
+  <text x="1150" y="942" class="meta">修复后可再指派</text>
+
+  <!-- footer hint -->
+  <text x="306" y="964" class="meta">操作留痕：复制派单 / 催办 / 打回 / 取消 / 再指派都会追加到记录；再指派=新建记录并保留原记录，打回需填写原因。</text>
+</svg>

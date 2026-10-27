@@ -1,6 +1,6 @@
-# 验收清单（批次 0–11）
+# 验收清单（批次 0–12）
 
-> 面向项目经理的复测步骤。当前代码版本 **v1.2.73**（批次 0–4 写于 v1.2.30、批次 5 写于 v1.2.68、批次 6–9 写于 v1.2.69–v1.2.71、批次 10 写于 v1.2.72；旧批次里的「六阶段/六关」是当时行为，现行**七阶段双复核**见批次 10，三 Agent 能力升级见批次 11）。**首次测试前请重启一次 Harness**（Host 路由/模型工具/`.dsh` 文档只在重启后生效；浏览器刷新只更新客户端）。
+> 面向项目经理的复测步骤。当前代码版本 **v1.2.75**（批次 0–4 写于 v1.2.30、批次 5 写于 v1.2.68、批次 6–9 写于 v1.2.69–v1.2.71、批次 10 写于 v1.2.72、批次 11 写于 v1.2.73；旧批次里的「六阶段/六关」是当时行为，现行**七阶段双复核**见批次 10，三 Agent 能力升级见批次 11，工作台 Agent 指派器见批次 12）。**首次测试前请重启一次 Harness**（Host 路由/模型工具/`.dsh` 文档只在重启后生效；浏览器刷新只更新客户端）。
 >
 > 预置：任选一个本地工作区；`node_modules` 已安装的项目体验最好。打开侧栏确认能看到 **任务**、**验收**、**流水线** 与 **工作台**。
 
@@ -149,6 +149,26 @@
 - [ ] **双复核回归**：七阶段结构与 fast/normal 语义不变——fast 下五中间阶段仍自动通过、acceptance 可派发、approval/release 仍人工；acceptance 复核报告新增三项专业质量复核（调研证据 / 设计质量评分与迭代 / 工程调研与许可证，或 N/A 理由）。
 - [ ] **验收复核报告**：acceptance 阶段产出 `docs/pipeline/acceptance-review.md`，结论含「建议放行」，且含 ⑦ 专业质量复核（需求调研来源/借鉴决策、设计自检评分与迭代、engineering-research.md 与许可证记录，N/A 需理由）。
 
+## 批次 12 · 工作台 Agent 指派器（v1.2.75）
+
+> 本轮在**工作台**新增「团队与指派」卡片 + 指派抽屉 + 状态卡，用 4 个 Owner-only Host op 持久化到 `.dsh/agent-assignments.json`；**不新增模型工具、不改流水线结构**，指派动作**不写** `.dsh/pipeline.json`。
+> 升级后**先重启一次 Harness**（Host 新增 assignments.js 与 index.js 4 个 op），再刷新页面 / 重建客户端 bundle（client.js 纯新增 1683 行）。SSH 远程工作区不支持指派（降级提示）。
+> 复测前提：v1.2.75 已部署，工作台可打开；建议准备一个已保存需求的本地工作区（便于验证阶段关联），并准备一条临时任务。
+
+- [ ] **卡片出现与位置**：打开工作台 → 卡片顺序为「需要你处理 → 项目状态 → **团队与指派** → 项目流程」；卡片含 6 个角色 chips（产品经理 / UI 设计师 / 全栈开发 / 测试工程师 / 项目经理 Agent / 运维），每个显示名称或成员 id + 状态文字（空闲 / 执行中 / 待你确认），并有「成员实时状态以 Harness 团队面板为准」提示；含「指派任务」按钮与「打开团队面板 ↗」入口（无深链时降级为可复制说明，不报错不死链）。
+- [ ] **最近指派与空态**：无记录时显示空态文案；有记录时默认展示最近 5 条、可展开；每条含状态 pill（文字）、标题、成员、类型（关联阶段 / 临时任务）、时间与操作；卡片底部有「派发后由 Lead 用原生 team 工具执行」提示与记录保存路径提示。
+- [ ] **抽屉字段与校验**：点「指派任务」→ 右侧抽屉（≤768px 为全宽底部面板）。逐项核对：① 交给谁（按角色 6 选 1 / 当前成员自由填写 / 新建 Agent 名称+角色；三选一互斥）；② 任务标题必填 ≤120 带计数器；③ 详细说明必填 ≤4000 带计数器；④ 验收标准 1–10 条、每条 ≤500，默认预填 1 条「产物落盘 + 自测通过」；⑤ 优先级 P0/P1/P2 默认 P1；⑥ 期望产物路径可空；⑦ 附件入口存在（上传或提示拖入对话，不阻塞提交）；⑧ 空提交/超长输入被就地拦截、错误显示在字段下且已填内容不丢；⑨ Esc 关闭不误提交，焦点归还「指派任务」。
+- [ ] **提交与结构化指派单**：填必填项 → 点「指派给 Agent」→ ① `.dsh/agent-assignments.json` 新增记录，字段含 id/round/title/detail/acceptance[]/assignedTo/stageId/priority/expectedArtifacts/status=dispatched/createdAt/updatedAt/history（首条 dispatched），round 与 `.dsh/pipeline.json` 当前轮一致；② 当前对话收到结构化指派单（【工作台指派 · 第 N 轮】/交给/任务/背景·期望/验收标准/关联阶段或临时任务/期望产物/优先级/执行要求：角色边界 + pipeline 闸门 + 不越 approval/release + 完成后更新状态）；③ toast「已派发」且卡片/列表立即出现新记录；④ 提交中按钮禁用，连续点击只产生 1 条记录。
+- [ ] **关联阶段控件**：默认「自动判断」并展示推导建议或说明；可选择需求分析/UI 设计/开发实现/测试验收/验收复核 5 个阶段（product/design/development/testing/acceptance）+「不关联（临时任务）」；「人工确认（approval）」「发布上线（release）」**置灰不可选**并提示「只能 Owner 在流水线面板审批」；关联阶段显示「将走七阶段双复核闸门」，不关联显示「不改变流水线，结果只在对话汇报」；提交后记录 stageId 与选择一致，临时任务为空。
+- [ ] **状态机与操作**：① 合法链路 dispatched→running→review→done 每步成功并刷新 updatedAt；② 打回（任意非终态→failed）**必须填原因**，空 note 被拒；failed 后可「再指派」（预填新弹层→新建记录，原记录保留）；③ 取消（任意非终态→cancelled）可用；④ 催办在 dispatched/running 可用，向当前对话发提醒并 append history（状态不变）；⑤ 每次状态变更 append history（at/status/note/actor=owner，≤50 条）；⑥ 非法流转（dispatched→done、done→running、review→dispatched 等）被拒且文件不变；⑦ 终态 done/failed/cancelled 不再进入 running/review。
+- [ ] **持久化与恢复**：刷新页面、重启 Harness 后 `assignmentList` 记录仍在（`.dsh/agent-assignments.json`）；并发/重复点击不产生重复或半写记录；坏文件时页面显示错误且不静默清空（修复 JSON 后恢复可读）。
+- [ ] **流水线只读（关键）**：`sha256sum .dsh/pipeline.json` 记录指派前哈希 → 完成一次关联阶段指派（提交、running/review/done、再打回/取消）后再次计算，**哈希必须一致**；临时任务全流程后七阶段状态/摘要不变；`assignmentSave` 传 stageId=approval/release 必须失败（`bad-request`），客户端对应选项置灰；acceptance/approval 双复核闸门逻辑无回归。
+- [ ] **i18n / 无障碍 / 窄屏**：切中文与 English → 卡片/抽屉/状态卡所有文案都有翻译（key 前缀 `workbench.assign.*`），无残留中文硬编码或空 key；Tab 顺序进入抽屉→字段→取消→提交，焦点环可见；Esc 关闭归还焦点，`role="dialog" aria-modal="true"` + `aria-labelledby`；状态「颜色+文字+形状」三重表达，toast/错误 `aria-live`；主按钮/输入触控命中 ≥44px、`prefers-reduced-motion` 降级；≤768px 抽屉为全宽底部面板、无横向溢出。
+- [ ] **效果图落地**（对照 `docs/proposals/mockups/` 三屏与 README §2–§4）：卡片 chips 3 列×2 行或等价换行 + 最近指派列；抽屉右侧 608px、字段顺序与分组正确、底部提示与主按钮；状态卡筛选（全部/进行中/待你确认/已完成）、五段进度（已派发→等待 Lead→执行中→待你确认→已完成）、状态 pill、操作矩阵；允许的 MVP 缩减（成员实时状态按记录推导、附件仅提示、发布 chip 置灰）已在文档说明。
+- [ ] **边界（Host 层）**：100 条记录后保存返回 `full`；文件 >1MB 返回 `too-large`；JSON 损坏返回 `corrupt`（含路径、不清空）；SSH 工作区 4 个 op 均 `ssh-unsupported`；`git diff package.json dsh-web-filebrowser-plugin/package.json` 无新增 dependencies。
+- [ ] **自动化全绿**：`npm run check`、`npm run check:json`、`npm test`（含 assignments 用例）、`node .dsh/tmp/team/pipeline-selftest.mjs`、`node .dsh/tmp/team/review-selftest.mjs`、`node .dsh/tmp/team/assignments-selftest.mjs` 均 exit 0；`node --check dsh-web-filebrowser-plugin/client.js` 通过；版本/CHANGELOG 1.2.75 一致。
+- [ ] **回归检查**：流水线七阶段 / acceptance 双复核 / 验收台 / 交付包 / 待办 / 记忆 / 编辑器标签右键菜单（Owner 标签菜单）均未回退；工作台其它卡片（项目状态/项目流程/交付前体检/本轮变更）正常。
+
 ## 已知限制（不是缺陷）
 
 - **预览分享**：只改写 HTML；前端在 JS 里拼接的绝对路径需要 dev server 配置 `base`；公网访问要求预览端口可达（否则用隧道）。
@@ -156,11 +176,12 @@
 - **watcher**：只监听根目录与已展开目录，SSH 工作区不监听（仍可手动/轮询刷新）。
 - **重启依赖**：Host 路由（任务/验收/交付/预览/watcher/terminal list/review）与新增模型工具需要重启 Harness；仅刷新页面时旧 Host 会提示不可用或走降级路径。v1.2.72 的 acceptance 阶段、迁移逻辑与七阶段 prompt/工具文案同样必须重启 Host 才生效（客户端 7 关文案刷新即可）。
 - **提示词/手册升级（v1.2.73）**：三 Agent 的调研/质量/许可证要求写在 `pipeline.js` 的 STAGE_GUIDES / PIPELINE_SECTION 与 `docs/opc/0{1,2,3}-*.md`，Host 重启后新提示词才生效；纯提示词/文档改动无需重建客户端 bundle。调研依赖 Harness 原生 `web_search` / `web_fetch`，无网络时按提示词要求标 blocked，不得伪造来源。
+- **工作台指派器（v1.2.75）**：每个工作区最多 **100 条**记录、文件 ≤**1 MiB**、history ≤50 条；只有 done/failed/cancelled 可删除；SSH 远程工作区不支持指派；成员实时状态以 Harness 团队面板为准，卡片状态按指派记录**推导**；派发只生成结构化指派单，真正执行由 Lead 用原生团队工具完成；指派动作**不写** `.dsh/pipeline.json`。
 - **双复核迁移**：旧 6 阶段 `.dsh/pipeline.json` 在读取时按 id 归一化补 acceptance（首次写回后落盘）；旧已完成项目的 acceptance 迁移备注仅代表「升级前旧流程已完成」，不代表新流程重新复核过，不能作为新交付的放行依据。
 - **变更审阅签名**：`已审` 只在文件的 Git 状态（staged/unstaged/untracked/status）变化时失效；同一未暂存文件继续编辑不会自动失效（与现有 Git 面板一致）。
 - **验收历史上限**：每项 history 最多 50 条、文件 1 MB；极端 300 项 × 长历史可能触顶，届时可先清理已通过项。
 
 ## 回滚与恢复
 
-- 代码层：`git log --oneline` 查看批次提交（v1.2.23 → v1.2.73），可按批次 revert。
-- 数据层：验收清单 `.dsh/acceptance.json`、交付记录 `.dsh/deliveries.json`、证据 `.dsh/evidence/`、运行账本 `.dsh/runs.json`、复测记录 `.dsh/verifications/`、变更审阅 `.dsh/review.json`、审阅标记（浏览器 localStorage）。这些都在 `.dsh/` 下且已被 `.gitignore` 忽略。
+- 代码层：`git log --oneline` 查看批次提交（v1.2.23 → v1.2.75），可按批次 revert。
+- 数据层：验收清单 `.dsh/acceptance.json`、交付记录 `.dsh/deliveries.json`、证据 `.dsh/evidence/`、运行账本 `.dsh/runs.json`、复测记录 `.dsh/verifications/`、变更审阅 `.dsh/review.json`、**工作台指派 `.dsh/agent-assignments.json`**、审阅标记（浏览器 localStorage）。这些都在 `.dsh/` 下且已被 `.gitignore` 忽略。

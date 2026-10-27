@@ -552,6 +552,128 @@ window.__ModuleLoader__.load({
       'workbench.reviewProgress': '已审 {done}/{total}',
       'workbench.reviewUnavailable': '此工作区没有 Git，无法显示本轮变更。',
       'workbench.openGit': '打开 Git',
+      'workbench.assign.title': '团队与指派',
+      'workbench.assign.subtitle': '6 名角色成员 · {working} 人执行中 · {review} 人待确认（按指派记录推导）',
+      'workbench.assign.derivedHint': '状态按指派记录推导；实时状态以 Harness 团队面板为准',
+      'workbench.assign.assignButton': '指派任务',
+      'workbench.assign.teamPanel': '团队面板入口',
+      'workbench.assign.teamPanelHint': '复制团队面板入口说明（MVP 无深链）',
+      'workbench.assign.teamPanelCopied': '已复制团队面板入口说明',
+      'workbench.assign.members': '团队成员',
+      'workbench.assign.recent': '最近指派',
+      'workbench.assign.recentCount': '共 {count} 条 · 默认显示最近 {shown} 条',
+      'workbench.assign.expand': '展开全部',
+      'workbench.assign.collapse': '收起',
+      'workbench.assign.emptyTitle': '还没有指派任务',
+      'workbench.assign.emptyHint': '选角色、写清验收标准，把任务交给团队；状态会记录在这里。',
+      'workbench.assign.footerHint': '派发后由 Lead 用原生 team 工具执行；成员与共享任务状态以团队面板为准。',
+      'workbench.assign.recordPath': '记录保存在 {path}',
+      'workbench.assign.loadFailed': '读取指派失败：{message}',
+      'workbench.assign.sshUnsupported': 'SSH 工作区暂不支持指派',
+      'workbench.assign.fullHint': '指派记录已满（最多 100 条）；请清理终态记录',
+      'workbench.assign.corrupt': '指派数据文件损坏：{path}（未覆盖，请备份/修复）',
+      'workbench.assign.member.idle': '空闲',
+      'workbench.assign.member.running': '执行中',
+      'workbench.assign.member.review': '待你确认',
+      'workbench.assign.status.dispatched': '已派发',
+      'workbench.assign.status.running': '执行中',
+      'workbench.assign.status.review': '待你确认',
+      'workbench.assign.status.done': '已完成',
+      'workbench.assign.status.failed': '已打回',
+      'workbench.assign.status.cancelled': '已取消',
+      'workbench.assign.type.stage': '关联：{stage}',
+      'workbench.assign.type.temp': '临时任务',
+      'workbench.assign.action.process': '处理 →',
+      'workbench.assign.action.view': '查看 →',
+      'workbench.assign.action.copy': '复制派单',
+      'workbench.assign.action.reassign': '再指派 →',
+      'workbench.assign.dialog.title': '指派任务',
+      'workbench.assign.dialog.subtitle': '选角色/成员、写清任务与验收；提交后由 Lead 调度执行',
+      'workbench.assign.dialog.mvpTag': 'MVP · 结构化派单',
+      'workbench.assign.dialog.assignee': '交给谁',
+      'workbench.assign.dialog.tab.role': '按角色',
+      'workbench.assign.dialog.tab.member': '当前成员',
+      'workbench.assign.dialog.tab.newAgent': '新建 Agent',
+      'workbench.assign.dialog.memberPlaceholder': '输入成员名，如 opc-dev',
+      'workbench.assign.dialog.newAgentName': 'Agent 名称，如 opc-dev-2',
+      'workbench.assign.dialog.newAgentRole': 'Agent 角色',
+      'workbench.assign.dialog.selected': '已选：{name} · {member}（{status}）',
+      'workbench.assign.dialog.pickMember': '从成员中选',
+      'workbench.assign.dialog.newAgentHint': '新建 Agent 需名称 + 角色，由 Lead spawn（受团队上限约束）',
+      'workbench.assign.dialog.titleLabel': '任务标题',
+      'workbench.assign.dialog.titlePlaceholder': '一句话结果，例如「修复登录态刷新丢失」',
+      'workbench.assign.dialog.detailLabel': '详细说明',
+      'workbench.assign.dialog.detailPlaceholder': '背景 / 现状 / 期望行为 / 不做范围',
+      'workbench.assign.dialog.acceptanceLabel': '验收标准',
+      'workbench.assign.dialog.acceptancePlaceholder': '可验证条件：截图、命令、产物路径',
+      'workbench.assign.dialog.acceptanceCount': '{n}/10 条 · 每条 ≤500',
+      'workbench.assign.dialog.priority': '优先级',
+      'workbench.assign.dialog.stage': '关联流水线阶段',
+      'workbench.assign.dialog.stageAuto': '自动判断',
+      'workbench.assign.dialog.stageNone': '不关联（临时）',
+      'workbench.assign.dialog.stage.product': '需求分析',
+      'workbench.assign.dialog.stage.design': 'UI 设计',
+      'workbench.assign.dialog.stage.development': '开发实现',
+      'workbench.assign.dialog.stage.testing': '测试验收',
+      'workbench.assign.dialog.stage.acceptance': '验收复核',
+      'workbench.assign.dialog.stage.approval': '人工确认',
+      'workbench.assign.dialog.stage.release': '发布上线',
+      'workbench.assign.dialog.stageLocked': '人工确认 / 发布只能由 Owner 在流水线面板审批，不可指派',
+      'workbench.assign.dialog.stageGateHint': '关联阶段将走双复核闸门；临时任务不改变流水线，结果只在对话汇报',
+      'workbench.assign.dialog.stageAutoHint': '按当前 active/review 阶段推导；已完成轮次请选临时任务或发起变更',
+      'workbench.assign.dialog.artifactLabel': '期望产物路径',
+      'workbench.assign.dialog.artifactPlaceholder': 'docs/pipeline/…（可空）',
+      'workbench.assign.dialog.attachmentLabel': '附件',
+      'workbench.assign.dialog.attachmentHint': 'MVP：可拖入当前对话；上传为后续增强',
+      'workbench.assign.dialog.attachmentDrop': '拖入当前对话，或粘贴产物路径（可选）',
+      'workbench.assign.dialog.footerHint': '生成结构化指派单发到当前对话，由 Lead 执行；不直接改写流水线。',
+      'workbench.assign.dialog.cancel': '取消',
+      'workbench.assign.dialog.submit': '指派给 Agent',
+      'workbench.assign.dialog.submitting': '指派中…',
+      'workbench.assign.dialog.close': '关闭',
+      'workbench.assign.dialog.required': '必填',
+      'workbench.assign.dialog.tooLong': '超出长度限制',
+      'workbench.assign.dialog.acceptanceRange': '验收标准需 1–10 条',
+      'workbench.assign.dialog.saveFailed': '指派保存失败：{message}',
+      'workbench.assign.dialog.sendFailed': '已保存，但发送失败；可重发指派单',
+      'workbench.assign.dialog.retrySend': '重发指派单',
+      'workbench.assign.dialog.success': '已派发到当前对话',
+      'workbench.assign.statusTitle': '团队与指派',
+      'workbench.assign.summary': '进行中 {running} · 待你确认 {review} · 已完成 {done} · 本周共 {total} 条 · 打回 {failed}',
+      'workbench.assign.filter.all': '全部',
+      'workbench.assign.filter.running': '进行中',
+      'workbench.assign.filter.review': '待你确认',
+      'workbench.assign.filter.done': '已完成',
+      'workbench.assign.progress.dispatched': '已派发',
+      'workbench.assign.progress.waitingLead': '等待 Lead',
+      'workbench.assign.progress.running': '执行中',
+      'workbench.assign.progress.review': '待你确认',
+      'workbench.assign.progress.done': '已完成',
+      'workbench.assign.progress.failed': '已打回',
+      'workbench.assign.linkedGateHint': '关联阶段仍走双复核；指派不改流水线',
+      'workbench.assign.tempHint': '临时任务：仅在对话汇报',
+      'workbench.assign.action.copyToast': '已复制指派单；请在当前对话查看',
+      'workbench.assign.action.remind': '催办',
+      'workbench.assign.action.remindToast': '已发送催办提醒',
+      'workbench.assign.action.reject': '打回',
+      'workbench.assign.action.rejectTitle': '打回指派任务',
+      'workbench.assign.action.rejectReason': '打回原因（必填）',
+      'workbench.assign.action.rejectPlaceholder': '写清原因与期望修正…',
+      'workbench.assign.action.rejectSubmit': '确认打回',
+      'workbench.assign.action.approve': '通过并完成',
+      'workbench.assign.action.reassignHint': '再指派会新建记录，原记录保留',
+      'workbench.assign.action.cancel': '取消',
+      'workbench.assign.action.cancelConfirm': '取消这条指派？记录会保留为已取消。',
+      'workbench.assign.action.confirmCancel': '确认取消',
+      'workbench.assign.action.viewReason': '查看原因',
+      'workbench.assign.action.delete': '删除',
+      'workbench.assign.action.deleteConfirm': '删除该记录？不可恢复。',
+      'workbench.assign.emptyFiltered': '没有符合筛选条件的指派',
+      'workbench.assign.limitHint': '最多保留 100 条；请清理终态记录',
+      'workbench.assign.waitingLong': '已等待超过 30 分钟，可催办',
+      'workbench.assign.historyHint': '复制派单 / 催办 / 打回 / 取消 / 再指派都会追加到记录；再指派=新建记录并保留原记录，打回需填写原因。',
+      'workbench.assign.loadFailedRetry': '重试',
+      'workbench.assign.retry': '重新读取',
       'notify.stageReviewTitle': '阶段待审批',
       'notify.stageReviewBody': '{stage} 已提交，等待你通过或打回',
       'notify.stageRejectedTitle': '阶段被打回',
@@ -1614,6 +1736,128 @@ window.__ModuleLoader__.load({
       'workbench.reviewProgress': 'Reviewed {done}/{total}',
       'workbench.reviewUnavailable': 'No Git repository; change review is unavailable.',
       'workbench.openGit': 'Open Git',
+      'workbench.assign.title': 'Team & assignments',
+      'workbench.assign.subtitle': '6 role members · {working} working · {review} awaiting you (derived from assignments)',
+      'workbench.assign.derivedHint': 'Status is derived from assignments; live status is authoritative in the Harness team panel',
+      'workbench.assign.assignButton': 'Assign task',
+      'workbench.assign.teamPanel': 'Team panel entry',
+      'workbench.assign.teamPanelHint': 'Copy team-panel entry guidance (no deep link in MVP)',
+      'workbench.assign.teamPanelCopied': 'Team-panel guidance copied',
+      'workbench.assign.members': 'Team members',
+      'workbench.assign.recent': 'Recent assignments',
+      'workbench.assign.recentCount': '{count} total · latest {shown} shown',
+      'workbench.assign.expand': 'Show all',
+      'workbench.assign.collapse': 'Collapse',
+      'workbench.assign.emptyTitle': 'No assignments yet',
+      'workbench.assign.emptyHint': 'Pick a role, write acceptance criteria, and hand it to the team; status stays here.',
+      'workbench.assign.footerHint': 'The Lead executes via native team tools; member & shared-task status stays authoritative in the team panel.',
+      'workbench.assign.recordPath': 'Records stored in {path}',
+      'workbench.assign.loadFailed': 'Could not load assignments: {message}',
+      'workbench.assign.sshUnsupported': 'Assignments are not supported in SSH workspaces',
+      'workbench.assign.fullHint': 'Assignment limit reached (100); clean up finished records',
+      'workbench.assign.corrupt': 'Assignment data is corrupt: {path} (not overwritten; back up/fix it)',
+      'workbench.assign.member.idle': 'Idle',
+      'workbench.assign.member.running': 'Working',
+      'workbench.assign.member.review': 'Awaiting you',
+      'workbench.assign.status.dispatched': 'Dispatched',
+      'workbench.assign.status.running': 'Running',
+      'workbench.assign.status.review': 'Awaiting you',
+      'workbench.assign.status.done': 'Done',
+      'workbench.assign.status.failed': 'Sent back',
+      'workbench.assign.status.cancelled': 'Cancelled',
+      'workbench.assign.type.stage': 'Stage: {stage}',
+      'workbench.assign.type.temp': 'Ad-hoc task',
+      'workbench.assign.action.process': 'Handle →',
+      'workbench.assign.action.view': 'View →',
+      'workbench.assign.action.copy': 'Copy order',
+      'workbench.assign.action.reassign': 'Reassign →',
+      'workbench.assign.dialog.title': 'Assign task',
+      'workbench.assign.dialog.subtitle': 'Pick a role/member, describe the task and acceptance; the Lead dispatches it',
+      'workbench.assign.dialog.mvpTag': 'MVP · structured order',
+      'workbench.assign.dialog.assignee': 'Assign to',
+      'workbench.assign.dialog.tab.role': 'By role',
+      'workbench.assign.dialog.tab.member': 'Current member',
+      'workbench.assign.dialog.tab.newAgent': 'New agent',
+      'workbench.assign.dialog.memberPlaceholder': 'Member name, e.g. opc-dev',
+      'workbench.assign.dialog.newAgentName': 'Agent name, e.g. opc-dev-2',
+      'workbench.assign.dialog.newAgentRole': 'Agent role',
+      'workbench.assign.dialog.selected': 'Selected: {name} · {member} ({status})',
+      'workbench.assign.dialog.pickMember': 'Pick from members',
+      'workbench.assign.dialog.newAgentHint': 'New agents need a name + role and are spawned by the Lead (team limits apply)',
+      'workbench.assign.dialog.titleLabel': 'Task title',
+      'workbench.assign.dialog.titlePlaceholder': 'One-line outcome, e.g. “Fix session loss on refresh”',
+      'workbench.assign.dialog.detailLabel': 'Details',
+      'workbench.assign.dialog.detailPlaceholder': 'Background / current / expected / out of scope',
+      'workbench.assign.dialog.acceptanceLabel': 'Acceptance criteria',
+      'workbench.assign.dialog.acceptancePlaceholder': 'Verifiable conditions: screenshots, commands, artifact paths',
+      'workbench.assign.dialog.acceptanceCount': '{n}/10 items · ≤500 each',
+      'workbench.assign.dialog.priority': 'Priority',
+      'workbench.assign.dialog.stage': 'Pipeline stage',
+      'workbench.assign.dialog.stageAuto': 'Auto-detect',
+      'workbench.assign.dialog.stageNone': 'No stage (ad-hoc)',
+      'workbench.assign.dialog.stage.product': 'Requirements',
+      'workbench.assign.dialog.stage.design': 'UI design',
+      'workbench.assign.dialog.stage.development': 'Development',
+      'workbench.assign.dialog.stage.testing': 'Testing',
+      'workbench.assign.dialog.stage.acceptance': 'Acceptance review',
+      'workbench.assign.dialog.stage.approval': 'Human sign-off',
+      'workbench.assign.dialog.stage.release': 'Release',
+      'workbench.assign.dialog.stageLocked': 'Human sign-off / release are owner gates and cannot be assigned',
+      'workbench.assign.dialog.stageGateHint': 'Linked stages go through the dual-review gates; ad-hoc tasks do not change the pipeline and report in chat only',
+      'workbench.assign.dialog.stageAutoHint': 'Derived from the current active/review stage; for completed rounds choose ad-hoc or start a change round',
+      'workbench.assign.dialog.artifactLabel': 'Expected artefact paths',
+      'workbench.assign.dialog.artifactPlaceholder': 'docs/pipeline/… (optional)',
+      'workbench.assign.dialog.attachmentLabel': 'Attachments',
+      'workbench.assign.dialog.attachmentHint': 'MVP: drag into the current chat; uploads come later',
+      'workbench.assign.dialog.attachmentDrop': 'Drag into the current chat, or paste artefact paths (optional)',
+      'workbench.assign.dialog.footerHint': 'Generates a structured order in the current chat, executed by the Lead; the pipeline is never written directly.',
+      'workbench.assign.dialog.cancel': 'Cancel',
+      'workbench.assign.dialog.submit': 'Assign to agent',
+      'workbench.assign.dialog.submitting': 'Assigning…',
+      'workbench.assign.dialog.close': 'Close',
+      'workbench.assign.dialog.required': 'Required',
+      'workbench.assign.dialog.tooLong': 'Exceeds the length limit',
+      'workbench.assign.dialog.acceptanceRange': 'Provide 1–10 acceptance items',
+      'workbench.assign.dialog.saveFailed': 'Could not save the assignment: {message}',
+      'workbench.assign.dialog.sendFailed': 'Saved, but sending failed; retry the order',
+      'workbench.assign.dialog.retrySend': 'Retry sending',
+      'workbench.assign.dialog.success': 'Dispatched to the current chat',
+      'workbench.assign.statusTitle': 'Team & assignments',
+      'workbench.assign.summary': '{running} running · {review} awaiting you · {done} done · {total} this week · {failed} sent back',
+      'workbench.assign.filter.all': 'All',
+      'workbench.assign.filter.running': 'Running',
+      'workbench.assign.filter.review': 'Awaiting you',
+      'workbench.assign.filter.done': 'Done',
+      'workbench.assign.progress.dispatched': 'Dispatched',
+      'workbench.assign.progress.waitingLead': 'Waiting for Lead',
+      'workbench.assign.progress.running': 'Running',
+      'workbench.assign.progress.review': 'Awaiting you',
+      'workbench.assign.progress.done': 'Done',
+      'workbench.assign.progress.failed': 'Sent back',
+      'workbench.assign.linkedGateHint': 'Linked stages still use the dual review; assignments never write the pipeline',
+      'workbench.assign.tempHint': 'Ad-hoc task: reported in chat only',
+      'workbench.assign.action.copyToast': 'Order copied; check the current chat',
+      'workbench.assign.action.remind': 'Nudge',
+      'workbench.assign.action.remindToast': 'Nudge sent',
+      'workbench.assign.action.reject': 'Send back',
+      'workbench.assign.action.rejectTitle': 'Send back assignment',
+      'workbench.assign.action.rejectReason': 'Reason (required)',
+      'workbench.assign.action.rejectPlaceholder': 'Explain why and what should change…',
+      'workbench.assign.action.rejectSubmit': 'Confirm send back',
+      'workbench.assign.action.approve': 'Approve & complete',
+      'workbench.assign.action.reassignHint': 'Reassign creates a new record and keeps this one',
+      'workbench.assign.action.cancel': 'Cancel',
+      'workbench.assign.action.cancelConfirm': 'Cancel this assignment? It stays recorded as cancelled.',
+      'workbench.assign.action.confirmCancel': 'Confirm cancel',
+      'workbench.assign.action.viewReason': 'View reason',
+      'workbench.assign.action.delete': 'Delete',
+      'workbench.assign.action.deleteConfirm': 'Delete this record? This cannot be undone.',
+      'workbench.assign.emptyFiltered': 'No assignments match this filter',
+      'workbench.assign.limitHint': 'Up to 100 records; clean up finished ones',
+      'workbench.assign.waitingLong': 'Waiting over 30 minutes; consider nudging',
+      'workbench.assign.historyHint': 'Copy/nudge/send-back/cancel/reassign all append to history; reassign creates a new record and keeps the original, send-back requires a reason.',
+      'workbench.assign.loadFailedRetry': 'Retry',
+      'workbench.assign.retry': 'Reload',
       'notify.stageReviewTitle': 'Stage needs review',
       'notify.stageReviewBody': '{stage} was submitted; approve or reject it',
       'notify.stageRejectedTitle': 'Stage rejected',
@@ -8056,6 +8300,35 @@ window.__ModuleLoader__.load({
         const [requirementScope, setRequirementScope] = useState('full')
         const [workbenchError, setWorkbenchError] = useState(null)
         const [workbenchUpdatedAt, setWorkbenchUpdatedAt] = useState(0)
+        // Workbench agent assignments (v1.2.75 MVP): dispatch-board state.
+        const [assignmentItems, setAssignmentItems] = useState([])
+        const [assignmentPath, setAssignmentPath] = useState('')
+        const [assignmentCounts, setAssignmentCounts] = useState({
+          dispatched: 0,
+          running: 0,
+          review: 0,
+          done: 0,
+          failed: 0,
+          cancelled: 0,
+        })
+        const [assignmentBusy, setAssignmentBusy] = useState(false)
+        const [assignmentError, setAssignmentError] = useState(null)
+        const [assignmentDrawerOpen, setAssignmentDrawerOpen] = useState(false)
+        const [assignmentDraft, setAssignmentDraft] = useState(() => emptyAssignmentDraft())
+        const [assignmentFormErrors, setAssignmentFormErrors] = useState({})
+        const [assignmentSubmitting, setAssignmentSubmitting] = useState(false)
+        const [assignmentFilter, setAssignmentFilter] = useState('all')
+        const [assignmentExpanded, setAssignmentExpanded] = useState(false)
+        const [assignmentRejectTarget, setAssignmentRejectTarget] = useState(null)
+        const [assignmentRejectNote, setAssignmentRejectNote] = useState('')
+        const [assignmentRejectBusy, setAssignmentRejectBusy] = useState(false)
+        const [assignmentRejectError, setAssignmentRejectError] = useState(null)
+        const [assignmentRetry, setAssignmentRetry] = useState(null)
+        const assignmentDialogRef = useRef(null)
+        const assignmentTriggerRef = useRef(null)
+        const assignmentTitleRef = useRef(null)
+        const assignmentIdempotencyRef = useRef(false)
+
         const [issues, setIssues] = useState([])
         const [pipelineDoc, setPipelineDoc] = useState(null)
         const [pipelineBusy, setPipelineBusy] = useState(false)
@@ -9974,6 +10247,7 @@ ${tail}
               loadTasks({ silent: true, detect: false }),
               loadDeliveryHistory(),
               loadPreviewShares(),
+              loadAssignments({ silent: true }),
             ])
           } catch (error) {
             setWorkbenchError(t('workbench.loadFailed', { message: errorText(error) }))
@@ -9981,6 +10255,592 @@ ${tail}
             setWorkbenchBusy(false)
           }
         }
+
+        /* ------------------------------------------------------------------ *
+         * Workbench agent assignments (v1.2.75 MVP)
+         *
+         * Owner-only dispatch board: pick a role/member/new agent, write the
+         * task + acceptance criteria, link it to an assignable pipeline stage
+         * (or keep it ad-hoc) and send the structured order to the current
+         * conversation. The Host owns `.dsh/agent-assignments.json`; this panel
+         * never writes the pipeline (and approval/release are not assignable).
+         * ------------------------------------------------------------------ */
+
+        /** Fallback path shown in error/hint text before the Host responds. */
+        const ASSIGNMENT_FILE_HINT = '.dsh/agent-assignments.json'
+
+        /** Assignable roles; member ids follow the OPC roster (see charter). */
+        const assignmentRoleMeta = [
+          { role: 'product-manager', member: 'opc-product', labelKey: 'pipeline.role.product' },
+          { role: 'ui-designer', member: 'opc-design', labelKey: 'pipeline.role.design' },
+          { role: 'fullstack-developer', member: 'opc-dev', labelKey: 'pipeline.role.development' },
+          { role: 'qa-engineer', member: 'opc-qa', labelKey: 'pipeline.role.testing' },
+          { role: 'project-manager-agent', member: 'opc-pm', labelKey: 'pipeline.role.acceptance' },
+          { role: 'devops', member: 'opc-ops', labelKey: 'pipeline.role.release' },
+        ]
+        const assignmentStageIds = ['product', 'design', 'development', 'testing', 'acceptance']
+        const assignmentLockedStageIds = ['approval', 'release']
+        const assignmentMaxTitle = 120
+        const assignmentMaxDetail = 4000
+        const assignmentMaxAcceptance = 10
+        const assignmentMaxAcceptanceText = 500
+
+        /** Fresh drawer draft (P1, auto stage, one default acceptance). */
+        function emptyAssignmentDraft() {
+          return {
+            targetMode: 'role',
+            role: 'qa-engineer',
+            member: '',
+            newAgentName: '',
+            newAgentRole: 'fullstack-developer',
+            title: '',
+            detail: '',
+            acceptance: ['交付产物落盘 + 自测通过'],
+            priority: 'P1',
+            stageId: 'auto',
+            artifacts: '',
+          }
+        }
+
+        /** Patch one drawer draft field without dropping the rest. */
+        function patchAssignmentDraft(patch) {
+          setAssignmentDraft((current) => ({ ...current, ...patch }))
+        }
+
+        /** Role label from the existing pipeline role translations. */
+        function assignmentRoleLabel(role) {
+          const meta = assignmentRoleMeta.find((entry) => entry.role === role)
+          return meta === undefined ? String(role ?? '') : t(meta.labelKey)
+        }
+
+        /** Target text for one record: role label, member id, or new-agent name. */
+        function assignmentTargetText(item) {
+          const target = item !== null && typeof item === 'object' ? item.assignedTo : null
+          if (target === null || typeof target !== 'object') return ''
+          if (typeof target.role === 'string' && target.role.length > 0) return assignmentRoleLabel(target.role)
+          if (typeof target.member === 'string' && target.member.length > 0) return target.member
+          if (target.newAgent !== null && typeof target.newAgent === 'object') {
+            return (
+              String(target.newAgent.name ?? '') +
+              ' · ' +
+              assignmentRoleLabel(target.newAgent.role) +
+              '（name=' +
+              String(target.newAgent.name ?? '') +
+              ' role=' +
+              String(target.newAgent.role ?? '') +
+              '）'
+            )
+          }
+          return ''
+        }
+
+        /** Whether one assignment targets the given role/member chip. */
+        function assignmentMatchesRole(item, meta) {
+          if (item === null || typeof item !== 'object') return false
+          const target = item.assignedTo
+          if (target === null || typeof target !== 'object') return false
+          if (target.role === meta.role) return true
+          if (target.member === meta.member) return true
+          return target.newAgent !== null && typeof target.newAgent === 'object' && target.newAgent.role === meta.role
+        }
+
+        /** Derived member status: review > dispatched/running > idle. */
+        function assignmentMemberStatus(meta) {
+          let working = false
+          for (const item of assignmentItems) {
+            if (assignmentMatchesRole(item, meta) === false) continue
+            if (item.status === 'review') return 'review'
+            if (item.status === 'dispatched' || item.status === 'running') working = true
+          }
+          return working ? 'running' : 'idle'
+        }
+
+        /** Stage label used by rows and the structured order. */
+        function assignmentStageText(stageId) {
+          if (typeof stageId !== 'string' || stageId.length === 0 || stageId === 'auto') {
+            return t('workbench.assign.type.temp')
+          }
+          const known = assignmentStageIds.includes(stageId) || assignmentLockedStageIds.includes(stageId)
+          const label = known ? t('workbench.assign.dialog.stage.' + stageId) : stageId
+          return t('workbench.assign.type.stage', { stage: label })
+        }
+
+        /** Auto-detect the linked stage from the current pipeline (read-only). */
+        function assignmentAutoStageId() {
+          const doc = pipelineDoc
+          if (doc === null || typeof doc !== 'object') return ''
+          const stages = Array.isArray(doc.stages) ? doc.stages : []
+          const requirement = doc.requirement !== null && typeof doc.requirement === 'object' ? doc.requirement : {}
+          const requirementTitle = typeof requirement.title === 'string' ? requirement.title.trim() : ''
+          if (requirementTitle.length === 0) return ''
+          const current =
+            stages.find((stage) => stage !== null && typeof stage === 'object' && (stage.status === 'active' || stage.status === 'review')) ??
+            stages.find((stage) => stage !== null && typeof stage === 'object' && (stage.status === 'pending' || stage.status === 'failed')) ??
+            null
+          if (current === null) return ''
+          return assignmentStageIds.includes(current.id) ? current.id : ''
+        }
+
+        /** Structured order sent to the current conversation (fixed field order). */
+        function assignmentOrderText(item) {
+          const acceptance = Array.isArray(item.acceptance) ? item.acceptance : []
+          const artifacts = Array.isArray(item.expectedArtifacts) ? item.expectedArtifacts : []
+          const lines = [
+            '【工作台指派 · 第 ' + String(item.round ?? 1) + ' 轮】',
+            '交给：' + assignmentTargetText(item),
+            '任务：' + String(item.title ?? ''),
+            '背景/期望：',
+            String(item.detail ?? ''),
+            '验收标准：',
+            ...acceptance.map((entry, index) => String(index + 1) + '. ' + String(entry)),
+            '关联阶段：' + assignmentStageText(item.stageId),
+            '期望产物：' + (artifacts.length === 0 ? '（无）' : artifacts.join('；')),
+            '优先级：' + String(item.priority ?? 'P1'),
+            '执行要求：',
+            '- 按角色边界执行；不要改动需求/验收标准/他人写范围。',
+            '- 阶段任务：按 pipeline_* 流程推进，最终仍走 testing → acceptance（AI 复核）→ approval（Owner 人工确认）→ release；不要越过人工闸门。',
+            '- 临时任务：不改变流水线，完成后在对话汇报产物与验证。',
+            '- 插件不会替你改流水线状态；完成后由 Owner 在工作台状态卡「通过并完成」或写原因打回。',
+          ]
+          return lines.join('\n')
+        }
+
+        /** Status label for the status pills. */
+        function assignmentStatusLabel(status) {
+          const known = ['dispatched', 'running', 'review', 'done', 'failed', 'cancelled']
+          return known.includes(status) ? t('workbench.assign.status.' + status) : String(status ?? '')
+        }
+
+        /** Member label for the derived member state. */
+        function assignmentMemberLabel(status) {
+          return t('workbench.assign.member.' + status)
+        }
+
+        /** One-line time label (locale date/time; no new i18n key needed). */
+        function assignmentTimeText(value) {
+          if (!Number.isFinite(value) || value <= 0) return ''
+          try {
+            return new Date(value).toLocaleString(undefined, { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+          } catch {
+            return ''
+          }
+        }
+
+        /** Five-step progress index: 已派发→等待 Lead→执行中→待你确认→已完成. */
+        function assignmentProgressIndex(item) {
+          if (item.status === 'dispatched') return 1
+          if (item.status === 'running') return 2
+          if (item.status === 'review') return 3
+          if (item.status === 'done') return 4
+          if (item.status === 'failed') return 3
+          return 0
+        }
+
+        /** Map a Host/Side error to an actionable i18n message. */
+        function assignmentErrorText(error, root) {
+          const code = errorCode(error)
+          if (code === 'corrupt') return t('workbench.assign.corrupt', { path: assignmentPath || ASSIGNMENT_FILE_HINT })
+          if (code === 'full') return t('workbench.assign.fullHint')
+          if (code === 'too-large') return t('workbench.assign.dialog.tooLong')
+          if (code === 'ssh-unsupported' || isSshRootPath(root ?? store.get().root)) return t('workbench.assign.sshUnsupported')
+          return errorText(error)
+        }
+
+        /** Load the assignment board for the current workspace. */
+        async function loadAssignments(options = {}) {
+          const targetRoot = store.get().root
+          if (targetRoot === null) {
+            setAssignmentItems([])
+            setAssignmentPath('')
+            setAssignmentCounts({ dispatched: 0, running: 0, review: 0, done: 0, failed: 0, cancelled: 0 })
+            return
+          }
+          if (isSshRootPath(targetRoot)) {
+            setAssignmentItems([])
+            setAssignmentPath('')
+            setAssignmentError(t('workbench.assign.sshUnsupported'))
+            return
+          }
+          if (options?.silent !== true) setAssignmentBusy(true)
+          try {
+            const value = await call('assignmentList', { root: targetRoot })
+            if (store.get().root !== targetRoot) return
+            setAssignmentItems(Array.isArray(value?.items) ? value.items : [])
+            setAssignmentPath(typeof value?.path === 'string' ? value.path : '')
+            setAssignmentCounts(
+              value?.counts !== null && typeof value?.counts === 'object'
+                ? {
+                    dispatched: Number(value.counts.dispatched) || 0,
+                    running: Number(value.counts.running) || 0,
+                    review: Number(value.counts.review) || 0,
+                    done: Number(value.counts.done) || 0,
+                    failed: Number(value.counts.failed) || 0,
+                    cancelled: Number(value.counts.cancelled) || 0,
+                  }
+                : { dispatched: 0, running: 0, review: 0, done: 0, failed: 0, cancelled: 0 },
+            )
+            setAssignmentError(null)
+          } catch (error) {
+            if (store.get().root !== targetRoot) return
+            setAssignmentError(assignmentErrorText(error, targetRoot))
+          } finally {
+            if (options?.silent !== true) setAssignmentBusy(false)
+          }
+        }
+
+        /** Current drawer target (role / member / newAgent) or null when incomplete. */
+        function assignmentTargetFromDraft(draft) {
+          if (draft.targetMode === 'role') {
+            return typeof draft.role === 'string' && draft.role.length > 0 ? { role: draft.role } : null
+          }
+          if (draft.targetMode === 'member') {
+            const member = draft.member.trim()
+            return member.length > 0 ? { member } : null
+          }
+          const name = draft.newAgentName.trim()
+          const role = draft.newAgentRole
+          return name.length > 0 && typeof role === 'string' && role.length > 0 ? { newAgent: { name, role } } : null
+        }
+
+        /** Validate the drawer in place; returns a `{ field: message }` map. */
+        function assignmentFormValidate(draft) {
+          const errors = {}
+          if (assignmentTargetFromDraft(draft) === null) errors.target = t('workbench.assign.dialog.required')
+          const title = draft.title.trim()
+          if (title.length === 0) errors.title = t('workbench.assign.dialog.required')
+          else if (title.length > assignmentMaxTitle) errors.title = t('workbench.assign.dialog.tooLong')
+          const detail = draft.detail.trim()
+          if (detail.length === 0) errors.detail = t('workbench.assign.dialog.required')
+          else if (detail.length > assignmentMaxDetail) errors.detail = t('workbench.assign.dialog.tooLong')
+          const acceptance = draft.acceptance.map((entry) => entry.trim()).filter((entry) => entry.length > 0)
+          if (acceptance.length === 0 || acceptance.length > assignmentMaxAcceptance) {
+            errors.acceptance = t('workbench.assign.dialog.acceptanceRange')
+          } else if (acceptance.some((entry) => entry.length > assignmentMaxAcceptanceText)) {
+            errors.acceptance = t('workbench.assign.dialog.tooLong')
+          }
+          const artifacts = draft.artifacts
+            .split(/\r?\n/u)
+            .map((entry) => entry.trim())
+            .filter((entry) => entry.length > 0)
+          if (artifacts.length > 10) errors.artifacts = t('workbench.assign.dialog.tooLong')
+          return errors
+        }
+
+        /** Split the textarea draft into artifact paths. */
+        function assignmentArtifactList(draft) {
+          return draft.artifacts
+            .split(/\r?\n/u)
+            .map((entry) => entry.trim())
+            .filter((entry) => entry.length > 0)
+            .slice(0, 10)
+        }
+
+        /** Open the drawer, optionally prefilled from a record ("reassign"). */
+        function openAssignmentDrawer(prefill) {
+          setAssignmentFormErrors({})
+          setAssignmentDraft(
+            prefill !== null && typeof prefill === 'object'
+              ? {
+                  ...emptyAssignmentDraft(),
+                  ...prefill,
+                  acceptance: Array.isArray(prefill.acceptance) && prefill.acceptance.length > 0 ? [...prefill.acceptance] : ['交付产物落盘 + 自测通过'],
+                }
+              : emptyAssignmentDraft(),
+          )
+          setAssignmentDrawerOpen(true)
+        }
+
+        /** Close the drawer (keeps the unsent record when sending failed). */
+        function closeAssignmentDrawer() {
+          setAssignmentDrawerOpen(false)
+          setAssignmentFormErrors({})
+          setAssignmentSubmitting(false)
+        }
+
+        /** Copy plain text to the clipboard with a toast; returns success. */
+        async function copyAssignmentText(text, successKey) {
+          try {
+            if (typeof navigator.clipboard?.writeText === 'function') {
+              await navigator.clipboard.writeText(text)
+              showToast(t(successKey))
+              return true
+            }
+          } catch {
+            /* fall through to the failure toast */
+          }
+          showToast(t('toast.copyFailed'))
+          return false
+        }
+
+        /** Copy the structured order of one record ("view conversation" MVP). */
+        async function copyAssignmentOrder(item) {
+          await copyAssignmentText(assignmentOrderText(item), 'workbench.assign.action.copyToast')
+        }
+
+        /** Copy the team-panel entry guidance (no deep link in MVP). */
+        async function copyAssignmentTeamPanel() {
+          const text =
+            t('workbench.assign.teamPanelHint') + '\n' + t('workbench.assign.footerHint')
+          await copyAssignmentText(text, 'workbench.assign.teamPanelCopied')
+        }
+
+        /** Save the drawer record, then send the structured order to the chat. */
+        async function submitAssignment() {
+          if (assignmentSubmitting || assignmentIdempotencyRef.current) return
+          const targetRoot = store.get().root
+          if (targetRoot === null) return
+          const draft = assignmentDraft
+          const errors = assignmentFormValidate(draft)
+          if (Object.keys(errors).length > 0) {
+            setAssignmentFormErrors(errors)
+            return
+          }
+          const target = assignmentTargetFromDraft(draft)
+          const stageId = draft.stageId === 'auto' ? assignmentAutoStageId() : draft.stageId
+          setAssignmentSubmitting(true)
+          assignmentIdempotencyRef.current = true
+          setAssignmentFormErrors({})
+          try {
+            const item = await call('assignmentSave', {
+              root: targetRoot,
+              title: draft.title.trim(),
+              detail: draft.detail.trim(),
+              acceptance: draft.acceptance.map((entry) => entry.trim()).filter((entry) => entry.length > 0),
+              assignedTo: target,
+              stageId,
+              priority: draft.priority,
+              expectedArtifacts: assignmentArtifactList(draft),
+            })
+            await loadAssignments({ silent: true })
+            const order = assignmentOrderText(item)
+            const sent = await sendPromptText(order)
+            if (sent) {
+              setAssignmentRetry(null)
+              closeAssignmentDrawer()
+              showToast(t('workbench.assign.dialog.success'))
+            } else {
+              // Saved but the chat send failed: keep the record and offer a retry.
+              setAssignmentRetry({ id: item.id, order })
+              showToast(t('workbench.assign.dialog.sendFailed'))
+            }
+          } catch (error) {
+            setAssignmentFormErrors({
+              submit: t('workbench.assign.dialog.saveFailed', { message: assignmentErrorText(error, targetRoot) }),
+            })
+          } finally {
+            setAssignmentSubmitting(false)
+            assignmentIdempotencyRef.current = false
+          }
+        }
+
+        /** Retry sending the saved-but-unsent structured order. */
+        async function retryAssignmentSend() {
+          if (assignmentRetry === null) return
+          const sent = await sendPromptText(assignmentRetry.order)
+          if (!sent) return
+          setAssignmentRetry(null)
+          if (assignmentDrawerOpen) closeAssignmentDrawer()
+          showToast(t('workbench.assign.dialog.success'))
+        }
+
+        /** One status update from the status list. */
+        async function updateAssignmentStatus(id, status, note) {
+          const targetRoot = store.get().root
+          if (targetRoot === null) return false
+          try {
+            const params = { root: targetRoot, id, status }
+            if (note !== undefined) params.note = note
+            await call('assignmentUpdate', params)
+            await loadAssignments({ silent: true })
+            return true
+          } catch (error) {
+            showToast(assignmentErrorText(error, targetRoot))
+            return false
+          }
+        }
+
+        /** Approve and finish (review → done). */
+        async function approveAssignment(item) {
+          const ok = await updateAssignmentStatus(item.id, 'done')
+          if (ok) showToast(t('workbench.assign.status.done'))
+        }
+
+        /** Cancel with a confirmation modal. */
+        function cancelAssignment(item) {
+          setModal({
+            title: t('workbench.assign.action.cancel'),
+            message: t('workbench.assign.action.cancelConfirm'),
+            confirmLabel: t('workbench.assign.action.confirmCancel'),
+            onConfirm: () => {
+              setModal(null)
+              void updateAssignmentStatus(item.id, 'cancelled')
+            },
+          })
+        }
+
+        /** Delete one terminal record with a confirmation modal. */
+        function deleteAssignmentRecord(item) {
+          setModal({
+            title: t('workbench.assign.action.delete'),
+            message: t('workbench.assign.action.deleteConfirm'),
+            confirmLabel: t('workbench.assign.action.delete'),
+            danger: true,
+            onConfirm: () => {
+              setModal(null)
+              void (async () => {
+                const targetRoot = store.get().root
+                if (targetRoot === null) return
+                try {
+                  await call('assignmentDelete', { root: targetRoot, id: item.id })
+                  await loadAssignments({ silent: true })
+                } catch (error) {
+                  showToast(assignmentErrorText(error, targetRoot))
+                }
+              })()
+            },
+          })
+        }
+
+        /** Open the reject dialog (a reason is mandatory). */
+        function openAssignmentReject(item) {
+          setAssignmentRejectTarget(item)
+          setAssignmentRejectNote('')
+          setAssignmentRejectError(null)
+        }
+
+        /** Close the reject dialog without changing the record. */
+        function closeAssignmentReject() {
+          setAssignmentRejectTarget(null)
+          setAssignmentRejectNote('')
+          setAssignmentRejectError(null)
+          setAssignmentRejectBusy(false)
+        }
+
+        /** Reject (→ failed) with the mandatory reason. */
+        async function submitAssignmentReject() {
+          const target = assignmentRejectTarget
+          if (target === null) return
+          const note = assignmentRejectNote.trim()
+          if (note.length === 0) {
+            setAssignmentRejectError(t('workbench.assign.dialog.required'))
+            return
+          }
+          setAssignmentRejectBusy(true)
+          setAssignmentRejectError(null)
+          try {
+            const ok = await updateAssignmentStatus(target.id, 'failed', note)
+            if (ok) {
+              closeAssignmentReject()
+              showToast(t('workbench.assign.status.failed'))
+            }
+          } finally {
+            setAssignmentRejectBusy(false)
+          }
+        }
+
+        /** Nudge the Lead: append a history entry, then resend the order. */
+        async function remindAssignment(item) {
+          const targetRoot = store.get().root
+          if (targetRoot === null) return
+          try {
+            await call('assignmentUpdate', { root: targetRoot, id: item.id, status: item.status, note: '催办' })
+            await loadAssignments({ silent: true })
+          } catch (error) {
+            showToast(assignmentErrorText(error, targetRoot))
+            return
+          }
+          await sendPromptText('【催办】\n' + assignmentOrderText(item))
+          showToast(t('workbench.assign.action.remindToast'))
+        }
+
+        /** Prefill the drawer from one record ("reassign" = new record). */
+        function reassignAssignment(item) {
+          const target = item.assignedTo !== null && typeof item.assignedTo === 'object' ? item.assignedTo : {}
+          let targetMode = 'role'
+          let role = 'qa-engineer'
+          let member = ''
+          let newAgentName = ''
+          let newAgentRole = 'fullstack-developer'
+          if (typeof target.role === 'string' && target.role.length > 0) {
+            targetMode = 'role'
+            role = target.role
+          } else if (typeof target.member === 'string' && target.member.length > 0) {
+            targetMode = 'member'
+            member = target.member
+          } else if (target.newAgent !== null && typeof target.newAgent === 'object') {
+            targetMode = 'newAgent'
+            newAgentName = String(target.newAgent.name ?? '')
+            newAgentRole = typeof target.newAgent.role === 'string' ? target.newAgent.role : newAgentRole
+          }
+          openAssignmentDrawer({
+            targetMode,
+            role,
+            member,
+            newAgentName,
+            newAgentRole,
+            title: String(item.title ?? ''),
+            detail: String(item.detail ?? ''),
+            acceptance: Array.isArray(item.acceptance) && item.acceptance.length > 0 ? [...item.acceptance] : ['交付产物落盘 + 自测通过'],
+            priority: ['P0', 'P1', 'P2'].includes(item.priority) ? item.priority : 'P1',
+            stageId: item.stageId === 'auto' || assignmentStageIds.includes(item.stageId) ? item.stageId : '',
+            artifacts: Array.isArray(item.expectedArtifacts) ? item.expectedArtifacts.join('\n') : '',
+          })
+        }
+
+        // Drawer focus/Scroll/Esc management: focus the title field on open, trap
+        // Tab inside the dialog, close on Escape and restore focus + scrolling.
+        useEffect(() => {
+          if (!assignmentDrawerOpen) return undefined
+          const previousOverflow = document.body.style.overflow
+          document.body.style.overflow = 'hidden'
+          const titleInput = assignmentTitleRef.current
+          if (titleInput !== null && typeof titleInput.focus === 'function') titleInput.focus()
+          const onKeyDown = (event) => {
+            if (event.key === 'Escape') {
+              event.preventDefault()
+              closeAssignmentDrawer()
+              return
+            }
+            if (event.key !== 'Tab') return
+            const panel = assignmentDialogRef.current
+            if (panel === null) return
+            const focusable = panel.querySelectorAll('button, input, textarea, select, a[href], [tabindex]:not([tabindex="-1"])')
+            const list = Array.from(focusable).filter((node) => node.disabled !== true && node.offsetParent !== null)
+            if (list.length === 0) return
+            const first = list[0]
+            const last = list[list.length - 1]
+            if (event.shiftKey && document.activeElement === first) {
+              event.preventDefault()
+              last.focus()
+            } else if (!event.shiftKey && document.activeElement === last) {
+              event.preventDefault()
+              first.focus()
+            }
+          }
+          document.addEventListener('keydown', onKeyDown)
+          return () => {
+            document.removeEventListener('keydown', onKeyDown)
+            document.body.style.overflow = previousOverflow
+            const active = document.activeElement
+            if (active === null || active === document.body) {
+              const trigger = assignmentTriggerRef.current
+              if (trigger !== null && typeof trigger.focus === 'function') trigger.focus()
+            }
+          }
+        }, [assignmentDrawerOpen])
+
+        // Reject dialog: Escape closes it (focus lands in the reason textarea via
+        // autoFocus); the confirm button stays disabled until a reason is typed.
+        useEffect(() => {
+          if (assignmentRejectTarget === null) return undefined
+          const onKeyDown = (event) => {
+            if (event.key !== 'Escape') return
+            event.preventDefault()
+            closeAssignmentReject()
+          }
+          document.addEventListener('keydown', onKeyDown)
+          return () => document.removeEventListener('keydown', onKeyDown)
+        }, [assignmentRejectTarget])
 
         /** Record one problem surfaced by any panel so the Workbench can show it. */
         function reportIssue(source, message) {
@@ -17358,6 +18218,723 @@ ${tail}
                         ),
                       ),
                 )
+          const assignmentSsh = workspaceRoot === null ? false : isSshRootPath(workspaceRoot)
+          const assignmentWorking = assignmentRoleMeta.filter((meta) => assignmentMemberStatus(meta) === 'running').length
+          const assignmentReviewing = assignmentRoleMeta.filter((meta) => assignmentMemberStatus(meta) === 'review').length
+          const assignmentFull = assignmentItems.length >= 100
+          const assignmentSorted = [...assignmentItems].sort(
+            (left, right) => (Number(right.updatedAt) || 0) - (Number(left.updatedAt) || 0),
+          )
+          const assignmentFiltered = assignmentSorted.filter((item) => {
+            if (assignmentFilter === 'running') return item.status === 'dispatched' || item.status === 'running'
+            if (assignmentFilter === 'review') return item.status === 'review'
+            if (assignmentFilter === 'done') return item.status === 'done'
+            return true
+          })
+          const assignmentRecentShown = assignmentExpanded ? assignmentFiltered.length : Math.min(5, assignmentFiltered.length)
+          const assignmentRecent = assignmentFiltered.slice(0, assignmentRecentShown)
+          const assignmentProgressSegments = ['dispatched', 'waitingLead', 'running', 'review', 'done']
+          const assignmentProgressOf = (item) => {
+            if (item.status === 'cancelled') return 0
+            return assignmentProgressIndex(item)
+          }
+          const assignmentRow = (item) =>
+            h(
+              'div',
+              { key: item.id, className: 'ds-wb-assign-row', 'data-status': item.status },
+              h(
+                'div',
+                { className: 'ds-wb-assign-row-head' },
+                h('span', { className: 'ds-wb-assign-pill', 'data-status': item.status }, assignmentStatusLabel(item.status)),
+                h('span', { className: 'ds-wb-assign-row-title', title: String(item.title ?? '') }, String(item.title ?? '')),
+                h('span', { className: 'ds-wb-assign-row-meta' }, assignmentTargetText(item)),
+                h('span', { className: 'ds-wb-assign-row-type' }, assignmentStageText(item.stageId)),
+                h('span', { className: 'ds-wb-assign-row-time' }, assignmentTimeText(item.updatedAt)),
+              ),
+              h(
+                'div',
+                { className: 'ds-wb-assign-progress', 'data-status': item.status, 'aria-hidden': 'true' },
+                assignmentProgressSegments.map((segment, index) =>
+                  h('span', {
+                    key: segment,
+                    className: 'ds-wb-assign-progress-seg',
+                    'data-done': index < assignmentProgressOf(item) ? 'true' : undefined,
+                    'data-current': index === assignmentProgressOf(item) - 1 ? 'true' : undefined,
+                    'data-failed': item.status === 'failed' && index === 3 ? 'true' : undefined,
+                    title: t('workbench.assign.progress.' + segment),
+                  }),
+                ),
+              ),
+              typeof item.note === 'string' && item.note.length > 0 && (item.status === 'failed' || item.status === 'review')
+                ? h('div', { className: 'ds-wb-assign-row-note' }, item.note)
+                : null,
+              (item.status === 'dispatched' || item.status === 'running') &&
+              Number.isFinite(item.updatedAt) &&
+              Date.now() - item.updatedAt > 30 * 60 * 1000
+                ? h('div', { className: 'ds-wb-assign-row-hint' }, t('workbench.assign.waitingLong'))
+                : null,
+              h(
+                'div',
+                { className: 'ds-wb-assign-actions' },
+                h(
+                  'button',
+                  { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: () => void copyAssignmentOrder(item) },
+                  t('workbench.assign.action.copy'),
+                ),
+                item.status === 'dispatched' || item.status === 'running'
+                  ? h(
+                      'button',
+                      { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: () => void remindAssignment(item) },
+                      t('workbench.assign.action.remind'),
+                    )
+                  : null,
+                item.status === 'review'
+                  ? h(
+                      'button',
+                      { type: 'button', className: 'ds-btn ds-wb-btn', disabled: assignmentBusy, onClick: () => void approveAssignment(item) },
+                      t('workbench.assign.action.approve'),
+                    )
+                  : null,
+                item.status === 'dispatched' || item.status === 'running' || item.status === 'review'
+                  ? h(
+                      'button',
+                      { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: () => openAssignmentReject(item) },
+                      t('workbench.assign.action.reject'),
+                    )
+                  : null,
+                item.status === 'dispatched' || item.status === 'running' || item.status === 'review'
+                  ? h(
+                      'button',
+                      { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: () => cancelAssignment(item) },
+                      t('workbench.assign.action.cancel'),
+                    )
+                  : null,
+                item.status === 'failed' || item.status === 'done' || item.status === 'cancelled'
+                  ? h(
+                      'button',
+                      { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: () => reassignAssignment(item) },
+                      t('workbench.assign.action.reassign'),
+                    )
+                  : null,
+                item.status === 'done' || item.status === 'failed' || item.status === 'cancelled'
+                  ? h(
+                      'button',
+                      { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: () => deleteAssignmentRecord(item) },
+                      t('workbench.assign.action.delete'),
+                    )
+                  : null,
+              ),
+            )
+          const assignmentFilterButtons = [
+            ['all', 'workbench.assign.filter.all'],
+            ['running', 'workbench.assign.filter.running'],
+            ['review', 'workbench.assign.filter.review'],
+            ['done', 'workbench.assign.filter.done'],
+          ]
+          const assignmentCard = h(
+            'div',
+            { className: 'ds-wb-card ds-wb-assign' },
+            h(
+              'div',
+              { className: 'ds-wb-card-head' },
+              h('div', { className: 'ds-wb-card-title ds-wb-card-title-inline' }, t('workbench.assign.title')),
+              h(
+                'span',
+                { className: 'ds-wb-assign-subtitle' },
+                t('workbench.assign.subtitle', { working: String(assignmentWorking), review: String(assignmentReviewing) }),
+              ),
+              h('span', { className: 'ds-spacer' }),
+              h(
+                'button',
+                {
+                  ref: assignmentTriggerRef,
+                  type: 'button',
+                  className: 'ds-btn ds-wb-btn ds-wb-assign-open',
+                  disabled: assignmentSsh,
+                  title: assignmentSsh ? t('workbench.assign.sshUnsupported') : t('workbench.assign.assignButton'),
+                  onClick: () => openAssignmentDrawer(null),
+                },
+                t('workbench.assign.assignButton'),
+              ),
+              h(
+                'button',
+                { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: () => void copyAssignmentTeamPanel() },
+                t('workbench.assign.teamPanel'),
+              ),
+            ),
+            h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.assign.derivedHint')),
+            assignmentSsh ? h('div', { className: 'ds-wb-assign-error' }, t('workbench.assign.sshUnsupported')) : null,
+            assignmentError !== null
+              ? h(
+                  'div',
+                  { className: 'ds-wb-assign-error' },
+                  t('workbench.assign.loadFailed', { message: assignmentError }),
+                  h(
+                    'button',
+                    { type: 'button', className: 'ds-linkbtn ds-wb-link', onClick: () => void loadAssignments() },
+                    t('workbench.assign.retry'),
+                  ),
+                )
+              : null,
+            assignmentBusy ? h('div', { className: 'ds-hint ds-wb-hint' }, t('acceptance.saving')) : null,
+            assignmentFull ? h('div', { className: 'ds-wb-assign-error' }, t('workbench.assign.fullHint')) : null,
+            h(
+              'div',
+              { className: 'ds-wb-assign-members' },
+              assignmentRoleMeta.map((meta) => {
+                const status = assignmentMemberStatus(meta)
+                return h(
+                  'button',
+                  {
+                    key: meta.role,
+                    type: 'button',
+                    className: 'ds-wb-assign-member',
+                    'data-status': status,
+                    disabled: assignmentSsh,
+                    title: assignmentRoleLabel(meta.role) + ' · ' + meta.member,
+                    onClick: () =>
+                      openAssignmentDrawer({
+                        targetMode: 'role',
+                        role: meta.role,
+                        title: '',
+                        detail: '',
+                        acceptance: ['交付产物落盘 + 自测通过'],
+                        priority: 'P1',
+                        stageId: 'auto',
+                        artifacts: '',
+                      }),
+                  },
+                  h('span', { className: 'ds-wb-assign-member-avatar', 'aria-hidden': 'true' }, assignmentRoleLabel(meta.role).slice(0, 1)),
+                  h(
+                    'span',
+                    { className: 'ds-wb-assign-member-main' },
+                    h('span', { className: 'ds-wb-assign-member-name' }, assignmentRoleLabel(meta.role)),
+                    h('span', { className: 'ds-wb-assign-member-id' }, meta.member),
+                  ),
+                  h('span', { className: 'ds-wb-assign-pill', 'data-status': status === 'idle' ? 'idle' : status }, assignmentMemberLabel(status)),
+                )
+              }),
+            ),
+            assignmentItems.length === 0
+              ? h(
+                  'div',
+                  { className: 'ds-wb-assign-empty' },
+                  h('div', { className: 'ds-wb-assign-empty-title' }, t('workbench.assign.emptyTitle')),
+                  h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.assign.emptyHint')),
+                  h(
+                    'button',
+                    { type: 'button', className: 'ds-btn ds-wb-btn', disabled: assignmentSsh, onClick: () => openAssignmentDrawer(null) },
+                    t('workbench.assign.assignButton'),
+                  ),
+                )
+              : h(
+                  'div',
+                  { className: 'ds-wb-assign-list' },
+                  h(
+                    'div',
+                    { className: 'ds-wb-assign-list-head' },
+                    h('span', null, t('workbench.assign.recent')),
+                    h(
+                      'span',
+                      { className: 'ds-wb-assign-list-count' },
+                      t('workbench.assign.recentCount', { count: String(assignmentItems.length), shown: String(Math.min(5, assignmentItems.length)) }),
+                    ),
+                    assignmentFilterButtons.map(([value, key]) =>
+                      h(
+                        'button',
+                        {
+                          key: value,
+                          type: 'button',
+                          className: 'ds-wb-assign-filter',
+                          'data-active': assignmentFilter === value ? 'true' : undefined,
+                          onClick: () => setAssignmentFilter(value),
+                        },
+                        t(key),
+                      ),
+                    ),
+                    h('span', { className: 'ds-spacer' }),
+                    assignmentFiltered.length > 5
+                      ? h(
+                          'button',
+                          {
+                            type: 'button',
+                            className: 'ds-linkbtn ds-wb-link',
+                            onClick: () => setAssignmentExpanded((current) => !current),
+                          },
+                          assignmentExpanded ? t('workbench.assign.collapse') : t('workbench.assign.expand'),
+                        )
+                      : null,
+                  ),
+                  assignmentRecent.length === 0
+                    ? h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.assign.emptyFiltered'))
+                    : assignmentRecent.map((item) => assignmentRow(item)),
+                  h('div', { className: 'ds-wb-assign-summary' }, t('workbench.assign.summary', {
+                    running: String(assignmentCounts.running + assignmentCounts.dispatched),
+                    review: String(assignmentCounts.review),
+                    done: String(assignmentCounts.done),
+                    total: String(assignmentItems.length),
+                    failed: String(assignmentCounts.failed),
+                  })),
+                ),
+            assignmentRetry !== null
+              ? h(
+                  'div',
+                  { className: 'ds-wb-assign-notice' },
+                  t('workbench.assign.dialog.sendFailed'),
+                  h(
+                    'button',
+                    { type: 'button', className: 'ds-btn ds-wb-btn', onClick: () => void retryAssignmentSend() },
+                    t('workbench.assign.dialog.retrySend'),
+                  ),
+                )
+              : null,
+            h(
+              'div',
+              { className: 'ds-wb-assign-footer' },
+              h('span', { className: 'ds-hint ds-wb-hint' }, t('workbench.assign.footerHint')),
+              h('span', { className: 'ds-wb-assign-footer-path' }, t('workbench.assign.recordPath', { path: assignmentPath || ASSIGNMENT_FILE_HINT })),
+            ),
+          )
+          const assignmentDraftSelectedMeta = assignmentRoleMeta.find((meta) => meta.role === assignmentDraft.role)
+          const assignmentAutoResolved = assignmentAutoStageId()
+          const assignmentFieldError = (key) =>
+            assignmentFormErrors[key]
+              ? h('div', { className: 'ds-wb-assign-error', id: 'ds-wb-assign-error-' + key }, assignmentFormErrors[key])
+              : null
+          const assignmentTargetTabs = [
+            ['role', 'workbench.assign.dialog.tab.role'],
+            ['member', 'workbench.assign.dialog.tab.member'],
+            ['newAgent', 'workbench.assign.dialog.tab.newAgent'],
+          ]
+          const assignmentStageOptions = [
+            ['auto', 'workbench.assign.dialog.stageAuto'],
+            ...assignmentStageIds.map((stageId) => [stageId, 'workbench.assign.dialog.stage.' + stageId]),
+            ['', 'workbench.assign.dialog.stageNone'],
+          ]
+          const assignmentPriorityOptions = ['P0', 'P1', 'P2']
+          const assignmentRoleChips = (selectedRole, onPick) =>
+            assignmentRoleMeta.map((meta) =>
+              h(
+                'button',
+                {
+                  key: meta.role,
+                  type: 'button',
+                  className: 'ds-wb-assign-chip',
+                  'data-active': selectedRole === meta.role ? 'true' : undefined,
+                  onClick: () => onPick(meta.role),
+                },
+                assignmentRoleLabel(meta.role),
+              ),
+            )
+          const assignmentSelectedText =
+            assignmentDraft.targetMode === 'role'
+              ? t('workbench.assign.dialog.selected', {
+                  name: assignmentRoleLabel(assignmentDraft.role),
+                  member: assignmentDraftSelectedMeta?.member ?? '',
+                  status: assignmentMemberLabel(assignmentMemberStatus(assignmentDraftSelectedMeta ?? assignmentRoleMeta[0])),
+                })
+              : assignmentDraft.targetMode === 'member'
+                ? assignmentDraft.member.trim().length > 0
+                  ? t('workbench.assign.dialog.selected', {
+                      name: assignmentDraft.member.trim(),
+                      member: assignmentDraft.member.trim(),
+                      status: assignmentMemberLabel('idle'),
+                    })
+                  : ''
+                : assignmentDraft.newAgentName.trim().length > 0
+                  ? t('workbench.assign.dialog.selected', {
+                      name: assignmentDraft.newAgentName.trim(),
+                      member: assignmentDraft.newAgentName.trim(),
+                      status: assignmentMemberLabel('idle'),
+                    })
+                  : ''
+          const assignmentDrawer = assignmentDrawerOpen
+            ? h(
+                React.Fragment,
+                null,
+                h('div', {
+                  className: 'ds-wb-assign-backdrop',
+                  onPointerDown: (event) => {
+                    if (event.target === event.currentTarget) closeAssignmentDrawer()
+                  },
+                }),
+                h(
+                  'div',
+                  {
+                    className: 'ds-wb-assign-drawer',
+                    ref: assignmentDialogRef,
+                    role: 'dialog',
+                    'aria-modal': 'true',
+                    'aria-labelledby': 'ds-wb-assign-dialog-title',
+                    'aria-describedby': 'ds-wb-assign-dialog-desc',
+                  },
+                  h(
+                    'div',
+                    { className: 'ds-wb-assign-drawer-head' },
+                    h('div', { className: 'ds-wb-assign-dialog-title', id: 'ds-wb-assign-dialog-title' }, t('workbench.assign.dialog.title')),
+                    h('span', { className: 'ds-wb-assign-mvp' }, t('workbench.assign.dialog.mvpTag')),
+                    h('span', { className: 'ds-spacer' }),
+                    h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'ds-iconbtn',
+                        title: t('workbench.assign.dialog.close'),
+                        'aria-label': t('workbench.assign.dialog.close'),
+                        onClick: closeAssignmentDrawer,
+                      },
+                      h(CloseIcon),
+                    ),
+                  ),
+                  h('div', { className: 'ds-wb-assign-drawer-sub', id: 'ds-wb-assign-dialog-desc' }, t('workbench.assign.dialog.subtitle')),
+                  h(
+                    'div',
+                    { className: 'ds-wb-assign-drawer-body' },
+                    h(
+                      'div',
+                      { className: 'ds-wb-assign-field' },
+                      h('label', { className: 'ds-wb-assign-label' }, t('workbench.assign.dialog.assignee')),
+                      h(
+                        'div',
+                        { className: 'ds-wb-assign-tabs', role: 'tablist' },
+                        assignmentTargetTabs.map(([value, key]) =>
+                          h(
+                            'button',
+                            {
+                              key: value,
+                              type: 'button',
+                              role: 'tab',
+                              className: 'ds-wb-assign-tab',
+                              'data-active': assignmentDraft.targetMode === value ? 'true' : undefined,
+                              'aria-selected': assignmentDraft.targetMode === value ? 'true' : 'false',
+                              onClick: () => patchAssignmentDraft({ targetMode: value }),
+                            },
+                            t(key),
+                          ),
+                        ),
+                      ),
+                      assignmentDraft.targetMode === 'role'
+                        ? h('div', { className: 'ds-wb-assign-chips' }, assignmentRoleChips(assignmentDraft.role, (role) => patchAssignmentDraft({ role })))
+                        : assignmentDraft.targetMode === 'member'
+                          ? h('input', {
+                              className: 'ds-pipe-input ds-wb-assign-input',
+                              value: assignmentDraft.member,
+                              placeholder: t('workbench.assign.dialog.memberPlaceholder'),
+                              spellCheck: false,
+                              onChange: (event) => patchAssignmentDraft({ member: event.target.value }),
+                            })
+                          : h(
+                              React.Fragment,
+                              null,
+                              h('input', {
+                                className: 'ds-pipe-input ds-wb-assign-input',
+                                value: assignmentDraft.newAgentName,
+                                placeholder: t('workbench.assign.dialog.newAgentName'),
+                                spellCheck: false,
+                                onChange: (event) => patchAssignmentDraft({ newAgentName: event.target.value }),
+                              }),
+                              h('div', { className: 'ds-wb-assign-sublabel' }, t('workbench.assign.dialog.newAgentRole')),
+                              h(
+                                'div',
+                                { className: 'ds-wb-assign-chips' },
+                                assignmentRoleChips(assignmentDraft.newAgentRole, (newAgentRole) => patchAssignmentDraft({ newAgentRole })),
+                              ),
+                              h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.assign.dialog.newAgentHint')),
+                            ),
+                      assignmentSelectedText.length === 0 ? null : h('div', { className: 'ds-wb-assign-selected' }, assignmentSelectedText),
+                      assignmentFieldError('target'),
+                    ),
+                    h(
+                      'div',
+                      { className: 'ds-wb-assign-field' },
+                      h(
+                        'label',
+                        { className: 'ds-wb-assign-label', htmlFor: 'ds-wb-assign-title' },
+                        t('workbench.assign.dialog.titleLabel'),
+                      ),
+                      h('input', {
+                        id: 'ds-wb-assign-title',
+                        ref: assignmentTitleRef,
+                        className: 'ds-pipe-input ds-wb-assign-input',
+                        value: assignmentDraft.title,
+                        placeholder: t('workbench.assign.dialog.titlePlaceholder'),
+                        spellCheck: false,
+                        maxLength: assignmentMaxTitle,
+                        'aria-invalid': assignmentFormErrors.title === undefined ? undefined : 'true',
+                        'aria-describedby': assignmentFormErrors.title === undefined ? undefined : 'ds-wb-assign-error-title',
+                        onChange: (event) => patchAssignmentDraft({ title: event.target.value }),
+                      }),
+                      h('div', { className: 'ds-wb-assign-counter' }, String(assignmentDraft.title.length) + '/' + String(assignmentMaxTitle)),
+                      assignmentFieldError('title'),
+                    ),
+                    h(
+                      'div',
+                      { className: 'ds-wb-assign-field' },
+                      h(
+                        'label',
+                        { className: 'ds-wb-assign-label', htmlFor: 'ds-wb-assign-detail' },
+                        t('workbench.assign.dialog.detailLabel'),
+                      ),
+                      h('textarea', {
+                        id: 'ds-wb-assign-detail',
+                        className: 'ds-pipe-textarea ds-wb-assign-textarea',
+                        rows: 4,
+                        value: assignmentDraft.detail,
+                        placeholder: t('workbench.assign.dialog.detailPlaceholder'),
+                        'aria-invalid': assignmentFormErrors.detail === undefined ? undefined : 'true',
+                        'aria-describedby': assignmentFormErrors.detail === undefined ? undefined : 'ds-wb-assign-error-detail',
+                        onChange: (event) => patchAssignmentDraft({ detail: event.target.value }),
+                      }),
+                      h('div', { className: 'ds-wb-assign-counter' }, String(assignmentDraft.detail.length) + '/' + String(assignmentMaxDetail)),
+                      assignmentFieldError('detail'),
+                    ),
+                    h(
+                      'div',
+                      { className: 'ds-wb-assign-field' },
+                      h(
+                        'div',
+                        { className: 'ds-wb-assign-label-row' },
+                        h('span', { className: 'ds-wb-assign-label' }, t('workbench.assign.dialog.acceptanceLabel')),
+                        h(
+                          'span',
+                          { className: 'ds-wb-assign-counter' },
+                          t('workbench.assign.dialog.acceptanceCount', { n: String(assignmentDraft.acceptance.length) }),
+                        ),
+                      ),
+                      assignmentDraft.acceptance.map((entry, index) =>
+                        h(
+                          'div',
+                          { key: 'acceptance-' + String(index), className: 'ds-wb-assign-acc-row' },
+                          h('input', {
+                            className: 'ds-pipe-input ds-wb-assign-acc-input',
+                            value: entry,
+                            placeholder: t('workbench.assign.dialog.acceptancePlaceholder'),
+                            spellCheck: false,
+                            maxLength: assignmentMaxAcceptanceText,
+                            onChange: (event) => {
+                              const next = [...assignmentDraft.acceptance]
+                              next[index] = event.target.value
+                              patchAssignmentDraft({ acceptance: next })
+                            },
+                          }),
+                          assignmentDraft.acceptance.length > 1
+                            ? h(
+                                'button',
+                                {
+                                  type: 'button',
+                                  className: 'ds-linkbtn ds-wb-link',
+                                  title: t('workbench.assign.dialog.cancel'),
+                                  onClick: () =>
+                                    patchAssignmentDraft({ acceptance: assignmentDraft.acceptance.filter((_, position) => position !== index) }),
+                                },
+                                '−',
+                              )
+                            : null,
+                        ),
+                      ),
+                      assignmentDraft.acceptance.length < assignmentMaxAcceptance
+                        ? h(
+                            'button',
+                            {
+                              type: 'button',
+                              className: 'ds-linkbtn ds-wb-link ds-wb-assign-add-acc',
+                              onClick: () => patchAssignmentDraft({ acceptance: [...assignmentDraft.acceptance, ''] }),
+                            },
+                            '+ ' + t('workbench.assign.dialog.acceptanceLabel'),
+                          )
+                        : null,
+                      assignmentFieldError('acceptance'),
+                    ),
+                    h(
+                      'div',
+                      { className: 'ds-wb-assign-field' },
+                      h('span', { className: 'ds-wb-assign-label' }, t('workbench.assign.dialog.priority')),
+                      h(
+                        'div',
+                        { className: 'ds-wb-assign-segmented' },
+                        assignmentPriorityOptions.map((priority) =>
+                          h(
+                            'button',
+                            {
+                              key: priority,
+                              type: 'button',
+                              className: 'ds-wb-assign-seg',
+                              'data-active': assignmentDraft.priority === priority ? 'true' : undefined,
+                              onClick: () => patchAssignmentDraft({ priority }),
+                            },
+                            priority,
+                          ),
+                        ),
+                      ),
+                    ),
+                    h(
+                      'div',
+                      { className: 'ds-wb-assign-field' },
+                      h('span', { className: 'ds-wb-assign-label' }, t('workbench.assign.dialog.stage')),
+                      h(
+                        'div',
+                        { className: 'ds-wb-assign-chips' },
+                        assignmentStageOptions.map(([value, key]) =>
+                          h(
+                            'button',
+                            {
+                              key: value === '' ? 'none' : value,
+                              type: 'button',
+                              className: 'ds-wb-assign-chip',
+                              'data-active': assignmentDraft.stageId === value ? 'true' : undefined,
+                              onClick: () => patchAssignmentDraft({ stageId: value }),
+                            },
+                            t(key),
+                          ),
+                        ),
+                      ),
+                      h(
+                        'div',
+                        { className: 'ds-wb-assign-chips ds-wb-assign-chips-locked' },
+                        assignmentLockedStageIds.map((stageId) =>
+                          h(
+                            'button',
+                            {
+                              key: stageId,
+                              type: 'button',
+                              className: 'ds-wb-assign-chip',
+                              disabled: true,
+                              'aria-disabled': 'true',
+                              title: t('workbench.assign.dialog.stageLocked'),
+                            },
+                            '🔒 ' + t('workbench.assign.dialog.stage.' + stageId),
+                          ),
+                        ),
+                      ),
+                      h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.assign.dialog.stageLocked')),
+                      h(
+                        'div',
+                        { className: 'ds-hint ds-wb-hint' },
+                        assignmentDraft.stageId === 'auto'
+                          ? t('workbench.assign.dialog.stageAutoHint') +
+                              (assignmentAutoResolved.length === 0 ? '' : '（' + assignmentStageText(assignmentAutoResolved) + '）')
+                          : t('workbench.assign.dialog.stageGateHint'),
+                      ),
+                      assignmentFieldError('stage'),
+                    ),
+                    h(
+                      'div',
+                      { className: 'ds-wb-assign-field' },
+                      h('label', { className: 'ds-wb-assign-label', htmlFor: 'ds-wb-assign-artifacts' }, t('workbench.assign.dialog.artifactLabel')),
+                      h('textarea', {
+                        id: 'ds-wb-assign-artifacts',
+                        className: 'ds-pipe-textarea ds-wb-assign-textarea ds-wb-assign-artifacts',
+                        rows: 2,
+                        value: assignmentDraft.artifacts,
+                        placeholder: t('workbench.assign.dialog.artifactPlaceholder'),
+                        onChange: (event) => patchAssignmentDraft({ artifacts: event.target.value }),
+                      }),
+                      assignmentFieldError('artifacts'),
+                    ),
+                    h(
+                      'div',
+                      { className: 'ds-wb-assign-field ds-wb-assign-attachment' },
+                      h('span', { className: 'ds-wb-assign-label' }, t('workbench.assign.dialog.attachmentLabel')),
+                      h('div', { className: 'ds-wb-assign-drop' }, t('workbench.assign.dialog.attachmentDrop')),
+                      h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.assign.dialog.attachmentHint')),
+                    ),
+                    assignmentFormErrors.submit === undefined
+                      ? null
+                      : h('div', { className: 'ds-wb-assign-error' }, assignmentFormErrors.submit),
+                  ),
+                  h(
+                    'div',
+                    { className: 'ds-wb-assign-drawer-foot' },
+                    assignmentRetry === null
+                      ? null
+                      : h(
+                          'div',
+                          { className: 'ds-wb-assign-notice' },
+                          t('workbench.assign.dialog.sendFailed'),
+                          h(
+                            'button',
+                            { type: 'button', className: 'ds-btn ds-wb-btn', onClick: () => void retryAssignmentSend() },
+                            t('workbench.assign.dialog.retrySend'),
+                          ),
+                        ),
+                    h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.assign.dialog.footerHint')),
+                    h(
+                      'div',
+                      { className: 'ds-wb-assign-dialog-actions' },
+                      h('button', { type: 'button', className: 'ds-btn', onClick: closeAssignmentDrawer }, t('workbench.assign.dialog.cancel')),
+                      h(
+                        'button',
+                        {
+                          type: 'button',
+                          className: 'ds-btn ds-btn-primary',
+                          disabled: assignmentSubmitting || assignmentRetry !== null,
+                          onClick: () => void submitAssignment(),
+                        },
+                        assignmentSubmitting ? t('workbench.assign.dialog.submitting') : t('workbench.assign.dialog.submit'),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            : null
+          const assignmentRejectModal =
+            assignmentRejectTarget === null
+              ? null
+              : h(
+                  'div',
+                  {
+                    className: 'ds-wb-assign-backdrop',
+                    onPointerDown: (event) => {
+                      if (event.target === event.currentTarget) closeAssignmentReject()
+                    },
+                  },
+                  h(
+                    'div',
+                    {
+                      className: 'ds-wb-assign-dialog',
+                      role: 'dialog',
+                      'aria-modal': 'true',
+                      'aria-labelledby': 'ds-wb-assign-reject-title',
+                    },
+                    h('div', { className: 'ds-wb-assign-dialog-title', id: 'ds-wb-assign-reject-title' }, t('workbench.assign.action.rejectTitle')),
+                    h(
+                      'div',
+                      { className: 'ds-wb-assign-field' },
+                      h(
+                        'label',
+                        { className: 'ds-wb-assign-label', htmlFor: 'ds-wb-assign-reject-note' },
+                        t('workbench.assign.action.rejectReason'),
+                      ),
+                      h('textarea', {
+                        id: 'ds-wb-assign-reject-note',
+                        className: 'ds-pipe-textarea ds-wb-assign-textarea',
+                        rows: 3,
+                        autoFocus: true,
+                        value: assignmentRejectNote,
+                        placeholder: t('workbench.assign.action.rejectPlaceholder'),
+                        'aria-invalid': assignmentRejectError === null ? undefined : 'true',
+                        onChange: (event) => setAssignmentRejectNote(event.target.value),
+                      }),
+                      assignmentRejectError === null ? null : h('div', { className: 'ds-wb-assign-error' }, assignmentRejectError),
+                    ),
+                    h('div', { className: 'ds-hint ds-wb-hint' }, String(assignmentRejectTarget.title ?? '')),
+                    h(
+                      'div',
+                      { className: 'ds-wb-assign-dialog-actions' },
+                      h('button', { type: 'button', className: 'ds-btn', onClick: closeAssignmentReject }, t('workbench.assign.dialog.cancel')),
+                      h(
+                        'button',
+                        {
+                          type: 'button',
+                          className: 'ds-btn ds-btn-danger',
+                          disabled: assignmentRejectBusy,
+                          onClick: () => void submitAssignmentReject(),
+                        },
+                        t('workbench.assign.action.rejectSubmit'),
+                      ),
+                    ),
+                  ),
+                )
           const flowCard =
             requirementTitle.length === 0
               ? null
@@ -17552,6 +19129,7 @@ ${tail}
                 reviewCard,
                 adjustCard,
                 requirementCard,
+                assignmentCard,
                 flowCard,
                 designCard,
                 acceptanceCard,
@@ -17559,6 +19137,8 @@ ${tail}
                 workbenchError !== null ? h('div', { className: 'ds-errorline' }, workbenchError) : null,
               ),
             ),
+            assignmentDrawer,
+            assignmentRejectModal,
           )
         }
 
@@ -22907,6 +24487,109 @@ h(
 .ds-root[data-compact="true"] .ds-wb-card { padding: 10px; }
 .ds-root[data-compact="true"] .ds-wb-btn { height: 32px; padding: 0 12px; font-size: 12px; }
 .ds-root[data-compact="true"] .ds-wb-link { font-size: 11px; }
+.ds-wb-assign { grid-column: 1 / -1; }
+.ds-wb-assign .ds-wb-card-head { row-gap: 6px; }
+.ds-wb-assign-subtitle { color: var(--dsw-alias-label-secondary); font-size: 10.5px; }
+.ds-wb-assign-open { height: 28px; }
+.ds-wb-assign-members { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.ds-wb-assign-member { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 8px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 8px; background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-primary); text-align: left; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.ds-wb-assign-member:hover { border-color: color-mix(in srgb, var(--dsw-alias-brand-primary) 40%, var(--dsw-alias-border-l1)); }
+.ds-wb-assign-member:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: 2px; }
+.ds-wb-assign-member:disabled { cursor: not-allowed; opacity: 0.6; }
+.ds-wb-assign-member-avatar { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-secondary); font-size: 11px; font-weight: 600; }
+.ds-wb-assign-member-main { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.ds-wb-assign-member-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; }
+.ds-wb-assign-member-id { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-caption); font-family: var(--ds-mono); font-size: 9.5px; }
+.ds-wb-assign-pill { flex: 0 0 auto; padding: 1px 7px; border-radius: 9px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-secondary); font-size: 9.5px; white-space: nowrap; }
+.ds-wb-assign-pill[data-status="running"] { background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent); color: var(--dsw-alias-brand-primary); }
+.ds-wb-assign-pill[data-status="review"] { background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 14%, transparent); color: var(--dsw-alias-state-warn-primary); }
+.ds-wb-assign-pill[data-status="done"] { background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 14%, transparent); color: var(--dsw-alias-state-success-primary); }
+.ds-wb-assign-pill[data-status="failed"] { background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent); color: var(--dsw-alias-state-error-primary); }
+.ds-wb-assign-pill[data-status="cancelled"] { color: var(--dsw-alias-label-caption); }
+.ds-wb-assign-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; margin-top: 10px; padding: 10px; border: 1px dashed var(--dsw-alias-border-l2); border-radius: 8px; background: color-mix(in srgb, var(--dsw-alias-bg-layer-2) 45%, transparent); }
+.ds-wb-assign-empty-title { font-size: 12px; font-weight: 600; color: var(--dsw-alias-label-primary); }
+.ds-wb-assign-list { margin-top: 10px; }
+.ds-wb-assign-list-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 5px; color: var(--dsw-alias-label-secondary); font-size: 10.5px; }
+.ds-wb-assign-list-count { color: var(--dsw-alias-label-caption); font-size: 9.5px; }
+.ds-wb-assign-filter { height: 24px; padding: 0 9px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 12px; background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 10px; cursor: pointer; }
+.ds-wb-assign-filter[data-active="true"] { border-color: color-mix(in srgb, var(--dsw-alias-brand-primary) 50%, var(--dsw-alias-border-l1)); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 10%, transparent); color: var(--dsw-alias-brand-primary); font-weight: 600; }
+.ds-wb-assign-filter:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: 1px; }
+.ds-wb-assign-summary { margin-top: 7px; color: var(--dsw-alias-label-caption); font-size: 9.5px; }
+.ds-wb-assign-row { padding: 6px 7px; border-top: 1px dashed var(--dsw-alias-border-l1); }
+.ds-wb-assign-row:first-of-type { border-top: 0; }
+.ds-wb-assign-row-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.ds-wb-assign-row-title { min-width: 0; flex: 1 1 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 600; color: var(--dsw-alias-label-primary); }
+.ds-wb-assign-row-meta, .ds-wb-assign-row-type, .ds-wb-assign-row-time { color: var(--dsw-alias-label-caption); font-size: 9.5px; white-space: nowrap; }
+.ds-wb-assign-row-type { color: var(--dsw-alias-label-secondary); }
+.ds-wb-assign-progress { display: flex; align-items: center; gap: 3px; margin-top: 4px; }
+.ds-wb-assign-progress-seg { flex: 0 0 22px; height: 3px; border-radius: 2px; background: var(--dsw-alias-bg-layer-2); }
+.ds-wb-assign-progress-seg[data-done="true"] { background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 60%, var(--dsw-alias-bg-layer-2)); }
+.ds-wb-assign-progress-seg[data-current="true"] { background: var(--dsw-alias-brand-primary); }
+.ds-wb-assign-progress[data-status="review"] .ds-wb-assign-progress-seg[data-current="true"] { background: var(--dsw-alias-state-warn-primary); }
+.ds-wb-assign-progress[data-status="failed"] .ds-wb-assign-progress-seg[data-failed="true"] { background: var(--dsw-alias-state-error-primary); }
+.ds-wb-assign-row-note { margin-top: 3px; color: var(--dsw-alias-label-caption); font-size: 9.5px; overflow-wrap: anywhere; }
+.ds-wb-assign-row[data-status="failed"] .ds-wb-assign-row-note { color: var(--dsw-alias-state-error-primary); }
+.ds-wb-assign-row-hint { margin-top: 2px; color: var(--dsw-alias-label-caption); font-size: 9.5px; }
+.ds-wb-assign-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+.ds-wb-assign-actions .ds-wb-btn { height: 24px; padding: 0 9px; font-size: 10px; }
+.ds-wb-assign-footer { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--dsw-alias-border-l1); }
+.ds-wb-assign-footer .ds-wb-hint { margin: 0; }
+.ds-wb-assign-footer-path { margin-left: auto; color: var(--dsw-alias-label-caption); font-family: var(--ds-mono); font-size: 9px; overflow-wrap: anywhere; }
+.ds-wb-assign-notice { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 8px; padding: 6px 8px; border-radius: 6px; background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 10%, transparent); color: var(--dsw-alias-label-primary); font-size: 10.5px; }
+.ds-wb-assign-error { margin-top: 4px; color: var(--dsw-alias-state-error-primary); font-size: 10px; overflow-wrap: anywhere; }
+.ds-wb-assign-backdrop { position: fixed; inset: 0; z-index: 60; background: color-mix(in srgb, var(--dsw-alias-label-primary) 36%, transparent); }
+.ds-wb-assign-drawer { position: fixed; top: 0; right: 0; bottom: 0; z-index: 61; display: flex; flex-direction: column; width: min(608px, 88vw); border-left: 1px solid var(--dsw-alias-border-l1); border-radius: 16px 0 0 16px; background: var(--dsw-alias-bg-base); box-shadow: -12px 0 32px color-mix(in srgb, var(--dsw-alias-label-primary) 18%, transparent); animation: ds-wb-assign-in 240ms ease-out; }
+@keyframes ds-wb-assign-in { from { transform: translateX(24px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ds-wb-assign-drawer { animation: none; } }
+.ds-wb-assign-drawer-head { display: flex; align-items: center; gap: 8px; padding: 14px 20px 8px; }
+.ds-wb-assign-dialog-title { color: var(--dsw-alias-label-primary); font-size: 16px; font-weight: 600; }
+.ds-wb-assign-mvp { padding: 1px 7px; border-radius: 9px; background: color-mix(in srgb, var(--dsw-alias-brand-primary) 10%, transparent); color: var(--dsw-alias-brand-primary); font-size: 9.5px; }
+.ds-wb-assign-drawer-sub { padding: 0 20px 10px; color: var(--dsw-alias-label-secondary); font-size: 11px; overflow-wrap: anywhere; }
+.ds-wb-assign-drawer-body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 4px 20px 16px; }
+.ds-wb-assign-drawer-foot { flex: 0 0 auto; padding: 10px 20px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--dsw-alias-border-l1); background: var(--dsw-alias-bg-base); }
+.ds-wb-assign-field { margin-top: 12px; }
+.ds-wb-assign-label-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ds-wb-assign-label { display: block; margin-bottom: 5px; color: var(--dsw-alias-label-secondary); font-size: 11px; font-weight: 600; }
+.ds-wb-assign-sublabel { margin: 8px 0 5px; color: var(--dsw-alias-label-caption); font-size: 10px; }
+.ds-wb-assign-counter { margin-top: 3px; color: var(--dsw-alias-label-caption); font-size: 9.5px; text-align: right; font-variant-numeric: tabular-nums; }
+.ds-wb-assign-input { width: 100%; box-sizing: border-box; height: 40px; }
+.ds-wb-assign-textarea { width: 100%; box-sizing: border-box; min-height: 84px; resize: vertical; }
+.ds-wb-assign-artifacts { min-height: 54px; font-family: var(--ds-mono); font-size: 10.5px; }
+.ds-wb-assign-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+.ds-wb-assign-tab { height: 34px; padding: 0 12px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 8px; background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 11px; cursor: pointer; }
+.ds-wb-assign-tab[data-active="true"] { border-color: color-mix(in srgb, var(--dsw-alias-brand-primary) 55%, var(--dsw-alias-border-l1)); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 9%, transparent); color: var(--dsw-alias-brand-primary); font-weight: 600; }
+.ds-wb-assign-tab:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: 1px; }
+.ds-wb-assign-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.ds-wb-assign-chip { min-height: 32px; padding: 0 10px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 16px; background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-secondary); font: inherit; font-size: 10.5px; cursor: pointer; }
+.ds-wb-assign-chip[data-active="true"] { border-color: color-mix(in srgb, var(--dsw-alias-brand-primary) 55%, var(--dsw-alias-border-l1)); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 9%, transparent); color: var(--dsw-alias-brand-primary); font-weight: 600; }
+.ds-wb-assign-chip:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: 1px; }
+.ds-wb-assign-chip:disabled { cursor: not-allowed; border-style: dashed; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-caption); }
+.ds-wb-assign-selected { margin-top: 6px; color: var(--dsw-alias-label-secondary); font-size: 10px; }
+.ds-wb-assign-segmented { display: inline-flex; border: 1px solid var(--dsw-alias-border-l1); border-radius: 8px; overflow: hidden; }
+.ds-wb-assign-seg { min-width: 52px; height: 32px; border: 0; background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 11px; cursor: pointer; }
+.ds-wb-assign-seg[data-active="true"] { background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent); color: var(--dsw-alias-brand-primary); font-weight: 600; }
+.ds-wb-assign-seg:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: -2px; }
+.ds-wb-assign-acc-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+.ds-wb-assign-acc-input { flex: 1 1 auto; min-width: 0; height: 36px; }
+.ds-wb-assign-add-acc { margin-top: 2px; }
+.ds-wb-assign-attachment { padding-top: 2px; }
+.ds-wb-assign-drop { padding: 10px; border: 1.5px dashed var(--dsw-alias-border-l2); border-radius: 8px; background: color-mix(in srgb, var(--dsw-alias-bg-layer-2) 50%, transparent); color: var(--dsw-alias-label-caption); font-size: 10.5px; }
+.ds-wb-assign-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+.ds-wb-assign-dialog-actions .ds-btn { min-height: 40px; padding: 0 16px; font-size: 12px; }
+.ds-wb-assign-dialog { position: fixed; top: 50%; left: 50%; z-index: 61; width: min(480px, 92vw); max-height: 86vh; overflow: auto; padding: 16px 18px; border-radius: 14px; background: var(--dsw-alias-bg-base); box-shadow: 0 18px 48px color-mix(in srgb, var(--dsw-alias-label-primary) 28%, transparent); transform: translate(-50%, -50%); }
+@media (max-width: 1023px) { .ds-wb-assign-drawer { width: min(608px, 88vw); } }
+@media (max-width: 768px) {
+  .ds-wb-assign-drawer { top: auto; left: 0; right: 0; width: 100vw; max-height: 90vh; border-radius: 16px 16px 0 0; border-left: 0; border-top: 1px solid var(--dsw-alias-border-l1); animation-name: ds-wb-assign-up; }
+  @keyframes ds-wb-assign-up { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .ds-wb-assign-members { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ds-wb-assign-row-meta, .ds-wb-assign-row-type, .ds-wb-assign-row-time { display: none; }
+  .ds-wb-assign-dialog-actions .ds-btn, .ds-wb-assign-tab, .ds-wb-assign-chip, .ds-wb-assign-seg { min-height: 44px; }
+  .ds-wb-assign-filter { height: 32px; }
+}
+.ds-root[data-compact="true"] .ds-wb-assign-members { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ds-root[data-compact="true"] .ds-wb-assign-member { min-height: 48px; }
+.ds-root[data-compact="true"] .ds-wb-assign-actions .ds-wb-btn { height: 32px; font-size: 11px; }
+
 .ds-todo-edit { display: flex; flex-direction: column; gap: 5px; background: color-mix(in srgb, var(--dsw-alias-brand-primary) 5%, transparent); }
 .ds-todo-note-input {
   width: 100%;

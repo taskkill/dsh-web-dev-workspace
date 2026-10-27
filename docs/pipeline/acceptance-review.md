@@ -1,139 +1,152 @@
-# 验收复核报告（项目经理 Agent）— v3 终版
+# 验收复核报告（项目经理 Agent）— v2 复验（第 3 轮 · v1.2.75）
 
-- 轮次 / 阶段：第 2 轮 · acceptance（v3 终版；v1 打回 B1/B2、v2 打回 B3，均已修复并最终复测；本版结论「建议放行」）
-- 复核时间：2026-10-27 11:28（Asia/Shanghai；最终修复核验 11:25–11:27，复测 11:27，独立核查 11:25–11:28，报告定稿 11:28）
+- 轮次 / 阶段：第 3 轮 · acceptance（v2 复验；v1 于 2026-10-27 12:30 判定「建议打回」，阻断 B1/B2 已修复并由 QA/设计/开发复验）
+- 复核时间：2026-10-27 12:34（Asia/Shanghai；修复核验 12:31–12:33，复测 12:32，独立核查 12:31–12:34，报告定稿 12:34）
 - 复核人：项目经理 Agent（角色 `opc-pm`；只读复核，未改代码/需求/设计/验收标准，未审批/未发布/未提交 Git）
 - 基线：
-  - 需求已 approved；design / development / testing 均已 approved；`acceptance` 当前 **active**，approval、release 为 pending；`gateMode=fast`，第 2 轮（`round=2`）。
-  - Git HEAD `b3c1e772b631c1e729e94bbf63402b7ef829d6d6`；工作区 **25 项未提交改动**（20 个已跟踪修改，含本报告；5 个新建未跟踪；`git diff --stat` = 20 files，**+1754 / −917**）。
-  - 版本：根 `package.json` **1.2.73**、`dsh-web-filebrowser-plugin/package.json` **1.2.73**；`CHANGELOG.md` 含 1.2.73；`docs/ACCEPTANCE.md` 含批次 11；依赖与 HEAD 逐字一致（根 `ssh2`；插件 `@xterm/addon-fit`、`@xterm/xterm`、`ssh2`）。
-  - 验收清单：v1.2.73 **12 条** = **11 pass / 0 fail / 1 blocked**（`d1891f12f4` 的验收条件「复核报告结论建议放行 + 三项专业质量复核」已由本报告满足，待 QA 依本报告把状态由 blocked 改为 pass；`daf5622f89` 经 reopen→fail(B3)→pass，`retestRound=5`、history 7 条）。
-- 结论：**建议放行**（阻断项 **0**；**B1/B2/B3 已修复并经 QA 复测 + 本复核独立核验确认关闭**；三项专业质量复核继续通过；无功能/证据/文档新问题）。
+  - 需求已 approved；design / development / testing 均已 approved；`acceptance` 当前 **active**，approval、release 为 pending；`gateMode=fast`，第 3 轮（`round=3`）。
+  - Git HEAD `322064c760d06b216812bdb0f8cbcb7d356a0d8d`；工作区 **27 个未提交条目 / 34 个文件**（15 个已跟踪修改，含本报告；19 个新建未跟踪：`assignments.js`、`engineering-research.md`、8 个设计落地稿、上轮设计归档、`docs/proposals/` 8 个文件）；`git diff --stat` = 15 files，**+3435 / −1034**。
+  - 版本：根 `package.json` **1.2.75**、`dsh-web-filebrowser-plugin/package.json` **1.2.75**（插件 diff：版本号 + `files` 白名单补 `assignments.js`，依赖未动）；`CHANGELOG.md` 含 1.2.75；`docs/ACCEPTANCE.md` 含批次 12。
+  - 验收清单：v1.2.75 **12 条** = **6 pass / 0 fail / 6 blocked**（6 条 blocked 均为纯 GUI/视觉项，环境限制，见 §2/§7）。
+  - 上一轮 v1.2.73 发布记录仍在 `.dsh/pipeline.json` 的 `releases` 中；本轮未发布。
+- 结论：**建议放行**（阻断项 **0**；v1 的 B1/B2 与 5 项 OBS **已全部修复并经本复核独立确认关闭**；6 条 GUI blocked 为**环境限制**，需 Owner 重启 Harness + 刷新后按批次 12 复测，本报告不伪造 pass）。
 
-### 打回与修复历史（v1 → v2 → v3 终版）
+### 打回与修复历史（v1 → v2）
 
-| 轮次 | 时间 | 结论 | 阻断项 | 事后修复与最终核验 |
-|---|---|---|---|---|
-| v1 | 11:20 | 建议打回 | B1 `docs/opc/README.md` 角色速查表被能力段落截断；B2 `docs/pipeline/requirements.md` §7 行内代码裸竖线致表格截断 | Lead 修复：B1 段落移到表格之后；B2 改为 `/` 分隔。**v3 终验：表 7 行完整、§7 3 列完整（独立核验 + qa-tables ok）** |
-| v2 | 11:25 | 建议打回 | B3 `docs/pipeline/test-report.md` §7 B2 记录行的行内代码含 2 个裸竖线，5 列表格被拆成 7 列（qa-tables EXIT=1） | Lead 修复：该行改写为「3 个未转义的竖线符号」「无裸竖线」，不含字面竖线。**v3 终验：该表 5 列与表头一致、qa-tables STRUCTURE PASS（EXIT=0）** |
-| v3 | 11:30 | **建议放行** | **0** | 全部修复项经 QA 最终复测（2026-10-27T03:25Z）与本次独立复测通过 |
+| 项 | v1（12:30）判定 | 修复动作 | v2 核验结果 |
+|---|---|---|---|
+| **B1** 工程调研记录缺失 | 阻断（P2；实现轮缺 `engineering-research.md`，也无 N/A+理由） | 新增 `docs/pipeline/engineering-research.md`（78 行）：N/A 判定依据、内部模式借鉴表、出处/许可证说明、可靠/安全/性能自检、来源记录、结论 | **已修复**：文件存在且 7 个小节齐全；N/A 理由成立（本地 JSON 状态 + 本地 UI、无第三方代码/依赖、未复制素材）；5 个相对链接全部可解析；test-report 已记录 B1 修复并复验 |
+| **B2** 设计自评评分缺失 | 阻断（P3；design.md 无五维 rubric/自评） | `design.md` 新增 §15「设计自检评分（五维 rubric + 本轮自评）」：0–5 锚点、每维≥3/均分≥4、must 一票否决（7 项）、本轮自评 **4.2/5.0**（逐维证据+扣分点）、must 自检、结论；并修正 §11.1/§16 的 1.2.74 过期提醒 | **已修复**：§15.1–15.5 齐全；五维 4/5/4/4/4、均分 4.2、每维≥3、must 7 项全 ✅；§13.4 间距例外表与 8px 落地一致 |
+| OBS-01 插件 `files` 白名单缺 `assignments.js` | 非阻断 | 开发补入 `files` | **已修复**：`files` 含 `assignments.js`（独立核验） |
+| OBS-02 提案状态仍「尚未实现」 | 非阻断 | 改为「已按 MVP 实现」 | **已修复**：头部状态已更新并附实现/验收链接 |
+| OBS-03 design 1.2.74 过期提醒 | 非阻断 | 改为「已解决（1.2.75）」 | **已修复**：仅剩「已解决」上下文，无过期提醒 |
+| OBS-04 测试报告计数偏差 | 非阻断 | 改为版本控制计数说明 + 新增修复轮复测记录 | **已修复**：表述已澄清；B1/B2 与 OBS-02..05 均入缺陷表并标注已修复 |
+| OBS-05 成员 chips 间距 6/7px | 非阻断 | client.js 两处 CSS 改为 8px | **已修复**：`.ds-wb-assign-members` / `.ds-wb-assign-chips` 均 `gap: 8px`（独立 grep 核验） |
 
 ---
 
 ## 1. 需求覆盖
 
-### 1.1 需求目标与范围映射（v3）
+### 1.1 需求目标与范围映射（v2）
 
-| 需求点 | 对应验收项 / 测试 | v3 复核结果 | 证据 |
+| 需求点 | 对应实现 / 验收项 / 测试 | v2 复核结果 | 证据 |
 |---|---|---|---|
-| §3.1 四阶段提示词 + `PIPELINE_SECTION` 补调研/借鉴/设计质量/许可证/安全 | 验收项 1 | **覆盖** | `pipeline.js` 本轮未再改动（mtime 11:06）；v1 独立断言 product 11/11、design 20/20、development 17/17、acceptance 11/11 + PIPELINE_SECTION 11/11；grep 31 行 |
-| §3.2 三本角色手册新增专业章节与模板 | 验收项 2–4 | **覆盖** | 三手册未再改动（mtime 11:04–11:06）；v1 已逐节读取 §5 正文 |
-| §3.3 团队与用户文档同步 | 验收项 5 | **覆盖** | AGENT_TEAM/PLAYBOOK/README×3/locale/opc-README 同步；B1 已修复（表 7 行完整） |
-| §3.4 版本与记录 | 验收项 6 | **覆盖** | 两 package 1.2.73、CHANGELOG 1.2.73、ACCEPTANCE 批次 11、check:json exit 0 |
-| §3.5 测试全绿无回归 | 验收项 7 | **覆盖** | 复跑 check / test 18/18 / selftest 38/38 / review 22/22 全 exit 0（§3） |
-| §3.2 不做什么 | 约束复核 | **覆盖** | 依赖与 HEAD 一致；无锁文件；无第三方代码；七阶段/闸门逻辑未变；无密钥/调试 |
-| §4 三角色能力细则 | 验收项 2–4、9–11；§6 | **覆盖** | §6 三项专业质量复核继续通过 |
+| Host 模块 `assignments.js`：数据/校验/状态机/原子写/上限/SSH 降级 + 4 op（§3.1.1） | 验收项 5–8；27/27 + 31/31 | **覆盖** | 代码审阅 + 临时工作区功能核验（v1 已完成，`assignments.js` mtime 12:10 未再改，结论继续有效） |
+| 客户端：卡片/抽屉/状态列表/结构化派单/i18n/无障碍/窄屏（§3.1.2） | 验收项 1–4、9、11 | **覆盖（GUI 待 Owner）** | client.js **+1683/−0**；122/122 i18n（v2 复核未变）；chips 间距已按 8px；浏览器渲染属环境项 |
+| 指派不写 pipeline、approval/release 不可指派、无模型工具（§3.2/§6） | 验收项 5–7 | **覆盖** | 只读 `readPipeline`；host-smoke 哈希不变用例通过；approval/release `bad-request`；无 assignment 模型工具 |
+| 文档与版本：指派小节、批次 12、CHANGELOG 1.2.75、双 package 1.2.75、工程调研 N/A、设计自评（§3.1.3 + 专业质量） | 验收项 12 + ⑦ | **覆盖** | AGENT_TEAM/PLAYBOOK/ACCEPTANCE/CHANGELOG/版本一致；engineering-research.md 与 design §15 已补齐 |
+| 不做什么：不做团队 API/spawn/实时状态/团队面板复刻/SSH/新依赖/模型工具（§3.2） | 约束复核 | **覆盖** | 无新依赖；无模型工具；SSH 降级；代码无 spawn/team API 调用 |
+| 错误处理、边界与数据安全（§8） | 验收项 7、8 | **覆盖** | 27 用例 + 独立核验（v1，代码未再改） |
+| 调研与借鉴（§7） | 专业质量 ① | **覆盖** | 7 来源/14 行决策表/7 条创新假设/4 条失败披露（v1 已独立核验，未改动） |
 
-### 1.2 requirements §7 八条验收标准
+### 1.2 requirements §9 十条验收标准（v2 状态）
 
-| # | 验收标准 | v3 覆盖结果 | 证据 |
+| # | 验收标准 | v2 结果 | 证据 / 说明 |
 |---|---|---|---|
-| 1 | 四阶段提示词与 systemPrompt 可检索 | **覆盖** | 验收项 1；v1 独立关键词矩阵（本轮未改动该文件） |
-| 2 | 01-product.md 调研与借鉴 SOP | **覆盖** | 验收项 2；§5 章节与模板完整 |
-| 3 | 02-design.md 专业设计质量标准 | **覆盖** | 验收项 3；§5 九项 MUST + 八态 + 五维 rubric + 迭代 |
-| 4 | 03-engineering.md 开源调研与安全复用 SOP | **覆盖** | 验收项 4；§5 模板/许可证矩阵/N/A/安全性能 |
-| 5 | 文档同步 + 批次 11 + CHANGELOG + 双 package 1.2.73 | **覆盖** | 验收项 5/6；B1 已修复确认 |
-| 6 | 三套命令全绿且覆盖新关键词，无回归 | **覆盖** | 复跑全 exit 0（18/18、38/38、22/22、check:json、qa-tables、qa-static） |
-| 7 | 七阶段双复核跑通 + acceptance 报告为「建议放行」+ 三项复核 | **覆盖（本报告满足）** | 七阶段结构未变；**本 v3 报告结论为「建议放行」且含三项专业质量复核**；`d1891f12f4` 待 QA 依本报告转 pass（状态更新流程，非证据缺口） |
-| 8 | 无新增依赖；无伪造来源；文档无死链/表格异常 | **覆盖** | 依赖与 HEAD 一致；外链 3/3 HTTP 200、无伪造；全仓 27 md / 97 相对目标 / 0 失效；**表格结构 PASS（B1/B2/B3 已修复）** |
+| 1 | 卡片出现与位置/6 chips/推导状态/最近 5 条/空态 | **实现齐备（GUI 待 Owner）** | 验收项 `64983c295b` blocked（环境）；代码 + 落地稿已核对 |
+| 2 | 抽屉字段与校验/阶段选择/新建 Agent | **实现齐备（GUI 待 Owner）** | `8d70f5e331`、`6db436479d` blocked；Host 校验 27 用例通过 |
+| 3 | 提交落盘 + 结构化指派单 + toast/卡片 | **Host pass + GUI 待 Owner** | `ae5ecf6a53` blocked；save 全字段/round/history 通过 |
+| 4 | 状态机/打回 note/催办/取消/再指派/持久化 | **覆盖** | `684ebc0d80` pass |
+| 5 | 指派不修改 pipeline；双复核不被绕过 | **覆盖** | `1d2e016bda` pass（sha256 不变） |
+| 6 | 校验/上限/SSH/错误码 ≥6 用例 | **覆盖** | `e37210ec44` pass |
+| 7 | i18n/无障碍/窄屏/无新依赖 | **静态 pass + GUI 待 Owner** | `74b92113c5` blocked；122/122 键成对、依赖未增 |
+| 8 | 不破坏既有功能；四条命令全绿 | **覆盖** | `c90a901f74` pass；pipeline/review/acceptance 零改动 |
+| 9 | 三张效果图关键布局/状态/操作落地 | **设计稿与代码齐备（GUI 待 Owner）** | `19895d23f0` blocked；4 套落地稿目视复核 |
+| 10 | 文档与版本同步 | **覆盖** | `7c8fa9c999` pass；v2 增补 B1/B2 记录后仍一致 |
 
-**未覆盖 / 超范围**：GUI 提示词实际显示（需重启 Harness，Owner 按批次 11 复测）；真实发布/SSH（沿用现状）。**超范围改动：无**。
+**未覆盖 / 超范围**：6 条 GUI/视觉项 = 环境限制（Owner 重启 + 批次 12）；真实发布/SSH 沿用现状。**超范围改动：无**。
 
 ---
 
-## 2. 验收清单逐项核对（v3 终版）
+## 2. 验收清单逐项核对（v2）
 
-| # | 验收项（id / 短标题） | 清单状态 | 证据 / 复测 | v3 复核结论 |
+| # | 验收项（id / 短标题） | 清单状态 | 证据 / 复测 | v2 复核结论 |
 |---|---|---|---|---|
-| 1 | `a81769de27` 四阶段提示词与 systemPrompt 关键词 | pass | note→test-report §3.1/§5#1；v1 独立断言四阶段+PIPELINE_SECTION 全命中 | **认可** |
-| 2 | `6547accbd1` 01-product 调研与借鉴 SOP | pass | §5 章节与模板；v1 已逐节读取 | **认可** |
-| 3 | `bef0b5fe0a` 02-design 专业设计质量标准 | pass | §5 九项 MUST/八态/五维 rubric/迭代 | **认可** |
-| 4 | `935f00d714` 03-engineering 开源调研与安全复用 SOP | pass | §5 模板/许可矩阵/N/A/安全性能 | **认可** |
-| 5 | `841c967ac4` AGENT_TEAM/PLAYBOOK/README 同步 | pass | B1 修复后核验：opc/README 表 7 行完整、能力段落在表后 | **认可** |
-| 6 | `8db64ef5f6` ACCEPTANCE 批次 11 / CHANGELOG / 双 package 1.2.73 | pass | 亲自核对 + check:json exit 0 | **认可** |
-| 7 | `24119ca5f3` 四套命令全绿、覆盖新关键词、无回归 | pass | 复跑 check / test 18/18 / selftest 38/38 / review 22/22 全 exit 0 | **认可** |
-| 8 | `d1891f12f4` 七阶段跑通 + acceptance 报告「建议放行」+ 三项复核 | **blocked** | 七阶段结构未变（selftest full-flow 覆盖）；**本 v3 报告结论为「建议放行」且含三项专业质量复核**，验收条件已满足 → 待 QA 依本报告将状态由 blocked 改为 pass（Lead 已安排 QA 复验） | **认可条件已满足（状态待 QA 转 pass）** |
-| 9 | `b6657ac188` 无新增运行时依赖 | pass | 依赖与 HEAD 逐字一致（根 ssh2；插件 3 个）；无锁文件；test-report 依赖表述已更正 | **认可** |
-| 10 | `1f3dbcccbf` 调研来源真实可核、无伪造 | pass | §6.1 11 来源（URL+2026-10-27+结论，唯一）；§6.5 4 条失败披露；独立抓取 3/3 HTTP 200 且结论一致（W3C/SPDX/OSV） | **认可** |
-| 11 | `37adbb8ace` 需求文档调研章节/决策表/已验证 vs 创新假设 | pass | §6.1 11 行、§6.2 **17 行**决策表、§6.3 5 条创新假设；B2 修复后 §7 表 3 列完整 | **认可** |
-| 12 | `daf5622f89` 文档无死链 + 相对链接可解析 + 表格无渲染异常 | pass（retestRound 5，history 7 条） | 死链 0（27 md/97 目标）；外链 3/3 200；**B1/B2/B3 修复后 `qa-tables-v1273.mjs` EXIT=0 STRUCTURE PASS**；§7 表 5 列一致（独立计数核验） | **认可（v2 的 B3 阻断已消除）** |
+| 1 | `64983c295b` 工作台卡片 | **blocked** | Host/静态证据齐备（client 纯新增、i18n 122 键、落地稿已核对）；浏览器渲染需 Owner 批次 12 | **实现证据齐备；状态 blocked（环境），不判 fail** |
+| 2 | `ae5ecf6a53` 提交落盘 + 结构化指派单 | **blocked** | Host save 全字段/round/history 通过；发送/toast/卡片刷新属 GUI | **实现证据齐备；blocked（环境）** |
+| 3 | `8d70f5e331` 抽屉字段与校验 | **blocked** | Host 校验边界全部通过；抽屉交互属 GUI | **实现证据齐备；blocked（环境）** |
+| 4 | `6db436479d` 关联阶段选择/置灰 | **blocked** | allowlist + 置灰 chips/提示代码存在；GUI 需 Owner | **实现证据齐备；blocked（环境）** |
+| 5 | `684ebc0d80` 状态机与操作持久 | pass | 27 用例 + 独立核验（v1；assignments.js 未改） | **认可** |
+| 6 | `1d2e016bda` 指派不修改流水线 | pass | sha256 全生命周期不变；approval/release 拒绝 | **认可** |
+| 7 | `e37210ec44` Host 校验/上限/SSH/错误码 | pass | 27 用例覆盖全部错误码 | **认可** |
+| 8 | `5048eff8ea` 并发与原子写 | pass | 10 并发无丢写/无 tmp；corrupt 不清空；temp+rename | **认可** |
+| 9 | `74b92113c5` i18n/无障碍/窄屏/无新依赖 | **blocked** | 122/122 键成对、client 语法、依赖未增；键盘/窄屏需浏览器 | **静态证据充分；blocked（环境）** |
+| 10 | `c90a901f74` 测试全绿无回归 | pass | 8 套命令全 exit 0（§3） | **认可** |
+| 11 | `19895d23f0` 效果图关键布局/状态落地 | **blocked** | 4 套落地稿存在并目视复核；像素级视觉需 Owner | **视觉稿/代码齐备；blocked（环境）** |
+| 12 | `7c8fa9c999` 文档与版本同步 | pass（DEF-01 修复后） | AGENT_TEAM/PLAYBOOK 小节、批次 12、CHANGELOG 1.2.75、双 package 1.2.75；qa-static PASS | **认可** |
 
-- **统计**：清单 **pass 11 / fail 0 / blocked 1（条件已满足待 QA 状态更新）/ pending 0**；复核结论：**认可 11、条件满足待转 pass 1（`d1891f12f4`）**；**阻断 0、缺证据 0**。
-- **修复闭环**：v1 的 B1/B2、v2 的 B3 全部修复并经 QA 复测（2026-10-27T03:25Z）+ 本复核独立核验；无遗留阻断。
-- **验收项历史完整性**：`daf5622f89` 保留 pending→fail→pass→fail(B1/B2)→pass→fail(B3)→pass 共 7 条 history（retestRound=5），修复链条可追溯。
+- **统计**：清单 **pass 6 / fail 0 / blocked 6 / pending 0**；复核：**认可 6 项 pass、6 项实现证据齐备但状态 blocked（环境）**；**阻断 0**（v1 的 B1/B2 已关闭）。
+- **证据说明**：12 条 `evidence` 数组均为空，但 note 均绑定 `test-report.md` 具体章节/用例；v2 增补了 B1/B2 与 OBS-02..05 的修复记录。GUI blocked 属环境限制，本报告不伪造 pass。
+- **复核结论**：v1 的外部/代码/数据层结论继续有效（`assignments.js` 12:10 后未再改），v2 未发现新阻断。
 
 ---
 
-## 3. 复测记录（v3 终版）
+## 3. 复测记录（v2）
 
-环境：工作区 `/data/dsh/home/dsh-web-powerfilebrowser/dsh-web-filebrowser`；Node v24.22.0；Asia/Shanghai 2026-10-27 11:27。证据日志：`.dsh/evidence/acceptance-retest-v1.2.73.log`（v3 追加段）。
+环境：工作区 `/data/dsh/home/dsh-web-powerfilebrowser/dsh-web-filebrowser`；Node v24.22.0；Asia/Shanghai 2026-10-27 12:32。证据日志：`.dsh/evidence/acceptance-retest-v1.2.75.log`（v2 追加段）。
 
 | # | 命令 | 退出码 | 耗时 | 结果 |
 |---|---|---|---|---|
-| 1 | `npm run check` | **0** | 560 ms | 20 模块语法全过 |
-| 2 | `npm test` | **0** | 549 ms | **PASS: 18/18** |
-| 3 | `node .dsh/tmp/team/pipeline-selftest.mjs` | **0** | 697 ms | **38/38 checks passed** |
-| 4 | `node .dsh/tmp/team/review-selftest.mjs` | **0** | 803 ms | **22/22 checks passed** |
-| 5 | `npm run check:json` | **0** | 106 ms | JSON OK |
-| 6 | `node .dsh/tmp/qa-static-v1273.mjs` | **0** | 62 ms | **STATIC PASS** |
-| 7 | `node .dsh/tmp/qa-tables-v1273.mjs` | **0** | 80 ms | **STRUCTURE PASS**（本轮改动文档表格列数一致；opc/README 7 行；requirements §7 3 列；27 md/97 目标 0 失效；§6.2 17 行；依赖与 HEAD 一致） |
+| 1 | `npm run check` | **0** | 712 ms | 21 个模块语法全过 |
+| 2 | `npm run check:json` | **0** | 188 ms | JSON OK |
+| 3 | `npm test` | **0** | 739 ms | **PASS: 31/31** |
+| 4 | `node .dsh/tmp/team/assignments-selftest.mjs` | **0** | 171 ms | **27/27 checks passed** |
+| 5 | `node .dsh/tmp/team/pipeline-selftest.mjs` | **0** | 717 ms | **38/38 checks passed** |
+| 6 | `node .dsh/tmp/team/review-selftest.mjs` | **0** | 791 ms | **22/22 checks passed** |
+| 7 | `node --check dsh-web-filebrowser-plugin/client.js` | **0** | 37 ms | 无错误 |
+| 8 | `node .dsh/tmp/qa-static-v1275.mjs` | **0** | 168 ms | **STATIC PASS**（链接/表格/i18n 122/版本/依赖/文档小节/check 覆盖） |
 
-**B1/B2/B3 修复独立核验（不照抄 QA）**：
+**B1/B2 修复独立核验（不照抄修复说明）**：
 
-- B1：`docs/opc/README.md` 角色速查表 product→release **7 行连续**，能力段落在表格之后（`sed` 核验 + 全仓表格扫描该文件 0 异常）。
-- B2：`docs/pipeline/requirements.md` §7 第 1 行 **3 列完整**，`stageId` 枚举为 `'product'/'design'/'development'/'acceptance'`（`/` 分隔），无裸竖线。
-- B3：`docs/pipeline/test-report.md` §7 表 5 列一致（该表所有行按未转义竖线计数均为 6 个 = 5 列；B2/B3 记录改写为「竖线符号」文字、不含字面竖线）；`qa-tables` **EXIT=0 STRUCTURE PASS**。
-- 独立全仓表格扫描（27 个 Markdown、排除代码块）：**0 处本轮问题**；仅剩 1 处**本轮未改动的历史债务** `docs/FEATURE_PROPOSAL.md` L309（OBS-05，不计入本轮）。
-- 链接：独立扫描 **27 个 Markdown / 97 个相对目标 / 0 空目标 / 0 失效**（与 QA 口径一致）。
-- 外链：v1 独立 `web_fetch` 3/3 HTTP 200（W3C：4.5:1/3:1/不四舍五入；SPDX：3.29.0 短标识；OSV：npm 230075 漏洞）；本轮修复未触及 requirements §6，结论继续有效。
-- 未改动文件（pipeline.js 11:06、design.md 11:01、三手册 11:04–11:06、AGENT_TEAM/PLAYBOOK/README 11:02）mtime 停留在修复前，v1 的独立复核结论继续有效。
+- **B2（design §15）**：`design.md` 现有 §15.1 五维锚点（0–5）、§15.2 门槛（每维 ≥3、均分 ≥4）+ must 一票否决 7 项、§15.3 本轮自评表（视觉 4 / 清晰 5 / 一致 4 / 反馈 4 / 可访问 4，**均分 4.2/5.0**，逐维附证据与扣分点）、§15.4 must 7 项全 ✅、§15.5 结论「可提交」；与 §9.4 对比度实测、§6 八态矩阵、§9.1 无障碍、§12 缩减、§16 迭代记录相互引用一致。**通过**。
+- **B1（engineering-research.md）**：文件 78 行，§1 N/A 判定依据（是否陌生功能/是否新增依赖/是否需开源候选/是否复制代码/是否需许可证）逐项记录；§2 候选对比标注不适用；§3 内部模式借鉴表（acceptance.js/pipeline.js 原子写与锁、ds-wb-* 组件、ARIA dialog）+ 需求 §7 公开来源（不重复抓取）；§4 出处/许可证（无第三方代码、无 NOTICE 义务）；§5 可靠/安全/性能自检（错误处理/并发/原子写/上限/输入校验/无新依赖/性能预算）；§6 来源记录；§7 结论。5 个相对链接均存在。**通过**。
+- **OBS 复核**：插件 `files` 含 `assignments.js`；提案状态已更新；`design.md` 1.2.74 过期提醒已改为「已解决」；test-report 计数表述已澄清并新增 B1/B2/OBS-02..05 修复记录；`.ds-wb-assign-members`/`.ds-wb-assign-chips` 均 `gap: 8px`。**全部关闭**。
+
+**其余独立核验（v1 结论沿用 + v2 复核变化点）**：
+
+- `assignments.js`（771 行）mtime 12:10 未再改 → v1 的临时工作区功能核验继续有效（状态机/校验/上限/并发/原子写/corrupt/SSH/0600/流水线 sha256 不变）。
+- `client.js` diff 仍为 **+1683 / −0**（纯新增；本轮仅在其新增 CSS 内把 chips 间距改为 8px，不引入删除）；`index.js` +79/−0。
+- i18n：zh/en `workbench.assign.*` 仍 **122/122**、双向零缺失（v2 重算）。
+- 依赖：根 `{"ssh2"}`、插件 3 个 xterm/ssh2，与 HEAD 一致；无锁文件。
+- 全仓 31 个 Markdown：相对链接 **162 / 0 空目标 / 0 失效**；表格仅 1 处**本轮未改动**的历史债务（`docs/FEATURE_PROPOSAL.md` L309）。
+- 外部来源：requirements §7 未改，v1 的 `web_fetch` 3/3 HTTP 200 结论继续有效（Linear/MDN dialog/NN/g）。
+- 设计落地：4 套 `assign-*.svg/png` 存在，v1 已目视复核 workbench/dialog/status；v2 未改图片。
+- `git diff --check` 干净；无调试代码/密钥/临时文件；无新增依赖/模型工具。
 
 ---
 
-## 4. 变更与审阅（v3）
+## 4. 变更与审阅（v2）
 
-- **变更规模**：25 个未提交文件（20 已跟踪修改，含本报告；5 新建未跟踪）；`git diff --stat` = 20 files，**+1754 / −917**。
-- **自 v2 以来的修复改动**：`docs/pipeline/test-report.md`（B3 修复：§7 表记录文字化 + 最终复测时点 2026-10-27T03:25Z + B3 记录；mtime 11:26:12）、`docs/pipeline/acceptance-review.md`（本 v3 报告）。此前 B1/B2 修复文件（opc/README 11:20:20、requirements 11:20:20）保持最终态。
-- **已审数**：`.dsh/review.json` 的 acceptance 基线（03:13:17，24 文件）已捕获，`marks` = **0/24**；review 签名不随同一未暂存文件再次编辑变化（已知限制），修复改动以 `git diff`/文件内容/mtime 为证据（OBS-06，非阻断）。
-- **关键审阅结论**：B1/B2/B3 修复均为文档编辑，未触碰代码/依赖/版本（仍 1.2.73）；`pipeline.js` 与三手册保持 v1 已审状态；test-report 的 OBS-01/02/03 修正（依赖表述、链接口径 97/27、决策表 17 行）已核对属实；test-report 最终时点/修复记录与 QA 复测（03:25Z）一致。
-- **异常扫描**：无调试代码/密钥/临时文件/新依赖/未预期改动；`git diff --check` 无空白错误。
+- **变更规模**：**27 个未提交条目 / 34 个文件**（15 个已跟踪修改，含本报告；19 个新建未跟踪）；`git diff --stat` = **15 files，+3435 / −1034**（v1 为 14 files +3199/−931；新增即 `engineering-research.md`、design §15、test-report/修复记录、本 v2 报告）。
+- **新增/变更**：`docs/pipeline/engineering-research.md`（新，78 行）、`docs/pipeline/design.md`（+§15 自评、§13.4/§17 修复）、`docs/pipeline/test-report.md`（B1/B2/OBS 记录 + 计数修正）、`dsh-web-filebrowser-plugin/package.json`（`files` 补 assignments.js）、`dsh-web-filebrowser-plugin/client.js`（chips 8px CSS 两行）、`docs/proposals/AGENT_ASSIGN.md`（状态）；其余与 v1 一致（assignments.js/index.js/host-smoke/文档/版本）。
+- **已审数**：`.dsh/review.json` 的 acceptance 基线（04:22:00.618，32 文件）已捕获，`marks` = **0/34**；v2 相对基线可见变化为 `acceptance-review.md` 与本报告 + `engineering-research.md`（其余修复因 review 签名不覆盖同状态文件二次编辑而不可见，属已知限制）。
+- **关键文件审阅**：B1/B2 修复内容已逐项核对（见上）；`engineering-research.md` 无伪造来源、无第三方代码/许可证义务；`design.md §15` 评分有证据、must 项完整；无超范围改动。
+- **异常扫描**：无调试代码/密钥/临时文件；无新增依赖；`pipeline.js/review.js/acceptance.js` 本轮零改动；`git diff --check` 通过。
 
 ---
 
 ## 5. DoD 检查（宪章 §6）
 
-- [x] **验收清单**：本轮 11/12 pass、0 fail；`d1891f12f4` 的条件已由本报告满足，待 QA 转 pass（状态更新流程）—— **本关通过**。
-- [x] **测试报告**：`docs/pipeline/test-report.md` 齐全、覆盖正常/异常/边界与回归、4+3 套命令复跑全绿、修复记录完整、表格结构 PASS —— **通过**。
-- [x] **验收复核报告**：本 v3 报告已产出（结构含 ⑦ 专业质量复核、结论为**建议放行**）—— **通过**。
-- [x] **变更审阅**：25 文件全部逐项审阅、无调试/密钥/未预期改动；面板已审标记 0/24（OBS-06，Owner 侧操作，非阻断）—— **有条件通过**。
-- [x] **文档**：需求/设计/测试/复核/发布记录（上一轮）齐全、版本一致；B1/B2/B3 已修复，全仓表格/链接检查通过 —— **通过**。
-- [ ] **发布**：本轮未发布；发布记录待 release 阶段补齐（上一轮 v1.2.72 记录存在，仅作格式参考）—— **本关不可判**。
+- [x] **验收清单**：12 条 = 6 pass / 0 fail / 6 blocked（blocked 全为 GUI/视觉**环境限制**，Host/静态证据齐备，需 Owner 重启后按批次 12 复测）—— **有条件通过**（不伪造 GUI pass；无复核阻断）。
+- [x] **测试报告**：`test-report.md` 齐全、覆盖正常/异常/边界与回归、8 套命令复跑全绿；已记录 B1/B2/OBS-02..05 修复与复验、计数口径已澄清 —— **通过**。
+- [x] **验收复核报告**：本 v2 报告（含 ⑦ 专业质量复核、结论**建议放行**）—— **通过**。
+- [x] **变更审阅**：34 个文件逐项审阅、无调试/密钥/未预期改动；面板「已审」0/34（OBS-06，Owner 侧）—— **有条件通过**。
+- [x] **文档**：需求/设计/测试/复核/发布记录（上一轮）齐全、版本一致；B1/B2 与 5 项 OBS 已修复；全仓表格/链接检查通过 —— **通过**。
+- [ ] **发布**：本轮未发布；发布记录待 release 阶段（上一轮 v1.2.73 记录存在）—— **本关不可判**。
 - [ ] **交付**：交付包 + 证据 + 链接待 release/交付阶段 —— **本关不可判**。
 - [ ] **Owner 最终确认**：approval 阶段（双复核第二关）—— **本关不可判**，模型不审批。
 
-**结论**：DoD 本关可判 5 项全部通过（变更审阅为有条件通过/已审标记待 Owner），3 项留待 approval/release；**本关建议放行**。
+**结论**：DoD 本关可判 5 项通过（验收清单为有条件通过，GUI 项待 Owner），3 项留待 approval/release；**本关建议放行**。
 
 ---
 
-## 6. 专业质量复核（⑦，v3 保持通过）
+## 6. 专业质量复核（⑦，v2）
 
-> v1 三项复核的结论与独立证据继续有效（相关文件本轮未再修改：pipeline.js 11:06、design.md 11:01、三手册 11:04–11:06）。v2/v3 未发现回归或伪造。
-
-| 复核项 | v3 结论 | 关键证据（v1 独立核实、v3 复验） |
+| 复核项 | v2 结论 | 关键证据 |
 |---|---|---|
-| ① 需求调研与借鉴 | **通过** | `requirements.md` §6.1 **11 个来源**（URL + 2026-10-27 + 关键结论，URL 唯一）；§6.2 **17 行**决策表（采用/调整/不采用 + 理由 + 落点）；§6.3 已验证模式 + **5 条创新假设**（含验证方式）；§6.5 披露 4 条失败来源；独立 `web_fetch` 3/3 HTTP 200 且结论一致（W3C：4.5:1/3:1/不四舍五入；SPDX：3.29.0 短标识；OSV：npm 230075 漏洞） |
-| ② 设计质量（9 MUST / 五维 rubric / 八态 / 迭代证据） | **通过** | design.md **722 行**、`### 3.1–3.9` 共 **9 个 MUST**、五维 rubric（每维 ≥3、均分 ≥4，must 一票否决；自评 4.2/5.0）、八态矩阵、360/768/1280、150–300ms + reduced-motion、ARIA；**R1/R2/R3 真实迭代**（3 张 PNG 已目视复核：R2 新增「均分」与 4 分门槛虚线，终版更正为「3 次渲染 / 2 轮修正」）；design 提示词 20/20 关键词 |
-| ③ 工程调研与许可证 | **N/A（理由已记录并保持）** | 本轮纯提示词/文档轮：`pipeline.js` 仅提示词文本、无运行时实现代码；根/插件依赖与 HEAD 逐字一致（根 ssh2；插件 @xterm/addon-fit、@xterm/xterm、ssh2）；无锁文件；未复制第三方代码 → `docs/pipeline/engineering-research.md` 不适用；许可证矩阵/SPDX 分级/NOTICE/出处规则已写入 `docs/opc/03-engineering.md` §5.3/§5.5 与 development 提示词、PIPELINE_SECTION |
+| ① 需求调研与借鉴 | **通过** | requirements.md §7.1 **7 个来源**（URL + 2026-10-27 + 关键结论，URL 唯一）；§7.4 **4 条失败来源**披露；§7.2 **14 行**借鉴决策表；§7.3 已验证模式 + **7 条创新假设**；v1 独立 `web_fetch` 3/3 HTTP 200 且结论一致（Linear/MDN/NN-g）；本轮未改 §7 |
+| ② 设计质量（自检评分/八态/无障碍/对比度/迭代） | **通过** | design.md §15 五维 rubric（0–5 锚点、每维 ≥3、均分 ≥4、must 一票否决 7 项）+ 本轮自评 **4.2/5.0**（逐维证据/扣分点）+ must 7 项全 ✅ + 结论可提交；§6 八态矩阵、§9.4 对比度实测（正文 4.5:1 等）、§9.1/9.3 44×44/键盘/ARIA/reduced-motion、§9.2 360/768/1280、§16 迭代记录 R1/R2 + 4 张 PNG；§13.4 间距例外与实现 8px 一致 |
+| ③ 工程调研与许可证 | **通过（N/A 理由已记录）** | `docs/pipeline/engineering-research.md`（78 行）§1 N/A 判定依据、§2 候选对比不适用、§3 内部模式借鉴表、§4 出处/许可证（无第三方代码、无 NOTICE 义务、内部 MIT 同仓参考）、§5 可靠/安全/性能自检、§6 来源记录、§7 结论；依赖未新增、无第三方代码复制、无模型工具、pipeline 只读 |
 
 **三项复核结论：全部通过，阻断 0。**
 
@@ -141,24 +154,39 @@
 
 ## 7. 放行建议（⑧）
 
-- **建议：放行**（阻断项 **0**；B1/B2/B3 已修复并经 QA 最终复测 + 本复核独立核验关闭；三项专业质量复核通过；功能/证据/文档均无遗留问题）。
-- **修复确认（全部关闭）**：
-  1. **B1 已修复**：`docs/opc/README.md` 角色速查表 7 行完整、能力段落在表后（独立核验 + qa-tables ok）；
-  2. **B2 已修复**：`docs/pipeline/requirements.md` §7 第 1 行 3 列完整、`/` 分隔无裸竖线（独立核验 + qa-tables ok）；
-  3. **B3 已修复**：`docs/pipeline/test-report.md` §7 表 5 列一致、记录改写为文字「竖线符号」、`qa-tables` EXIT=0 STRUCTURE PASS（独立核验）。
+- **建议：放行**（阻断项 **0**；v1 的 B1/B2 与 5 项 OBS 已全部修复并复核关闭；功能/自动化/设计落地/Host 数据层均无缺陷）。
+- **阻断项**：无。
+- **修复确认（v1 → v2）**：
+  1. **B1 已关闭**：`docs/pipeline/engineering-research.md`（N/A 理由/内部模式/许可证/自检/结论，78 行）已落盘；
+  2. **B2 已关闭**：`design.md §15` 五维 rubric + 本轮自评 4.2/5.0 + must 7 项自检齐全；
+  3. OBS-01（files 白名单）、OBS-02（提案状态）、OBS-03（1.2.74 提醒）、OBS-04（测试报告计数）、OBS-05（chips 8px）均已修复并经独立核验。
+- **6 条 GUI blocked（环境限制，不是实现缺陷）**：`64983c295b`、`ae5ecf6a53`、`8d70f5e331`、`6db436479d`、`74b92113c5`、`19895d23f0` 需 Owner：
+  1. **重启 Harness**（加载 `assignments.js` 与 `index.js` 4 个 op）；
+  2. **刷新/重建客户端 bundle**（`client.js` +1683 行新增卡片/抽屉/状态卡）；
+  3. 打开工作台按 `docs/ACCEPTANCE.md` **批次 12** 逐项核对并回填 pass/fail + 截图。
+  这 6 项在 Owner 完成前保持 blocked；本报告不伪造通过。若 Owner 在 approval 关前完成并回填，可作为最终确认的输入。
 - **放行前置条件（approval / release，均不由本 Agent 执行）**：
-  1. QA 依本报告将 `d1891f12f4` 由 blocked 复验为 pass（Lead 已安排）；
-  2. Owner 在 approval 关人工确认前：重启 Harness 加载本轮 Host 提示词改动 + 强制刷新，按 `docs/ACCEPTANCE.md` **批次 11** 复测「启动并派发」提示词与 systemPrompt 可检索（环境限制项，非代码缺口）；
-  3. Owner 在面板通过 approval 后，release 阶段由运维记录环境/URL/版本/回滚方式，并打包交付。
-- **非阻断观察（最终状态）**：
-  - **OBS-04（仍存在，非阻断）**：`docs/pipeline/engineering-research.md` 未落盘 N/A 记录；本轮由本报告 §6 记录理由，如需文件留痕可下轮补 1 行。
-  - **OBS-05（仍存在，历史）**：`docs/FEATURE_PROPOSAL.md` L309 存在同类未转义竖线（该文件本轮未改动，属历史债务）；建议后续文档轮清理，并已建议把表格/链接扫描纳入常备检查。
-  - **OBS-06（仍存在，非阻断）**：`.dsh/review.json` 逐文件「已审」标记 0/24；review 签名不覆盖同状态文件再次编辑，修复改动无法从「本轮变更」看出——建议 Owner 在面板补标或接受本报告审阅结论。
-  - **流程改进（已生效）**：本轮三次修复的教训是「修复文档后必须重跑 qa-tables/qa-static 并刷新记录时点」；v3 已复核最终时点，建议保持该门禁。
+  1. Owner 完成批次 12 的 6 项 GUI 复测并回填验收项（或明确接受环境限制下的其他证据）；
+  2. Lead 提交本轮全部 27 个条目（含 19 个未跟踪文件：assignments.js、engineering-research.md、设计落地稿、proposals/mockups、归档等），QA 在 testing 侧保持 8 套命令全绿；
+  3. Owner 在面板通过 approval（双复核第二关）后，release 由运维记录环境/URL/版本/回滚方式并交付；交付后按硬性规定把根 `package.json` +1 至 1.2.76。
+- **非阻断观察（v2 剩余，建议顺手处理）**：
+  - **OBS-a**：`design.md §15.3` 的「一致性」扣分点仍写「实现需改 8px」，而实现已改为 8px（§13.4 已说明）；自评分表扣分点可更新为「已按 8px 落地」，避免后续误读（P3）。
+  - **OBS-b**：`test-report.md` 中 B1 标题写作「本轮实现涉及第三方复用判定」，而 `engineering-research.md` 结论为 N/A（无第三方复用）；建议把标题改为「工程调研记录缺失（N/A 未落盘）」以免歧义（P3）。
+  - **OBS-c**：`.dsh/review.json` 逐文件「已审」标记 0/34；review 签名不覆盖同状态文件二次编辑（OBS-06，Owner 侧补标或知悉）。
+  - **OBS-d**：`.dsh/agent-assignments.json` 当前不存在（本工作区尚无指派记录），属运行态正常；GUI 空态由 Owner 批次 12 验证。
 - **遗留风险**：
-  1. **GUI 提示词显示未实测**：Host 提示词改动需重启 Harness，Owner 按批次 11 验证（环境限制，非实现缺口）；
-  2. 提示词增长（四阶段约 1.6–2.9k chars）可能被模型忽略关键检查点——selftest 关键词断言兜底，真实执行效果待后续复盘；
-  3. 设计 rubric 主观性 + 本轮无 UI 变更导致标准缺真实页面验证（design.md §11 已声明，下一轮 UI 变更时校准）；
-  4. 调研依赖联网：本轮已完成（11 来源 / 3 条独立 200），后续轮次无网须按纪律标 `blocked`，不得伪造；
-  5. 真实发布环境/SSH 工作区/深色主题与窄侧栏视觉沿用现状人工复测。
-- **下一步**：Lead 提交 acceptance 阶段 → QA 将 `d1891f12f4` 复验转 pass → Owner 在 approval 人工确认关（参考本报告与关键证据）→ release 由运维记录并交付。本 Agent 未审批、未发布、未提交 Git。
+  1. **6 条 GUI 项未实测**：卡片/抽屉/提交链路/键盘焦点/窄屏/视觉落地以 Owner 批次 12 为准（环境限制，非实现缺陷）；
+  2. 指派消息由 Lead 执行，结构化模板减少漏项但依赖 Lead 读全；催办/状态卡可缓解；
+  3. 成员状态为按记录推导（非实时），已明确以 Harness 团队面板为准；临时任务存在被滥用绕过流水线的风险（文档已要求涉代码/需求转变更轮）；
+  4. 100 条/1MB/history 50 上限对当前规模足够，长期需清理终态记录；
+  5. Host 改动需重启 Harness、客户端需刷新/重建 bundle；旧 Host 下看不到新卡片/新 op；
+  6. 版本口径：本轮发布 **1.2.75**；交付后根 +1 至 **1.2.76**，下一轮插件对齐 1.2.76。
+- **下一步**：Lead 提交 acceptance 阶段（本报告为提交产物）→ QA 维持 6 条 GUI blocked 待 Owner → Owner 重启 Harness + 强刷并按批次 12 复测回填 → 在 approval 关人工确认 → release 记录并交付。本 Agent 未调用 `pipeline_submit_stage`、未审批、未发布、未提交 Git。
+
+---
+
+## 附：本轮不可判 / 未覆盖事项
+
+- 6 条 GUI/视觉验收项（Owner 批次 12）。
+- 真实发布环境、公网 URL、SSH 工作区、深色主题与窄侧栏视觉（沿用现状人工复测）。
+- `.dsh/agent-assignments.json` 浏览器实际写入（当前无该文件；Host 逻辑已在临时工作区独立验证）。

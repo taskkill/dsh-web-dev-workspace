@@ -1,24 +1,26 @@
 /**
- * Host smoke tests for the v1.2.72 seven-stage dual-review feature batch.
+ * Host smoke tests for the v1.2.75 agent-assignment batch (on top of the
+ * v1.2.72 dual-review pipeline).
  *
  * Run with: `npm test`
  *
  * These tests are intentionally dependency-free (no test framework, no build)
  * and cover the seams the deeper module selftests in `.dsh/tmp/team/` cannot:
  * the plugin `apply()` wiring (model tools + routes), the acceptance evidence
- * chain, the pipeline review baseline and delivery evidence bundling. The
- * v1.2.72 additions cover the seven-stage constant (product → design →
- * development → testing → acceptance → approval → release), the new AI
- * acceptance-review gate, the fast-mode five-intermediate auto-approval, the
- * six-stage legacy migration and the change-round scope.
+ * chain, the pipeline review baseline, delivery evidence bundling and the
+ * v1.2.75 workbench assignment board (`.dsh/agent-assignments.json`: 4 owner-only
+ * host ops, state machine, bounds, atomic writes, SSH degradation and the
+ * invariant that assigning never writes `.dsh/pipeline.json`).
  */
 
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { promises as fsp } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import * as acceptance from '../../dsh-web-filebrowser-plugin/acceptance.js'
 import * as agentTools from '../../dsh-web-filebrowser-plugin/agent-tools.js'
+import * as assignments from '../../dsh-web-filebrowser-plugin/assignments.js'
 import * as delivery from '../../dsh-web-filebrowser-plugin/delivery.js'
 import * as pipeline from '../../dsh-web-filebrowser-plugin/pipeline.js'
 import * as review from '../../dsh-web-filebrowser-plugin/review.js'
@@ -36,6 +38,43 @@ const LEGACY_STAGE_IDS = STAGE_ORDER.filter((stageId) => stageId !== 'acceptance
 
 /** Migration note the Host writes on a legacy completed document. */
 const MIGRATION_NOTE = '升级迁移：验收复核为更新新增，旧流程已完成'
+
+/** Minimal valid input for `saveAssignment`. */
+function assignmentInput(overrides = {}) {
+  return {
+    title: '实现工作台指派器',
+    detail: '背景/期望：新增工作台团队与指派卡片与 4 个 host op；不做流水线写操作。',
+    acceptance: ['产物落盘 + 自测通过'],
+    assignedTo: { role: 'qa-engineer' },
+    ...overrides,
+  }
+}
+
+/** Write one raw assignment document (for limit/corruption coverage). */
+async function writeRawAssignments(root, value) {
+  const file = assignments.assignmentFile(root)
+  await fsp.mkdir(path.dirname(file), { recursive: true })
+  await fsp.writeFile(file, typeof value === 'string' ? value : JSON.stringify(value), 'utf8')
+}
+
+/** SHA-256 of one file, or an empty string when it does not exist. */
+async function sha256File(file) {
+  try {
+    return createHash('sha256').update(await fsp.readFile(file)).digest('hex')
+  } catch (error) {
+    if (error !== null && typeof error === 'object' && error.code === 'ENOENT') return ''
+    throw error
+  }
+}
+
+/** Assert one promise rejects with the given stable code. */
+function rejectsWithCode(promise, code) {
+  return assert.rejects(promise, (error) => {
+    assert.equal(error.code, code)
+    return true
+  })
+}
+
 
 async function test(name, body) {
   try {
@@ -797,6 +836,311 @@ try {
     assert.ok(finalDoc.stages.every((stage) => stage.status === 'approved'))
     assert.equal(finalDoc.stages.filter((stage) => stage.id === 'acceptance').length, 1)
   })
+  /* ------------------------------------------------------------------ *
+   * v1.2.75 workbench agent assignments (owner-only host ops)
+   * ------------------------------------------------------------------ */
+
+  await test('assignments expose the documented constants and empty board', async () => {
+    assert.equal(assignments.ASSIGNMENTS_DIRNAME, '.dsh')
+    assert.equal(assignments.ASSIGNMENTS_FILENAME, 'agent-assignments.json')
+    assert.equal(assignments.ASSIGNMENTS_VERSION, 1)
+    assert.equal(assignments.ASSIGNMENT_MAX_ITEMS, 100)
+    assert.equal(assignments.ASSIGNMENT_MAX_BYTES, 1024 * 1024)
+    assert.equal(assignments.ASSIGNMENT_MAX_TITLE, 120)
+    assert.equal(assignments.ASSIGNMENT_MAX_DETAIL, 4000)
+    assert.equal(assignments.ASSIGNMENT_MAX_ACCEPTANCE, 10)
+    assert.deepEqual(assignments.ASSIGNMENT_STATUSES, ['dispatched', 'running', 'review', 'done', 'failed', 'cancelled'])
+    assert.deepEqual(assignments.ASSIGNMENT_TERMINAL_STATUSES, ['done', 'failed', 'cancelled'])
+    assert.deepEqual(assignments.ASSIGNMENT_ROLES, [
+      'product-manager',
+      'ui-designer',
+      'fullstack-developer',
+      'qa-engineer',
+      'project-manager-agent',
+      'devops',
+    ])
+    assert.deepEqual(assignments.ASSIGNMENT_STAGE_IDS, ['product', 'design', 'development', 'testing', 'acceptance'])
+    assert.deepEqual(assignments.ASSIGNMENT_LOCKED_STAGE_IDS, ['approval', 'release'])
+    assert.deepEqual(assignments.ASSIGNMENT_PRIORITIES, ['P0', 'P1', 'P2'])
+    assert.deepEqual(assignments.emptyAssignments(), { version: 1, updatedAt: 0, items: [] })
+    const root = await workspace('assign-empty')
+    assert.equal(assignments.assignmentFile(root), path.join(root, '.dsh', 'agent-assignments.json'))
+    const listed = await assignments.listAssignments(root)
+    assert.deepEqual(listed.items, [])
+    assert.equal(listed.total, 0)
+    assert.deepEqual(listed.counts, { dispatched: 0, running: 0, review: 0, done: 0, failed: 0, cancelled: 0 })
+    assert.deepEqual(listed.limits, { maxItems: 100, maxBytes: 1024 * 1024 })
+    await assert.rejects(fsp.access(path.join(root, '.dsh')))
+  })
+
+  await test('assignmentSave persists a dispatched record and list returns newest first', async () => {
+    const root = await workspace('assign-save')
+    const pipelineDoc = pipeline.emptyPipeline()
+    pipelineDoc.round = 4
+    const pipelineFile = pipeline.pipelineFile(root)
+    await fsp.mkdir(path.dirname(pipelineFile), { recursive: true })
+    await fsp.writeFile(pipelineFile, `${JSON.stringify(pipelineDoc, null, 2)}\n`, 'utf8')
+
+    const first = await assignments.saveAssignment(root, assignmentInput())
+    assert.match(first.id, /^[0-9a-f]{10}$/u)
+    assert.equal(first.round, 4, 'round is read from .dsh/pipeline.json')
+    assert.equal(first.status, 'dispatched')
+    assert.equal(first.title, '实现工作台指派器')
+    assert.equal(first.detail.length > 0, true)
+    assert.deepEqual(first.acceptance, ['产物落盘 + 自测通过'])
+    assert.deepEqual(first.assignedTo, { role: 'qa-engineer' })
+    assert.equal(first.stageId, '')
+    assert.equal(first.priority, 'P1')
+    assert.deepEqual(first.expectedArtifacts, [])
+    assert.equal(first.note, '')
+    assert.equal(first.createdAt > 0, true)
+    assert.equal(first.updatedAt, first.createdAt)
+    assert.equal(first.history.length, 1)
+    assert.deepEqual(
+      { status: first.history[0].status, actor: first.history[0].actor, note: first.history[0].note },
+      { status: 'dispatched', actor: 'owner', note: '' },
+    )
+
+    await new Promise((resolve) => setTimeout(resolve, 5))
+    const second = await assignments.saveAssignment(
+      root,
+      assignmentInput({
+        title: '修复验收台筛选',
+        acceptance: ['筛选结果正确', '刷新后仍保留'],
+        assignedTo: { member: 'opc-dev' },
+        stageId: 'testing',
+        priority: 'P0',
+        expectedArtifacts: ['docs/pipeline/test-report.md'],
+      }),
+    )
+    const listed = await assignments.listAssignments(root)
+    assert.equal(listed.total, 2)
+    assert.equal(listed.items[0].id, second.id, 'newest updatedAt first')
+    assert.equal(listed.items[1].id, first.id)
+    assert.equal(listed.counts.dispatched, 2)
+    assert.equal(listed.path, assignments.assignmentFile(root))
+    assert.deepEqual(listed.items[0].assignedTo, { member: 'opc-dev' })
+    assert.equal(listed.items[0].stageId, 'testing')
+    assert.deepEqual(listed.items[0].expectedArtifacts, ['docs/pipeline/test-report.md'])
+
+    const raw = JSON.parse(await fsp.readFile(assignments.assignmentFile(root), 'utf8'))
+    assert.equal(raw.version, 1)
+    assert.equal(raw.items.length, 2)
+    assert.equal((await fsp.readFile(assignments.assignmentFile(root), 'utf8')).endsWith('\n'), true)
+    assert.equal((await fsp.stat(assignments.assignmentFile(root))).mode & 0o777, 0o600)
+    assert.equal(await fsp.readFile(path.join(root, '.dsh', '.gitignore'), 'utf8'), '*\n')
+  })
+
+  await test('assignmentSave enforces required fields, bounds, target exclusivity and role/stage/priority whitelists', async () => {
+    const root = await workspace('assign-validate')
+    const bad = (input, code) => rejectsWithCode(assignments.saveAssignment(root, input), code)
+    await bad({}, 'bad-request')
+    await bad(assignmentInput({ title: '' }), 'bad-request')
+    await bad(assignmentInput({ title: 'x'.repeat(121) }), 'too-large')
+    await bad(assignmentInput({ detail: '' }), 'bad-request')
+    await bad(assignmentInput({ detail: 'x'.repeat(4001) }), 'too-large')
+    await bad(assignmentInput({ acceptance: [] }), 'bad-request')
+    await bad(assignmentInput({ acceptance: Array.from({ length: 11 }, (_value, index) => `c${String(index)}`) }), 'too-large')
+    await bad(assignmentInput({ acceptance: ['x'.repeat(501)] }), 'too-large')
+    await bad(assignmentInput({ acceptance: [''] }), 'bad-request')
+    await bad(assignmentInput({ assignedTo: {} }), 'bad-request')
+    await bad(assignmentInput({ assignedTo: { role: 'qa-engineer', member: 'opc-dev' } }), 'bad-request')
+    await bad(assignmentInput({ assignedTo: { role: 'qa-engineer', newAgent: { name: 'opc-x', role: 'qa-engineer' } } }), 'bad-request')
+    await bad(assignmentInput({ assignedTo: { role: 'unknown-role' } }), 'bad-request')
+    await bad(assignmentInput({ assignedTo: { newAgent: { name: 'opc-x', role: 'nope' } } }), 'bad-request')
+    await bad(assignmentInput({ stageId: 'approval' }), 'bad-request')
+    await bad(assignmentInput({ stageId: 'release' }), 'bad-request')
+    await bad(assignmentInput({ stageId: 'nope' }), 'bad-request')
+    await bad(assignmentInput({ priority: 'P9' }), 'bad-request')
+    await bad(
+      assignmentInput({ expectedArtifacts: Array.from({ length: 11 }, (_value, index) => `docs/${String(index)}.md`) }),
+      'too-large',
+    )
+    // Failed validations never create the board file.
+    await assert.rejects(fsp.access(assignments.assignmentFile(root)))
+
+    const role = await assignments.saveAssignment(root, assignmentInput())
+    assert.deepEqual(role.assignedTo, { role: 'qa-engineer' })
+    const member = await assignments.saveAssignment(root, assignmentInput({ assignedTo: { member: 'opc-dev' } }))
+    assert.deepEqual(member.assignedTo, { member: 'opc-dev' })
+    const newAgent = await assignments.saveAssignment(
+      root,
+      assignmentInput({ assignedTo: { newAgent: { name: 'opc-qa-2', role: 'qa-engineer' } } }),
+    )
+    assert.deepEqual(newAgent.assignedTo, { newAgent: { name: 'opc-qa-2', role: 'qa-engineer' } })
+    const auto = await assignments.saveAssignment(root, assignmentInput({ stageId: 'auto', priority: 'P0' }))
+    assert.equal(auto.stageId, 'auto')
+    assert.equal(auto.priority, 'P0')
+  })
+
+  await test('assignmentUpdate follows the state machine and records history', async () => {
+    const root = await workspace('assign-state')
+    const created = await assignments.saveAssignment(root, assignmentInput())
+    const running = await assignments.updateAssignment(root, { id: created.id, status: 'running', note: 'Lead 已接单' })
+    assert.equal(running.status, 'running')
+    assert.equal(running.updatedAt >= created.updatedAt, true)
+    assert.equal(running.history.length, 2)
+    assert.deepEqual(
+      { status: running.history[1].status, note: running.history[1].note, actor: running.history[1].actor },
+      { status: 'running', note: 'Lead 已接单', actor: 'owner' },
+    )
+    const review = await assignments.updateAssignment(root, { id: created.id, status: 'review', note: '产物已就绪' })
+    assert.equal(review.status, 'review')
+    const done = await assignments.updateAssignment(root, { id: created.id, status: 'done', note: 'Owner 通过并完成' })
+    assert.equal(done.status, 'done')
+    assert.equal(done.history.length, 4)
+
+    const second = await assignments.saveAssignment(root, assignmentInput({ title: '催办样例' }))
+    const nudged = await assignments.updateAssignment(root, { id: second.id, note: '请尽快接单' })
+    assert.equal(nudged.status, 'dispatched', 'nudge keeps the status')
+    assert.equal(nudged.history.length, 2)
+    assert.equal(nudged.history[1].note, '请尽快接单')
+  })
+
+  await test('assignmentUpdate rejects illegal transitions and leaves the file unchanged', async () => {
+    const root = await workspace('assign-transition')
+    const item = await assignments.saveAssignment(root, assignmentInput())
+    const file = assignments.assignmentFile(root)
+    const before = await fsp.readFile(file, 'utf8')
+    await rejectsWithCode(assignments.updateAssignment(root, { id: item.id, status: 'done' }), 'bad-transition')
+    await rejectsWithCode(assignments.updateAssignment(root, { id: item.id, status: 'review' }), 'bad-transition')
+    assert.equal(await fsp.readFile(file, 'utf8'), before)
+    await assignments.updateAssignment(root, { id: item.id, status: 'cancelled', note: '范围调整' })
+    await rejectsWithCode(assignments.updateAssignment(root, { id: item.id, status: 'running' }), 'bad-transition')
+    await rejectsWithCode(assignments.updateAssignment(root, { id: item.id, note: '迟到催办' }), 'bad-transition')
+    await rejectsWithCode(
+      assignments.updateAssignment(root, { id: item.id, status: 'failed', note: 'x' }),
+      'bad-transition',
+    )
+  })
+
+  await test('assignmentUpdate requires a note when failing and supports cancel', async () => {
+    const root = await workspace('assign-fail')
+    const item = await assignments.saveAssignment(root, assignmentInput())
+    await rejectsWithCode(assignments.updateAssignment(root, { id: item.id, status: 'failed' }), 'bad-request')
+    await rejectsWithCode(assignments.updateAssignment(root, { id: item.id, status: 'failed', note: '   ' }), 'bad-request')
+    const failed = await assignments.updateAssignment(root, { id: item.id, status: 'failed', note: '缺少截图与复测' })
+    assert.equal(failed.status, 'failed')
+    assert.equal(failed.note, '缺少截图与复测')
+    assert.equal(failed.history.at(-1).status, 'failed')
+    assert.equal(failed.history.at(-1).note, '缺少截图与复测')
+    await rejectsWithCode(assignments.updateAssignment(root, { id: item.id, status: 'running' }), 'bad-transition')
+
+    const second = await assignments.saveAssignment(root, assignmentInput({ title: '取消样例' }))
+    const cancelled = await assignments.updateAssignment(root, { id: second.id, status: 'cancelled' })
+    assert.equal(cancelled.status, 'cancelled')
+    assert.equal(cancelled.history.at(-1).status, 'cancelled')
+  })
+
+  await test('assignmentDelete only removes terminal records and validates ids', async () => {
+    const root = await workspace('assign-delete')
+    const item = await assignments.saveAssignment(root, assignmentInput())
+    await rejectsWithCode(assignments.deleteAssignment(root, item.id), 'bad-status')
+    await rejectsWithCode(assignments.deleteAssignment(root, 'short'), 'bad-id')
+    await rejectsWithCode(assignments.deleteAssignment(root, 'aaaaaaaaaa'), 'not-found')
+    await assignments.updateAssignment(root, { id: item.id, status: 'cancelled' })
+    const removed = await assignments.deleteAssignment(root, item.id)
+    assert.deepEqual(removed, { removed: item.id })
+    assert.equal((await assignments.listAssignments(root)).total, 0)
+    await rejectsWithCode(assignments.deleteAssignment(root, item.id), 'not-found')
+  })
+
+  await test('assignment board is capped at 100 records with the full error code', async () => {
+    const root = await workspace('assign-full')
+    const items = Array.from({ length: 100 }, (_value, index) => ({
+      id: `id${String(index).padStart(8, '0')}`,
+      title: `历史记录 ${String(index)}`,
+      assignedTo: { role: 'qa-engineer' },
+      status: 'dispatched',
+      createdAt: 1000 + index,
+      updatedAt: 1000 + index,
+      history: [],
+    }))
+    await writeRawAssignments(root, { version: 1, updatedAt: 1, items })
+    await rejectsWithCode(assignments.saveAssignment(root, assignmentInput()), 'full')
+    assert.equal((await assignments.listAssignments(root)).total, 100)
+  })
+
+  await test('assignment board rejects corrupt and oversized documents without clearing them', async () => {
+    const corruptRoot = await workspace('assign-corrupt')
+    await writeRawAssignments(corruptRoot, '{not json')
+    const corruptError = await assignments.readAssignments(corruptRoot).catch((error) => error)
+    assert.equal(corruptError.code, 'corrupt')
+    assert.ok(String(corruptError.message).includes(assignments.assignmentFile(corruptRoot)))
+    assert.equal(await fsp.readFile(assignments.assignmentFile(corruptRoot), 'utf8'), '{not json')
+    await writeRawAssignments(corruptRoot, JSON.stringify(assignments.emptyAssignments()))
+    assert.equal((await assignments.listAssignments(corruptRoot)).total, 0)
+
+    const largeRoot = await workspace('assign-large')
+    const largeFile = assignments.assignmentFile(largeRoot)
+    await fsp.mkdir(path.dirname(largeFile), { recursive: true })
+    await fsp.writeFile(largeFile, `{"items": "${'x'.repeat(1024 * 1024)}"}`, 'utf8')
+    await rejectsWithCode(assignments.readAssignments(largeRoot), 'too-large')
+  })
+
+  await test('assignment ops reject SSH roots and relative roots consistently', async () => {
+    const sshRoot = 'ssh://user@host:22/srv/app'
+    await rejectsWithCode(assignments.listAssignments(sshRoot), 'ssh-unsupported')
+    await rejectsWithCode(assignments.readAssignments(sshRoot), 'ssh-unsupported')
+    await rejectsWithCode(assignments.saveAssignment(sshRoot, assignmentInput()), 'ssh-unsupported')
+    await rejectsWithCode(
+      assignments.updateAssignment(sshRoot, { id: 'aaaaaaaaaa', status: 'running' }),
+      'ssh-unsupported',
+    )
+    await rejectsWithCode(assignments.deleteAssignment(sshRoot, 'aaaaaaaaaa'), 'ssh-unsupported')
+    await rejectsWithCode(assignments.listAssignments('relative/workspace'), 'bad-root')
+  })
+
+  await test('assigning never writes .dsh/pipeline.json (hash unchanged across the full lifecycle)', async () => {
+    const root = await workspace('assign-pipeline')
+    await pipeline.setRequirement(root, { title: '指派不改流水线', detail: '关联阶段任务只读 round' })
+    await pipeline.startStage(root, 'product')
+    const pipelineFile = pipeline.pipelineFile(root)
+    const beforeHash = await sha256File(pipelineFile)
+    const item = await assignments.saveAssignment(root, assignmentInput({ stageId: 'testing' }))
+    assert.equal(item.status, 'dispatched')
+    await assignments.updateAssignment(root, { id: item.id, status: 'running' })
+    await assignments.updateAssignment(root, { id: item.id, status: 'review' })
+    await assignments.updateAssignment(root, { id: item.id, status: 'done' })
+    const temp = await assignments.saveAssignment(root, assignmentInput({ title: '临时任务', stageId: '' }))
+    await assignments.updateAssignment(root, { id: temp.id, status: 'failed', note: '不达标' })
+    await assignments.deleteAssignment(root, temp.id)
+    const afterHash = await sha256File(pipelineFile)
+    assert.equal(afterHash, beforeHash, 'pipeline.json bytes must not change')
+    await rejectsWithCode(assignments.saveAssignment(root, assignmentInput({ stageId: 'approval' })), 'bad-request')
+    await rejectsWithCode(assignments.saveAssignment(root, assignmentInput({ stageId: 'release' })), 'bad-request')
+  })
+
+  await test('ten concurrent assignment saves all persist without corruption', async () => {
+    const root = await workspace('assign-concurrent')
+    await Promise.all(
+      Array.from({ length: 10 }, (_value, index) =>
+        assignments.saveAssignment(root, assignmentInput({ title: `并发任务 ${String(index)}` })),
+      ),
+    )
+    const listed = await assignments.listAssignments(root)
+    assert.equal(listed.total, 10)
+    assert.equal(new Set(listed.items.map((item) => item.id)).size, 10)
+    const raw = JSON.parse(await fsp.readFile(assignments.assignmentFile(root), 'utf8'))
+    assert.equal(raw.items.length, 10)
+    const leftovers = (await fsp.readdir(path.join(root, '.dsh'))).filter((name) => name.endsWith('.tmp'))
+    assert.deepEqual(leftovers, [], 'atomic writes leave no temp files behind')
+  })
+
+  await test('no assignment model tools are registered and index.js wires the four owner-only ops', async () => {
+    const host = makeHost()
+    apply(host.ctx)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    const names = host.tools.map((definition) => definition.name)
+    assert.equal(names.filter((name) => /assignment/iu.test(name)).length, 0, 'assignments must stay owner-only')
+    assert.equal(host.tools.length, 36)
+    assert.equal(host.routes.length, 10)
+    const indexSource = await fsp.readFile(new URL('../../dsh-web-filebrowser-plugin/index.js', import.meta.url), 'utf8')
+    for (const op of ['assignmentList', 'assignmentSave', 'assignmentUpdate', 'assignmentDelete']) {
+      assert.ok(indexSource.includes(`case '${op}':`), `index.js must wire ${op}`)
+    }
+  })
+
 } finally {
   for (const root of roots) {
     await fsp.rm(root, { recursive: true, force: true }).catch(() => {})

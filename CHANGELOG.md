@@ -2,6 +2,49 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.75 — 2026-10-27
+
+### Workbench Agent assignments: pick an agent, write the task, assign and track
+
+- A new **Team & assignment** card in the Workbench (between project status and
+  project flow) lists the six role agents with a derived status (idle / working /
+  awaiting your confirmation — live member status stays in the Harness Agent Team
+  panel), an assign button, the latest five assignments and an empty state.
+- The assignment drawer (608 px right-hand drawer, bottom sheet ≤768 px) captures
+  who (role / current member / new agent), title, detail, acceptance criteria
+  (1–10), priority, an optional pipeline stage (auto / the five assignable stages
+  / unlinked temporary task — sign-off and release are locked) and expected
+  artefacts. Submitting persists the assignment and sends a structured assignment
+  brief to the current conversation, where the Lead executes it with the native
+  Agent Teams tools (`spawn_teammate` / `send_message` / `team_task_*`).
+- Assignments persist in `.dsh/agent-assignments.json` (per workspace, ≤100 items,
+  1 MB cap, atomic temp-file writes, per-root lock). Four host ops —
+  `assignmentList`, `assignmentSave`, `assignmentUpdate`, `assignmentDelete` —
+  validate fields and enforce the status machine (`dispatched → running → review →
+  done`; rejection needs a note; cancel; re-assign creates a new record; only
+  terminal records can be deleted).
+- Assigning never writes `.dsh/pipeline.json`: stage-linked tasks still go through
+  the seven-stage dual review (AI acceptance review + owner sign-off), while
+  temporary tasks leave the pipeline untouched and are confirmed by the owner. No
+  model tools are registered, so agents cannot assign themselves.
+- Client: zh/en strings, accessible drawer (dialog role, focus return, 44 px hit
+  areas), responsive bottom sheet and a team-panel entry that explains where live
+  member status lives.
+
+### Also in this release (previously unreleased)
+
+- **Editor tab context menu**: right-click any editor tab (files, browser,
+  terminal, diff, Workbench) for close / close others / close to the right / close
+  all / pin-unpin. Bulk close skips dirty tabs and reports what was kept, closing
+  the active tab activates the nearest remaining tab, and pin state survives a
+  reload.
+
+### Housekeeping
+
+- New host module `assignments.js`; `npm run check` covers it. Host smoke tests
+  cover the assignment ops (validation, limits, transitions, SSH degradation);
+  `docs/ACCEPTANCE.md` gains batch 12. Both `package.json` files are 1.2.75.
+
 ## 1.2.73 — 2026-10-27
 
 ### Research-first, professional-quality agent capabilities
@@ -248,19 +291,6 @@ client changes take effect on page refresh.
 - Owner GUI steps for this batch are in `docs/ACCEPTANCE.md` (batch 5).
 
 ## Unreleased
-
-### Editor tab context menu: close / close others / close right / close all / pin
-
-- Right-clicking any editor tab (files, browser, terminal, diff, Workbench) opens a
-  tab menu with **Close**, **Close others**, **Close to the right**, **Close all**
-  and **Pin/Unpin tab**. Pinned tabs move to the front, show a pin glyph and are
-  skipped by every bulk close; bulk close keeps unsaved (dirty) tabs open and
-  reports how many were left, while a single close still goes through the usual
-  unsaved-changes confirmation. Closing the active tab activates the nearest
-  remaining tab (right first, then left); terminal tabs are released through the
-  usual cleanup.
-- Pinned state is persisted in the session snapshot and restored to the front of
-  the strip after a reload.
 
 ### Confirmation before packing a delivery bundle
 

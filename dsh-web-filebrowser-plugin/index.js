@@ -23,6 +23,7 @@ import path from 'node:path'
 import { Readable } from 'node:stream'
 import { fileURLToPath } from 'node:url'
 import * as bookmarks from './bookmarks.js'
+import * as assignments from './assignments.js'
 import * as acceptance from './acceptance.js'
 import * as agentTools from './agent-tools.js'
 import * as delivery from './delivery.js'
@@ -360,6 +361,14 @@ async function dispatch(ctx, op, body) {
       return acceptanceEvidenceAdd(ctx, body)
     case 'acceptanceEvidenceRemove':
       return acceptanceEvidenceRemove(ctx, body)
+    case 'assignmentList':
+      return listAssignments(ctx, body)
+    case 'assignmentSave':
+      return saveAssignment(ctx, body)
+    case 'assignmentUpdate':
+      return updateAssignment(ctx, body)
+    case 'assignmentDelete':
+      return deleteAssignment(ctx, body)
     case 'reviewState':
       return reviewState(ctx, body)
     case 'reviewMark':
@@ -1116,6 +1125,76 @@ async function acceptanceEvidenceRemove(ctx, body) {
     index: body.index,
     by: 'owner',
   })
+}
+
+/**
+ * Resolve a local workspace root for a workbench assignment operation. The
+ * dispatch board lives in the workspace's `.dsh` directory, so SSH remote roots
+ * have none and every assignment op degrades to `ssh-unsupported`.
+ * @param ctx - Host context.
+ * @param requested - root path sent by the browser.
+ * @returns canonical local root.
+ */
+async function assignmentRoot(ctx, requested) {
+  const root = await resolveRoot(ctx, requested)
+  if (ssh.isSshRoot(root)) throw new SideError('ssh-unsupported', 'SSH 远程工作区暂不支持工作台指派')
+  return root
+}
+
+/**
+ * Read one workspace's assignment board for the workbench card/status list.
+ * @param ctx - Host context.
+ * @param body - `{ root }`.
+ * @returns `{ items, total, counts, updatedAt, path, limits }`.
+ */
+async function listAssignments(ctx, body) {
+  const root = await assignmentRoot(ctx, body.root)
+  return assignments.listAssignments(root)
+}
+
+/**
+ * Create one dispatched assignment from the workbench drawer.
+ * @param ctx - Host context.
+ * @param body - `{ root, title, detail, acceptance, assignedTo, stageId?, priority?, expectedArtifacts? }`.
+ * @returns the new record.
+ */
+async function saveAssignment(ctx, body) {
+  const root = await assignmentRoot(ctx, body.root)
+  return assignments.saveAssignment(root, {
+    title: body.title,
+    detail: body.detail,
+    acceptance: body.acceptance,
+    assignedTo: body.assignedTo,
+    stageId: body.stageId,
+    priority: body.priority,
+    expectedArtifacts: body.expectedArtifacts,
+  })
+}
+
+/**
+ * Advance / nudge / reject one assignment from the status list.
+ * @param ctx - Host context.
+ * @param body - `{ root, id, status?, note? }`.
+ * @returns the updated record.
+ */
+async function updateAssignment(ctx, body) {
+  const root = await assignmentRoot(ctx, body.root)
+  const patch = { id: body.id }
+  for (const key of ['status', 'note']) {
+    if (Object.prototype.hasOwnProperty.call(body, key)) patch[key] = body[key]
+  }
+  return assignments.updateAssignment(root, patch)
+}
+
+/**
+ * Delete one terminal assignment record from the status list.
+ * @param ctx - Host context.
+ * @param body - `{ root, id }`.
+ * @returns `{ removed }`.
+ */
+async function deleteAssignment(ctx, body) {
+  const root = await assignmentRoot(ctx, body.root)
+  return assignments.deleteAssignment(root, body.id)
 }
 
 /**

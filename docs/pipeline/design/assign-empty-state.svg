@@ -1,0 +1,285 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1024" viewBox="0 0 1440 1024" role="img" aria-labelledby="title desc">
+  <title id="title">「团队与指派」空态高保真效果图</title>
+  <desc id="desc">工作台「团队与指派」卡空态：6 个角色 chips、无任何指派记录时显示空态插画与「指派任务」CTA，保留项目状态、需要你处理与项目流程卡。</desc>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif; }
+    .page-title { font-size: 24px; font-weight: 700; fill: #0f1115; }
+    .sub { font-size: 13px; fill: #61666b; }
+    .card-title { font-size: 13px; font-weight: 600; fill: #61666b; letter-spacing: 0.04em; }
+    .card-title-dark { font-size: 13px; font-weight: 600; fill: #0f1115; }
+    .label { font-size: 12px; font-weight: 600; fill: #61666b; }
+    .body { font-size: 14px; fill: #0f1115; }
+    .body-b { font-size: 14px; font-weight: 600; fill: #0f1115; }
+    .meta { font-size: 12px; fill: #61666b; }
+    .small { font-size: 12px; fill: #61666b; }
+    .link { font-size: 13px; fill: #2563eb; }
+    .link-s { font-size: 12px; fill: #2563eb; }
+    .btn-p { font-size: 13px; font-weight: 600; fill: #ffffff; }
+    .btn-s { font-size: 13px; font-weight: 600; fill: #0f1115; }
+    .chip-name { font-size: 14px; font-weight: 600; fill: #0f1115; }
+    .chip-sub { font-size: 12px; fill: #61666b; }
+    .status { font-size: 12px; font-weight: 600; }
+    .step-name { font-size: 12px; font-weight: 600; fill: #0f1115; }
+    .step-role { font-size: 12px; fill: #61666b; }
+    .nav { font-size: 13px; fill: #61666b; }
+    .nav-active { font-size: 13px; font-weight: 600; fill: #0f1115; }
+    .nav-group { font-size: 12px; font-weight: 600; fill: #61666b; letter-spacing: 0.04em; }
+    .white { fill: #ffffff; }
+  </style>
+
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="10" flood-color="#0f1115" flood-opacity="0.06"/>
+    </filter>
+    <clipPath id="frame-clip"><rect x="24" y="24" width="1392" height="976" rx="12"/></clipPath>
+  </defs>
+
+  <rect width="1440" height="1024" fill="#eceff3"/>
+  <g clip-path="url(#frame-clip)">
+    <rect x="24" y="24" width="1392" height="976" fill="#ffffff"/>
+    <rect x="24" y="24" width="1392" height="56" fill="#ffffff"/>
+    <line x1="24" y1="80" x2="1416" y2="80" stroke="#e3e8ef"/>
+
+    <!-- top bar -->
+    <circle cx="52" cy="52" r="11" fill="#0f1115"/>
+    <circle cx="52" cy="52" r="4" fill="#ffffff"/>
+    <text x="72" y="57" class="body-b">Dev Workspace</text>
+    <text x="196" y="57" class="meta">工作区 / dsh-web-filebrowser</text>
+    <text x="1180" y="57" text-anchor="end" class="meta">项目：工作台指派 Agent（提案演示）</text>
+    <circle cx="1360" cy="52" r="14" fill="#eef4ff"/>
+    <text x="1360" y="57" text-anchor="middle" class="small" style="fill:#2563eb;font-weight:600">你</text>
+
+    <!-- left sidebar -->
+    <rect x="24" y="80" width="212" height="920" fill="#f9fafb"/>
+    <line x1="236" y1="80" x2="236" y2="1000" stroke="#e3e8ef"/>
+    <text x="44" y="108" class="nav-group">工作区</text>
+    <rect x="36" y="120" width="188" height="36" rx="8" fill="#ffffff" stroke="#e3e8ef"/>
+    <path d="M48 144 L54 138 L60 144 V150 H48 Z" fill="none" stroke="#0f1115" stroke-width="1.5" stroke-linejoin="round"/>
+    <text x="70" y="144" class="nav-active">工作台</text>
+    <path d="M50 166 H58 L62 170 V180 H50 Z" fill="none" stroke="#61666b" stroke-width="1.5" stroke-linejoin="round"/>
+    <text x="70" y="180" class="nav">文件</text>
+    <circle cx="53" cy="205" r="4.5" fill="none" stroke="#61666b" stroke-width="1.5"/>
+    <line x1="56.5" y1="208.5" x2="60" y2="212" stroke="#61666b" stroke-width="1.5"/>
+    <text x="70" y="216" class="nav">搜索</text>
+    <circle cx="50" cy="251" r="1.6" fill="#61666b"/><circle cx="55" cy="251" r="1.6" fill="#61666b"/><circle cx="60" cy="251" r="1.6" fill="#61666b"/>
+    <text x="70" y="255" class="nav">更多</text>
+    <line x1="40" y1="278" x2="220" y2="278" stroke="#e3e8ef"/>
+    <text x="44" y="302" class="nav-group">项目</text>
+    <rect x="48" y="318" width="10" height="3" rx="1.5" fill="#61666b"/><rect x="48" y="324" width="10" height="3" rx="1.5" fill="#61666b"/><rect x="48" y="330" width="10" height="3" rx="1.5" fill="#61666b"/>
+    <text x="70" y="332" class="nav">流水线</text>
+    <rect x="48" y="352" width="10" height="10" rx="2" fill="none" stroke="#61666b" stroke-width="1.5"/>
+    <polyline points="50,357 52.5,360 56,355" fill="none" stroke="#61666b" stroke-width="1.5"/>
+    <text x="70" y="362" class="nav">验收</text>
+    <line x1="48" y1="378" x2="58" y2="378" stroke="#61666b" stroke-width="1.5"/><line x1="48" y1="384" x2="58" y2="384" stroke="#61666b" stroke-width="1.5"/>
+    <text x="70" y="388" class="nav">待办</text>
+    <line x1="40" y1="410" x2="220" y2="410" stroke="#e3e8ef"/>
+    <text x="44" y="434" class="nav-group">开发</text>
+    <rect x="48" y="448" width="10" height="10" rx="2" fill="none" stroke="#61666b" stroke-width="1.5"/><polygon points="51,451 51,455 55,453" fill="#61666b"/>
+    <text x="70" y="458" class="nav">任务</text>
+    <circle cx="50" cy="481" r="2.5" fill="none" stroke="#61666b" stroke-width="1.5"/><circle cx="58" cy="488" r="2.5" fill="none" stroke="#61666b" stroke-width="1.5"/>
+    <path d="M52 483 L56 486" stroke="#61666b" stroke-width="1.5"/>
+    <text x="70" y="490" class="nav">Git</text>
+    <rect x="48" y="514" width="10" height="10" rx="2" fill="none" stroke="#61666b" stroke-width="1.5"/><line x1="51" y1="517" x2="55" y2="517" stroke="#61666b" stroke-width="1"/><line x1="51" y1="520" x2="55" y2="520" stroke="#61666b" stroke-width="1"/>
+    <text x="70" y="523" class="nav">记忆</text>
+    <rect x="36" y="928" width="188" height="40" rx="8" fill="#eef4ff"/>
+    <circle cx="52" cy="948" r="6" fill="none" stroke="#2563eb" stroke-width="1.5"/><circle cx="62" cy="942" r="4" fill="none" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="76" y="953" class="nav-active" style="fill:#2563eb">团队面板入口</text>
+
+    <!-- main content -->
+    <rect x="236" y="80" width="1180" height="920" fill="#f7f8fa"/>
+    <text x="286" y="120" class="page-title">工作台</text>
+    <text x="286" y="144" class="sub">项目：工作台指派 Agent 提案 · 第 1 轮 · 团队协作演示</text>
+    <text x="1326" y="120" text-anchor="end" class="link">刷新</text>
+
+    <!-- needs-you card（需求顺序：需要你处理在最上） -->
+    <rect x="286" y="164" width="1080" height="88" rx="12" fill="#fffaf0" stroke="#f0b74a"/>
+    <text x="306" y="190" class="card-title" style="fill:#b45309">需要你处理</text>
+    <rect x="1160" y="178" width="52" height="24" rx="12" fill="#fef5e7"/>
+    <text x="1186" y="195" text-anchor="middle" class="status" style="fill:#b45309">1 项</text>
+    <text x="306" y="218" class="body-b">第 5 关「验收复核」待你审批</text>
+    <text x="306" y="240" class="meta">复核报告：建议放行 · 阻断项 0 · 复测 3/3 通过</text>
+    <rect x="1024" y="196" width="76" height="36" rx="8" fill="#0f1115"/>
+    <text x="1062" y="219" text-anchor="middle" class="btn-p">通过</text>
+    <rect x="1108" y="196" width="76" height="36" rx="8" fill="#ffffff" stroke="#d5dae1"/>
+    <text x="1146" y="219" text-anchor="middle" class="btn-s">打回</text>
+    <text x="1210" y="219" class="link">查看复核报告 →</text>
+
+    <!-- project status card -->
+    <rect x="286" y="264" width="1080" height="120" rx="12" fill="#ffffff" stroke="#e3e8ef"/>
+    <text x="306" y="290" class="card-title">项目状态</text>
+    <rect x="1198" y="272" width="148" height="28" rx="14" fill="#f1f3f5"/>
+    <text x="1272" y="291" text-anchor="middle" class="meta">第 1 轮 · 已完成 4/7</text>
+    <rect x="306" y="304" width="1040" height="8" rx="4" fill="#eef0f3"/>
+    <rect x="306" y="304" width="594" height="8" rx="4" fill="#4176e6"/>
+    <text x="306" y="336" class="body">当前：验收复核 · 待评审 · 负责：项目经理 Agent</text>
+    <text x="1346" y="336" text-anchor="end" class="link">查看流水线 →</text>
+    <text x="306" y="358" class="meta">验收复核报告已提交；通过后进入人工确认，发布仍锁定。</text>
+    <text x="1346" y="358" text-anchor="end" class="link-s" style="fill:#61666b">打开需求</text>
+
+    <!-- NEW team & assignment card（需求顺序：项目状态之后、项目流程之前；最近 5 条） -->
+    <rect x="286" y="396" width="1080" height="432" rx="12" fill="#ffffff" stroke="#e3e8ef"/>
+    <text x="306" y="422" class="card-title">团队与指派</text>
+    <text x="306" y="441" class="meta">6 名角色成员 · 暂无进行中指派（状态按指派记录推导）</text>
+    <rect x="1216" y="402" width="130" height="40" rx="8" fill="#0f1115"/>
+    <text x="1281" y="427" text-anchor="middle" class="btn-p">指派任务</text>
+    <rect x="1082" y="414" width="13" height="16" rx="2" fill="none" stroke="#2563eb" stroke-width="1.4"/>
+    <rect x="1086" y="410" width="13" height="16" rx="2" fill="none" stroke="#2563eb" stroke-width="1.4"/>
+    <text x="1204" y="427" text-anchor="end" class="link">团队面板入口</text>
+    <line x1="306" y1="462" x2="1346" y2="462" stroke="#eef0f3"/>
+
+    <text x="306" y="484" class="label">团队成员</text>
+    <text x="388" y="484" class="meta">状态按指派记录推导；实时状态以 Harness 团队面板为准</text>
+    <circle cx="1134" cy="480" r="4" fill="#7f8287"/><text x="1144" y="484" class="meta">空闲</text>
+    <circle cx="1192" cy="480" r="4" fill="#4176e6"/><text x="1202" y="484" class="meta">执行中</text>
+    <circle cx="1258" cy="480" r="4" fill="#f59e0b"/><text x="1268" y="484" class="meta">待你确认</text>
+    <g>
+      <rect x="306" y="496" width="338" height="48" rx="10" fill="#ffffff" stroke="#e3e8ef"/>
+      <circle cx="332" cy="520" r="13" fill="#f1f3f5"/>
+      <text x="332" y="525" text-anchor="middle" style="font-size:12px;font-weight:600;fill:#0f1115">产</text>
+      <text x="354" y="514" class="chip-name">产品经理</text>
+      <text x="354" y="529" class="chip-sub">opc-product · 需求与验收项</text>
+      <rect x="548" y="508" width="88" height="24" rx="12" fill="#f1f3f5"/>
+      <circle cx="562" cy="520" r="4" fill="#7f8287"/>
+      <text x="573" y="524" class="status" style="fill:#61666b">空闲</text>
+    </g>
+    <g>
+      <rect x="656" y="496" width="338" height="48" rx="10" fill="#ffffff" stroke="#e3e8ef"/>
+      <circle cx="682" cy="520" r="13" fill="#f1f3f5"/>
+      <text x="682" y="525" text-anchor="middle" style="font-size:12px;font-weight:600;fill:#2563eb">设</text>
+      <text x="704" y="514" class="chip-name">UI 设计师</text>
+      <text x="704" y="529" class="chip-sub">opc-design · 设计与质量门</text>
+      <rect x="898" y="508" width="88" height="24" rx="12" fill="#f1f3f5"/>
+      <circle cx="912" cy="520" r="4" fill="#7f8287"/>
+      <text x="923" y="524" class="status" style="fill:#2563eb">空闲</text>
+    </g>
+    <g>
+      <rect x="1006" y="496" width="340" height="48" rx="10" fill="#ffffff" stroke="#e3e8ef"/>
+      <circle cx="1032" cy="520" r="13" fill="#f1f3f5"/>
+      <text x="1032" y="525" text-anchor="middle" style="font-size:12px;font-weight:600;fill:#2563eb">开</text>
+      <text x="1054" y="514" class="chip-name">全栈开发</text>
+      <text x="1054" y="529" class="chip-sub">opc-dev · 实现与测试</text>
+      <rect x="1250" y="508" width="88" height="24" rx="12" fill="#f1f3f5"/>
+      <circle cx="1264" cy="520" r="4" fill="#7f8287"/>
+      <text x="1275" y="524" class="status" style="fill:#2563eb">空闲</text>
+    </g>
+    <g>
+      <rect x="306" y="552" width="338" height="48" rx="10" fill="#ffffff" stroke="#e3e8ef"/>
+      <circle cx="332" cy="576" r="13" fill="#f1f3f5"/>
+      <text x="332" y="581" text-anchor="middle" style="font-size:12px;font-weight:600;fill:#b45309">测</text>
+      <text x="354" y="570" class="chip-name">测试工程师</text>
+      <text x="354" y="585" class="chip-sub">opc-qa · 验收与复测</text>
+      <rect x="548" y="564" width="88" height="24" rx="12" fill="#f1f3f5"/>
+      <circle cx="562" cy="576" r="4" fill="#7f8287"/>
+      <text x="573" y="580" class="status" style="fill:#b45309">空闲</text>
+    </g>
+    <g>
+      <rect x="656" y="552" width="338" height="48" rx="10" fill="#ffffff" stroke="#e3e8ef"/>
+      <circle cx="682" cy="576" r="13" fill="#f1f3f5"/>
+      <text x="682" y="581" text-anchor="middle" style="font-size:12px;font-weight:600;fill:#0f1115">项</text>
+      <text x="704" y="570" class="chip-name">项目经理 Agent</text>
+      <text x="704" y="585" class="chip-sub">验收复核 · AI 复核</text>
+      <rect x="898" y="564" width="88" height="24" rx="12" fill="#f1f3f5"/>
+      <circle cx="912" cy="576" r="4" fill="#7f8287"/>
+      <text x="923" y="580" class="status" style="fill:#61666b">空闲</text>
+    </g>
+    <g>
+      <rect x="1006" y="552" width="340" height="48" rx="10" fill="#ffffff" stroke="#e3e8ef"/>
+      <circle cx="1032" cy="576" r="13" fill="#f1f3f5"/>
+      <text x="1032" y="581" text-anchor="middle" style="font-size:12px;font-weight:600;fill:#0f1115">运</text>
+      <text x="1054" y="570" class="chip-name">运维</text>
+      <text x="1054" y="585" class="chip-sub">opc-ops · 发布与回滚</text>
+      <rect x="1250" y="564" width="88" height="24" rx="12" fill="#f1f3f5"/>
+      <circle cx="1264" cy="576" r="4" fill="#7f8287"/>
+      <text x="1275" y="580" class="status" style="fill:#61666b">空闲</text>
+    </g>
+
+    <text x="306" y="620" class="label">最近指派</text>
+    <text x="1346" y="620" text-anchor="end" class="meta">共 0 条 · 默认显示最近 5 条</text>
+    <line x1="306" y1="630" x2="1346" y2="630" stroke="#eef0f3"/>
+    <circle cx="816" cy="680" r="30" fill="#f1f3f5"/>
+    <path d="M802 676 H830 V696 H802 Z" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linejoin="round"/>
+    <path d="M802 686 L810 686 L813 691 H819 L822 686 H830" fill="none" stroke="#61666b" stroke-width="1.6" stroke-linecap="round"/>
+    <text x="816" y="730" text-anchor="middle" style="font-size:14px;font-weight:600;fill:#0f1115">还没有指派任务</text>
+    <text x="816" y="750" text-anchor="middle" class="meta">选角色、写清验收标准，把任务交给团队；状态会记录在这里。</text>
+    <rect x="700" y="766" width="112" height="36" rx="8" fill="#0f1115"/>
+    <text x="756" y="789" text-anchor="middle" class="btn-p">指派任务</text>
+    <rect x="824" y="766" width="124" height="36" rx="8" fill="#ffffff" stroke="#d5dae1"/>
+    <text x="886" y="789" text-anchor="middle" class="btn-s">团队面板入口</text>
+    <line x1="306" y1="808" x2="1346" y2="808" stroke="#eef0f3"/>
+    <text x="306" y="822" class="meta">派发后由 Lead 用原生 team 工具执行；成员与共享任务状态以团队面板为准。</text>
+    <text x="1346" y="822" text-anchor="end" class="meta">记录保存在 .dsh/agent-assignments.json</text>
+
+    <!-- project flow card -->
+    <rect x="286" y="840" width="1080" height="136" rx="12" fill="#ffffff" stroke="#e3e8ef"/>
+    <text x="306" y="866" class="card-title">项目流程</text>
+    <rect x="392" y="852" width="52" height="24" rx="12" fill="#f1f3f5"/>
+    <text x="418" y="869" text-anchor="middle" class="meta">第 1 轮</text>
+    <text x="1346" y="866" text-anchor="end" class="link-s">查看流水线 →</text>
+    <g>
+      <rect x="306" y="882" width="140" height="52" rx="8" fill="#f6fbf7" stroke="#bfe6cc"/>
+      <circle cx="320" cy="896" r="7" fill="#e6faed"/>
+      <text x="320" y="899" text-anchor="middle" style="font-size:9px;fill:#1a7f37;font-weight:700">✓</text>
+      <text x="332" y="900" class="step-name">需求分析</text>
+      <text x="316" y="916" class="step-role">产品经理</text>
+      <circle cx="319" cy="926" r="3" fill="#1a7f37"/>
+      <text x="327" y="930" style="font-size:12px;fill:#1a7f37">已通过</text>
+    </g>
+    <g>
+      <rect x="454" y="882" width="140" height="52" rx="8" fill="#f6fbf7" stroke="#bfe6cc"/>
+      <circle cx="468" cy="896" r="7" fill="#e6faed"/>
+      <text x="468" y="899" text-anchor="middle" style="font-size:9px;fill:#1a7f37;font-weight:700">✓</text>
+      <text x="480" y="900" class="step-name">UI 设计</text>
+      <text x="464" y="916" class="step-role">UI 设计师</text>
+      <circle cx="467" cy="926" r="3" fill="#1a7f37"/>
+      <text x="475" y="930" style="font-size:12px;fill:#1a7f37">已通过</text>
+    </g>
+    <g>
+      <rect x="602" y="882" width="140" height="52" rx="8" fill="#f6fbf7" stroke="#bfe6cc"/>
+      <circle cx="616" cy="896" r="7" fill="#e6faed"/>
+      <text x="616" y="899" text-anchor="middle" style="font-size:9px;fill:#1a7f37;font-weight:700">✓</text>
+      <text x="628" y="900" class="step-name">开发实现</text>
+      <text x="612" y="916" class="step-role">全栈开发</text>
+      <circle cx="615" cy="926" r="3" fill="#1a7f37"/>
+      <text x="623" y="930" style="font-size:12px;fill:#1a7f37">已通过</text>
+    </g>
+    <g>
+      <rect x="750" y="882" width="140" height="52" rx="8" fill="#f6fbf7" stroke="#bfe6cc"/>
+      <circle cx="764" cy="896" r="7" fill="#e6faed"/>
+      <text x="764" y="899" text-anchor="middle" style="font-size:9px;fill:#1a7f37;font-weight:700">✓</text>
+      <text x="776" y="900" class="step-name">测试验收</text>
+      <text x="760" y="916" class="step-role">测试工程师</text>
+      <circle cx="763" cy="926" r="3" fill="#1a7f37"/>
+      <text x="771" y="930" style="font-size:12px;fill:#1a7f37">已通过</text>
+    </g>
+    <g>
+      <rect x="898" y="882" width="152" height="52" rx="8" fill="#fffaf0" stroke="#f0b74a" stroke-width="1.5"/>
+      <circle cx="912" cy="896" r="7" fill="#f1f3f5"/>
+      <text x="912" y="899" text-anchor="middle" style="font-size:9px;fill:#61666b;font-weight:700">5</text>
+      <text x="924" y="900" class="step-name">验收复核</text>
+      <text x="908" y="916" class="step-role">项目经理 Agent</text>
+      <circle cx="911" cy="926" r="3" fill="#b45309"/>
+      <text x="919" y="930" style="font-size:12px;fill:#b45309">待评审</text>
+    </g>
+    <g>
+      <rect x="1058" y="882" width="140" height="52" rx="8" fill="#ffffff" stroke="#e3e8ef"/>
+      <circle cx="1072" cy="896" r="7" fill="#f1f3f5"/>
+      <text x="1072" y="899" text-anchor="middle" style="font-size:9px;fill:#61666b;font-weight:700">6</text>
+      <text x="1084" y="900" class="step-name">人工确认</text>
+      <text x="1068" y="916" class="step-role">项目经理（你）</text>
+      <circle cx="1071" cy="926" r="3" fill="#61666b"/>
+      <text x="1079" y="930" style="font-size:12px;fill:#61666b">待开始</text>
+    </g>
+    <g>
+      <rect x="1206" y="882" width="140" height="52" rx="8" fill="#ffffff" stroke="#e3e8ef"/>
+      <circle cx="1220" cy="896" r="7" fill="#f1f3f5"/>
+      <text x="1220" y="899" text-anchor="middle" style="font-size:9px;fill:#61666b;font-weight:700">7</text>
+      <text x="1232" y="900" class="step-name">发布上线</text>
+      <text x="1216" y="916" class="step-role">运维</text>
+      <circle cx="1219" cy="926" r="3" fill="#61666b"/>
+      <text x="1227" y="930" style="font-size:12px;fill:#61666b">待开始</text>
+    </g>
+    <circle cx="314" cy="958" r="3.5" fill="#f59e0b"/>
+    <text x="326" y="962" class="meta">当前：验收复核 · 待评审 · 负责：项目经理 Agent</text>
+    <text x="1346" y="962" text-anchor="end" class="meta">7 步 · 双复核未完成前不进入发布</text>
+  </g>
+</svg>

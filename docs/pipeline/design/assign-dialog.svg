@@ -1,0 +1,226 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1024" viewBox="0 0 1440 1024" role="img" aria-labelledby="title desc">
+  <title id="title">「指派给 Agent」抽屉高保真效果图（v1.2.75）</title>
+  <desc id="desc">工作台右侧 608px 指派抽屉：交给谁（按角色/当前成员/新建 Agent）、任务标题、详细说明、验收标准、优先级 P1、关联流水线阶段（自动判断 + 5 个可关联阶段 + 不关联；人工确认与发布上线置灰不可选）、期望产物路径、附件 MVP 降级提示、双复核闸门提示与提交按钮。</desc>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif; }
+    .page { font-size: 20px; font-weight: 700; fill: #0f1115; }
+    .h1 { font-size: 20px; font-weight: 700; fill: #0f1115; }
+    .sub { font-size: 13px; fill: #61666b; }
+    .label { font-size: 13px; font-weight: 600; fill: #0f1115; }
+    .req { font-size: 13px; font-weight: 600; fill: #d1242f; }
+    .input { font-size: 14px; fill: #0f1115; }
+    .textarea { font-size: 13px; fill: #0f1115; }
+    .meta { font-size: 12px; fill: #61666b; }
+    .counter { font-size: 12px; fill: #61666b; }
+    .tab { font-size: 13px; font-weight: 600; fill: #61666b; }
+    .tab-on { font-size: 13px; font-weight: 600; fill: #0f1115; }
+    .chip { font-size: 12px; fill: #0f1115; }
+    .chip-on { font-size: 12px; font-weight: 600; fill: #2563eb; }
+    .chip-off { font-size: 12px; fill: #61666b; }
+    .seg { font-size: 13px; font-weight: 600; fill: #61666b; }
+    .seg-on { font-size: 13px; font-weight: 600; fill: #ffffff; }
+    .btn-p { font-size: 14px; font-weight: 600; fill: #ffffff; }
+    .btn-s { font-size: 14px; font-weight: 600; fill: #0f1115; }
+    .footer-hint { font-size: 12px; fill: #61666b; }
+    .skeleton { fill: #e9edf2; }
+    .white { fill: #ffffff; }
+  </style>
+
+  <defs>
+    <filter id="drawer-shadow" x="-20%" y="0" width="140%" height="100%">
+      <feDropShadow dx="-8" dy="0" stdDeviation="18" flood-color="#0f1115" flood-opacity="0.16"/>
+    </filter>
+  </defs>
+
+  <rect width="1440" height="1024" fill="#eceff3"/>
+
+  <!-- background workbench (simplified, dimmed) -->
+  <g>
+    <rect x="24" y="24" width="1392" height="976" rx="12" fill="#ffffff"/>
+    <rect x="24" y="24" width="1392" height="56" fill="#ffffff"/>
+    <line x1="24" y1="80" x2="1416" y2="80" stroke="#e3e8ef"/>
+    <circle cx="52" cy="52" r="11" fill="#0f1115"/><circle cx="52" cy="52" r="4" fill="#ffffff"/>
+    <text x="72" y="57" style="font-size:14px;font-weight:600;fill:#0f1115">Dev Workspace</text>
+    <text x="196" y="57" class="meta">工作区 / dsh-web-filebrowser</text>
+    <rect x="24" y="80" width="212" height="920" fill="#f9fafb"/>
+    <line x1="236" y1="80" x2="236" y2="1000" stroke="#e3e8ef"/>
+    <rect x="36" y="120" width="188" height="36" rx="8" fill="#ffffff" stroke="#e3e8ef"/>
+    <text x="70" y="144" style="font-size:13px;font-weight:600;fill:#0f1115">工作台</text>
+    <text x="70" y="180" class="meta">文件</text>
+    <text x="70" y="216" class="meta">搜索</text>
+    <text x="70" y="255" class="meta">更多</text>
+    <line x1="40" y1="278" x2="220" y2="278" stroke="#e3e8ef"/>
+    <text x="70" y="332" class="meta">流水线</text>
+    <text x="70" y="362" class="meta">验收</text>
+    <text x="70" y="388" class="meta">待办</text>
+    <line x1="40" y1="410" x2="220" y2="410" stroke="#e3e8ef"/>
+    <text x="70" y="458" class="meta">任务</text>
+    <text x="70" y="490" class="meta">Git</text>
+    <text x="70" y="523" class="meta">记忆</text>
+    <rect x="36" y="928" width="188" height="40" rx="8" fill="#eef4ff"/>
+    <text x="76" y="953" style="font-size:13px;font-weight:600;fill:#2563eb">团队面板入口</text>
+
+    <rect x="236" y="80" width="1180" height="920" fill="#f7f8fa"/>
+    <text x="286" y="120" class="page">工作台</text>
+    <text x="286" y="144" class="sub">项目：工作台指派 Agent 提案 · 第 1 轮</text>
+    <rect x="286" y="164" width="1080" height="88" rx="12" fill="#fffaf0" stroke="#f0b74a"/>
+    <rect x="306" y="188" width="240" height="14" rx="7" class="skeleton"/>
+    <rect x="306" y="214" width="500" height="12" rx="6" class="skeleton"/>
+    <rect x="286" y="264" width="1080" height="120" rx="12" fill="#ffffff" stroke="#e3e8ef"/>
+    <text x="306" y="290" class="meta">项目状态</text>
+    <rect x="306" y="304" width="1040" height="8" rx="4" fill="#eef0f3"/>
+    <rect x="306" y="304" width="594" height="8" rx="4" fill="#4176e6"/>
+    <rect x="306" y="328" width="420" height="12" rx="6" class="skeleton"/>
+    <rect x="286" y="396" width="1080" height="432" rx="12" fill="#ffffff" stroke="#e3e8ef"/>
+    <text x="306" y="422" class="meta">团队与指派</text>
+    <rect x="306" y="440" width="760" height="10" rx="5" class="skeleton"/>
+    <rect x="306" y="496" width="338" height="48" rx="10" fill="#f7f8fa" stroke="#e3e8ef"/>
+    <rect x="656" y="496" width="338" height="48" rx="10" fill="#f7f8fa" stroke="#e3e8ef"/>
+    <rect x="306" y="552" width="338" height="48" rx="10" fill="#f7f8fa" stroke="#e3e8ef"/>
+    <rect x="656" y="552" width="338" height="48" rx="10" fill="#f7f8fa" stroke="#e3e8ef"/>
+    <rect x="306" y="620" width="160" height="12" rx="6" class="skeleton"/>
+    <rect x="306" y="650" width="1040" height="10" rx="5" class="skeleton"/>
+    <rect x="306" y="680" width="1040" height="10" rx="5" class="skeleton"/>
+    <rect x="286" y="840" width="1080" height="136" rx="12" fill="#ffffff" stroke="#e3e8ef"/>
+  </g>
+
+  <rect x="0" y="0" width="832" height="1024" fill="#0f1115" opacity="0.36"/>
+
+  <!-- drawer -->
+  <g filter="url(#drawer-shadow)">
+    <rect x="832" y="0" width="608" height="1024" rx="16" fill="#ffffff"/>
+    <rect x="832" y="0" width="16" height="1024" fill="#ffffff"/>
+  </g>
+
+  <!-- header -->
+  <text x="856" y="46" class="h1">指派任务</text>
+  <rect x="964" y="26" width="88" height="24" rx="12" fill="#eef4ff"/>
+  <text x="1008" y="42" text-anchor="middle" style="font-size:11px;font-weight:600;fill:#2563eb">MVP · 结构化派单</text>
+  <text x="856" y="70" class="sub">选角色/成员、写清任务与验收；提交后由 Lead 调度执行</text>
+  <circle cx="1376" cy="42" r="16" fill="#f1f3f5"/>
+  <line x1="1371" y1="37" x2="1381" y2="47" stroke="#61666b" stroke-width="1.6"/>
+  <line x1="1381" y1="37" x2="1371" y2="47" stroke="#61666b" stroke-width="1.6"/>
+  <line x1="832" y1="88" x2="1440" y2="88" stroke="#e3e8ef"/>
+
+  <!-- assignee -->
+  <text x="856" y="114" class="label">交给谁</text>
+  <text x="910" y="114" class="req">*</text>
+  <rect x="856" y="124" width="536" height="36" rx="8" fill="#f1f3f5"/>
+  <rect x="858" y="126" width="176" height="32" rx="6" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="946" y="147" text-anchor="middle" class="tab-on">按角色</text>
+  <text x="1124" y="147" text-anchor="middle" class="tab">当前成员</text>
+  <text x="1302" y="147" text-anchor="middle" class="tab">新建 Agent</text>
+
+  <rect x="856" y="166" width="172" height="32" rx="8" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="868" y="187" class="chip">产品经理</text>
+  <rect x="1038" y="166" width="172" height="32" rx="8" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="1050" y="187" class="chip">UI 设计师</text>
+  <rect x="1220" y="166" width="172" height="32" rx="8" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="1232" y="187" class="chip">全栈开发</text>
+
+  <rect x="856" y="206" width="172" height="32" rx="8" fill="#eef4ff" stroke="#4176e6" stroke-width="1.5"/>
+  <circle cx="870" cy="222" r="7" fill="#4176e6"/>
+  <polyline points="867,222 869,225 874,218" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
+  <text x="884" y="227" class="chip-on">测试工程师</text>
+  <rect x="1038" y="206" width="172" height="32" rx="8" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="1050" y="227" class="chip">项目经理 Agent</text>
+  <rect x="1220" y="206" width="172" height="32" rx="8" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="1232" y="227" class="chip">运维</text>
+
+  <text x="856" y="258" class="meta">已选：测试工程师 · opc-qa（空闲）</text>
+  <text x="1392" y="258" text-anchor="end" class="meta" style="fill:#2563eb">从成员中选 · 新建 Agent（名称 + 角色）→</text>
+
+  <!-- title -->
+  <text x="856" y="284" class="label">任务标题</text>
+  <text x="908" y="284" class="req">*</text>
+  <rect x="856" y="296" width="536" height="42" rx="8" fill="#ffffff" stroke="#4176e6" stroke-width="2"/>
+  <text x="868" y="322" class="input">补充验收页脚证据并复测移动端</text>
+  <text x="1376" y="322" text-anchor="end" class="counter">16/120</text>
+
+  <!-- detail -->
+  <text x="856" y="356" class="label">详细说明</text>
+  <text x="908" y="356" class="req">*</text>
+  <rect x="856" y="368" width="536" height="76" rx="8" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="868" y="390" class="textarea">背景：验收页脚证据区在 375px 宽下被截断，移动端看不到完整截图。</text>
+  <text x="868" y="408" class="textarea">期望：360/768 两档完整显示，页脚不遮挡按钮；补充截图与复测记录。</text>
+  <text x="868" y="426" class="textarea">不做：不改动验收数据模型与报告格式。</text>
+  <text x="1376" y="436" text-anchor="end" class="counter">121/4000</text>
+
+  <!-- acceptance -->
+  <text x="856" y="462" class="label">验收标准</text>
+  <text x="908" y="462" class="req">*</text>
+  <rect x="856" y="474" width="536" height="64" rx="8" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="868" y="494" class="textarea">1) 360/768 截图各 1 张，页脚无截断；</text>
+  <text x="868" y="512" class="textarea">2) npm run check、npm test 通过并附输出末尾；</text>
+  <text x="868" y="530" class="textarea">3) 证据写入 docs/pipeline/design/evidence.md。</text>
+  <text x="1376" y="530" text-anchor="end" class="counter">3/10 条 · 每条 ≤500</text>
+
+  <!-- priority + stage -->
+  <text x="856" y="558" class="label">优先级</text>
+  <text x="1062" y="558" class="label">关联流水线阶段</text>
+  <rect x="856" y="568" width="190" height="36" rx="8" fill="#f1f3f5"/>
+  <rect x="858" y="570" width="60" height="32" rx="6" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="888" y="591" text-anchor="middle" class="seg">P0</text>
+  <rect x="922" y="570" width="60" height="32" rx="6" fill="#0f1115"/>
+  <text x="952" y="591" text-anchor="middle" class="seg-on">P1</text>
+  <rect x="986" y="570" width="58" height="32" rx="6" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="1015" y="591" text-anchor="middle" class="seg">P2</text>
+
+  <rect x="1062" y="568" width="330" height="36" rx="8" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="1074" y="591" class="input">自动判断</text>
+  <polyline points="1368,582 1374,588 1380,582" fill="none" stroke="#61666b" stroke-width="1.5"/>
+
+  <!-- stage chips 3×3 -->
+  <rect x="856" y="614" width="172" height="30" rx="8" fill="#eef4ff" stroke="#4176e6" stroke-width="1.5"/>
+  <circle cx="870" cy="629" r="6.5" fill="#4176e6"/>
+  <polyline points="867,629 869,632 873,625" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
+  <text x="882" y="633" class="chip-on">自动判断</text>
+  <rect x="1038" y="614" width="172" height="30" rx="8" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="1050" y="633" class="chip">需求分析</text>
+  <rect x="1220" y="614" width="172" height="30" rx="8" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="1232" y="633" class="chip">UI 设计</text>
+
+  <rect x="856" y="650" width="172" height="30" rx="8" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="868" y="669" class="chip">开发实现</text>
+  <rect x="1038" y="650" width="172" height="30" rx="8" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="1050" y="669" class="chip">测试验收</text>
+  <rect x="1220" y="650" width="172" height="30" rx="8" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="1232" y="669" class="chip">验收复核</text>
+
+  <rect x="856" y="686" width="172" height="30" rx="8" fill="#f4f5f7" stroke="#d5dae1" stroke-dasharray="4 3"/>
+  <rect x="868" y="694" width="10" height="9" rx="1.5" fill="none" stroke="#61666b" stroke-width="1.2"/>
+  <path d="M870 694 V691 A3 3 0 0 1 876 691 V694" fill="none" stroke="#61666b" stroke-width="1.2"/>
+  <text x="884" y="705" class="chip-off">人工确认</text>
+  <rect x="1038" y="686" width="172" height="30" rx="8" fill="#f4f5f7" stroke="#d5dae1" stroke-dasharray="4 3"/>
+  <rect x="1050" y="694" width="10" height="9" rx="1.5" fill="none" stroke="#61666b" stroke-width="1.2"/>
+  <path d="M1052 694 V691 A3 3 0 0 1 1058 691 V694" fill="none" stroke="#61666b" stroke-width="1.2"/>
+  <text x="1066" y="705" class="chip-off">发布上线</text>
+  <rect x="1220" y="686" width="172" height="30" rx="8" fill="#ffffff" stroke="#d5dae1" stroke-dasharray="4 3"/>
+  <text x="1232" y="705" class="chip">不关联（临时）</text>
+
+  <text x="856" y="736" class="meta">人工确认 / 发布上线只能由 Owner 在流水线面板审批，不可指派。</text>
+  <text x="856" y="754" class="meta">关联阶段将走双复核闸门；临时任务不改变流水线，结果只在对话汇报。</text>
+
+  <!-- expected artifacts -->
+  <text x="856" y="782" class="label">期望产物路径</text>
+  <text x="964" y="782" class="meta">（可选）</text>
+  <rect x="856" y="794" width="536" height="38" rx="8" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="868" y="818" class="input">docs/pipeline/design/evidence.md</text>
+
+  <!-- attachments (MVP downgrade) -->
+  <text x="856" y="852" class="label">附件</text>
+  <text x="902" y="852" class="meta">（MVP：可拖入当前对话；上传为后续增强）</text>
+  <rect x="856" y="864" width="536" height="48" rx="8" fill="#f7f8fa" stroke="#b6bdc7" stroke-dasharray="5 4"/>
+  <rect x="868" y="878" width="14" height="18" rx="2" fill="none" stroke="#61666b" stroke-width="1.5"/>
+  <text x="894" y="888" class="input">拖入当前对话，或粘贴产物路径（可选）</text>
+  <text x="894" y="904" class="meta">MVP 不阻塞提交；附件上传为可选增强</text>
+
+  <!-- footer -->
+  <line x1="832" y1="936" x2="1440" y2="936" stroke="#e3e8ef"/>
+  <text x="856" y="960" class="footer-hint">生成结构化指派单发到当前对话，由 Lead 执行；</text>
+  <text x="856" y="978" class="footer-hint">不直接改写流水线，阶段任务仍需你在面板审批。</text>
+  <rect x="1156" y="960" width="88" height="44" rx="8" fill="#ffffff" stroke="#d5dae1"/>
+  <text x="1200" y="987" text-anchor="middle" class="btn-s">取消</text>
+  <rect x="1256" y="960" width="136" height="44" rx="8" fill="#0f1115"/>
+  <text x="1324" y="987" text-anchor="middle" class="btn-p">指派给 Agent</text>
+</svg>

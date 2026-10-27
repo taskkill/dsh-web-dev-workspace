@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-web-dev-workspace",
-  "version": "1.2.73",
+  "version": "1.2.75",
   "private": true,
   "description": "VS Code-style development workspace with files, Git, terminal, acceptance board, delivery pipeline and preview browser for the DeepSeek Harness Web UI",
   "type": "module",
@@ -18,6 +18,7 @@
     "ssh.js",
     "terminal.js",
     "acceptance.js",
+    "assignments.js",
     "delivery.js",
     "pipeline.js",
     "preview.js",
