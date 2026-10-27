@@ -268,7 +268,7 @@ third-party runtime dependencies.
 - The Pipeline sidebar view runs a requirement through seven stages — product →
   design → development → testing → **acceptance (AI project-manager review)** →
   **approval (owner sign-off)** → release — with a dual-review gate before release
-  and fast mode that only auto-approves the five intermediate stages.
+  and fast mode that auto-approves only the four implementation stages — **design mockups still need the owner's confirmation** (v1.2.83), and approval/release stay manual.
 - Since v1.2.73 each executing role has an explicit research-and-borrow discipline
   in its stage prompt and handbook: the product manager researches comparable
   requirements/standards (≥3 sources, decision table), the UI designer follows nine

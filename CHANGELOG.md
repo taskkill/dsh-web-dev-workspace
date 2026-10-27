@@ -2,6 +2,42 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.83 — 2026-10-27
+
+### Design-first confirmation + rendered design preview
+
+- **Design is now an owner gate in fast mode.** Fast mode keeps
+  auto-approving product / development / testing / acceptance, but the design
+  stage always stops in `review`: the owner must look at the design mockups and
+  approve them in the Dev Workspace panel before `development` can start
+  (`pipeline_start_stage('development')` is rejected with a hint pointing at the
+  design gate). `approval` and `release` stay manual as before.
+- **Design artefacts are reviewable without reading source.** The pipeline
+  design card and the workbench design card show screenshot thumbnails and a
+  full preview overlay: HTML mockups render in a sandboxed iframe (`sandbox=""`,
+  required `title`, `loading="lazy"`) at 360 / 768 / 1280 widths instead of
+  opening the raw file; images open in the in-app viewer. A design in `review`
+  shows a "设计稿待你确认 · 确认后进入开发" banner with approve / reject /
+  preview actions. The preview overlay reuses the existing approve/reject
+  channel (`reviewPipelineStage`) — no new approval API or fields.
+- **Opening `.html`/`.htm` defaults to the rendered preview** with a
+  preview/source toggle in the editor toolbar; broken or empty files fall back
+  to a readable error card plus the source view.
+- **Model discipline + wording.** The design role prompt requires at least one
+  directly viewable screenshot (PNG/JPG/SVG/WebP); HTML mockups are a
+  previewable supplement and cannot replace screenshots. After submitting the
+  design the Lead must present the screenshots (present / image viewer) or point
+  the owner at the HTML preview and then stop — never paste HTML source, never
+  start development before the owner confirms. The `design-no-image` warning no
+  longer says "HTML screenshot". Fast-mode copy (zh/en, tool descriptions,
+  system prompt) now says "four automatic / three manual".
+- Also includes the committed pack-delivery hotfix (`2d3ebe0`): packaging no
+  longer clears the pipeline snapshot, so the workbench no longer collapses to
+  the requirement-intake view, and the busy label reads 打包中… / Packing…
+- Client-only UI + host pipeline gate/wording changes (no dependency or data
+  format changes). `docs/ACCEPTANCE.md` gains batch 20; plugin `1.2.83` (root
+  `1.2.83`, bumped to `1.2.84` after delivery).
+
 ## 1.2.82 — 2026-10-27
 
 ### Workbench project area: always two columns + full-width requirement

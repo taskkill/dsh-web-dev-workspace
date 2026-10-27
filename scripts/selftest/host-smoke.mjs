@@ -483,18 +483,36 @@ try {
     assert.equal(approvalStarted.status, 'active')
   })
 
-  await test('fast mode auto-approves five intermediate stages, acceptance next is approval', async () => {
+  await test('fast mode auto-approves four intermediate stages and keeps the design review gate manual', async () => {
     const root = await workspace('fast-mode')
-    await pipeline.setRequirement(root, { title: '快速模式双复核', detail: '五中间阶段自动，approval/release 人工' })
+    await pipeline.setRequirement(root, { title: '快速模式双复核', detail: '四个中间阶段自动；design/approval/release 人工' })
     await pipeline.setGateMode(root, 'fast')
-    const chain = [
-      ['product', 'design'],
-      ['design', 'development'],
+    // product / development / testing / acceptance keep auto-approving.
+    await pipeline.startStage(root, 'product')
+    const productSubmitted = await pipeline.submitStage(root, { stageId: 'product', summary: 'product 完成' })
+    assert.equal(productSubmitted.autoApproved, true)
+    assert.equal(productSubmitted.nextStageId, 'design')
+    // design is an owner review gate: submitting it must return review, not an
+    // auto-approval, and development must stay locked until the owner approves.
+    await pipeline.startStage(root, 'design')
+    const designSubmitted = await pipeline.submitStage(root, { stageId: 'design', summary: 'design 完成' })
+    assert.equal(designSubmitted.autoApproved, undefined)
+    assert.equal(designSubmitted.status, 'review')
+    assert.equal(designSubmitted.nextStageId, undefined)
+    assert.ok(designSubmitted.note.includes('设计确认闸门'), `design note should mention the gate, got: ${designSubmitted.note}`)
+    await assert.rejects(pipeline.startStage(root, 'development'), (error) => {
+      assert.equal(error.code, 'bad-order')
+      assert.ok(error.message.includes('上一阶段'), `message should name the previous stage: ${error.message}`)
+      assert.ok(error.message.includes('设计'), `message should mention design confirmation: ${error.message}`)
+      return true
+    })
+    await pipeline.reviewStage(root, { stageId: 'design', decision: 'approve', note: 'Owner 确认设计稿' })
+    // development / testing / acceptance still auto-approve in fast mode.
+    for (const [stageId, nextStageId] of [
       ['development', 'testing'],
       ['testing', 'acceptance'],
       ['acceptance', 'approval'],
-    ]
-    for (const [stageId, nextStageId] of chain) {
+    ]) {
       await pipeline.startStage(root, stageId)
       const submitted = await pipeline.submitStage(root, { stageId, summary: `${stageId} 完成` })
       assert.equal(submitted.autoApproved, true, `${stageId} should be auto-approved in fast mode`)
@@ -515,6 +533,31 @@ try {
     const releaseSubmitted = await pipeline.submitStage(root, { stageId: 'release', summary: '已发布到 production' })
     assert.equal(releaseSubmitted.autoApproved, undefined)
     assert.equal(releaseSubmitted.status, 'review')
+  })
+
+  await test('manual gate stages are design, approval and release', async () => {
+    assert.deepEqual(pipeline.PIPELINE_MANUAL_GATE_STAGES, ['design', 'approval', 'release'])
+  })
+
+  await test('design without a screenshot warns with the design-no-image code and no misleading HTML wording', async () => {
+    const root = await workspace('design-warning')
+    await pipeline.setRequirement(root, { title: '设计截图提醒', detail: 'HTML 不能替代截图' })
+    await pipeline.setGateMode(root, 'fast')
+    await pipeline.startStage(root, 'product')
+    await pipeline.submitStage(root, { stageId: 'product', summary: '需求完成' })
+    await pipeline.startStage(root, 'design')
+    await fsp.mkdir(path.join(root, 'docs/pipeline/design'), { recursive: true })
+    await fsp.writeFile(path.join(root, 'docs/pipeline/design/mockup.html'), '<!doctype html><title>mock</title>', 'utf8')
+    const submitted = await pipeline.submitStage(root, {
+      stageId: 'design',
+      summary: '只提交 HTML',
+      artifacts: [{ path: 'docs/pipeline/design/mockup.html', label: 'HTML 高保真稿' }],
+    })
+    const warning = submitted.warnings.find((entry) => entry.code === 'design-no-image')
+    assert.ok(warning, 'a design submission without images must warn')
+    assert.ok(warning.message.includes('截图'), `warning should mention 截图: ${warning.message}`)
+    assert.ok(warning.message.includes('HTML') && warning.message.includes('不能替代截图'), `warning should say HTML cannot replace a screenshot: ${warning.message}`)
+    assert.equal(warning.message.includes('HTML 截图'), false, 'the warning must not call HTML a screenshot')
   })
 
   await test('legacy six-stage document with all stages pending migrates acceptance to pending', async () => {
@@ -668,19 +711,25 @@ try {
     assert.ok(pipeline.PIPELINE_SECTION.includes('acceptance'))
     assert.ok(!pipeline.PIPELINE_SECTION.includes('六阶段'))
     assert.match(pipeline.PIPELINE_SECTION, /七阶段|七个阶段|七关|7 阶段/u)
-    assert.match(pipeline.PIPELINE_SECTION, /五(?:个)?中间阶段/u)
+    assert.match(pipeline.PIPELINE_SECTION, /四个中间阶段/u)
+    assert.ok(pipeline.PIPELINE_SECTION.includes('设计确认（design）'))
+    assert.ok(pipeline.PIPELINE_SECTION.includes('永远是人工闸门'))
+    assert.equal(pipeline.PIPELINE_SECTION.includes('五个中间阶段'), false, 'PIPELINE_SECTION still says five intermediate stages')
     const descriptions = host.tools.map((definition) => `${definition.name} ${definition.description}`).join('\n')
     assert.ok(!/六阶段|六个阶段|six-stage|six stages/iu.test(descriptions), 'tool descriptions still mention the old six stages')
+    assert.ok(!/five intermediate|五个中间/iu.test(descriptions), 'tool descriptions still say five intermediate stages')
     const statusDescription = host.tools.find((definition) => definition.name === 'pipeline_status').description
     assert.match(statusDescription, /seven-stage|七阶段|7 阶段/u)
     assert.ok(statusDescription.includes('acceptance'))
+    assert.ok(statusDescription.includes('design'), 'pipeline_status should mention the design review gate')
     for (const name of ['pipeline_start_stage', 'pipeline_stage_prompt', 'pipeline_submit_stage', 'pipeline_dispatch']) {
       const definition = host.tools.find((candidate) => candidate.name === name)
       const enumValues = definition.parameters.properties.stageId.enum
       assert.ok(enumValues.includes('acceptance'), `${name} stageId enum must include acceptance`)
     }
     const submitDescription = host.tools.find((definition) => definition.name === 'pipeline_submit_stage').description
-    assert.match(submitDescription, /five intermediate|五个中间/u)
+    assert.match(submitDescription, /four intermediate|四个中间/u)
+    assert.ok(submitDescription.includes('design'))
     assert.ok(submitDescription.includes('acceptance'))
     assert.ok(submitDescription.includes('approval'))
     assert.ok(submitDescription.includes('release'))

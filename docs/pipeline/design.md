@@ -456,3 +456,350 @@ r2 五维评分：视觉层级 **5**、清晰度 **4**、一致性 **5**、反�
 | 1 | Owner 屏幕 ≥1600，项目区仍触发 3 列，每卡约 400px，需求标题截断、团队卡拥挤 | 移除 ≥1600 三列规则；≥768 始终 **2 列 + 需求卡整行**，列间距 16px；≤700 单列 |
 
 设计口径：项目区固定为「状态｜团队 + 需求整行」，不再随超宽屏变 3 列；卡片获得约 620px 宽度，标题/摘要/chips 不再挤压。
+
+---
+
+## 16. v1.2.83 设计确认闸门与设计稿预览（第 11 轮）
+
+> 角色：UI 设计师｜上游：[requirements.md](requirements.md)（第 11 轮，§6 行为规格 / §7 验收）｜下游：全栈开发（`pipeline.js` 闸门与文案 + `client.js` 预览）→ QA → 验收复核。
+> 结论先行：design 提交后停在 `review`；流水线设计卡与工作台设计卡同屏给出「设计稿待你确认 · 确认后进入开发」+ 产物缩略图 + 「预览设计稿」；预览弹层用 iframe 渲染 HTML 稿、三档 360/768/1280、「查看源码」为次级入口；`.html/.htm` 默认渲染预览；确认/打回**只复用现有 `reviewPipelineStage`**，不新增审批 API。本阶段只交设计与设计说明，**未改 `client.js` / `pipeline.js`**。
+> 效果图：[D1 流水线设计卡](design/design-gate-pipeline-review-1440.svg) / [D2 预览弹层](design/design-gate-preview-modal-1440.svg) / [D3 工作台设计卡](design/design-gate-workbench-card-1440.svg) / [D4 HTML 文件预览](design/design-gate-html-file-preview-1440.svg) / [移动端 390](design/design-gate-mobile-390.svg) / [关键状态板](design/design-gate-preview-states-1440.svg) / [深色主题片段](design/design-gate-dark-fragment-900.svg) / [r1 迭代证据](design/design-gate-preview-modal-r1-1440.svg)。
+
+### 16.1 目标与设计原则
+
+本轮的设计对象不是「再做一个页面」，而是把**设计评审的门、面、证据**装配到现有指挥舱里：门（design 不由快速模式自动通过）、面（产物以人可看的形式出现）、证据（缩略图 + 大图 + HTML 渲染）。
+
+1. **证据先于确认（evidence before approval）**：预览入口、缩略图、通过/打回必须同卡同屏；Owner 不需要先点两层才看得到图。弹层底部同时放「打回原因」与「确认设计，进入开发」，让证据与动作在同一个视野里。
+2. **一个动作门，一个主行动**：流水线卡的主行动是「预览设计稿」，弹层的主行动是「确认设计，进入开发」；打回是次级危险动作，不与主行动并排同色。全页不加第二个强品牌色按钮。
+3. **只读预览、隔离渲染**：HTML 一律 `iframe + sandbox=""`，不向主文档注入设计稿 CSS/JS；图片走应用内图片查看器；源码永远是次级入口，不是默认行为。
+4. **复用指挥舱 token 与组件**：新增颜色全部是 `--dsw-alias-*` 的语义别名（warn=待评审、success=已通过、error=已打回），不新造设计系统；圆角/阴影/动效沿用 §5。
+5. **紧凑但不牺牲门槛**：360px 侧栏保持现有面板的信息密度，但**通过/打回/预览/确认按钮实测高度一律 ≥44px**；窄屏弹层全屏、底部操作区固定，滚动的只有预览画布。
+
+### 16.2 调研与借鉴
+
+> 调研时间 2026-10-27（Asia/Shanghai）。本轮用 `web_search` 检索 + `web_fetch` 读取；下列 4 个来源当日均返回 **HTTP 200** 并读取到正文，**无 blocked**。只借鉴交互结构、信息层级与安全约束，不复制受版权保护的文案/素材/源码。
+
+| # | 来源 | URL | 访问日期 | 类型 | 关键结论（对本设计的直接落点） |
+|---|---|---|---|---|---|
+| 1 | Figma Help · Review branch changes | https://help.figma.com/hc/en-us/articles/5693123873687-Review-branch-changes | 2026-10-27 | 竞品（设计评审） | 评审在**独立 Branch review 窗口**里完成：左侧汇总 + 主区看变更 + 底部 `Add your review`（Approve / Suggest changes）；评审后可 **Review again**。→ 预览用**全屏弹层**而不是跳页；产物切换放顶部；结论放底部；通过/打回同一入口。 |
+| 2 | Storybook Docs · Story rendering | https://storybook.js.org/docs/configure/story-rendering | 2026-10-27 | 设计系统/工具 | 故事渲染在**专用 preview iframe（Canvas）**里，与应用 UI 隔离；head/body 注入只进 preview iframe。→ 设计稿预览必须是「框内渲染」，画布四周留白、有独立滚动，不污染主应用。 |
+| 3 | GitHub Docs · Approving a PR with required reviews | https://docs.github.com/en/pull-requests/how-tos/review-pull-requests/approving-a-pull-request-with-required-reviews | 2026-10-27 | 平台标准（评审闸门） | required review **阻止合并**；作者**不能自批**；变更后批准可失效需重审。→ design 未 approved 时 development 必须被代码层拦住；模型无审批入口；打回→failed→重提再次 review。 |
+| 4 | MDN · HTMLIFrameElement.sandbox | https://developer.mozilla.org/en-US/docs/Web/API/HTMLIFrameElement/sandbox | 2026-10-27 | Web 标准 | `sandbox` 对嵌套内容施加额外限制，默认最严；`allow-scripts` 与 `allow-same-origin` 同开会绕过限制。→ 预览默认 `sandbox=""`；`title` 必填；不放开脚本；源码退路兜底。 |
+
+**借鉴决策表**
+
+| 借鉴点 | 来源 | 采用/调整/不采用 | 理由与落点 |
+|---|---|---|---|
+| 独立评审窗口 + 汇总/主区/结论三层 | #1 | **采用** | D2 弹层：header（标题/状态/提示）→ toolbar（产物/宽度/源码）→ canvas（设备框）→ 底部（note + 通过/打回）。 |
+| 变更可重审（Review again） | #1 | **采用（沿用已有状态机）** | 打回 → `failed` → 修复重提 → 再次 `review`；不新增「一次通过永久有效」。 |
+| 专用 preview iframe 隔离 | #2 | **采用** | HTML 产物与 `.html` 文件都在 iframe 内渲染；画布独立滚动；不注入主文档。 |
+| required review 阻断下游 | #3 | **采用** | design 不在 fastApproval 名单；`startStage('development')` 由 Host 守卫拦住，不靠 UI 提示。 |
+| 作者不能自批 | #3 | **采用（已有机制）** | 模型没有 approve 工具；只有 Owner 面板可点。 |
+| `sandbox` 默认最严 | #4 | **采用** | `sandbox=""`、`title` 必填、`loading="lazy"`；失败时给「查看源码」。 |
+| 评审入口只放弹层、卡片只给链接 | #1 | **不采用** | 本产品是「面板内评审」：卡片必须直接给缩略图与按钮，减少一轮点击。 |
+| 批量自动通过 / 定时放行 | #3 | **不采用** | 本轮要移除的正是自动通过；疲劳靠「一屏一图一确认」降低，不放宽闸门。 |
+| 预览默认打开源码 | — | **不采用** | 与需求相反；源码只作为次级入口。 |
+
+**已验证模式 vs 创新假设**
+
+- 已验证模式（有来源）：① 独立评审窗口 + 顶部产物切换 + 底部结论（#1）；② preview iframe 隔离渲染（#2）；③ 强制评审 + 不可自批 + 变更重审（#3）；④ sandbox 收紧 + title 必填（#4）。
+- 创新假设（需验证）：① 在 360px 侧栏内同时放「提示条 + 缩略图 + 4 个按钮」仍可读 —— 用 [D1](design/design-gate-pipeline-review-1440.png) 目检 + Owner 批次 20 复测，失败则缩略图降为 2 个 + 「查看全部」入口；② 768 档居中设备框足够判断桌面布局 —— 若不足则补 1024 档，宽度常量集中一处；③ 弹层内 iframe 在无脚本下视觉完整 —— 高保真稿以静态视觉为准，若交互稿缺脚本则标注「脚本受限」并保留源码入口。
+
+**抓取受限/无网络说明**：无。4 个来源均 HTTP 200；本轮未出现 blocked。上游 product 阶段的 6 个来源（Figma / GitHub / Storybook / MDN×2 / HITL）见 [requirements.md §5](requirements.md)，本设计不重复引用其原文。
+
+### 16.3 设计决策
+
+| 决策 | 结论 | 理由 |
+|---|---|---|
+| 评审入口放哪 | **流水线侧栏设计卡（强提示）+ 工作台 Now 区设计卡（同语义）+ 预览弹层（操作）**，三处同一状态、同一 i18n 键 | 流水线是 Owner 处理闸门的原位置；工作台是首屏；弹层是证据与动作的合流处。不新增导航项。 |
+| 3 秒内看懂「该我确认了」 | 卡片内信息顺序固定：**warn 色提示条 → 「第 2 关 · UI 设计 · 3 个产物」计数 → 缩略图行 → 「预览设计稿」主按钮 → 通过/打回**；弹层 header 再次重复提示条 | 先用颜色定位，再用文字确认，再用产物证明，最后给动作；颜色不只表意（同屏有文字）。 |
+| HTML 预览的安全沙箱 | `iframe` + `sandbox=""` + `title="设计稿预览：<文件名>"` + `loading="lazy"`；不放开 `allow-scripts` / `allow-same-origin`；失败不白屏、给源码 | requirements §4 安全约束；iframe 失败时按钮降级为「查看源码」。 |
+| 三档宽度 | 360 / 768 / 1280，默认 1280（容器更窄时取 100%）；只改 iframe/设备框宽度，不重复拉取；iframe 高度 ≥640，画布容器横向滚动 | 360 看移动、768 看平板、1280 看桌面；「不重复拉取」保证切换即时。 |
+| 确认动作 | **只复用现有 `reviewPipelineStage(stageId, 'approve' \| 'reject')`**，note 沿用现有输入；不做二次确认弹窗 | 不新增审批 API/数据字段；少一次点击层级；打回原因写回阶段 note。 |
+| 源码入口层级 | 次级文字/描边按钮：卡片内「查看源码」在弹层 toolbar 右侧与底部；默认永远先渲染 | 需求明确「源码不是默认」；保留开发者与失败场景的退路。 |
+| 快速模式口径 | 文案统一为「product/development/testing/acceptance 自动通过；design/approval/release 需 Owner 确认」 | requirements §6.5；避免旧「五个中间阶段」误导。 |
+
+### 16.4 信息架构与线框说明
+
+```
+流水线侧栏（360）                        主区（工作台，简化）
+┌──────────────────────────────┐        ┌────────────────────────────────┐
+│ 流水线 · 第11轮 · ☑快速模式    │        │ 工作台  [第11轮][快速模式][1/7]  │
+│ ⚠ 设计稿待你确认 · 确认后进入开发│        │ ┌──── hero（深色）─────────────┐ │
+│   第2关 · UI设计 · 3个产物 [通过][打回]│ │ │ UI 设计 · 待评审 · 通过/打回  │ │
+│ [评审备注（打回时可选）…]      │        │ └──────────────────────────────┘ │
+│ 需求卡（2 行）                 │        │ NOW 需要你决定的事               │
+│ ① 需求分析 · 已通过            │        │ ┌ 设计稿 [待你确认] 3 个产物 ──┐ │
+│ ② UI 设计 · 待评审             │        │ │ ⚠ 设计稿待你确认 · 确认后进入开发│ │
+│   ⚠ 提示条 + 缩略图行          │        │ │ [缩略图][缩略图][HTML ▶]      │ │
+│   [预览设计稿][通过][打回]      │        │ │ [预览设计稿][通过][打回][note]│ │
+│ ③ 开发实现 · 待开始 🔒(被拦)    │        │ └──────────────────────────────┘ │
+└───────────────┬──────────────┘        └────────────────┬───────────────┘
+                │ 预览设计稿 / 缩略图                       │ 预览设计稿
+                └──────────────────┬─────────────────────┘
+                                   ▼
+┌──────────── 设计稿预览弹层（role="dialog" aria-modal="true"）────────────┐
+│ 设计稿预览 [待评审] · 第11轮 · UI 设计 · 3 个产物            [✕ 44×44]  │
+│ ⚠ 设计稿待你确认 · 确认后进入开发      3 个产物 · 图片 2 / HTML 1       │
+│ [流水线卡1440][移动端390][高保真稿HTML*]  预览宽度 [360|768|1280] [查看源码]│
+│ ┌────────────── 预览画布（#F1F5F9，可横向滚动）──────────────┐          │
+│ │   ┌─ 设备框：iframe 渲染（sandbox=""、title 必填）────┐   │          │
+│ │   │  design-gate-preview.html · HTML 高保真稿        │   │          │
+│ │   └──────────────────────────────────────────────────┘   │          │
+│ └──────────────────────────────────────────────────────────┘          │
+│ [打回原因（可选）]    通过后进入开发；发布仍保持锁定   [查看源码][打回][确认设计，进入开发]│
+│ Esc 关闭 · 关闭后焦点回到触发按钮 · 通过/打回复用 reviewPipelineStage      │
+└───────────────────────────────────────────────────────────────────────┘
+文件树/标签页 .html/.htm ── 默认预览（iframe 渲染）⇄ 工具栏「预览 / 源码」── 源码编辑
+```
+
+**入口关系**：① 流水线设计卡 → D2；② 工作台设计卡 → D2；③ 文件树/标签 `.html/.htm` → D4（与 D2 共用 iframe 渲染与源码退路，但 D4 不进入审批通道）。D1/D3 在非 review 状态退化为普通阶段卡/无设计卡；D2 关闭后回到原视图，不改路由、不加历史记录。
+
+### 16.5 组件清单（D1–D5）
+
+> 全部复用 §5 tokens 与现有 `ds-*` 组件；新增的语义别名只指向现有 alias，不引入新色板。所有「通过 / 打回 / 预览 / 确认」按钮实测高度 **44px（桌面）/ 48px（移动）**。
+
+| # | 组件 | 尺寸 / 间距 | 字号 / 字重 | 颜色 token / 圆角 | 关键状态 |
+|---|---|---|---|---|---|
+| D1 | 流水线设计卡（review 态） | 卡 344×auto（侧栏 360，内边距 6/7）；header 16×16 序号 + 标题；提示条 332×46；缩略图 104×48，gap 6；按钮 44 高（预览 118 / 通过 56 / 打回 56），gap 6；note 输入 332×32 | 序号 9/700；标题 11/700；角色 9/400；状态 pill 9.5/600；提示条标题 11/700；缩略图标签 8.5；按钮 11/600 | 卡 `--wb-surface` + `--wb-line` + review 时 1.5px `--wb-warn`；提示条 bg `color-mix(warn 12%, surface)`、边 `color-mix(warn 45%, line)`；通过 `--wb-ok`；打回 `--wb-err`；圆角 7（沿用 `.ds-pipe-stage`） | review 才展开；按钮 `disabled` 于 `pipelineBusy`；缩略图 `loading="lazy"`；无产物时显示空态行 |
+| D1b | 待确认提示条（可复用） | 332×46（卡内）/ 全宽 32（弹层 header）；图标 16 圆 + 文案两行；内边距 12 | 标题 11–12/700；副文案 9.5–10/400 | `--wb-warn` / `--wb-warn-bg` / `--wb-warn-line`；圆角 8；warn 色**必须**配文字与计数 | 提交中不隐藏；error 时条底加 errorline；非 review 不渲染 |
+| D2 | 设计稿预览弹层 | 宽 `min(1240px, 92vw)`，高 `min(840px, 92vh)`；header 104；toolbar 56；canvas 556；footer 84；内边距 24；设备框 768×486（效果图按 0.76 缩放展示 768×640，真实实现 iframe 高 ≥640） | 标题 20/700；副标题 12；tab 12；宽度按钮 11；正文 12；按钮 13/600 | 背板 `color-mix(ink 52%)` + 背景 2.5px 模糊；`--dsw-alias-bg-overlay`；圆角 16；设备框 12；tab 选中 brand 1.4px | 多产物 / 加载中 / 失败 / 空产物 / 打回 note 展开；Esc 关闭；点击背板关闭 |
+| D2b | 产物切换 tabs | 高 36（桌面）/ 44（移动），单选；每项 icon 16 + 文案；横向滚动（移动端） | 12/600（选中 700） | 选中：surface + brand 1.4px + brand 文案；未选中：透明 + line；focus 2px brand 环 | 选中态 `aria-selected`；HTML 项带播放/eye 微标；无产物不渲染 |
+| D2c | 设备宽度切换 | 容器 32（桌面）/ 44 行高（移动，视觉 32 + 点击区 44）；3 段 360/768/1280；分组圆角 8 | 11/600（选中 700） | 容器 `--wb-surface-2` + `--wb-field-line`（3:1 边界）；选中白底 + line + 轻阴影 | 选中 `aria-pressed`；切换中保留旧帧 + 顶部 2px 进度；加载失败时禁用并有 title |
+| D2d | 确认/打回按钮 | 44（桌面）/ 48（移动）；确认 192×44（移动全宽）；打回 64–76×44；间距 8 | 13/600；打回 11.5/600 | 确认 `--wb-brand` 底白字（5.17:1）；打回 surface + `--wb-err` 文字/边（5.91:1）；focus 2px brand 环 | 提交中 loading；`pipelineBusy` disabled；error 行内提示，可重试；不做二次确认 |
+| D2e | 预览 iframe / 加载态 | 画布内边距 16；设备框最大宽 100%；iframe 高 ≥640；横向滚动；加载骨架 3 行 | 加载文案 11 | 设备框 surface + line2 + shadow-2；骨架 surface-3；进度环 brand | `loading="lazy"`；错误态错误卡 + 重试 + 查看源码；确认按钮禁用直到可用 |
+| D3 | 工作台设计卡（review 态） | 卡全宽 1184×330；header 40；提示条 1144×46；缩略图 4×268×124，gap 12；按钮 44（预览 132 / 通过 76 / 打回 76）；note 340×44 | 卡标题 14/700；提示条标题 12/700；副 10.5；缩略图标签 9–10；按钮 11.5/600 | 卡 `--wb-surface` + `--wb-line` + `--wb-shadow-1`；badge `--wb-warn-fill` + `--wb-warn`；HTML tile brand 1.5px；圆角 14 | 空态「设计阶段尚未提交截图」；通过禁用并给原因；缩略图 hover 边框 brand；`focus-within` 2px 环 |
+| D4 | `.html/.htm` 文件预览 | 标签栏 36；编辑器工具栏 44；预览/源码 segments 32；iframe 框全宽、URL 条 34；预览区四周 28；空态/错误卡居中等宽 | 标签 12；工具栏 12；URL 9 mono；正文 12 | 预览底 `--wb-canvas`；设备/框 `--wb-surface` + line2；选中态 brand；错误 `--wb-err` | 默认 preview；空文件「文件为空」；读取失败错误 + 源码退路；SSH 根降级源码并提示；只读预览（保存仍在源码） |
+| D5 | 状态 pill / 文案 | 高 18–22；与现有 pill 一致 | 9–10/600 | review=warn、approved=success、failed=error、pending=neutral；**不只靠颜色**（含文字） | 快速模式文案见 16.9；`design-no-image` warning 文案见 16.9 |
+
+### 16.6 八态状态矩阵
+
+> 八态 = default / hover / focus / active / disabled / loading / empty / error；N/A 必须写理由。可交互组件统一 focus = 2px brand 环 + 2px offset；移动端点击区 ≥44×44。
+
+| 组件 | Default | Hover | Focus | Active | Disabled | Loading | Empty | Error |
+|---|---|---|---|---|---|---|---|---|
+| **D1 待确认提示条** | warn 底 + 1px warn 边 + 图标 + 标题（11/700）+ 计数；`role="status"` | N/A（非交互容器；内部按钮各自 hover） | N/A（容器；内部按钮各自 focus 环） | N/A（容器） | N/A（不由用户禁用；提交中按钮禁用而条保留） | 条保留，按钮文案「处理中…」+ 12px 旋转；条不闪 | 非 review 不渲染（N/A 理由：无待确认语义） | 评审失败：条底 `.ds-errorline` 红字 + 保留通过/打回可重试 |
+| **D1 产物缩略图** | 104×48 图 tile + 标签；HTML tile 1.4px brand 边 + eye 徽标 20 | 边 brand 50%，无位移动画 | 2px brand 环 + 2px offset | 按下 opacity .92 | N/A（始终可点；文件不存在时点击进入弹层错误态） | 骨架块 + 极轻 shimmer（reduced-motion 关闭 shimmer） | 无产物：不渲染行，显示「暂无产物」一行 caption | 图加载失败：灰底 + 文件名 + 重试图标；点击仍可失败提示 |
+| **D2 设备宽度切换** | 3 段 360/768/1280；选中 768 白底 + 粗体；容器 32/44 | 未选中 hover surface-2 | 2px brand 环 | pressing surface-3 | 预览失败/无 iframe 时禁用，`title` 说明原因 | 切换中保留旧帧 + 顶部 2px 进度条；按钮可继续切 | N/A（默认 1280，始终有选中项） | N/A（切换本身不失败；失败由预览区承接） |
+| **D2 确认 / 打回按钮** | 确认 brand 底白字 44；打回描边 err 文字 44；间距 8 | 确认亮度 .94；打回 err 6% 底 | 2px brand 环 + 2px offset（hero 内白/蓝环） | translateY(1px) | `pipelineBusy` 或预览不可用时 opacity .45 + `cursor:not-allowed` + title「当前无法确认」 | 文案「处理中…」+ 12px 旋转，宽度不变，防重复提交 | N/A（始终有文案） | 行内 `.ds-errorline` / toast，按钮尺寸不变，可重试 |
+| **D2 预览加载（iframe）** | 白底设备框 + `title`；图片为应用内大图 | N/A（画布容器） | iframe 可聚焦（title 可读）；外层容器 2px brand 环 | N/A | N/A | 骨架 3 行 + 「正在加载设计稿…」+ `aria-live="polite"`；确认禁用 | 无产物：空态「该阶段尚未提交设计产物」+ 说明 | 错误卡「无法加载该设计稿」+ 原因（raw-404/不可读）+ 重试 + 查看源码；不白屏 |
+| **D2 产物 tabs** | 3 个 tab 横排；选中白底 brand 边 + brand 文案 | 未选中 hover surface-2 | 2px brand 环 | pressing surface-3 | 只有 1 个产物时仍显示单 tab（无禁用） | 切换时旧内容保留到新内容就绪 | 无产物：不渲染 tabs，显示空态 | 文件缺失：tab 保留，点开进入错误卡 |
+| **D3 工作台设计卡** | 卡表面 + line + shadow-1；warn badge「待你确认」+ 4 缩略图 + 预览/通过/打回 44 | 卡 `:hover` 边强；缩略图边 brand | `:focus-within` 2px brand 环 | N/A（卡本身非按钮） | 通过禁用（无截图/加载中）opacity .45；打回仍可用 | 缩略图 3 个骨架；预览按钮 spinner | 「设计阶段尚未提交截图」+「请提交至少一张 PNG/JPG/SVG；HTML 不能替代截图」+ 通过禁用原因 | 行内 errorline + 重试；不隐藏「预览设计稿」（若仍有 HTML） |
+| **D4 预览 / 源码切换** | segments 2 项 32（点击区 44），默认 preview；右侧源码次级 | 未选中 hover surface-2 | 2px brand 环 | pressing surface-3 | 文件加载中禁用源码；SSH 根禁用 preview 并 title 说明 | 预览 iframe 骨架；源码沿用现有 loading | 空文件：「文件为空」+ 仍可切源码；不白屏 | 读取失败：错误卡 + 重试 + 「查看源码」退路；预览失败同 D2e |
+| **D5 状态 pill / 快速模式提示** | review=warn、approved=success、failed=error、pending=neutral；快速模式提示并列「四个自动 / 三个需确认」 | N/A（只读标签） | N/A（非交互） | N/A | N/A | N/A | 计数 0 显示「0 / 无」，不显示假数据 | N/A |
+
+### 16.7 响应式规格（360 / 768 / 1280）
+
+| 断点 | 弹层 | 产物 tabs / 设备切换 | 预览画布 | 卡片 / 页面 |
+|---|---|---|---|---|
+| ≥1280（桌面） | 宽 min(1240, 92vw)，高 min(840, 92vh)，居中；背板 52% 深色 + 模糊 | tabs 一行；设备切换单行 360/768/1280（默认 1280）；源码按钮 toolbar 右侧 | 画布内边距 16；768 档居中设备框；1280 档容器内横向滚动；高度 ≥640 | 流水线侧栏 360；工作台设计卡全宽；缩略图 4 列（268）；通过/打回 44 |
+| 1024–1279 | 宽 92vw；header 收窄，提示条文案可换行 | tabs 横向滚动；设备切换不换行（360/768/1280 各 32 高） | 画布横向滚动；1280 档显示为可滚动区 | 工作台 2 列；流水线侧栏 320–360；缩略图 2–3 列 |
+| 768–1023（平板） | 宽 92vw，高 92vh；header 高度自适应 | tabs 横向滚动；设备切换允许换行（两组）；「查看源码」移到第二行 | 设备框最大宽 100%；左右留白 12；iframe 高度 ≥480 并随视口 | 工作台单列；设计卡缩略图 2 列；按钮 44 |
+| ≤700（移动，含 390/360） | **全屏**：100%×100%，圆角 0；header 双行（标题 + 状态）；底部操作区 sticky | tabs 横向滚动，选中项自动滚入；设备切换换行，**视觉 32 + 行高 44**；源码按钮独立行 | 画布占满剩余高度；iframe 最大宽 100%，360 档默认；设备框居中；可纵向滚动 | 设计卡单列；缩略图 2 列（150 最小）；通过/打回/预览/确认 48 高、确认全宽；提示条三行内 |
+| 360 极限 | 全屏；标题 16；提示条可换行 2 行；底部确认全宽 48 | 设备切换三档等分一行（各 56 宽）或换行；tabs 可横向滚动 | iframe 宽 100%；设备框无外留白 | 无横向溢出；长文件名 `overflow-wrap:anywhere` + 2 行 clamp |
+
+- 弹层在 ≤700 全屏、`aria-modal="true"` 下禁止背景滚动（`body overflow:hidden` 由现有 modal 机制处理）；关闭后恢复滚动与焦点。
+- 所有宽度档位只在「iframe 宽度 + 设备框宽度」上变化，不销毁 iframe、不重复请求；容器 `overflow-x:auto`，移动端 `max-width:100%`。
+- 预览画布内的设计稿内容本身不注入主应用；滚动发生在 iframe 内部或画布容器，二者不嵌套争抢滚轮（画布滚动条仅在 1280 档出现）。
+
+### 16.8 可访问性
+
+**语义 / ARIA / 键盘**
+
+- 弹层：`role="dialog"` + `aria-modal="true"` + `aria-labelledby`（标题 id）+ `aria-describedby`（提示条 id）；初始焦点落在标题或关闭按钮；焦点陷阱只在弹层内循环；`Esc` 关闭并把焦点归还到触发按钮（流水线卡「预览设计稿」/工作台卡「预览设计稿」/缩略图）。
+- 产物 tabs：`role="tablist"` + `role="tab"` + `aria-selected`；左右方向键切换（可选增强），`Home/End` 到首尾；tab 与 `tabpanel` 用 `aria-controls`/`aria-labelledby` 关联。
+- 设备切换：`role="group" aria-label="预览宽度"`；每个按钮 `aria-pressed`；切换后 live region 播报「已切换到 768 宽」。
+- 预览 iframe：`title="设计稿预览：design-gate-preview.html"`（必有）；`sandbox=""`；`loading="lazy"`；iframe 内的文档不获得主应用 API/存储。
+- 图片：`alt` 用产物 label（缺失时用文件名）；纯装饰图标 `aria-hidden="true"`；缩略图按钮有可读名称「预览设计稿：流水线卡 1440」。
+- 状态提示：`role="status"`（review 提示条）、加载/错误 `aria-live="polite"`；错误文案说明「什么错、为什么、怎么修」。
+- Tab 顺序 = 阅读顺序：关闭 → 产物 tabs → 宽度切换 → 查看源码 → iframe → 打回原因 → 打回 → 确认设计。流水线卡内：提示条（不可聚焦）→ 缩略图 → 预览设计稿 → 通过 → 打回 → note。
+- 焦点可见：2px brand 环 + 2px offset；hero 深色内用 `#93C5FD` 环；`focus-visible` 才显示，鼠标点击不留下环。
+- 危险操作：打回与确认之间 8px 间距；打回不紧邻「确认」左侧？设计中打回在确认左侧但用描边红区分；不弹二次确认（需求 §6.3 明确不做）。
+
+**对比度（计算值，sRGB）**
+
+| 前景 / 背景 | 比值 | 用途 |
+|---|---|---|
+| #0F172A / #FFFFFF | 17.85 | 浅色主文本 |
+| #475569 / #FFFFFF | 7.58 | 次要文本 |
+| #64748B / #FFFFFF | 4.76 | caption / 辅助 |
+| #64748B / #F8FAFC | 4.55 | 页面底 caption（≥4.5） |
+| #475569 / #F1F5F9 | 6.92 | 预览画布上的说明（不用 4.34 的 caption） |
+| #2563EB / #FFFFFF | 5.17 | 链接 / 主按钮（白字） |
+| #92400E / #FFFBEB | 6.84 | 待确认提示条标题 |
+| #B45309 / #FFFBEB | 4.84 | 提示条副文案 |
+| #B45309 / #FEF3C7 | 4.51 | warn badge 文字（AA 小字） |
+| #15803D / #ECFDF5 | 4.76 | 通过/已通过文字 |
+| #B91C1C / #FEF2F2 | 5.91 | 打回/错误文字 |
+| #FFFFFF / #0B1220 | 18.72 | hero 主文本 |
+| #FCD34D / #0B1220 | 12.98 | hero 内待评审 pill |
+| #FFFFFF 76% / #0B1220 | 10.94 | hero 次文本 |
+| #FFFFFF 56% / #0B1220 | 6.39 | hero 辅助文本 / placeholder |
+| #93C5FD / #0B1220 | 10.38 | hero 链接 / focus 环 |
+| #7C8A9E / #FFFFFF | 3.51 | 输入框/分段控件边界（非文本 ≥3） |
+| #7C8A9E / #F8FAFC | 3.35 | 同上（页面底） |
+| #E8EDF5 / #0B0F15 | 16.34 | 深色主题主文本 |
+| #8B97A8 / #151B24 | 5.84 | 深色主题 caption |
+| #FBBF24 / #151B24 | 10.36 | 深色 warn |
+| #60A5FA / #10151D | 7.20 | 深色链接/focus 环 |
+| #FFFFFF / #2563EB | 5.17 | 深色主按钮 |
+
+> 大字（30px hero 标题）≥3:1 全部满足；非文本边界使用 `--wb-field-line`（#7C8A9E）保证 ≥3:1；正文不使用 #94A3B8（2.56:1，仅装饰）。r1 中 #94A3B8 辅助文案已判定失败并修正（见 16.10）。
+
+**颜色以外 / 动效 / 触控**
+
+- 状态不只靠颜色：提示条含图标 + 文案 + 「第 N 关 · 阶段 · 产物数」；pill 含文字；空态/错误含标题 + 说明 + 动作。
+- 动效：160ms `cubic-bezier(.2,.7,.3,1)`，只动 border-color / background / color / transform(1px)；弹层打开不做全屏缩放动画；`prefers-reduced-motion: reduce` 下 `transition:none`、无 shimmer、无 pulse。
+- 触控：确认/打回/预览/源码 44（移动 48）；icon 32 视觉 + 44 点击区；设备段 32 视觉 + 44 行高；缩略图 104×48；移动端 tabs 44。
+- 说明：弹层内 iframe 里显示的按钮属于**被预览的设计稿内容**（按 0.76× 缩放的画面），不是本产品控件，不参与 44px 判定；本产品的通过/打回/确认/源码按钮均满足上一条。
+
+### 16.9 文案与 i18n 建议
+
+**D5 文案（必须同批修改，避免旧口径残留）**
+
+- 快速模式提示（zh）：「product/development/testing/acceptance 自动通过；design/approval/release 始终需要 Owner 确认。」
+- 快速模式提示（en）：「product/development/testing/acceptance auto-approve on submit; design, approval and release always need the owner's confirmation.」
+- 待确认提示：「设计稿待你确认 · 确认后进入开发」；副文案：「通过后开发阶段才能启动；打回后设计变为「已打回」」。
+- 空态：「设计阶段尚未提交截图；请 UI 设计师提交至少一张 PNG / JPG / SVG（HTML 不能替代截图）。」
+- 无图 warning（Host，`design-no-image`）：「设计阶段未提交可直接查看的截图（PNG/JPG/SVG）；HTML 产物只能预览，不能替代截图。」（`code` 不变，避免破坏断言）
+- 设计提示词交付物首条：「至少一张可直接查看的截图（PNG/JPG/SVG，命名为 `<页面>-<状态>-<设备>.<ext>`）；可选可预览 HTML」；`doesNot` 增补「不得只交 HTML 源码而不交截图」。
+- Lead 纪律：「设计提交后必须把截图/预览入口给 Owner 看并停下；不得把 HTML 源码贴给 Owner；design 未 approved 前不得启动 development。」
+
+**建议 i18n key（新增，不删旧键）**
+
+| key | zh | en |
+|---|---|---|
+| `pipeline.designGateBanner` | 设计稿待你确认 · 确认后进入开发 | Design awaiting your approval · confirm to start development |
+| `pipeline.designGateHint` | 通过后开发阶段才能启动；打回后设计变为「已打回」。 | Development unlocks after approval; rejecting marks design as failed. |
+| `pipeline.previewDesign` | 预览设计稿 | Preview design |
+| `pipeline.designArtifactCount` | {n} 个产物 | {n} artifacts |
+| `pipeline.designReviewProgress` | 第 {n} 关 · UI 设计 · {count} 个产物 | Stage {n} · UI design · {count} artifacts |
+| `workbench.designPending` | 待你确认 | Awaiting your approval |
+| `workbench.designPreview` | 预览设计稿 | Preview design |
+| `workbench.designEmpty` | 设计阶段尚未提交截图；请 UI 设计师提交至少一张 PNG / JPG / SVG（HTML 不能替代截图）。 | No screenshots yet; the designer must submit at least one PNG/JPG/SVG (HTML cannot replace screenshots). |
+| `workbench.designHtmlPreview` | 预览 | Preview |
+| `designPreview.title` | 设计稿预览 | Design preview |
+| `designPreview.tabImage` | 图片稿 | Image |
+| `designPreview.tabHtml` | 高保真稿 · HTML | Hi-fi · HTML |
+| `designPreview.width` | 预览宽度 | Preview width |
+| `designPreview.viewSource` | 查看源码 | View source |
+| `designPreview.confirm` | 确认设计，进入开发 | Approve design & start development |
+| `designPreview.reject` | 打回 | Reject |
+| `designPreview.rejectReason` | 打回原因（可选）：写清需要修改的地方… | Reason (optional): what should change… |
+| `designPreview.loading` | 正在加载设计稿… | Loading design… |
+| `designPreview.loadError` | 无法加载该设计稿 | Unable to load this design |
+| `designPreview.loadErrorHint` | 文件不存在或不可读；可查看源码或重试。 | File missing or unreadable; view source or retry. |
+| `designPreview.retry` | 重试 | Retry |
+| `designPreview.empty` | 该阶段尚未提交设计产物 | No design artifacts submitted yet |
+| `designPreview.iframeTitle` | 设计稿预览：{name} | Design preview: {name} |
+| `designPreview.escHint` | Esc 关闭 · 焦点回到触发按钮 | Esc to close · focus returns to trigger |
+| `action.preview` / `action.edit` / `action.source` | 预览 / 源码 / 源码 | Preview / Edit / Source |
+
+### 16.10 自检评分与迭代记录
+
+**迭代第 1 版（r1）渲染 → 检查**
+
+效果图：[design-gate-preview-modal-r1-1440.png](design/design-gate-preview-modal-r1-1440.png)（同目录 SVG）。r1 是「先做出来的弹层」：只有一张静态图片、没有产物切换、没有 iframe、没有提示条、设备按钮 24px、确认按钮 32px、辅助文案用 #94A3B8。
+
+r1 五维评分：视觉层级 **4**、清晰度 **3**、一致性 **3**、反馈 **2**、可访问性 **2** → 均分 **2.8**（未达门槛）。must 失败：触控（确认 32 / 设备 24）、对比度（#94A3B8 2.56:1）、关键状态（无加载/失败/空态）、HTML 预览缺失。
+
+| 轮次 | 触发 | 发现（对照标准） | 修正 | 证据 |
+|---|---|---|---|---|
+| R1 | 渲染 r1 弹层 | ① HTML 产物仍是图片占位「图片预览（HTML 产物暂未渲染）」，无 iframe/产物切换/查看源码 → 不满足 design-preview 核心；② 设备档位 24px、确认 32px → 触控 must 失败；③ 弹层内无「设计稿待你确认 · 确认后进入开发」，Owner 看不到闸门语义；④ 辅助文案 #94A3B8 / #FFFFFF = 2.56:1 → 对比度 must 失败 | 引入 iframe + `sandbox=""` + `title`；顶部产物 tabs；三档 360/768/1280；底部 44px 确认/打回；header 提示条；全部辅助文案改 #64748B（4.76:1）；确认复用 `reviewPipelineStage` | r1 → final 对比；[r1](design/design-gate-preview-modal-r1-1440.png) / [final](design/design-gate-preview-modal-1440.png) |
+| R2 | 渲染 final 三张（D1/D2/D3） + 移动端 | ① 流水线 todo 副文案与「通过」按钮重叠；hero 右栏 300px 越出内边距，按钮贴到 hero 右缘；② D2 预览内容里 mini hero 的「通过/打回」超出画布右缘；③ D4 无 mockup、工作台卡无空态、状态矩阵需要独立证据；④ 状态板四宫格用绝对坐标导致面板互相覆盖 | 收窄 hero 右栏到 300、内边距 28；mini hero 按钮左移到 916/998；新增 D4 HTML 文件预览图；新增状态板（加载/失败/空/打回）；状态板改 `translate` 局部坐标 | [D1](design/design-gate-pipeline-review-1440.png) / [D2](design/design-gate-preview-modal-1440.png) / [D3](design/design-gate-workbench-card-1440.png) / [D4](design/design-gate-html-file-preview-1440.png) / [状态板](design/design-gate-preview-states-1440.png) |
+| R3 | 2× 逐张目检 + 对比度复算 | ① 移动端设备档位行被预览画布遮挡（画布从 224 开始覆盖 192 起的设备框）；② 预览画布上 9.5px 说明文字用 #64748B / #F1F5F9 = 4.34:1，低于 4.5；③ 侧栏提示条 44px 按钮挤压文案；④ 深色主题未验证 | 画布下移到 228、设备框 236、内容压到 396 高；画布说明改 #475569（6.92:1）；提示条文案拆行/缩短；补深色片段并实测对比度；全部重渲染 @2× 后逐张 read_image 目检 | [移动端](design/design-gate-mobile-390.png)、[深色片段](design/design-gate-dark-fragment-900.png) |
+
+**最终五维评分（附证据）**
+
+| 维度 | 分数 | 证据 | 扣分点 / 说明 |
+|---|---|---|---|
+| 视觉层级 | **5** | D1/D2/D3 渲染图 | 一屏一个主行动：卡片=预览、弹层=确认；warn 条在最上，缩略图在中，动作在下 |
+| 清晰度 | **5** | 文案表 + 状态板 | 「待你确认 · 确认后进入开发」双处同句；空/错/加载都有可读文案与退路 |
+| 一致性 | **4** | tokens 表 + 深浅片段 | 复用 `--wb-*` / `--dsw-alias-*`；侧栏沿用现有 8.5–11px 微阶（与 `.ds-pipe-*` 一致），不是 12/14/16 全阶 → 扣 1 分并说明 |
+| 反馈 | **5** | 八态矩阵 + 状态板 | loading/error/empty/disabled 齐；确认按钮 loading 防重复；打回 note 保留 |
+| 可访问性 | **5** | 对比度表 + 键盘/ARIA 说明 | 正文 4.5+、大字 3+、非文本 3.51；44px；Esc/focus 归还；iframe title |
+
+**均分 4.8 / 5；must 项 0 失败；结论：可提交 Owner 评审。**（自评不替代 Owner 评审与 acceptance 复核。）
+
+**MUST 核对**
+
+| MUST | 结果 |
+|---|---|
+| 4/8px 间距体系 | ✅ 4/8/12/16/20/24/32；侧栏 6/7 为现有 `.ds-pipe-*` 既有值（与现有面板一致） |
+| 字号阶梯 + 行高 ≥1.4 | ✅ 常规 12/14/16/20/30；正文 12–13；侧栏 8.5–11 为现有微阶（明确例外）；行高 1.4–1.55 |
+| 颜色 token + 对比度 | ✅ 全部 alias/color-mix；实测表见 16.8 |
+| 触控 ≥44×44 | ✅ 通过/打回/预览/确认 44（移动 48）；icon 32 视觉 + 44 点击区；设备段 32 视觉 + 44 行 |
+| 八态矩阵 | ✅ 16.6 共 9 行，N/A 均写理由 |
+| 响应式 360/768/1280 | ✅ 16.7；360 无横向溢出、弹层全屏 |
+| 动效 150–300ms + reduced-motion | ✅ 160ms + 全关降级 |
+| 键盘/焦点/ARIA/不只靠颜色 | ✅ 16.8；截图/状态板含文字 |
+| 至少一轮渲染→检查→修正 | ✅ R1/R2/R3 + r1 证据 |
+| 调研 ≥2 来源 | ✅ 4 个 HTTP 200 来源 + 决策表 |
+
+### 16.11 给开发的组件/状态对照表与插入点
+
+> 行号为 **v1.2.82 基线**（并行会话可能改动 client.js；实现时按符号搜索）。本阶段**未改代码**，以下只是交接建议。
+
+| 设计组件 | 建议实现位置 / 类名 | 状态规则 | Tokens / 要点 |
+|---|---|---|---|
+| D1 流水线设计卡 review 态 | `client.js` `stageNode()`（约 19758）+ `renderArtifact()`（约 19705）；新类 `.ds-pipe-design-review`、`.ds-pipe-design-shots`、`.ds-pipe-design-actions` | `status==='review'` 才渲染提示条；`pipelineBusy` 禁用按钮；产物最多 20 个（沿用） | `--wb-warn` / `--wb-warn-bg`；按钮 44；缩略图 `loading="lazy"` |
+| D1 顶部 todo 提示条 | `client.js` `.ds-pipe-todo`（约 19935）；复用 `pipeline.reviewBanner` 或新增 `pipeline.designGateBanner` | `ownerGateStage` 为 design 时用新文案；通过/打回仍调 `reviewPipelineStage` | 44px 按钮、note 沿用 `pipelineReviewNote` |
+| D2 预览弹层 | 新增 `designPreview` state（`{open, artifactPath, device: 1280}`）+ 渲染函数；复用 `.ds-modal-backdrop` / `.ds-modal`（约 26610/26637）；新前缀 `.ds-dp-`（`.ds-dp-head/tabs/device/canvas/actions`） | 由「预览设计稿」/缩略图点击打开；关闭清 state；Esc/背板关闭并还焦点；tabs 只对存在的产物 | `min(1240px,92vw)`、`min(840px,92vh)`；iframe `sandbox=""`、`title`、`loading="lazy"`；设备 360/768/1280；确认 disabled 于加载/失败 |
+| D2 缩略图/图片大图 | `renderArtifact` 图片分支 + 工作台 `designShots`（约 17553）；图片查看器复用现有 | `isImagePath` 才走图；HTML 走 D2 预览 | `alt = label`；`loading="lazy"` |
+| D3 工作台设计卡 | `client.js` designCard（约 18355）+ `designShots`/`designDocs`（约 18392）；新类 `.ds-wb-design-badge`、`.ds-wb-design-actions`、`.ds-wb-design-empty` | `designStages` 有产物才渲染；`review` 加 badge/预览/通过/打回；无图空态并禁用通过 | `--wb-warn-fill` / `--wb-warn`；HTML 文档按钮改「预览」→ D2 |
+| D4 `.html/.htm` 预览 | `modeOf()`（约 2948）增 `'html'`；`openFile()`（约 13867）建 tab 时 `view='preview'`；`isTextMode`（约 2955）纳入 html；工具栏（约 15974）加 `.ds-html-switch`（复用 `.ds-switch`，约 26329） | 默认 preview；切源码可编辑保存；空/错态沿用现有 errorline；SSH 根降级源码 + 提示 | `rawUrl()` 作为 iframe src；`sandbox=""`；`title=tab.name`；预览区 `.ds-html-preview` |
+| D5 文案 | `client.js` i18n `pipeline.fastHint`（约 748/1978）与 `workbench.design*`（约 435/1665）；`pipeline.js` `PIPELINE_SECTION`（约 196）、`STAGE_GUIDES.design`（约 1496）、`collectArtifactWarnings`（约 849）、工具描述（约 2360） | zh/en 成对；旧 key 不删；`design-no-image` 的 `code` 不变 | 见 16.9 文案表 |
+| 闸门（非 UI，但设计依赖） | `pipeline.js` `submitStage()` `fastApproval`（约 1136–1161）排除 design；`startStage()`（约 1059–1090）提示「请在面板确认设计稿后重试」 | design 提交固定 `review`；未 approved 时 development 抛 `bad-order` | 不新增审批 API/字段；复用 `reviewPipelineStage` |
+
+**给开发的边界**
+
+- 可自由调整：预览画布留白、缩略图比例（保持 >4:3）、tabs 的宽度、错误卡文案细节。
+- 不可偏离：`sandbox=""`（不放开脚本）、`title` 必填、确认/打回/预览 ≥44、三档宽度显式标注、源码为次级入口、设计 review 必须有提示条与缩略图、通过/打回只走 `reviewPipelineStage`。
+- 防重复：`pipelineBusy` 或本地 `submitting` 时禁用确认/打回，文案「处理中…」；失败后恢复可点并保留 note。
+- 错误恢复：预览失败 → 错误卡（原因 + 重试 + 查看源码）；确认失败 → errorline/toast，不丢失 note；打回失败 → 清 busy，可重试。
+
+**给测试的视觉基线**
+
+1. 浅色 1440：对照 [D1](design/design-gate-pipeline-review-1440.png) / [D2](design/design-gate-preview-modal-1440.png) / [D3](design/design-gate-workbench-card-1440.png) / [D4](design/design-gate-html-file-preview-1440.png) 检查提示条、缩略图、按钮高度、三档切换、源码入口。
+2. 关键状态：对照 [状态板](design/design-gate-preview-states-1440.png) 检查加载/失败/空态/打回 note。
+3. 移动 390×844：对照 [移动端](design/design-gate-mobile-390.png) 检查全屏、tabs 横滚、设备切换换行、底部 48px 操作。
+4. 深色：对照 [深色片段](design/design-gate-dark-fragment-900.png) 检查 warn/success/error 与 focus 环；正文对比 ≥4.5。
+5. 键盘：Tab 顺序、Esc 关闭并还焦点、iframe title 可读、图片 alt 存在、`prefers-reduced-motion` 无动画。
+6. 三档：360/768/1280 下 iframe 宽度变化、容器横向滚动、无横向溢出；确认/打回 44（移动 48）。
+
+### 16.12 资源清单与渲染环境
+
+| 文件 | 说明 |
+|---|---|
+| [design-gate-pipeline-review-1440.svg](design/design-gate-pipeline-review-1440.svg) / .png | D1 流水线设计卡 review 态，1440×1024 浅色，全页（侧栏 360 + 工作台简化） |
+| [design-gate-preview-modal-1440.svg](design/design-gate-preview-modal-1440.svg) / .png | D2 设计稿预览弹层（HTML iframe + 三档 + 确认/打回 + 查看源码） |
+| [design-gate-workbench-card-1440.svg](design/design-gate-workbench-card-1440.svg) / .png | D3 工作台设计卡待确认态（4 产物 + 预览/通过/打回 + 说明） |
+| [design-gate-html-file-preview-1440.svg](design/design-gate-html-file-preview-1440.svg) / .png | D4 工作区 `.html` 默认预览 + 工具栏「预览 / 源码」 |
+| [design-gate-mobile-390.svg](design/design-gate-mobile-390.svg) / .png | D2 移动端 390×844 全屏弹层（tabs 横滚、设备切换、48px 底部操作） |
+| [design-gate-preview-states-1440.svg](design/design-gate-preview-states-1440.svg) / .png | 关键状态板：加载中 / 加载失败 / 工作台空态 / 打回说明 |
+| [design-gate-dark-fragment-900.svg](design/design-gate-dark-fragment-900.svg) / .png | 深色主题片段（D1 卡 + D2 弹层 + 对比度实测） |
+| [design-gate-preview-modal-r1-1440.svg](design/design-gate-preview-modal-r1-1440.svg) / .png | r1 迭代证据（final 对照） |
+| [gen-design-gate-mockups.mjs](design/gen-design-gate-mockups.mjs) | 生成器（纯 SVG 字符串，无外部依赖）；`OUT=<dir> node gen-design-gate-mockups.mjs` |
+
+> D4 的空文件 / 读取失败分支不另出图：视觉沿用现有编辑器 `.ds-empty` / `.ds-errorline` 与 §16.6 矩阵（避免与既有空/错误态重复）；D4 主图覆盖默认「预览」与工具栏「预览 / 源码」切换入口。
+
+**渲染环境**：字体 Noto Sans SC 400/600/700（复制到 `/tmp/fonts` + fontconfig）；sharp `density:144` → 逻辑 1440×1024 输出 2880×2048（@2×）；移动端 390×844 → 780×1688。全部 SVG 内字体栈 `Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif`。已逐张 `read_image` 目检：中文无豆腐块、无文字溢出/重叠；r1/final 对照见 16.10。
+
+### 16.13 风险与未决
+
+| 风险 | 影响 | 处理 |
+|---|---|---|
+| iframe 直接指向 raw URL：跨域/鉴权/SSH 根不可用 | 预览失败 | 本地根优先；失败显示错误卡 + 查看源码；SSH 根降级源码并提示，不扩大 SSH 能力边界 |
+| `sandbox=""` 下依赖脚本的交互稿视觉缺失 | 高保真稿不完整 | 静态视觉为准；如需交互，后续放开 `allow-scripts`（禁止同开 `allow-same-origin`）并标注「脚本受限」 |
+| 1280 档在 1240px 弹层内需横向滚动 | Owner 可能觉得不便 | 默认 1280 但容器内滚动；若 Owner 反馈，后续加「适应窗口」开关（本轮不做） |
+| 两处入口（流水线 + 工作台）重复 | 视觉噪音 | 同一 i18n 键/状态；流水线是强提示，工作台是首屏入口；Owner 复查后可只保留一处强提示（创新假设 3） |
+| 侧栏 8.5–11px 微阶与 12/14/16 全阶不完全一致 | 字号阶梯审查扣分 | 明确例外：沿用现有 `.ds-pipe-*` 面板（9–10.5px 实际值）；新增提示 10–11；工作台/弹层用 12–20 |
+| 设计稿无截图时仍可打回但不可通过 | 流程卡住 | 空态显示「请提交至少一张 PNG/JPG/SVG」+ 通过禁用原因；Lead 纪律 + `design-no-image` warning 双保险 |
+| 并行会话改动 client.js 导致插入行号漂移 | 交接误差 | 以符号/类名搜索为准；本设计只给建议，不修改代码 |
+
+**未决问题（不阻塞本轮设计，交 Owner/Lead）**
+
+1. 交互型高保真稿是否需要 `allow-scripts`？默认不允许。
+2. 三档是否足够？若 Owner 需要 1024 档，宽度常量集中定义，后续加一档即可。
+3. 是否需要「设计稿版本对比」？本轮不做，记为后续需求。
+4. 深色主题下 HTML 稿自身可能是浅色 → 预览画布保持中性浅底，不强制反转设计稿。

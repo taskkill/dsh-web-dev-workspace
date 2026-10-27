@@ -1,9 +1,10 @@
-# 需求：工作台 UI 全面重构 —— 现代 · 大气 · 简洁干练（v1.2.79，第 7 轮）
+# 需求：设计先确认 —— 设计阶段出截图/HTML 预览，Owner 确认后才进开发（v1.2.83，第 11 轮）
 
-- 提出人：Owner；日期：2026-10-27（Asia/Shanghai）；优先级：P0；目标版本：**v1.2.79**（第 7 轮变更，`roundScope=full`；版本口径见 §11）。
-- 一句话需求：把「工作台」从三层卡片堆叠，升级为一张**有主次、有节奏、有质感**的交付指挥舱——第一眼看懂现在该做什么，第二眼看清项目与交付，不需要学习成本。
-- 上游：`.dsh/pipeline.json` 第 7 轮需求全文（2026-10-27）；上一轮 v1.2.78 交付（commit `a2797dc`）与验收复核（v1.2.78 放行）。本文只做需求分析与验收化，不替换 pipeline 中的需求原文。
-- 本轮性质：**全量视觉 + 信息架构升级**（不是局部修补）；范围以工作台页面为主，应用外壳做同语言的轻量统一。
+- 提出人：Owner；日期：2026-10-27（Asia/Shanghai）；优先级：P0；目标版本：**v1.2.83**（第 11 轮）。
+- 一句话需求：把「UI 设计」从「提交即自动通过」改成**必须 Owner 看过图、点过通过**的闸门——设计稿要能以截图/渲染预览被直接看到，确认前不许进入开发。
+- 上游：`.dsh/pipeline.json` 第 11 轮需求全文；v1.2.82（commit `e0b137f`）交付与验收复核；根 `package.json` 已按工作区规定为 1.2.83（commit `c545d78`，插件仍为发布版 1.2.82）。
+- 本轮性质：**流程闸门 + 预览能力 + 模型侧纪律**三件事；不改七阶段顺序、不改验收/确认/发布闸门语义、不改数据格式。
+- 文档定位：本文只做需求分析与验收化，不替代 `.dsh/pipeline.json` 中的需求原文；历史轮次见 `docs/pipeline/archive/`（v1.2.79 第 7 轮工作台 UI 重构）。
 
 ---
 
@@ -11,35 +12,32 @@
 
 | 项 | 内容 |
 |---|---|
-| 设计方向 | 「指挥舱（Command Deck）」：深色渐变 hero 承载当前阶段与主操作；浅色内容画布按 Now → Project → Delivery 排列；克制的品牌色与分层阴影 |
-| 首屏 | 1440×900 内：页面头 + 深色 hero（阶段/状态/进度/主操作）+ Now 区全部可见 |
-| 信息架构 | 页面头（breadcrumb / 大标题 / 上下文 chips / 动作组）→ Now（hero + 告警卡）→ Project（状态 / 团队 / 需求三列）→ Delivery（时间轴 + 5 卡 bento） |
-| 视觉系统 | 字号阶 11/12/13/14/16/20/30；间距 4/8/12/16/20/24/32；圆角 10/14/18；阴影 surface/hover/hero；浅深主题都成立 |
-| 保留 | 100% 保留现有功能：通过/打回、启动并派发、review note、指派器、需求追加/修改/新轮、验收/体检/变更/运行中、通知、刷新、关闭、compact |
-| 不做 | Host/数据/依赖/模型工具/其它视图交互；不引第三方 UI 库/字体/图标包 |
-| 交付物 | client.js（JSX+CSS+i18n）、requirements/design/test-report/acceptance-review/engineering-research、SVG+PNG 效果图、ACCEPTANCE 批次 16、CHANGELOG 1.2.79 |
+| 问题 | ① 快速模式把 design 也自动通过，Owner 从没机会看设计稿；② 工作台/流水线的 HTML 设计产物只能打开源码，看不到渲染效果；③ 打开 `.html` 文件默认也是源码。 |
+| 方案 | 设计阶段改为强制人工闸门（fast 只覆盖 product/development/testing/acceptance）；设计产物内嵌预览（图片缩略图+大图、HTML iframe 三档宽度、源码为次级入口）；设计 review 时高亮「待你确认」；`.html/.htm` 默认渲染预览；design 提示词与 Lead 纪律要求必须交截图。 |
+| 交付面 | `dsh-web-filebrowser-plugin/pipeline.js`（闸门/提示/文案）、`dsh-web-filebrowser-plugin/client.js`（流水线卡/工作台卡/文件预览）、文档与版本文件。 |
+| 不做 | 不改阶段数量与顺序、不改 approval/release 语义、不加第三方库/字体/运行时、不自动生成 HTML 截图（无无头浏览器）、不改 SSH 与数据结构。 |
+| 验收项 | 10 条（design-gate 3 / design-preview 3 / html-preview 1 / model-discipline 1 / version-docs 1 / regression 1），见 §9；由 testing 阶段回填。 |
 
 ---
 
 ## 1. 背景与现状审计
 
-Owner 在 v1.2.78 交付后提出：「重构整个工作台 UI，要求现代化，大气，简洁干练，功能布置合理，一看就是高大上。」
+Owner 在 v1.2.82 交付后提出：**设计稿出完要先给截图（或可预览的 HTML），确认后才进开发**。现状不是「没有设计阶段」，而是三处机制共同导致 Owner 看不到、也拦不住：
 
-现状（v1.2.78）不是功能缺失，而是**视觉表达与信息层级仍停留在「工具后台」水平**：
-
-| # | 痛点 | 代码/视觉证据 | 本轮含义 |
+| # | 现状问题 | 代码证据（本轮基线 v1.2.82） | 影响 |
 |---|---|---|---|
-| ① | 页面缺少「封面感」 | `.ds-wb-page-head` 只有 24px 标题 + 小副标题 + 小链接，页面从 0 直接进入区块，没有品牌/项目上下文与动作组 | 重做页面头：eyebrow + 30px display 标题 + 上下文 chips + 动作组 |
-| ② | hero 是「白卡」不是「主视觉」 | `.ds-wb-hero` 白底 + 左侧 4px 色条，20px 标题，与普通卡片同材质 | 深色渐变指挥舱 + 环形/大数字进度 + 7 段时间轴 + 右侧主操作 |
-| ③ | 模块权重接近、节奏平 | 三区头 3px 色条 + 13px 标题，卡片 12px 标题、16px padding；所有卡同圆角同阴影 | 统一设计系统：字号阶、间距、圆角、阴影分层；zone 头升级为 eyebrow 标签 |
-| ④ | 卡片「信息入口」弱 | 交付卡标题 12px，计数/状态藏在内容里（`.ds-wb-counts`、`.ds-wb-review-progress`），bento 2 列时像平铺表单 | 5 卡 bento：标题 + 主 metric + 状态 + 次级信息 + 入口，卡内首行即结论 |
-| ⑤ | 分割与边框多，留白碎 | 卡 1px 边 + 内部分割 + 区头 + 提示行叠加，页面靠「线」组织 | 减少分割线；用留白、表面分层与对齐组织；边框降对比 |
-| ⑥ | 流程卡信息密度高 | 7 步 + 当前摘要 + 事件列表同卡堆叠，每步 10–11px | 7 步升级为连接线时间轴（当前高亮、状态色、角色），事件降为次级可读区 |
-| ⑦ | 外壳与页面语言不一致 | 顶栏/侧栏/标签仍是 v1.0 的 13px/紧凑工具风，工作台已是 24px display | 外壳 CSS 轻量统一（降权侧栏、活动态精确、顶栏更克制），不改交互 |
+| ① | 快速模式把 **design 一起自动通过** | `pipeline.js` `submitStage()` 的 `fastApproval`（约 1136–1161 行）：`gateMode === 'fast' && id !== 'approval' && id !== 'release'` 时直接写 `status='approved'` 并返回 `nextStageId` | 设计阶段从不进入 `review`，面板上没有「待确认」，Lead 提交即推进开发；Owner 的确认被跳过 |
+| ② | 阶段顺序守卫其实**已经存在** | `pipeline.js` `startStage()`（约 1059–1090 行）：非首阶段要求上一阶段 `approved`，否则抛 `bad-order`「必须等上一阶段…approved」 | 闸门不需要新造，只要把 design 从自动通过名单里排除，开发就会被自然拦住；需要把提示文案说清「去确认设计稿」 |
+| ③ | 设计产物里**图片能看，HTML 只能看源码** | `client.js` `pipeline` 的 `renderArtifact()`（约 19705–19751 行）：图片走 `ds-pipe-shot` 缩略图，**其余（含 .html）一律 `openFileAt()` 进编辑器源码** | 高保真 HTML 设计稿不渲染，Owner 实际看到的是 `<div>`；「设计评审」退化为读代码 |
+| ④ | 工作台设计卡**只列图片，文档一律开源码** | `client.js` 工作台 `designShots`（约 17553 行）只收 `isImagePath()`；`designDocs`（约 18392–18410 行）按钮点击 `openFile()` | 与 ③ 同样：有截图才看得见，HTML 稿没有预览入口 |
+| ⑤ | 打开 `.html/.htm` **默认进源码** | `client.js` `modeOf()`（约 2948–2954 行）把 html 归 `text`；`openFile()`（约 13867–13909 行）建 tab 时 `view = mode === 'markdown' ? 'preview' : 'edit'` | 设计与开发调试都得手动「脑内渲染」；Owner 想看效果没有入口 |
+| ⑥ | 快速模式文案写着**五个中间阶段**都自动通过 | `client.js` i18n `pipeline.fastHint`（约 748 行 zh / 1978 行 en）；`pipeline.js` `PIPELINE_SECTION`（约 196 行）；工具描述同源 | 改闸门后文案不同步会直接误导 Owner 与模型，属于必须同批修的面 |
+| ⑦ | 设计交付要求**允许「可预览 HTML」替代截图** | `pipeline.js` `STAGE_GUIDES.design` deliverables（约 1496–1500 行）写「高保真稿/截图（SVG/PNG/可预览 HTML）」 | 设计 Agent 可以只交 HTML，而 HTML 在现状下 owner 只能看源码 → 与 ① 叠加就是「既没人拦、也没图看」 |
+| ⑧ | 无图 warning 文案**把 HTML 说成截图** | `pipeline.js` `collectArtifactWarnings()` 的 `design-no-image`（约 849–861 行）：「未提交图片产物（PNG/JPG/SVG/HTML 截图）」 | 「HTML 截图」自相矛盾（HTML 不是截图），且不提示「HTML 需可预览」 |
 
-**根因判断**：不是缺功能，而是缺一套**「高级感」的视觉系统与主次秩序**：尺度、留白、表面、色彩、动效没有形成统一语言；hero 没有承担「主视觉」。
+**根因判断**：设计评审缺三件东西——**门**（design 不由 fast 自动通过）、**面**（产物以人可看的形式呈现）、**证据**（模型必须给可直接看的截图）。三者缺一，Owner 的「确认」就落不了地。
 
-**本轮修复点**：页面头升级、深色指挥舱 hero、7 段时间轴、三列项目区、bento 交付卡、统一 token（间距/圆角/阴影/字号/动效）、外壳轻量统一。
+**本轮修复点**：`fastApproval` 排除 design（①）；`startStage` 提示文案指向设计确认（②）；流水线/工作台设计卡图片缩略图+大图、HTML 内嵌预览+三档宽度+源码次级入口（③④）；`.html/.htm` 默认预览+工具栏切换（⑤）；快速模式文案改「四个自动/三个人工」（⑥）；design 提示词要求截图并禁止只交 HTML（⑦）；warning 文案修正（⑧）。
 
 ---
 
@@ -47,272 +45,242 @@ Owner 在 v1.2.78 交付后提出：「重构整个工作台 UI，要求现代�
 
 | 用户 | 场景 | 期望结果 |
 |---|---|---|
-| **Owner（你）** | 每天打开工作台 1–2 次，3 秒内决定「现在做什么」 | 首屏即看到深色 hero：阶段名、状态、7 段进度、主操作（通过/打回 或 启动并派发）；不需要滚动 |
-| **Owner** | 查看项目全貌：进度、谁在干活、需求是什么 | 项目区三卡（状态/团队/需求）一屏可辨；需求卡 2 行摘要 + 查看/追加/修改/新轮 |
-| **Owner** | 验收交付：设计稿、验收、体检、变更、运行 | 5 张 bento 卡首行即 metric + 状态；一次点击进入详情 |
-| **Owner** | 需求变更/追加说明 | 需求卡就地操作；不直出整段 PRD（沿用 v1.2.76 口径） |
-| **Lead / 团队** | 从工作台进入流水线、团队面板、任务 | 入口不消失、层级更清楚；行为与快捷键不变 |
-| **窄屏/平板** | 笔记本小窗（1024）、平板（768）、手机（360–430） | 三列 → 两列 → 单列；无横向溢出；主操作 ≥44px 可点 |
+| **Owner（你）** | 收到「设计稿已完成」的汇报后，打开流水线/工作台看设计 | 卡片上直接看到缩略图，点开是大图；HTML 稿直接渲染出来，可切 360/768/1280 看布局；面板醒目显示「设计稿待你确认 · 确认后进入开发」和通过/打回 |
+| **Owner** | 快速模式下担心又被自动推进 | 提交后设计停在 `review`；没点通过时开发阶段启动报错，错误提示明确让人去确认设计稿 |
+| **Lead / 项目经理 Agent** | 设计 Agent 提交后要向 Owner 汇报 | 有明确的纪律：把截图（present/预览入口）给 Owner 看，不贴 HTML 源码，然后停下等确认；确认前不启动 development |
+| **UI 设计师 Agent** | 交付设计产物 | 提示词明确「至少一张可直接看的截图（PNG/JPG/SVG）+ 可选可预览 HTML」，不允许只交 HTML 源码 |
+| **开发者 / 测试** | 需要看某个设计稿的实现细节 | 预览为默认视图，源码作为次级入口一键切换；预览加载失败时有可读错误与「看源码」退路 |
+| **审计 / acceptance 复核** | 抽查设计评审是否真的发生 | 能从 pipeline.json 看到 design 的 `review/approved/failed` 状态与 Owner 的 note；产物路径可复现打开 |
 
 **核心用户故事**
 
-1. 作为 Owner，我打开工作台，第一眼看到「现在处于第 5/7 关 · 验收复核 · 待评审」，并能直接点「通过」或「打回」。
-2. 作为 Owner，我能在一屏内判断项目进度（4/7）、快速模式、团队状态、需求轮次，不需要在多个卡片之间找。
-3. 作为 Owner，我能从交付区 5 张卡的首行判断设计稿有没有、验收过没过、体检有没有问题、变更是否已审、任务是否在跑。
-4. 作为窄屏用户，我看到的仍是同一套信息顺序，只是纵向排列，操作不因折叠/溢出而丢失。
+1. 作为 Owner，设计提交后我在面板看到「设计稿待你确认」，点缩略图看到大图、点 HTML 产物看到渲染页，确认没问题点「通过」，开发阶段才可启动。
+2. 作为 Owner，如果设计不对，我点「打回」并写一句原因；设计 Agent 修复后重新提交，**再次**进入待确认，而不是沿用上次批准。
+3. 作为 Owner，我在快速模式下也只对 product/development/testing/acceptance 放行；design/approval/release 永远等我点。
+4. 作为开发者，我打开工作区里的 `.html` 文件默认看到渲染结果，需要改代码时点工具栏「源码」。
+5. 作为 Lead，我汇报设计交付时只给截图/预览入口，不把 HTML 源码丢给 Owner。
 
 ---
 
 ## 3. 范围
 
-### 3.1 做什么（纯客户端：`client.js` 的 JSX/CSS/i18n）
+### 3.1 做什么
 
-1. **页面框架与头部**
-   - eyebrow 行：`工作区 · <项目名> · 第 N 轮`（项目名超长省略，title 提供完整提示）。
-   - display 标题：`工作台`（30px/700，字距收紧），后面可带一个轻量状态 chip（如「第 7 轮」）。
-   - 上下文行：门模式 chip（快速/标准）、阶段进度 `x/7`、最近更新时间（若有）。
-   - 右侧动作组：刷新（文字+图标）、打开流水线、团队面板、通知、关闭；compact 模式保留返回按钮并压缩动作组。
-   - 页面头部 **sticky**，滚动内容时仍可见标题与主要动作（≤700 取消 sticky，节省高度）。
-2. **指挥舱 hero（全宽、首屏核心）**
-   - 容器：深色渐变面板（brand 深调 + 墨色），18px 圆角、内阴影/外阴影、内部两层光晕，白色文字；浅/深主题均使用同一「深色面板」策略保证对比。
-   - 左列：`STAGE 05/07 · 当前阶段` 小标签；阶段名 30px/700 + 状态 pill；摘要（≤2 行，来自 stage.summary）；负责角色 + 轮次 + 门模式 meta。
-   - 底部：7 段时间轴（段条 + 阶段短标签），已通过/进行中/待评审/待开始/失败 五态用色 + 文字标签辅助，不只靠颜色。
-   - 右侧（≥1024）：环形进度（SVG，4/7 大数字 + 「关已完成」）+ 主操作按钮组（通过/打回，或 启动并派发，或 查看流水线）+ review note 输入 + 门禁说明；≤1023 右侧内容移到下方并排/换行。
-   - hero 不参与折叠、不被折叠；无项目时不渲染假 hero。
-3. **Now 区（告警与待办）**
-   - hero 之后渲染「问题/待你处理」告警卡：左侧 3px 告警色条、图标、标题 + 计数 pill、说明、行动按钮；失败项与问题行保持原有数据与动作。
-   - 空态仅一行轻提示，不渲染空卡。
-   - 「查看全部待办」链接保留。
-4. **Project 区（三列）**
-   - 项目状态卡：大号进度数字（`4/7`）+ 进度条 + 轮次/模式/当前阶段 chips + 「查看流水线 / 打开需求」。
-   - 团队与指派卡：6 角色 chips 三态（空闲/执行中/待确认）+ 指派任务按钮 + 团队面板入口 + 最近 1 条指派摘要；完整列表仍在指派器内。
-   - 需求与调整卡：需求标题（1 行省略）+ 轮次/范围 chips + ≤2 行摘要 + 查看完整需求 / 追加说明 / 修改需求 / 新轮变更；修订记录 disclosure 保留（既有交互）。
-   - 栅格：≥1280 三列；1024–1279 两列（需求卡全宽）；768–1023 两列；≤700 单列。
-5. **Delivery 区**
-   - 项目流程：7 步升级为**连接线时间轴**（每步 段条/圆点 + 序号 + 阶段名 + 角色 + 状态；当前阶段高亮；已通过显示 ✓；失败/跳过有文字标签）；事件记录保留为次级区域（≤5 条、11px）。
-   - 5 张交付卡 bento：设计稿（张数/文档）、验收（通过/失败/待验收计数 + 操作）、交付前体检（通过/告警 + 项数）、本轮变更（已审/总数 + 文件列表）、运行中（运行数/最近一次）。每卡首行：图标 + 标题 + 主 metric/状态；≥1024 两列、≤1023 单列；标题完整不截断。
-   - 保留全部原有入口（导出验收报告、打包交付、下载、预览分享、已审、打开 Git/任务/验收/设计稿）。
-6. **设计系统（本轮新增/统一）**
-   - 字号：11（caption）/12（body-s）/13（body）/14（body-l）/16（card-title?）/20（section/hero-s）/30（display）。**正文主力 12–13px，卡标题 14–16px 不再 9–10px**。
-   - 间距：4/8/12/16/20/24/32；页面左右 32（≤1023 20，≤700 14）。
-   - 圆角：10（小控件）/14（卡片）/18（hero/大面板）。
-   - 阴影：surface `0 1px 2px` + `0 12px 32px -24px`；hover 提升一档；hero 深色内阴影。
-   - 颜色：仅 `--dsw-alias-*` token + `color-mix`；品牌色用于强调/焦点/链接；类目色（amber/blue/green）只用于状态条/图标/小面积；深色 hero 内部用 `rgba(255,255,255,x)` 层级。
-   - 动效：hover/focus 120–180ms ease；`prefers-reduced-motion: reduce` 全部降级；不用大幅位移动画。
-   - 主题：浅色/深色都必须成立；在深色主题下浅表面用 layer token，hero 仍为深色面板。
-7. **应用外壳轻量统一（CSS 为主，不改交互）**
-   - 顶栏高度/边框/品牌区与工作台一致；侧栏降权（非活动项更淡、活动项用品牌 tint + 左侧 2px 指示条）；标签页更紧凑、圆角；工作台页面背景与外壳用同一套表面分层。
-   - 不改任何点击/快捷键/菜单/路由。
-8. **i18n**：新增文案 zh/en 成对（预计 20–30 键），无死键；旧键保留。
-9. **版本与文档**：见 §11。
+1. **闸门：设计阶段必须 Owner 人工确认**
+   - 快速模式（`gateMode='fast'`）自动通过名单从「五个中间阶段」收窄为 **product / development / testing / acceptance**；**design / approval / release 始终需要 Owner 在面板确认**。
+   - 设计提交后阶段状态为 `review`，提交结果不带「自动通过」语义；`pipeline_start_stage('development')` 必须被拒绝并给出明确提示。
+   - Owner 在面板 approve 后 development 才可启动；reject 后 design 变 `failed`，可修复后用 `pipeline_start_stage('design')` 重新开始。
+   - 其它阶段的闸门语义、七阶段顺序、数据字段不变。
+2. **视觉评审：设计产物可看**
+   - 截图（PNG/JPG/SVG/WebP/GIF，沿用现有 `isImagePath` 集合）在**流水线设计卡**与**工作台设计卡**显示缩略图，点击打开大图（应用内图片查看器）。
+   - HTML/HTM 产物不再默认打开源码：内嵌 `iframe` 渲染预览；提供 **360 / 768 / 1280** 三档宽度切换；「查看源码」作为次级入口。
+   - 预览渲染必须与主应用隔离（iframe + `sandbox`），不向主文档注入设计稿 CSS/脚本。
+3. **待确认态：设计 review 时醒目**
+   - 设计阶段处于 `review` 时，流水线面板与工作台显示「设计稿待你确认 / 确认后进入开发」状态条（含阶段名与产物计数），提供**通过 / 打回**按钮与**预览**入口。
+   - 通过/打回复用现有 `reviewPipelineStage` 通道，不新增审批路径；review note 沿用现有输入。
+   - 待确认提示必须出现在 Owner 不用展开就能看到的位置（流水线设计卡 + 工作台 Now 区/hero 主操作）。
+4. **HTML 文件预览**
+   - 在工作区打开 `.html/.htm` 文件默认进入**渲染预览**（不再直接显示源码）；工具栏提供「预览 / 源码」切换。
+   - 源码模式保留现有编辑/保存能力；预览模式通过 iframe 渲染 raw 内容，`sandbox` 收紧。
+   - 文件为空、读取失败、SSH 远程根等异常有可读提示与退路，不出现白屏。
+5. **模型侧纪律与文案**
+   - `STAGE_GUIDES.design`：交付物要求**至少一张可直接看的截图（PNG/JPG/SVG）**，HTML 为可选补充且必须可预览；明确「只交 HTML 源码视为未完成」。
+   - Lead 工作流指令（`PIPELINE_SECTION` / 角色提示）：设计提交后**必须把截图或预览入口给 Owner 看并停下等确认**，不得把 HTML 源码贴给 Owner，确认前不得启动 development。
+   - `collectArtifactWarnings` 的 `design-no-image` 文案改为准确的「未提交可直接查看的截图（PNG/JPG/SVG）」并说明 HTML 不能替代截图。
+   - 快速模式提示文案（面板 zh/en、`PIPELINE_SECTION`、工具描述、阶段提示）统一为「product/development/testing/acceptance 自动通过；design/approval/release 需 Owner 确认」。
 
 ### 3.2 不做什么
 
-- 不改 Host（`index.js` 及各 Host 模块）、HTTP 路由、模型工具、`.dsh` 数据格式；不动 pipeline/acceptance 数据。
-- 不删除任何现有功能；不改变按钮语义；不做新页面/新路由/新弹层。
-- 不引入第三方 UI 库、字体、图标包、CSS 框架（继续内联 SVG + 现有 token）。
-- 不重构编辑器/文件树/搜索/终端/预览/Git/验收/流水线的信息结构（外壳只做 CSS 视觉统一）。
-- 不做移动端专属手势；不做深色主题专项改版（默认主题必须兼容）。
-- 不做 localStorage 折叠状态之类的记忆（v1.2.78 已取消折叠）；不恢复折叠交互。
+- **不改七阶段数量与顺序**；不改 acceptance 复核、approval 人工确认、release 发布三条闸门的语义。
+- **不引入第三方 UI 库、字体、图标包、运行时服务**；不新增 npm 依赖、不改构建。
+- **不自动生成 HTML 截图**：当前环境无可用无头浏览器，字体管线不保证；HTML 以「可预览」满足需求，截图优先由设计 Agent 交付 SVG/PNG。
+- 不改 SSH 远程工作区能力边界；不为远程根新增服务端渲染能力。
+- 不改 `.dsh/pipeline.json`、`.dsh/acceptance.json` 等数据结构；不迁移旧数据。
+- 不做设计稿版本对比、评论批注、多轮 diff 等评审协作功能（后续需求）。
+- 不复制第三方受版权保护的文案、商标、界面素材与整段源码。
+- 不做「记住预览偏好」等持久化偏好（保持简单，必要时后续再加）。
 
 ---
 
-## 4. 信息架构与布局规格
+## 4. 约束与非功能
 
-### 4.1 页面骨架
-
-```
-┌ 页面头（sticky）：eyebrow + 工作台 30px + 上下文 chips            [刷新 流水线 团队 通知 关闭] ┐
-├ 内容画布（max-width 1280，居中，32px 边距）
-│   Now 区：eyebrow「现在」+ 提示                         [查看全部待办]
-│      ┌ 深色指挥舱 hero（全宽）─────────────────────────────────┐
-│      │ STAGE 05/07 · 当前阶段   验收复核 [待评审]      │  环形 4/7 │
-│      │ 摘要 …                                        │  通过 打回 │
-│      │ 负责：项目经理 Agent · 第 7 轮 · 快速模式      │  note 输入 │
-│      │ ▰▰▰▰◐▱▱ 7 段时间轴（名称+状态）               │  门禁说明 │
-│      └────────────────────────────────────────────────────────┘
-│      [告警卡：验收失败 2 项 / 问题 7 条 …]
-│   Project 区：eyebrow「项目」                            [打开流水线]
-│      [项目状态] [团队与指派] [需求与调整]     （≥1280 三列）
-│   Delivery 区：eyebrow「交付」                           [打开流水线]
-│      [7 步连接线时间轴 + 事件记录]
-│      [设计稿] [验收] [交付前体检] [本轮变更] [运行中]   （≥1024 两列）
-└
-```
-
-### 4.2 断点与栅格
-
-| 断点 | 页面边距 | Project | Delivery | Hero |
-|---|---|---|---|---|
-| ≥1440 | 32 | 3 列 | 2 列 | 左右两栏（右 320） |
-| 1280–1439 | 32 | 3 列 | 2 列 | 左右两栏 |
-| 1024–1279 | 24 | 2 列（需求全宽） | 2 列 | 左右两栏（右 280） |
-| 768–1023 | 20 | 2 列 | 2 列 | 上下两段 |
-| ≤700 | 14 | 1 列 | 1 列 | 单列、按钮全宽 44px |
-
-- 内容 `max-width: 1280px`；所有网格列 `minmax(0,1fr)`，子项 `min-width:0`，360–1440 无横向溢出。
-- 页面头在 ≤700 不 sticky；hero 在 ≤1023 右栏下移；时间轴在 ≤700 两行（4+3）。
-- 交互目标：主按钮 ≥44px 高，次按钮 ≥36，卡片内文字链接 ≥24 高且点击区域足够。
-
-### 4.3 状态与文案
-
-- 阶段状态：已通过（success）/进行中（business）/待评审（warn）/待开始（idle）/已打回（error）；每态都带文字，不只颜色。
-- hero 主操作按优先级：
-  1) `review` 阶段 → 通过（主）/ 打回（次）；2) `pending|failed` 当前阶段 → 启动并派发（主）/ 指派任务（次）；3) 其它/完成 → 查看流水线（主）/ 指派任务（次）。
-- 所有按钮保持现有 `pipelineBusy`/`assignmentSsh` 禁用逻辑；review note 输入受控并保留。
-- 空态：无项目 → 需求录入卡（不渲染 hero/三区）；无待办 → Now 区只显示 hero + 一行提示。
+- **技术栈/复用**：继续用现有 React `h()` 渲染 + 内联 CSS + `--dsw-alias-*` token；复用 `rawUrl()`、`openFile()`、`isTextMode()`、i18n 内联词典、`reviewPipelineStage` 面板通道；不新增组件库。
+- **安全**：HTML 渲染只用 `iframe[src]` + `sandbox`，不引入 `dangerouslySetInnerHTML`、不 `eval`、不把设计稿脚本注入主应用；预览 iframe 默认 `sandbox=""`（禁脚本/禁同源/禁表单），`title` 必填（可访问性）。
+- **性能**：缩略图 `loading="lazy"`；iframe 懒加载（`loading="lazy"`）；三档宽度只改容器/iframe 宽度，不重复拉取；设计卡最多渲染前 20 个产物（沿用现有上限）。
+- **兼容**：Chrome/Safari/Firefox 现代版本；浅/深主题；360–1440 无横向溢出（大宽度预览允许容器内横向滚动）。
+- **可访问性**：预览按钮可键盘到达、有可读名称；iframe 有 `title`；待确认状态条带文字（不只靠颜色）；通过/打回按钮 ≥44px 高。
+- **零数据迁移**：读取旧 pipeline.json 不报错；旧交付产物（无 HTML、无截图）不导致面板崩溃。
+- **质量门**：`npm run check`、`npm run check:json`、`npm test`（`scripts/selftest/host-smoke.mjs`）全绿；既有功能不回归。
+- **版本口径**：插件 `1.2.82 → 1.2.83`；根 `package.json` 交付后 +1（1.2.83 → 1.2.84，工作区硬性规定）。
+- **时间**：沿用分工，不设外部截止；本阶段只定义验收，不给实现排期。
 
 ---
 
-## 5. 视觉规范
+## 5. 调研与借鉴
 
-> 只用 `--dsw-alias-*` 与 `color-mix`；不硬编码品牌色值。详见 `docs/pipeline/design.md`。
+> 调研时间 2026-10-27（Asia/Shanghai）。检索与抓取工具：`web_search` × 3 + `web_fetch` × 6。下面 6 个来源均在当日返回 HTTP 200 并读取正文；无 blocked 来源。仅借鉴功能、交互、信息结构，不复制受版权保护的文案/素材/源码。
 
-### 5.1 色彩层级
+### 5.1 来源与关键结论
 
-| 用途 | 规则 |
-|---|---|
-| 页面底 | `color-mix(in srgb, var(--dsw-alias-bg-layer-2) 60%, var(--dsw-alias-bg-base))`，顶部叠一层品牌色 3–5% 径向渐变（不做大色块） |
-| 卡片表面 | `var(--dsw-alias-bg-layer-1)` + 1px `color-mix(label-caption 22%, transparent)` + 阴影 surface；hover 边框升到 32% + 阴影提升 |
-| hero | `linear-gradient(135deg, color-mix(in srgb, var(--dsw-alias-brand-primary) 78%, #0b1220), #0b1220 70%)`；白字；品牌色光晕；`#0b1220` 只作渐变锚点 |
-| 品牌强调 | 链接/主按钮/焦点环使用 `--dsw-alias-brand-primary`；主按钮在深色 hero 内用白底深字，保证对比 |
-| 状态色 | 成功/警告/错误/进行中只用于状态条、点、pill 底色与图标；正文与标题保持 label 色 |
-| 边框 | 弱化：默认 22%，hover 32%，焦点 2px brand；分割线只在必要时出现 |
+| # | 来源 | URL | 访问日期 | 类型 | 关键结论（对本需求的影响） |
+|---|---|---|---|---|---|
+| 1 | Figma Help · Request a branch review | https://help.figma.com/hc/en-us/articles/5691414603543-Request-a-branch-review | 2026-10-27 | 竞品（设计评审工作流） | 设计变更走「请求评审 → 评审人 Approve 或 Request changes → 合并」；状态为 **In review / Changes suggested / Approved**；文中明确「评审默认不是合并的强制要求」。→ 状态机可直接映射 review/failed/approved；**但闸门必须由系统强制，不能只靠提示文案**（否则就像 Figma 默认那样形同虚设）。 |
+| 2 | GitHub Docs · Approving a pull request with required reviews | https://docs.github.com/en/pull-requests/how-tos/review-pull-requests/approving-a-pull-request-with-required-reviews | 2026-10-27 | 平台标准（评审闸门） | required review 会**阻止合并**；**PR 作者不能批准自己的 PR**；批准后若启用 stale review dismissal 且分支有新提交，**批准失效需重新评审**。→ 「必须 approved 才能进下一关」「模型不能自批」「打回/变更后要重新确认」三条都可直接借鉴。 |
+| 3 | Storybook Docs · Story rendering | https://storybook.js.org/docs/configure/story-rendering | 2026-10-27 | 设计系统/工具 | 故事在专用的 **preview iframe（Canvas）** 中渲染，与 Storybook 应用 UI 隔离；可注入 head/body 以加载样式。→ 设计稿预览应隔离渲染，不污染主应用；预览容器是「一个框」而不是整页替换。 |
+| 4 | MDN · `<iframe>` HTML inline frame element | https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe | 2026-10-27 | Web 标准 | iframe 表示嵌套浏览上下文、可嵌入另一文档；支持 `loading`、`title` 等属性。→ HTML 产物用 iframe 渲染；缩略图/iframe 懒加载；`title` 必填。 |
+| 5 | MDN · HTMLIFrameElement.sandbox | https://developer.mozilla.org/en-US/docs/Web/API/HTMLIFrameElement/sandbox | 2026-10-27 | Web 标准 | `sandbox` 对嵌套内容施加**额外限制**（默认最严，按需逐项放开）。→ 设计稿预览默认 `sandbox=""`；不放开 `allow-scripts`，更不与 `allow-same-origin` 同开。 |
+| 6 | FactualMinds · Human in the Loop (HITL) | https://www.factualminds.com/glossary/human-in-the-loop/ | 2026-10-27 | 行业模式（AI 审批） | 门禁按「**具体动作**」而不是「整个 agent 的自主等级」设定；人应在**证据就在眼前**时决策；典型失效是**审批疲劳**与「门禁位于写入之后」。→ 设计确认是「进入开发」这一动作前的强制门；截图/预览必须贴在门槛旁边（卡内直接可见），不能让 Owner 多点两次才看到证据。 |
 
-### 5.2 字体与层级
+### 5.2 借鉴决策表
 
-| 层级 | 规格 |
-|---|---|
-| 页面 display | 30px / 700 / letter-spacing -0.02em，行高 1.2 |
-| hero 阶段名 | 30px / 700（≤1023 26px，≤700 24px） |
-| 区块 eyebrow | 11px / 600 / 字距 0.08em + 次色（中文不强制大写） |
-| 区块标题 | 15–16px / 650 |
-| 卡片标题 | 14px / 650（交付卡 14px；不截断） |
-| 正文 | 13px / 400，行高 1.55 |
-| 次要 | 12px / 400，行高 1.45 |
-| caption | 11px / 500 |
-| 数字 | `font-variant-numeric: tabular-nums`；主 metric 22–28px / 700 |
-
-### 5.3 间距 / 圆角 / 阴影 / 动效
-
-- 页面垂直节奏：页面头 padding 18/32；区块间 28–32；区块头与内容 12；卡间 14–16；卡内 16–20。
-- 圆角：hero 18、卡片 14、pill 999、按钮 10、输入 10。
-- 阴影：`--wb-shadow-1: 0 1px 2px rgba(...)`、`--wb-shadow-2: 0 1px 2px + 0 14px 34px -26px`；hero `inset 0 1px 0 rgba(255,255,255,.08)`。
-- 动效：`--wb-motion: 160ms cubic-bezier(.2,.7,.3,1)`；hover 仅边框/阴影/translateY(-1px)；`prefers-reduced-motion` 全部关闭。
-
-### 5.4 无障碍与对比
-
-- 正文/标签对比度 ≥4.5:1；≥24px 大字 ≥3:1；深色 hero 白字与渐变锚点 ≥12:1（设计稿计算）。
-- 不用颜色单独表达状态：所有 pill/点旁有文字或 `aria-label`；失败/告警卡有图标 + 文本。
-- 焦点环：2px `--dsw-alias-brand-primary` + 2px offset，所有可交互元素可见。
-- 语义：`<section aria-labelledby>`、hero 用 `<h1>/<h2>` 层级、时间轴 `<ol>`、卡标题正确层级；按钮全部 `type="button"` + 可读 name。
-- 减少动效：`@media (prefers-reduced-motion: reduce)` 关闭 transition/animation。
-
----
-
-## 6. 功能保留清单（回归基线）
-
-1. 通过/打回（reviewPipelineStage）、review note 输入。
-2. 启动并派发（startPipelineStage）、重发角色提示、指派任务（openAssignmentDrawer）/团队面板。
-3. 需求查看/追加/修改/新轮变更（openRequirementPanel + requirement 相关 API）、修订记录 disclosure。
-4. 验收导出报告、打包交付、下载交付包、预览分享、打开验收。
-5. 设计稿截图/文档打开、变更审阅（已审/打开 Git）、问题清单、交付前体检行动。
-6. 运行中任务：重跑上次失败命令、打开任务。
-7. 通知开关、刷新（loadWorkbench）、接近关闭（closeWorkbench）、compact 返回。
-8. 全部原有 i18n 键与数据流不变；`pipelineBusy`/`assignmentSsh` 等禁用逻辑保留。
-
----
-
-## 7. 调研与借鉴
-
-> 调研时间：2026-10-27（Asia/Shanghai）；1 次 `web_search` + 6 次 `web_fetch`；以下 6 个来源全部成功抓取（另有 Carbon / Material 3 页面因重定向或脚本渲染未取到正文，**如实披露、不引用其结论**）。
-
-### 7.1 来源与关键结论
-
-| # | 来源 | URL | 访问日期 | 关键结论（对本需求的影响） |
-|---|---|---|---|---|
-| 1 | Linear · A calmer interface for a product in motion | https://linear.app/now/behind-the-latest-design-refresh | 2026-10-27 | ① 不为没赢得注意力的元素竞争：主导航/侧栏应退后，内容优先；② 「结构应被感受到而非看见」：减少无意义分割线、软化边框；③ 调色更平静、标签更紧凑、图标更克制。→ 侧栏降权、减少分割线、hero 之外不抢注意力 |
-| 2 | NN/g · Visual Hierarchy in UX | https://www.nngroup.com/articles/visual-hierarchy-ux-definition/ | 2026-10-27 | 层级靠对比、尺度、分组；颜色 ≤2 主 + 2 辅、对比层次 ≤3、字号 ≤3 档；最重要元素最大且「大」的 ≤2 个；用邻近与共同区域分组，给重点更多留白。→ display 30 / hero 30 / 区块 15–16 / 正文 13；hero 是全页唯一「深色大块」 |
-| 3 | NN/g · Progressive Disclosure | https://www.nngroup.com/articles/progressive-disclosure/ | 2026-10-27 | 初层只提高频信息，次级按需披露；初层/次层切分要正确、前进机制明显；一般不超过 2 层。→ 需求卡 2 行摘要 + 查看完整；事件记录降为次级；不恢复折叠交互 |
-| 4 | Vercel Geist · Colors | https://vercel.com/geist/colors | 2026-10-27 | 两个背景层级（Background 1 默认 / Background 2 少量使用）；组件背景 1/2/3 对应默认/hover/active；边框 4–6 默认/hover/active；高对比背景 7–8；阴影用半透明材料；边框只画一次。→ 表面分层、hover/active 状态、半透明阴影、避免叠加边框 |
-| 5 | Vercel Geist · Grid | https://vercel.com/geist/grid | 2026-10-27 | 响应式列在三个断点定义；网格最多嵌一层；可点击 cell 各自焦点环且 tab 顺序与阅读顺序一致；自定义边框不得低于 3:1。→ 项目/交付栅格显式断点；卡内入口焦点环；边框对比度 |
-| 6 | W3C WAI · WCAG 2.1 SC 1.4.3 Contrast (Minimum) | https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html | 2026-10-27 | 正文对比 ≥4.5:1，大字号 ≥3:1；不满足会造成低视力用户不可读；禁用态可豁免但不要滥用。→ hero 白字、正文、链接、pill 的文字对比校验；深色 hero 用 #0b1220 锚点保证 |
-
-### 7.2 借鉴决策表
-
-| 借鉴点 | 来源 | 决策 | 理由 / 落点 |
+| 借鉴点 | 来源 | 采用/调整/不采用 | 理由 / 落点 |
 |---|---|---|---|
-| 侧栏/导航退后、内容优先 | Linear #1 | **采用** | 侧栏非活动项降权、活动项品牌 tint；工作台 hero 成为唯一强焦点（验收项 5/7） |
-| 减少分割线、软化边框 | Linear #1 + Geist #4 | **采用** | 边框对比 22%→hover 32%，去重复分割线；用留白/表面分组（验收项 5） |
-| 尺寸层级 ≤3 档 + 最多 2 个大元素 | NN/g #2 | **采用（调整为 4 档含 caption）** | display 30 / hero 30 / 区块 15–16 / 正文 13 / caption 11；hero 与页面标题是仅有的两个 30px |
-| 留白与邻近分组 | NN/g #2 | **采用** | 区块间 28–32、卡间 14–16、卡内 16–20；Now 区与 Project 区拉开距离 |
-| 渐进披露（摘要 + 详情入口） | NN/g #3 | **采用** | 需求卡 2 行 + 查看完整；事件记录 ≤5 条；不恢复 v1.2.78 已取消的折叠 |
-| 双背景层级 + hover/active | Geist #4 | **采用** | 页面底 vs 卡片 layer-1；卡片 hover 边框/阴影；按钮 hover/active |
-| 半透明阴影、边框只画一次 | Geist #4 | **采用** | 阴影用 color-mix 半透明；卡仅 1px 外框，内部不用嵌套框 |
-| 响应式列 3 断点 + 最多一层网格 | Geist #5 | **采用** | 1280/1024/700 三断点；Project/Delivery 均为单层 grid |
-| 正文 4.5:1 / 大字 3:1 | WCAG #6 | **采用** | 设计稿记录对比度计算；hero 白字 ≥12:1 |
-| 深色大色块/玻璃拟态大面积使用 | — | **不采用** | 只在 hero 用一个深色面板；页面其余保持浅表面，避免「花」与主题冲突 |
-| 恢复到折叠交互 | — | **不采用** | Owner 明确「不要折叠」（v1.2.78）；本轮只做视觉与布局 |
-| 引入第三方组件库/字体 | — | **不采用** | 工作区零依赖原则；内联 SVG + 现有 token |
-| 大量动画/视差 | Linear #1（克制） | **不采用** | 只保留 120–180ms 的 hover/focus；reduced-motion 全关 |
+| 设计评审状态机（In review / Changes suggested / Approved） | #1 | **采用** | 直接映射 pipeline 的 `review / failed / approved`；设计提交即进入 review（验收项 1） |
+| 强制评审阻断合并 | #2 | **采用** | 代码层强制：design 未 approved 时 `pipeline_start_stage('development')` 抛 `bad-order`；不依赖 UI 提示（验收项 1/2） |
+| 评审者不能批准自己的产出 | #2 | **采用（已有机制，复用）** | 模型无审批工具，只有 Owner 面板可 approve；本轮不改通道，只改何时需要人（验收项 2） |
+| 变更后批准失效、需重新评审 | #2 | **采用** | 打回 → `failed` → 重新提交 → 再次 `review`；不存在「一次通过永久有效」（验收项 1/6） |
+| 隔离的预览画布（preview iframe） | #3 | **采用** | 设计稿预览放独立 iframe，样式/脚本不进入主应用（验收项 5/7） |
+| 嵌入另一文档 + 懒加载 + 可访问标题 | #4 | **采用** | `.html/.htm` 与 HTML 产物用 iframe 渲染，`loading="lazy"`、`title` 必填（验收项 5/7） |
+| `sandbox` 收紧嵌套内容 | #5 | **采用** | 预览 iframe 默认 `sandbox=""`；不放开脚本，避免未审查页面动主应用数据（验收项 7） |
+| 按动作设门禁、证据前置、防审批疲劳 | #6 | **采用** | 「设计→开发」是唯一新增动作门；待确认状态条与预览入口同卡呈现，不增加点击层级（验收项 2/6） |
+| 评审非强制、可配置（Figma 默认） | #1 | **不采用** | 本工作区诉求就是「确认后才进开发」；Owner 是唯一人工确认者，做成可配置等于留后门 |
+| 批量自动通过设计 / 定时放行 | #6（反面：审批疲劳） | **不采用** | 本轮要移除的正是 design 自动通过；疲劳问题用「一屏一图一确认」降低认知成本，而不是放宽 |
+| 复制第三方设计稿/文案/界面素材 | — | **不采用** | 反抄袭边界：只借鉴功能与交互结构，不复制受版权保护内容 |
 
-### 7.3 已验证模式 vs 创新假设
+### 5.3 已验证模式 vs 创新假设
 
-- **已验证**：视觉层级靠对比/尺度/分组；留白与邻近分组；渐进披露（摘要 + 详情）；双背景层级与 hover/active；响应式列与焦点；WCAG 对比阈值。
-- **创新假设（待 Owner 验收）**：
-  1. 「深色指挥舱 hero」在浅色主题下不突兀，并能让首屏有高级感。
-  2. 三区（Now/Project/Delivery）+ 页面头足以覆盖所有现有信息，不需要额外标签页。
-  3. 30px display 在 360px 宽度下仍可读（缩到 24px）。
-  4. bento 2 列在 1024–1279 足够；1280+ 不加第三列以保持 card 内容完整。
-  5. 外壳 CSS 轻量统一不会影响编辑器/终端等既有视图（回归覆盖）。
-  - 验证方式：design 阶段 SVG/PNG 效果图 + 五维自检；QA 静态断言；Owner 按 ACCEPTANCE 批次 16 在浅/深主题 + 360/768/1024/1440 复测；失败预案：hero 若在浅色下过重，降为「深色仅左栏 + 浅色右栏」；display 在窄屏降到 24px。
+**已验证模式（有来源支撑）**
+
+1. 评审状态机 + 强制阻断 + 不可自批 + 变更重审（#1、#2）→ 落为 design 的人工闸门与 dev 启动守卫。
+2. 隔离 iframe 渲染 + sandbox 收紧 + 懒加载/标题（#3、#4、#5）→ 落为设计预览与 HTML 文件预览。
+3. 按动作设门禁、证据前置、警惕审批疲劳（#6）→ 落为待确认态与卡内预览入口。
+
+**创新假设（需验证，写验证方式与失败预案）**
+
+| # | 假设 | 验证方式 | 失败预案 |
+|---|---|---|---|
+| 1 | 360/768/1280 三档足以判断设计稿布局 | design review 时逐档切换；Owner 按 ACCEPTANCE 批次 20 复测 | 若不足，补 1024 档；宽度档位常量集中定义，改动只在一处 |
+| 2 | `sandbox=""` 下高保真稿视觉仍完整 | 用项目自带 HTML 稿预览，对比浏览器直开 | 若依赖脚本导致缺交互，放开 `allow-scripts` 但**禁止**同时开 `allow-same-origin`，并在预览上标注「脚本受限」 |
+| 3 | 待确认状态放在流水线卡 + 工作台 Now 区两处不冗余 | Owner 复查是否一眼可见、是否重复干扰 | 若冗余，保留流水线卡为唯一强提示，工作台只留入口 |
+| 4 | HTML 默认预览不会妨碍需要源码的场景 | 开发者打开 html 后切源码的成本（1 次点击）；回归清单 | 若被抱怨，工具栏默认来源可配置（后续需求，不在本轮） |
+| 5 | 快速模式文案改写后旧用户不会误读 | 文案并列「四个自动 / 三个需确认」；验收项 3 逐处 grep 检查 | 若仍有旧文案残留，测试阶段以「关键词不存在」断言兜底 |
+
+### 5.4 受阻/无网络说明
+
+- 无 blocked：6 个来源当日均可访问并读取正文，无需伪造或降级。
+- 说明：**「自动把 HTML 渲染成截图」的能力**在本环境不可用（无无头浏览器、字体管线不保证），因此需求把「截图」定义为**由设计 Agent 交付 PNG/JPG/SVG**，HTML 以「可预览」满足；这不是来源受阻，而是能力边界，已写入 §3.2。
 
 ---
 
-## 8. 约束与非功能
+## 6. 需求规格（行为细节，供设计与开发对齐）
 
-- **零 Host 改动**：只改 `dsh-web-filebrowser-plugin/client.js`（含 CSS/i18n 内联）与文档/版本文件。
-- **零依赖**：不新增 npm 依赖；继续内联 SVG；不改构建。
-- **性能**：CSS 只新增/覆盖工作台与外壳相关规则；不引入大图/字体；渲染仍是单个 React 函数，不增加重复计算（环形/段条只做纯 CSS/SVG）。
-- **主题兼容**：只用 alias token + color-mix；hero 深色锚点固定，白字保证两主题一致。
-- **安全**：不新增 `dangerouslySetInnerHTML`；不拼接未转义 HTML；不新增外链资源。
-- **i18n**：zh/en 同键；新增键在 locale 内联词典同步；不产生死键。
-- **可回滚**：单 commit；release.md 记录 revert 方式；版本可回退。
+### 6.1 闸门（design-gate）
+
+- `submitStage`：`fastApproval` 条件改为 `gateMode==='fast' && !['design','approval','release'].includes(stageId)`；design 提交走 `status='review'` 分支（`reviewedAt=0`，无 `autoApproved`/`nextStageId`）。
+- `startStage('development')`：design 非 `approved` 时抛 `bad-order`，消息包含「必须等上一阶段「UI 设计」approved」并在快速模式下补充「请在面板确认设计稿后重试」。
+- 设计打回（reject）→ `failed`；修复后 `pipeline_start_stage('design')` 重新开始，重新提交再次进入 `review`。
+- product/development/testing/acceptance 的快速模式行为保持不变（提交即 approved + nextStageId）。
+
+### 6.2 视觉评审（design-preview）
+
+- 流水线设计卡：图片产物渲染缩略图（沿用 `ds-pipe-shot`），点击打开应用内大图；HTML 产物的条目改为「预览」按钮 + 选中后内嵌 iframe。
+- 工作台设计卡：`designShots` 缩略图点击开大图；`designDocs` 中 `.html/.htm` 显示「预览」入口（打开渲染预览），其余文档保持打开文档/源码。
+- 三档宽度：360 / 768 / 1280，按钮组显式标注；默认 1280（或容器 100%，取较小值）；iframe 高度固定（≥640px），容器可横向滚动。
+- 「查看源码」为次级文字按钮，打开源码视图（复用 `openFileAt` 后切 `edit`）。
+- 预览失败（文件不存在/不可读）：显示可读错误 + 「查看源码」退路，不白屏。
+
+### 6.3 待确认态（design-gate / design-preview 交界）
+
+- 条件：`pipeline.stages.design.status === 'review'`。
+- 流水线面板：设计卡顶部状态条「设计稿待你确认 · 确认后进入开发」+ 产物计数 + 通过/打回按钮 + 预览入口。
+- 工作台：hero 主操作或 Now 区显示同一语义（同一 i18n 键），保证 Owner 不展开流水线也能看到。
+- 通过/打回走现有 `reviewPipelineStage` 与 note 输入；不做二次确认弹窗（避免额外点击层级）。
+
+### 6.4 HTML 文件预览（html-preview）
+
+- `openFile`：`.html/.htm`（含 `.xhtml` 可沿用现有映射，但验收只要求 html/htm）建 tab 时 `mode` 新增 `html`，默认 `view='preview'`。
+- 工具栏：`预览 / 源码` 分段切换；预览用 iframe（`src=rawUrl(root, path)`、`sandbox=""`、`title` 为文件名）；源码复用现有编辑器（只读打开、可保存）。
+- 异常：空文件显示「文件为空」；读取失败显示错误；SSH 远程根无法 raw 预览时降级为源码并提示（不扩大 SSH 能力边界）。
+- 预览不做脚本执行、不做同源访问；不引入新依赖。
+
+### 6.5 模型侧纪律与文案（model-discipline）
+
+- `STAGE_GUIDES.design.deliverables`：首条改为「至少一张可直接查看的截图（PNG/JPG/SVG，命名为 `<页面>-<状态>-<设备>.<ext>`）；可选可预览 HTML」；`doesNot` 增补「不得只交 HTML 源码而不交截图」。
+- Lead 纪律（`PIPELINE_SECTION` + 设计提交后指令）：设计提交后 Lead 必须用截图/预览入口向 Owner 汇报并**停下**；禁止把 HTML 源码贴给 Owner；design 未 approved 前不得启动 development。
+- `design-no-image` 文案：「设计阶段未提交可直接查看的截图（PNG/JPG/SVG）；HTML 产物只能预览，不能替代截图。」（保留 `code` 不变，避免破坏调用方断言）。
+- 快速模式文案统一（zh/en + 工具描述 + 阶段提示）：「product/development/testing/acceptance 自动通过；design/approval/release 始终需要 Owner 确认」。
+- `pipeline_submit_stage` 工具描述/README/docs 中凡出现「五个中间阶段」「five intermediate stages」的位置同步改。
+
+---
+
+## 7. 验收标准（可追溯）
+
+| # | 验收标准 | 验证方法 | 溯源 | 优先级 |
+|---|---|---|---|---|
+| 1 | 快速模式下设计提交后状态为 `review`，不自动通过；开发阶段启动被拒绝并给出指向设计确认的明确提示；Owner 面板通过后才可启动开发 | 以 `gateMode=fast` 调用 `pipeline_submit_stage({stageId:'design'})` → 断言 `status==='review'` 且无 `autoApproved`；`pipeline_start_stage({stageId:'development'})` → 断言 `bad-order` 且消息含「设计确认/上一阶段」；面板 approve 后再启动成功 | 用户场景 1/2 + #1 #2 | P0 |
+| 2 | 快速模式文案明确为「四个自动 / 三个需 Owner 确认」 | grep 面板 zh/en、`PIPELINE_SECTION`、工具描述：不存在「五个中间阶段 / five intermediate stages / design 自动通过」错误表述；存在 design/approval/release 需确认的并列说明 | 用户场景 3 + #6 | P0 |
+| 3 | 设计截图在流水线卡与工作台卡显示缩略图，点击可看大图 | 提交含 PNG/SVG 的 design 产物 → 两处均出缩略图；点击打开应用内图片查看器；`loading="lazy"`、`alt` 存在 | 用户场景 1 + #3 #4 | P0 |
+| 4 | HTML 设计产物提供内嵌渲染预览（360/768/1280 三档），不默认打开源码，另有「查看源码」次级入口 | 提交 `.html` design 产物 → 卡片显示渲染预览；三档按钮切换 iframe 宽度；点条目不再直接进源码；「查看源码」可进源码视图 | 用户场景 1 + #1 #3 | P0 |
+| 5 | 设计处于 `review` 时，流水线面板与工作台显示「待你确认 / 确认后进入开发」且含通过、打回、预览入口 | 提交 design 后不 approve，检查两处状态条与按钮；approve/打回后状态条消失 | 用户场景 1/2 + #6 | P0 |
+| 6 | 打开 `.html/.htm` 默认渲染预览，工具栏可在预览/源码间切换 | 工作区打开 html 文件 → 默认预览（非源码）；切源码可编辑保存；切回预览渲染；空文件/读取失败有提示 | 用户场景 4 + #3 #4 #5 | P0 |
+| 7 | design 提示词要求至少一张可直接看的截图并禁止只交 HTML；Lead 指令要求提交后给 Owner 看截图并停下；无截图 warning 文案准确 | 读 `STAGE_GUIDES.design` 与 `PIPELINE_SECTION`；提交无图 design → warnings 含 `design-no-image` 且文案不再出现「HTML 截图」 | 用户场景 5 + #1 #2 #6 | P0 |
+| 8 | 版本与文档：插件 1.2.83、CHANGELOG 1.2.83、ACCEPTANCE 批次 20、docs 同步；交付后根 package.json +1 至 1.2.84 | 核对四个版本/文档位置；根版本在交付提交中 +1 | 工作区硬性规定 | P1 |
+| 9 | 质量门全绿且既有功能不回归 | `npm run check`、`npm run check:json`、`npm test` 退出码 0；回归：通过/打回、启动阶段、review note、交付/验收/任务/预览分享、快速模式其它阶段、浅深主题、360/1440 布局 | 用户场景 3 | P0 |
+
+---
+
+## 8. 验收项清单（`acceptance_add` 逐条落库，10 条）
+
+> 说明：本轮新增项全部为 `pending`，由 testing 阶段回填；category 用于模块分组。**不删除历史 19 条已 pass 项。**
+
+| # | title（结论式验收点） | requirement（可复测条件） | category |
+|---|---|---|---|
+| 1 | 快速模式下设计提交后停在 review，不自动通过 | 准备 `gateMode='fast'` 的工作区，`pipeline_submit_stage({stageId:'design', summary, artifacts:[截图]})`；断言返回阶段 `status==='review'`、不出现 `autoApproved:true`、不返回可继续的 `nextStageId`；`.dsh/pipeline.json` 中 design 为 review、development 仍 pending | design-gate |
+| 2 | design 未确认时开发阶段启动被拒绝，确认后可启动 | design 处于 review 时调用 `pipeline_start_stage({stageId:'development'})`，断言抛错 `bad-order` 且错误消息出现「上一阶段」「设计」；在面板 approve design 后再调用，断言成功进入 active | design-gate |
+| 3 | 快速模式提示明确「四个自动 / 三个需确认」 | 检查面板快速模式提示（zh/en）、`pipeline_submit_stage`/`pipeline_start_stage` 工具描述、PIPELINE_SECTION：均写 product/development/testing/acceptance 自动通过、design/approval/release 需 Owner 确认；grep 不到「五个中间阶段」「five intermediate stages」等旧表述 | design-gate |
+| 4 | 设计截图在流水线卡与工作台卡显示缩略图并可打开大图 | 提交含 PNG 与 SVG 的 design 产物后，流水线设计卡与工作台设计卡各出现缩略图（`loading="lazy"`、有 alt/label），点击在应用内打开该图大图；WebP/GIF 同样可显示 | design-preview |
+| 5 | HTML 设计产物内嵌渲染预览且支持 360/768/1280 三档，不默认打开源码 | 提交 `.html` design 产物：设计卡出现 iframe 渲染（src 指向该文件、带 sandbox 与 title），默认不进入源码视图；三档宽度按钮切换后 iframe 宽度变化；「查看源码」次级入口可打开源码 | design-preview |
+| 6 | 设计 review 时面板与工作台显示待确认状态及通过/打回/预览入口 | design 停在 review：流水线面板设计卡与工作台显示「设计稿待你确认 / 确认后进入开发」及相关按钮与预览入口；通过或打回后状态提示消失且阶段状态正确变化 | design-preview |
+| 7 | 工作区打开 .html/.htm 默认渲染预览，工具栏可切预览/源码 | 打开一个本地 `.html`（含内联 CSS）：默认显示渲染预览而非源码；工具栏「源码」切到编辑视图，「预览」切回渲染；空文件/不可读文件有可读提示与源码退路；深色主题下可读 | html-preview |
+| 8 | design 提示词要求交付截图且禁止只交 HTML，无截图 warning 文案准确 | 检查 design 阶段提示词：明确要求至少一张可直接查看的截图（PNG/JPG/SVG）、HTML 仅可选且需可预览、禁止只交 HTML 源码；Lead 指令要求提交后给 Owner 看截图并停下；提交无图片产物的 design，warnings 含 `design-no-image` 且文案为「截图…HTML 不能替代截图」，不出现「HTML 截图」 | model-discipline |
+| 9 | 版本与文档同步到 1.2.83 且交付后根版本 +1 | 插件 `dsh-web-filebrowser-plugin/package.json` 为 1.2.83；`CHANGELOG.md` 有 1.2.83 条目；`docs/ACCEPTANCE.md` 有批次 20；`docs/pipeline/` 各文档同步本轮；交付提交中根 `package.json` 为 1.2.84 | version-docs |
+| 10 | 质量门全绿且既有功能不回归 | `npm run check`、`npm run check:json`、`npm test` 均退出码 0（含 `scripts/selftest/host-smoke.mjs`）；人工回归：通过/打回、启动阶段、review note、需求查看/追加/修改/新轮、交付打包/下载、任务与指派、预览分享、快速模式 product/development/testing/acceptance 仍自动通过；360/1440 布局无溢出 | regression |
 
 ---
 
 ## 9. 版本与文档
 
-- 插件 `dsh-web-filebrowser-plugin/package.json`：1.2.78 → **1.2.79**；根 `package.json` 保持 **1.2.79**（交付后 +1 至 1.2.80，沿用工作区硬性规定）。
-- `CHANGELOG.md` 增加 1.2.79 条目。
-- `docs/ACCEPTANCE.md` 增加批次 16（本轮 GUI 复测步骤）。
-- `docs/pipeline/requirements.md`（本文）、`design.md`、`test-report.md`、`acceptance-review.md`、`engineering-research.md`、`release.md` 同步本轮；旧轮文档归档到 `docs/pipeline/archive/`。
-- 效果图：`docs/pipeline/design/workbench-v1279-*.svg` + `.png`。
+- 插件 `dsh-web-filebrowser-plugin/package.json`：1.2.82 → **1.2.83**。
+- 根 `package.json`：当前 1.2.83；**交付后 +1 至 1.2.84**（工作区硬性规定）。
+- `CHANGELOG.md` 增加 1.2.83 条目（闸门 + 预览 + 纪律）。
+- `docs/ACCEPTANCE.md` 增加批次 20（设计确认闸门与预览复测步骤）。
+- `docs/pipeline/`：`requirements.md`（本文）、`design.md`、`test-report.md`、`acceptance-review.md`、`engineering-research.md`、`release.md` 同步本轮；旧轮文档归档到 `docs/pipeline/archive/`。
+- 若面板/工具描述文案变更，同步 `README`/`README.zh` 中流水线章节（如有相关表述）。
 
 ---
 
-## 10. 验收标准（可勾选，对应 acceptance 条目）
-
-1. **首屏**：1440×900 下页面头 + hero（阶段/状态/7 段进度/主操作）+ Now 区可见，hero 无需滚动；hero 不折叠。
-2. **Hero 指挥舱**：深色渐变面板、30px 阶段名、状态 pill、摘要、负责角色、环形/数字进度、主操作（通过/打回 或 启动并派发）与 review note 均正确；点击行为与 v1.2.78 一致。
-3. **结构**：Now → Project → Delivery 顺序与三列项目区（≥1280）、5 卡 bento（≥1024 两列）落地；标题完整不截断；空态正确降级。
-4. **响应式**：360/768/1024/1280/1440 无横向溢出；≤700 单列、按钮 ≥44px；1024–1279 两列。
-5. **视觉系统**：字号阶 ≤5 档、间距/圆角/阴影 token 化；浅/深主题对比度正文 ≥4.5:1、大字 ≥3:1；失败/告警不只靠颜色。
-6. **交互与无障碍**：hover/focus-visible/reduced-motion；44×44 触控；键盘可达；section/aria 语义。
-7. **功能回归**：通过/打回、启动并派发、review note、指派器、需求四操作、验收/体检/变更/运行、通知、刷新、关闭、compact 全可用。
-8. **i18n**：zh/en 成对、无死键；新增键源码引用均存在。
-9. **质量门**：`npm run check`、`check:json`、`npm test`、pipeline/review/assignments selftest、全绿；新增静态 UI 校验通过；diff 仅 client.js + 版本/文档，无密钥/调试/临时文件。
-10. **版本**：插件 1.2.79、根 1.2.79、CHANGELOG 1.2.79；ACCEPTANCE 批次 16 可执行。
-
----
-
-## 11. 风险与开放问题
+## 10. 风险与开放问题
 
 | 风险 | 影响 | 缓解 |
 |---|---|---|
-| 深色 hero 与深色主题叠加，层次不清 | 中 | hero 用固定 #0b1220 锚点 + 内部光晕，不依赖主题底色；design 阶段出浅/深两版效果图 |
-| 全量 CSS 覆盖 `.ds-wb-*` 影响 v1.2.78 已验收的细节 | 中 | 只覆盖工作台前缀 + 外壳限定选择器；回归清单逐项；静态断言保护 |
-| 30px display 在 360px 溢出 | 中 | ≤700 降至 24px；文本 nowrap + ellipsis；静态断点检查 |
-| 视觉「高大上」主观 | 高 | 设计稿 + 五维自检 + 与 v1.2.78 对比图；Owner 批次 16 目视验收回填 |
-| 页面变长（bento 全展示） | 低 | 首屏约束只针对 hero + Now；交付区允许滚动 |
-| GUI 视觉/对比度无法由模型实测 | 中 | 验收项标 blocked 不伪造 pass；提供 SVG/PNG 与静态证据；Owner 复测 |
+| 快速模式文案有多处副本（面板 zh/en、`PIPELINE_SECTION`、工具描述、阶段提示），漏改一处即误导 | 中 | 验收项 3 用 grep 反查旧表述；实现时集中到同一常量/同一句式 |
+| `sandbox=""` 下依赖脚本的高保真稿视觉/交互缺失 | 中 | 预览以静态视觉为准；若确有交互稿需求，放开 `allow-scripts` 但禁止 `allow-same-origin`，并在 UI 标注 |
+| iframe 直接指向 raw URL：跨域/鉴权/SSH 根不可用 | 中 | 本地根优先；SSH 根降级源码并提示；不扩大 SSH 能力边界（验收项 7 的异常分支） |
+| `.html` 默认预览改变老用户「打开即改代码」习惯 | 低 | 工具栏一键切源码；回归项覆盖编辑/保存 |
+| 设计 Agent 仍只交 HTML | 中 | 提示词硬要求 + `design-no-image` warning + Lead 汇报纪律（验收项 8）；闸门保证没人看就不放行 |
+| 设计 review 状态条与工作台 hero 主操作重复/冲突 | 低 | 两处共用同一状态语义与 i18n 键；若冗余只保留一处强提示（创新假设 3） |
+| Owner 审批疲劳（每轮都点） | 低 | 只在 design/approval/release 三个动作设门；design 一处点击即可完成（#6） |
+| GUI 渲染与主题对比无法由模型完全实测 | 中 | 提供静态断言 + 截图证据；Owner 按 ACCEPTANCE 批次 20 复测，未测项标 blocked，不伪造 pass |
+
+**开放问题（需 Owner 拍板，但不阻塞本轮实现）**
+
+1. 高保真稿若含 JS 交互，是否允许 `allow-scripts`（不与 `allow-same-origin` 同开）？默认不允许。
+2. 设计稿大图是否需要在应用内做放大/缩放（当前复用图片查看器即可）？默认不需要。
+3. 后续是否需要「设计稿版本对比」？记为后续需求，本轮不做。
+
+---
+
+## 11. 历史与归档
+
+- 上一版文档：v1.2.79 第 7 轮「工作台 UI 全面重构」，已归档到 `docs/pipeline/archive/`；本轮为 v1.2.83 第 11 轮，保留 v1.2.82 交付基线作为审计起点。
+- 本轮只覆盖「设计确认闸门 + 预览 + 模型纪律 + 版本文档」，不重述工作台视觉重构内容。

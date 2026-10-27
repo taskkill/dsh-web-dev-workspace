@@ -38,7 +38,7 @@
 
 **双复核模式**：第 5 关由 AI 项目经理 Agent 复核，结论是「建议放行 / 建议打回」；第 6 关由你确认。两道关都过才允许发布；Agent 没有审批工具，第 6 关只能你点。
 
-**快速模式**（`gateMode=fast`）：前五个中间阶段（product/design/development/testing/acceptance）提交后自动通过并推进；**approval 与 release 永远保持人工闸门**，快速模式也不会自动通过它们。普通模式（normal）下每个阶段都停在「待评审」等你点。
+**快速模式**（`gateMode=fast`）：四个中间阶段（product/development/testing/acceptance）提交后自动通过并推进；**design（设计确认）、approval（人工确认）与 release（发布）永远是人工闸门**，快速模式也不会自动通过它们。设计阶段必须由你看过截图 / HTML 渲染预览并点通过后，开发阶段才能启动；普通模式（normal）下每个阶段都停在「待评审」等你点。
 
 ## 3. 一次完整交付怎么走
 

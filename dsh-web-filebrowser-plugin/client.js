@@ -432,9 +432,13 @@ window.__ModuleLoader__.load({
       'workbench.adjust': '需求与调整',
       'workbench.issues': '问题与状态',
       'workbench.design': '设计稿',
-      'workbench.designHint': '设计阶段产出的界面截图 / 高保真稿，点击可打开查看。',
-      'workbench.designEmpty': '本次设计阶段还没有界面截图；需求涉及 UI 时，UI 设计师需要提交截图或高保真稿。',
+      'workbench.designHint': '设计阶段产出的界面截图 / 高保真稿；点击预览，HTML 稿可在预览弹层里查看。',
+      'workbench.designEmpty': '设计阶段尚未提交截图；请 UI 设计师提交至少一张 PNG / JPG / SVG（HTML 不能替代截图）。',
       'workbench.designDocs': '设计文档',
+      'workbench.designPending': '待你确认',
+      'workbench.designPreview': '预览设计稿',
+      'workbench.designHtmlPreview': '预览 HTML',
+      'workbench.designHtmlOnly': '当前只有 HTML 稿、没有截图：HTML 不能替代截图，请让 UI 设计师补 PNG / JPG / SVG。',
       'workbench.allNormal': '运行正常，暂无需要处理的问题。',
       'workbench.clearIssues': '清除',
       'workbench.updatedAt': '更新于 {time}',
@@ -745,7 +749,7 @@ window.__ModuleLoader__.load({
       'pipeline.nextBanner': '下一步：启动「{stage}」',
       'pipeline.bannerHint': '你只需要点通过 / 打回，其余交给团队。批准后会自动进入下一阶段。',
       'pipeline.fastMode': '快速模式',
-      'pipeline.fastHint': '中间五阶段（需求/设计/开发/测试/验收复核）提交后自动通过并推进；只有人工确认与发布需要你点。',
+      'pipeline.fastHint': '快速模式：product/development/testing/acceptance 提交后自动通过；design/approval/release 始终需要 Owner 确认。',
       'pipeline.fastSaveFailed': '切换快速模式失败：{message}',
       'pipeline.editRequirement': '编辑需求',
       'pipeline.cancelEdit': '取消',
@@ -800,6 +804,29 @@ window.__ModuleLoader__.load({
       'pipeline.approvalReady': 'AI 验收复核已完成；你确认通过后才会解锁发布阶段。',
       'pipeline.approvalWaiting': '等待你确认（在顶部待办里通过 / 打回）',
       'pipeline.releaseDone': '已发布',
+      'pipeline.previewDesign': '预览设计稿',
+      'pipeline.designPendingTitle': '设计稿待你确认 · 确认后进入开发',
+      'pipeline.designPendingHint': '通过后开发阶段才能启动；打回后设计变为「已打回」。',
+      'pipeline.designPendingBadge': '待你确认',
+      'pipeline.designPreviewTitle': '设计稿预览',
+      'pipeline.designPreviewEmpty': '该阶段尚未提交设计产物',
+      'pipeline.designPreviewLoading': '正在加载设计稿…',
+      'pipeline.designPreviewError': '无法加载该设计稿',
+      'pipeline.designPreviewErrorHint': '文件不存在或不可读；可查看源码或重试。',
+      'pipeline.designPreviewRetry': '重试',
+      'pipeline.designPreviewSource': '查看源码',
+      'pipeline.designPreviewDevice': '预览宽度',
+      'pipeline.designPreviewConfirm': '确认设计，进入开发',
+      'pipeline.designPreviewReject': '打回',
+      'pipeline.designPreviewRejectReason': '打回原因（可选）：写清需要修改的地方…',
+      'pipeline.designPreviewCount': '{n} 个产物',
+      'pipeline.designPreviewHtml': 'HTML 高保真稿',
+      'pipeline.designPreviewImage': '图片稿',
+      'pipeline.designPreviewOpenHtml': '预览 HTML',
+      'pipeline.designPreviewHtmlOnly': '只有 HTML 稿、没有截图：HTML 不能替代截图，请让 UI 设计师补 PNG / JPG / SVG。',
+      'pipeline.designPreviewEsc': 'Esc 关闭',
+      'pipeline.designPreviewBusy': '处理中…',
+      'pipeline.designPreviewNotReview': '该阶段当前不在「待确认」状态，只能预览。',
       'acceptance.title': '验收台',
       'acceptance.hint': 'agent 作为产品经理写验收项；你在这里勾选通过 / 不通过，驳回时可把未通过项发回对话。',
       'acceptance.empty': '还没有验收项。可以让 agent 先列出验收标准，或在这里添加一条。',
@@ -1142,6 +1169,7 @@ window.__ModuleLoader__.load({
       'action.edit': '编辑',
       'action.split': '分屏',
       'action.splitExit': '退出分屏',
+      'action.source': '源码',
       'action.retry': '重试',
       'action.newFileHere': '在此新建文件',
       'action.newFolderHere': '在此新建文件夹',
@@ -1212,6 +1240,11 @@ window.__ModuleLoader__.load({
       'hint.loadingFile': '正在读取文件…',
       'hint.preview': 'Markdown 预览',
       'hint.other': '其他',
+      'html.previewHint': '预览为静态渲染：空文件或依赖脚本的页面可能显示空白；可切到「源码」查看。',
+      'html.empty': '文件为空',
+      'html.previewFailed': '无法加载该 HTML 文件；可切到「源码」或直接下载。',
+      'html.sshSourceHint': 'SSH 远程工作区无法内嵌预览 HTML，已打开源码。',
+      'html.saveFirst': '请先保存修改，再切换到预览。',
       'status.encoding': 'UTF-8',
       'browser.open': '内置浏览器',
       'browser.newTab': '新浏览器标签',
@@ -1663,9 +1696,13 @@ window.__ModuleLoader__.load({
       'workbench.adjust': 'Requirement & adjustments',
       'workbench.issues': 'Problems & status',
       'workbench.design': 'Design shots',
-      'workbench.designHint': 'UI screenshots / high-fidelity mockups from the design stage; click to open.',
-      'workbench.designEmpty': 'No UI screenshots yet; when the requirement has a UI the designer must submit screenshots or mockups.',
+      'workbench.designHint': 'UI screenshots / high-fidelity mockups from the design stage; click to preview, HTML mockups open in the preview dialog.',
+      'workbench.designEmpty': 'No screenshots yet; the UI designer must submit at least one PNG / JPG / SVG (HTML cannot replace screenshots).',
       'workbench.designDocs': 'Design docs',
+      'workbench.designPending': 'Awaiting your approval',
+      'workbench.designPreview': 'Preview design',
+      'workbench.designHtmlPreview': 'Preview HTML',
+      'workbench.designHtmlOnly': 'Only HTML mockups so far, no screenshots: HTML cannot replace screenshots — ask the UI designer for PNG / JPG / SVG.',
       'workbench.allNormal': 'All good — nothing needs attention.',
       'workbench.clearIssues': 'Clear',
       'workbench.updatedAt': 'updated {time}',
@@ -1976,7 +2013,7 @@ window.__ModuleLoader__.load({
       'pipeline.nextBanner': 'Next: start “{stage}”',
       'pipeline.bannerHint': 'You only approve or send back; the team handles the rest. Approval auto-advances to the next stage.',
       'pipeline.fastMode': 'Fast mode',
-      'pipeline.fastHint': 'The five intermediate stages (product/design/development/testing/acceptance) auto-approve and advance on submit; only the human sign-off and release need you.',
+      'pipeline.fastHint': 'Fast mode: product/development/testing/acceptance auto-approve on submit; design, approval and release always need the owner’s confirmation.',
       'pipeline.fastSaveFailed': 'Could not switch fast mode: {message}',
       'pipeline.editRequirement': 'Edit requirement',
       'pipeline.cancelEdit': 'Cancel',
@@ -2031,6 +2068,29 @@ window.__ModuleLoader__.load({
       'pipeline.approvalReady': 'The AI acceptance review is done; release unlocks only after your sign-off.',
       'pipeline.approvalWaiting': 'Waiting for your confirmation (approve or request changes in the banner above)',
       'pipeline.releaseDone': 'Released',
+      'pipeline.previewDesign': 'Preview design',
+      'pipeline.designPendingTitle': 'Design awaiting your approval · confirm to start development',
+      'pipeline.designPendingHint': 'Development unlocks only after approval; rejecting marks the design as failed.',
+      'pipeline.designPendingBadge': 'Awaiting your approval',
+      'pipeline.designPreviewTitle': 'Design preview',
+      'pipeline.designPreviewEmpty': 'No design artifacts submitted for this stage yet',
+      'pipeline.designPreviewLoading': 'Loading design…',
+      'pipeline.designPreviewError': 'Unable to load this design',
+      'pipeline.designPreviewErrorHint': 'The file is missing or unreadable; view the source or retry.',
+      'pipeline.designPreviewRetry': 'Retry',
+      'pipeline.designPreviewSource': 'View source',
+      'pipeline.designPreviewDevice': 'Preview width',
+      'pipeline.designPreviewConfirm': 'Approve design & start development',
+      'pipeline.designPreviewReject': 'Request changes',
+      'pipeline.designPreviewRejectReason': 'Reason (optional): what should change…',
+      'pipeline.designPreviewCount': '{n} artifacts',
+      'pipeline.designPreviewHtml': 'HTML mockup',
+      'pipeline.designPreviewImage': 'Image',
+      'pipeline.designPreviewOpenHtml': 'Preview HTML',
+      'pipeline.designPreviewHtmlOnly': 'HTML only, no screenshots: HTML cannot replace screenshots — ask the UI designer for PNG / JPG / SVG.',
+      'pipeline.designPreviewEsc': 'Esc to close',
+      'pipeline.designPreviewBusy': 'Working…',
+      'pipeline.designPreviewNotReview': 'This stage is not awaiting review right now; preview only.',
       'acceptance.title': 'Acceptance board',
       'acceptance.hint': 'The agent writes acceptance items as the product manager; check pass / fail here and send failures back to the chat.',
       'acceptance.empty': 'No acceptance items yet. Ask the agent for acceptance criteria, or add one here.',
@@ -2373,6 +2433,7 @@ window.__ModuleLoader__.load({
       'action.edit': 'Edit',
       'action.split': 'Split',
       'action.splitExit': 'Exit split',
+      'action.source': 'Source',
       'action.retry': 'Retry',
       'action.newFileHere': 'New file here',
       'action.newFolderHere': 'New folder here',
@@ -2443,6 +2504,11 @@ window.__ModuleLoader__.load({
       'hint.loadingFile': 'Loading file…',
       'hint.preview': 'Markdown preview',
       'hint.other': 'Other',
+      'html.previewHint': 'Static preview: empty files or script-driven pages may render blank; switch to Source to inspect.',
+      'html.empty': 'This file is empty',
+      'html.previewFailed': 'Could not load this HTML file; switch to Source or download it.',
+      'html.sshSourceHint': 'SSH workspaces cannot embed HTML previews; opened the source instead.',
+      'html.saveFirst': 'Save your changes before switching back to the preview.',
       'status.encoding': 'UTF-8',
       'browser.open': 'Built-in browser',
       'browser.newTab': 'New browser tab',
@@ -2940,6 +3006,7 @@ window.__ModuleLoader__.load({
      * ------------------------------------------------------------------ */
 
     const MARKDOWN_EXTENSIONS = new Set(['md', 'markdown', 'mdown', 'mkd', 'mdx'])
+    const HTML_EXTENSIONS = new Set(['html', 'htm'])
     const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'avif', 'bmp', 'ico', 'svg'])
     const BINARY_EXTENSIONS = new Set([
       'zip', 'gz', 'tgz', 'tar', 'rar', '7z', 'bz2', 'xz', 'exe', 'dll', 'so', 'dylib', 'bin', 'class', 'jar',
@@ -2951,9 +3018,15 @@ window.__ModuleLoader__.load({
       const ext = extensionOf(name)
       if (ext === 'pdf') return 'pdf'
       if (MARKDOWN_EXTENSIONS.has(ext)) return 'markdown'
+      if (HTML_EXTENSIONS.has(ext)) return 'html'
       if (IMAGE_EXTENSIONS.has(ext)) return 'image'
       if (BINARY_EXTENSIONS.has(ext)) return 'binary'
       return 'text'
+    }
+
+    /** True when a workspace path looks like an HTML document (.html / .htm). */
+    function isHtmlPath(value) {
+      return typeof value === 'string' && /\.(?:html?|htm)$/iu.test(value)
     }
 
     /** Modes whose content is UTF-8 text held in a tab (code/plain and Markdown). */
@@ -8432,6 +8505,18 @@ window.__ModuleLoader__.load({
         const [pipelineTitleDraft, setPipelineTitleDraft] = useState('')
         const [pipelineDetailDraft, setPipelineDetailDraft] = useState('')
         const [pipelineReviewNote, setPipelineReviewNote] = useState('')
+        // Design-gate preview dialog (D2): { artifactPath, device } or null.
+        const [designPreview, setDesignPreview] = useState(null)
+        const [designPreviewLoading, setDesignPreviewLoading] = useState(false)
+        const [designPreviewError, setDesignPreviewError] = useState(null)
+        const [designPreviewActionError, setDesignPreviewActionError] = useState(null)
+        const [designPreviewNonce, setDesignPreviewNonce] = useState(0)
+        const designPreviewCloseRef = useRef(null)
+        const designPreviewReturnRef = useRef(null)
+        // Inline HTML file preview (D4): path that finished loading, retry nonce.
+        const [htmlPreviewReady, setHtmlPreviewReady] = useState(null)
+        const [htmlPreviewError, setHtmlPreviewError] = useState(null)
+        const [htmlPreviewNonce, setHtmlPreviewNonce] = useState(0)
         const [releaseEnvDraft, setReleaseEnvDraft] = useState('production')
         const [releaseUrlDraft, setReleaseUrlDraft] = useState('')
         const [releaseNotesDraft, setReleaseNotesDraft] = useState('')
@@ -11090,7 +11175,7 @@ ${tail}
             '3) 之后继续编排 design / development / testing / acceptance：按 pipeline_stage_prompt 派发给对应角色（acceptance 是「验收复核」，派给项目经理 Agent），提交后快速模式会自动通过并继续；',
             '4) 到 approval 闸门停下，提示 Owner 在工作台确认；AI 复核报告是人工确认的输入，不能替代 Owner 确认；release 阶段等 Owner 批准后再由运维执行。',
             '',
-            mode === 'fast' ? '快速模式已开启：中间五阶段（含验收复核）提交后自动通过，不要停下来等人工审批。' : '当前为逐阶段审批模式：每个阶段提交后停下等 Owner 审批。',
+            mode === 'fast' ? '快速模式已开启：product/development/testing/acceptance 提交后自动通过；design 提交后停在 review 等 Owner 确认设计稿，approval 与 release 也必须 Owner 确认，不要跳过。' : '当前为逐阶段审批模式：每个阶段提交后停下等 Owner 审批。',
           ].join('\n')
         }
 
@@ -11399,10 +11484,14 @@ ${tail}
           }
         }
 
-        /** Owner gate: approve or send a stage back with an optional note. */
+        /**
+         * Owner gate: approve or send a stage back with an optional note.
+         * Returns { ok: true } on success or { ok: false, message } so callers
+         * (e.g. the design preview dialog) can keep their UI state on failure.
+         */
         async function reviewPipelineStage(stageId, decision) {
           const targetRoot = store.get().root
-          if (targetRoot === null) return
+          if (targetRoot === null) return { ok: false, message: t('pipeline.needRoot') }
           setPipelineBusy(true)
           setPipelineError(null)
           try {
@@ -11431,12 +11520,88 @@ ${tail}
                 }
               }
             }
+            return { ok: true }
           } catch (error) {
-            setPipelineError(t('pipeline.reviewFailed', { message: pipelineErrorText(error) }))
+            const message = t('pipeline.reviewFailed', { message: pipelineErrorText(error) })
+            setPipelineError(message)
+            return { ok: false, message }
           } finally {
             setPipelineBusy(false)
           }
         }
+
+        /** Open the design-gate preview dialog (D2) on one artifact. */
+        function openDesignPreview(artifactPath) {
+          const stage = designStageOf(pipelineDoc)
+          const artifacts = designArtifactsOf(stage)
+          const preferred =
+            typeof artifactPath === 'string' && artifacts.some((artifact) => artifact.path === artifactPath)
+              ? artifactPath
+              : artifacts.length > 0
+                ? artifacts[0].path
+                : ''
+          designPreviewReturnRef.current = typeof document !== 'undefined' ? document.activeElement : null
+          setDesignPreviewError(null)
+          setDesignPreviewActionError(null)
+          setDesignPreviewLoading(true)
+          setDesignPreview({ artifactPath: preferred, device: 1280 })
+        }
+
+        /** Close the design preview dialog and restore focus best-effort. */
+        function closeDesignPreview(force = false) {
+          if (!force && pipelineBusy) return
+          setDesignPreview(null)
+          setDesignPreviewLoading(false)
+          setDesignPreviewError(null)
+          setDesignPreviewActionError(null)
+          const trigger = designPreviewReturnRef.current
+          designPreviewReturnRef.current = null
+          if (trigger !== null && typeof trigger?.focus === 'function') {
+            window.setTimeout(() => {
+              try {
+                trigger.focus()
+              } catch {
+                /* the trigger may be gone after a re-render */
+              }
+            }, 0)
+          }
+        }
+
+        /** Approve / reject the design stage from the preview dialog (reuses reviewPipelineStage). */
+        async function reviewDesignFromPreview(decision) {
+          if (pipelineBusy) return
+          setDesignPreviewActionError(null)
+          const result = await reviewPipelineStage('design', decision)
+          if (result.ok) {
+            closeDesignPreview(true)
+          } else {
+            setDesignPreviewActionError(result.message)
+          }
+        }
+
+        // Esc closes the design preview; initial focus goes to its close button.
+        useEffect(() => {
+          if (designPreview === null) return undefined
+          const onKeyDown = (event) => {
+            if (event.key === 'Escape') {
+              event.stopPropagation()
+              event.preventDefault()
+              closeDesignPreview()
+            }
+          }
+          document.addEventListener('keydown', onKeyDown, true)
+          const focusTimer = window.setTimeout(() => {
+            const node = designPreviewCloseRef.current
+            if (node !== null && typeof node.focus === 'function') node.focus()
+          }, 0)
+          return () => {
+            document.removeEventListener('keydown', onKeyDown, true)
+            window.clearTimeout(focusTimer)
+          }
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [designPreview, pipelineBusy])
+
+
 
         /* ------------------------------------------------------------------ *
          * Acceptance board and client delivery
@@ -13877,7 +14042,10 @@ ${tail}
             return
           }
           const name = basename(relative)
-          const mode = modeOf(name)
+          const detectedMode = modeOf(name)
+          // SSH roots cannot serve raw files to an iframe: degrade HTML to source.
+          const sshHtml = detectedMode === 'html' && isSshRootPath(root)
+          const mode = sshHtml ? 'text' : detectedMode
           const language = languageOf(name)
           const tab = {
             path: relative,
@@ -13891,11 +14059,29 @@ ${tail}
             loading: isTextMode(mode),
             error: null,
             code: null,
-            view: mode === 'markdown' ? 'preview' : 'edit',
+            view: detectedMode === 'markdown' || detectedMode === 'html' ? 'preview' : 'edit',
+            htmlSource: false,
           }
+          if (sshHtml) showToast(t('html.sshSourceHint'))
           store.set((current) => ({ ...current, tabs: [...current.tabs, tab], active: relative, selected: relative }))
           setCursor({ line: 1, column: 1 })
-          if (!isTextMode(mode)) return
+          if (!isTextMode(mode)) {
+            if (detectedMode === 'html') {
+              // The preview itself is a lazy iframe; one cheap stat call detects
+              // empty or missing files without preloading the source.
+              try {
+                const info = await call('stat', { root, path: relative })
+                if (store.get().root !== root) return
+                if (info !== null && typeof info === 'object' && Number(info.bytes) === 0) {
+                  patchTab(relative, { htmlEmpty: true })
+                }
+              } catch (error) {
+                if (store.get().root !== root) return
+                patchTab(relative, { htmlUnavailable: errorText(error) })
+              }
+            }
+            return
+          }
           try {
             const value = await call('read', { root, path: relative })
             patchTab(relative, {
@@ -13910,10 +14096,89 @@ ${tail}
           }
         }
 
+        /**
+         * Switch an HTML tab from the rendered preview to the editable source.
+         * The tab keeps its path but becomes a regular text tab (so saving,
+         * find/replace and word wrap keep working) and marks `htmlSource`.
+         */
+        async function switchTabToSource(relative) {
+          const root = store.get().root
+          const tab = store.get().tabs.find((entry) => entry.path === relative)
+          if (root === null || tab === undefined || tab.mode !== 'html') return
+          patchTab(relative, {
+            mode: 'text',
+            view: 'edit',
+            htmlSource: true,
+            loading: true,
+            error: null,
+            code: null,
+            content: '',
+            saved: '',
+            dirty: false,
+          })
+          try {
+            const value = await call('read', { root, path: relative })
+            const text = typeof value?.content === 'string' ? value.content : ''
+            patchTab(relative, {
+              content: text,
+              saved: text,
+              version: typeof value?.version === 'string' ? value.version : null,
+              loading: false,
+              error: null,
+              code: null,
+            })
+          } catch (error) {
+            patchTab(relative, { loading: false, error: errorText(error), code: errorCode(error) })
+          }
+        }
+
+        /** Switch an HTML source tab back to the rendered preview (saves first). */
+        async function showHtmlPreview(relative) {
+          const tab = store.get().tabs.find((entry) => entry.path === relative)
+          if (tab === undefined || tab.htmlSource !== true) return
+          if (tab.dirty === true) {
+            await saveTab(relative)
+            const after = store.get().tabs.find((entry) => entry.path === relative)
+            if (after === undefined || after.dirty === true) {
+              showToast(t('html.saveFirst'))
+              return
+            }
+          }
+          patchTab(relative, {
+            mode: 'html',
+            view: 'preview',
+            htmlSource: false,
+            loading: false,
+            error: null,
+            code: null,
+            content: '',
+            saved: '',
+            dirty: false,
+            htmlEmpty: typeof tab.content === 'string' && tab.content.length === 0,
+            htmlUnavailable: null,
+          })
+          setHtmlPreviewReady(null)
+          setHtmlPreviewError(null)
+        }
+
+        /**
+         * Open an HTML file in the rendered preview, even when an earlier source
+         * view of the same path is already open.
+         */
+        async function openHtmlPreviewFile(relative) {
+          await openFile(relative)
+          const tab = store.get().tabs.find((entry) => entry.path === relative)
+          if (tab !== undefined && tab.htmlSource === true) await showHtmlPreview(relative)
+        }
+
         /** Open a file and place the editor caret at a 1-based line/column. */
         async function openFileAt(relative, line = 1, column = 1) {
           await openFile(relative)
-          const tab = store.get().tabs.find((entry) => entry.path === relative)
+          let tab = store.get().tabs.find((entry) => entry.path === relative)
+          if (tab !== undefined && tab.mode === 'html') {
+            await switchTabToSource(relative)
+            tab = store.get().tabs.find((entry) => entry.path === relative)
+          }
           if (tab === undefined || !isTextMode(tab.mode)) return
           patchTab(relative, {
             ...(tab.mode === 'markdown' ? { view: 'edit' } : {}),
@@ -15303,6 +15568,34 @@ ${tail}
           return typeof value === 'string' && /\.(?:png|jpe?g|webp|gif|svg)$/iu.test(value)
         }
 
+        /** Stable label for a pipeline / design artifact. */
+        function artifactLabel(artifact) {
+          if (artifact === null || typeof artifact !== 'object') return ''
+          if (typeof artifact.label === 'string' && artifact.label.length > 0) return artifact.label
+          return typeof artifact.path === 'string' ? artifact.path : ''
+        }
+
+        /** Classify a design artifact: image / html / doc / other (shared by D1/D2/D3). */
+        function designArtifactKind(artifact) {
+          if (artifact === null || typeof artifact !== 'object' || typeof artifact.path !== 'string') return 'other'
+          if (isImagePath(artifact.path)) return 'image'
+          if (isHtmlPath(artifact.path)) return 'html'
+          if (artifact.path.startsWith('http://') || artifact.path.startsWith('https://')) return 'link'
+          return 'doc'
+        }
+
+        /** Design artifacts of a pipeline document (local, previewable paths first). */
+        function designStageOf(doc) {
+          const stages = doc !== null && typeof doc === 'object' && Array.isArray(doc.stages) ? doc.stages : []
+          return stages.find((stage) => stage !== null && typeof stage === 'object' && stage.id === 'design') ?? null
+        }
+
+        /** All artifacts of the design stage, normalised to objects with a string path. */
+        function designArtifactsOf(stage) {
+          if (stage === null || typeof stage !== 'object' || !Array.isArray(stage.artifacts)) return []
+          return stage.artifacts.filter((artifact) => artifact !== null && typeof artifact === 'object' && typeof artifact.path === 'string' && artifact.path.length > 0)
+        }
+
         /** Format a byte count for the properties dialog. */
         function formatBytes(value) {
           if (!Number.isFinite(value) || value < 0) return '—'
@@ -15974,10 +16267,46 @@ ${tail}
             )
           }
           const isMarkdown = tab.mode === 'markdown'
+          const isHtmlPreview = tab.mode === 'html'
+          const isHtmlSource = tab.htmlSource === true
+          const isHtml = isHtmlPreview || isHtmlSource
           return h(
             'div',
             { className: 'ds-edit-toolbar' },
-            isMarkdown
+            isHtml
+              ? h(
+                  'div',
+                  { className: 'ds-switch ds-html-switch', role: 'group', 'aria-label': t('action.preview') + ' / ' + t('action.source') },
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-switch-btn',
+                      'data-active': isHtmlPreview ? 'true' : undefined,
+                      'aria-pressed': isHtmlPreview,
+                      onClick: () => {
+                        if (!isHtmlPreview) void showHtmlPreview(tab.path)
+                      },
+                    },
+                    h(EyeIcon),
+                    t('action.preview'),
+                  ),
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-switch-btn',
+                      'data-active': isHtmlSource ? 'true' : undefined,
+                      'aria-pressed': isHtmlSource,
+                      onClick: () => {
+                        if (!isHtmlSource) void switchTabToSource(tab.path)
+                      },
+                    },
+                    h(CodeIcon),
+                    t('action.source'),
+                  ),
+                )
+              : isMarkdown
               ? h(
                   'div',
                   { className: 'ds-switch', role: 'group' },
@@ -16096,7 +16425,10 @@ ${tail}
                   tab.dirty ? h('span', { className: 'ds-dirty-dot' }) : null,
                 )
               : null,
-            !isTextMode(tab.mode)
+            // Opening a workspace HTML file as a top-level page would execute its
+            // scripts under the Harness origin, so HTML tabs deliberately expose
+            // only the sandboxed preview (and the source view) instead.
+            !isTextMode(tab.mode) && tab.mode !== 'html'
               ? h(
                   'button',
                   { type: 'button', className: 'ds-linkbtn', onClick: () => openExternal(tab.path) },
@@ -16200,6 +16532,85 @@ ${tail}
               'div',
               { className: 'ds-imageview' },
               h('img', { src: rawUrl(state.root, tab.path), alt: tab.name }),
+            )
+          }
+          if (tab.mode === 'html' && tab.view === 'preview') {
+            const previewRoot = state.root
+            const frameError = htmlPreviewError !== null && htmlPreviewError.path === tab.path ? htmlPreviewError.message : null
+            const unavailable = typeof tab.htmlUnavailable === 'string' && tab.htmlUnavailable.length > 0 ? tab.htmlUnavailable : null
+            const previewError = frameError !== null ? frameError : unavailable
+            const emptyFile = tab.htmlEmpty === true && previewError === null
+            const frameReady = htmlPreviewReady === tab.path
+            const retryPreview = () => {
+              setHtmlPreviewError(null)
+              if (unavailable !== null) patchTab(tab.path, { htmlUnavailable: null })
+              setHtmlPreviewNonce((current) => current + 1)
+            }
+            const sourceButton = h(
+              'button',
+              { type: 'button', className: 'ds-btn', onClick: () => void switchTabToSource(tab.path) },
+              h(CodeIcon),
+              t('action.source'),
+            )
+            return h(
+              'div',
+              { className: 'ds-htmlpreview' },
+              h(
+                'div',
+                { className: 'ds-htmlpreview-bar' },
+                h(
+                  'span',
+                  { className: 'ds-htmlpreview-url', title: previewRoot === null ? tab.path : rawUrl(previewRoot, tab.path) },
+                  previewRoot === null ? tab.path : rawUrl(previewRoot, tab.path),
+                ),
+                frameReady || previewError !== null || emptyFile
+                  ? null
+                  : h('span', { className: 'ds-htmlpreview-loading', 'aria-live': 'polite' }, h('span', { className: 'ds-spinner' }), t('hint.loadingFile')),
+                h('span', { className: 'ds-spacer' }),
+                h(
+                  'button',
+                  { type: 'button', className: 'ds-linkbtn', onClick: () => void switchTabToSource(tab.path) },
+                  h(CodeIcon),
+                  t('action.source'),
+                ),
+              ),
+              previewError !== null
+                ? h(
+                    'div',
+                    { className: 'ds-empty ds-empty-error' },
+                    h('div', { className: 'ds-empty-title' }, t('html.previewFailed')),
+                    h('div', { className: 'ds-empty-text' }, previewError),
+                    h(
+                      'div',
+                      { className: 'ds-empty-actions' },
+                      h('button', { type: 'button', className: 'ds-btn', onClick: retryPreview }, h(RefreshIcon), t('action.retry')),
+                      sourceButton,
+                    ),
+                  )
+                : emptyFile
+                  ? h(
+                      'div',
+                      { className: 'ds-empty ds-htmlpreview-empty' },
+                      h('div', { className: 'ds-empty-title' }, t('html.empty')),
+                      h('div', { className: 'ds-empty-text' }, t('html.previewHint')),
+                      h('div', { className: 'ds-empty-actions' }, sourceButton),
+                    )
+                  : previewRoot === null
+                    ? h('div', { className: 'ds-empty' }, t('pipeline.needRoot'))
+                    : h('iframe', {
+                        key: `${tab.path}:${String(htmlPreviewNonce)}`,
+                        className: 'ds-htmlpreview-frame',
+                        src: rawUrl(previewRoot, tab.path),
+                        title: tab.name,
+                        sandbox: '',
+                        loading: 'lazy',
+                        onLoad: () => {
+                          setHtmlPreviewReady(tab.path)
+                          setHtmlPreviewError(null)
+                        },
+                        onError: () => setHtmlPreviewError({ path: tab.path, message: t('html.previewFailed') }),
+                      }),
+              emptyFile ? null : h('div', { className: 'ds-htmlpreview-hint' }, t('html.previewHint')),
             )
           }
           if (tab.mode === 'binary') {
@@ -17552,8 +17963,11 @@ ${tail}
           const latestChange = doc !== null && Array.isArray(doc.changes) && doc.changes.length > 0 ? doc.changes[0] : null
           const designStage = stages.find((stage) => stage !== null && typeof stage === 'object' && stage.id === 'design') ?? null
           const designArtifacts = designStage !== null && Array.isArray(designStage.artifacts) ? designStage.artifacts : []
-          const designShots = designArtifacts.filter((artifact) => artifact !== null && typeof artifact === 'object' && isImagePath(artifact.path))
-          const designDocs = designArtifacts.filter((artifact) => !(artifact !== null && typeof artifact === 'object' && isImagePath(artifact.path)))
+          const designLocalArtifacts = designArtifactsOf(designStage)
+          const designShots = designArtifacts.filter((artifact) => designArtifactKind(artifact) === 'image')
+          const designHtmls = designArtifacts.filter((artifact) => designArtifactKind(artifact) === 'html')
+          const designDocs = designArtifacts.filter((artifact) => designArtifactKind(artifact) === 'doc' || designArtifactKind(artifact) === 'link')
+          const designReviewing = designStage !== null && designStage.status === 'review'
           const workspaceRoot = store.get().root
           const issueRows = [
             ...failedStages.map((stage) => ({
@@ -18355,20 +18769,38 @@ ${tail}
                 ),
           )
           const designCard =
-            designArtifacts.length === 0
+            designStage === null || (!designReviewing && designLocalArtifacts.length === 0)
               ? null
               : h(
                   'div',
-                  { className: 'ds-wb-card ds-wb-design' },
+                  {
+                    className: clsx('ds-wb-card', 'ds-wb-design', designReviewing ? 'ds-wb-design-review' : undefined),
+                    'data-status': designStage.status,
+                  },
                   h(
                     'div',
                     { className: 'ds-wb-card-head' },
                     h('div', { className: 'ds-wb-card-title ds-wb-card-title-inline' }, t('workbench.design')),
+                    designReviewing ? h('span', { className: 'ds-wb-design-badge' }, t('workbench.designPending')) : null,
                     h('span', { className: 'ds-spacer' }),
                     h('span', { className: 'ds-wb-issue-time' }, t('workbench.designHint')),
                   ),
+                  designReviewing
+                    ? h(
+                        'div',
+                        { className: 'ds-wb-design-banner', role: 'status' },
+                        h('span', { className: 'ds-wb-design-banner-icon', 'aria-hidden': true }, '⚠'),
+                        h(
+                          'div',
+                          { className: 'ds-wb-design-banner-body' },
+                          h('div', { className: 'ds-wb-design-banner-title' }, t('pipeline.designPendingTitle')),
+                          h('div', { className: 'ds-wb-design-banner-hint' }, t('pipeline.designPendingHint')),
+                        ),
+                        h('span', { className: 'ds-wb-design-count' }, t('pipeline.designPreviewCount', { n: String(designArtifacts.length) })),
+                      )
+                    : null,
                   designShots.length === 0
-                    ? h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.designEmpty'))
+                    ? h('div', { className: 'ds-hint ds-wb-hint ds-wb-design-empty' }, t('workbench.designEmpty'))
                     : h(
                         'div',
                         { className: 'ds-wb-shots' },
@@ -18379,15 +18811,41 @@ ${tail}
                               key: artifact.path + ':' + String(index),
                               type: 'button',
                               className: 'ds-wb-shot',
-                              title: isImagePath(artifact.path) && workspaceRoot !== null ? rawUrl(workspaceRoot, artifact.path) : artifact.path,
+                              title: workspaceRoot !== null ? rawUrl(workspaceRoot, artifact.path) : artifact.path,
+                              'aria-label': artifactLabel(artifact),
                               onClick: () => void openFile(artifact.path),
                             },
                             h('img', {
                               src: workspaceRoot === null ? '' : rawUrl(workspaceRoot, artifact.path),
-                              alt: typeof artifact.label === 'string' ? artifact.label : artifact.path,
+                              alt: artifactLabel(artifact),
                               loading: 'lazy',
                             }),
-                            h('span', { className: 'ds-wb-shot-label' }, typeof artifact.label === 'string' && artifact.label.length > 0 ? artifact.label : artifact.path),
+                            h('span', { className: 'ds-wb-shot-label' }, artifactLabel(artifact)),
+                          ),
+                        ),
+                      ),
+                  designShots.length === 0 && designHtmls.length > 0
+                    ? h('div', { className: 'ds-hint ds-wb-hint ds-wb-design-htmlonly' }, t('pipeline.designPreviewHtmlOnly'))
+                    : null,
+                  designHtmls.length === 0
+                    ? null
+                    : h(
+                        'div',
+                        { className: 'ds-wb-design-htmls' },
+                        designHtmls.map((artifact, index) =>
+                          h(
+                            'button',
+                            {
+                              key: artifact.path + ':' + String(index),
+                              type: 'button',
+                              className: 'ds-linkbtn ds-wb-link ds-wb-design-html',
+                              title: artifact.path,
+                              onClick: () => openDesignPreview(artifact.path),
+                            },
+                            h(EyeIcon),
+                            t('workbench.designHtmlPreview'),
+                            ' · ',
+                            artifactLabel(artifact),
                           ),
                         ),
                       ),
@@ -18404,12 +18862,67 @@ ${tail}
                               key: artifact.path + ':' + String(index),
                               type: 'button',
                               className: 'ds-linkbtn ds-wb-link',
-                              onClick: () => void openFile(artifact.path),
+                              title: typeof artifact.path === 'string' ? artifact.path : undefined,
+                              onClick: () => {
+                                if (typeof artifact.path === 'string' && (artifact.path.startsWith('http://') || artifact.path.startsWith('https://'))) {
+                                  window.open(artifact.path, '_blank', 'noopener,noreferrer')
+                                } else {
+                                  void openFile(artifact.path)
+                                }
+                              },
                             },
-                            typeof artifact.label === 'string' && artifact.label.length > 0 ? artifact.label : artifact.path,
+                            artifactLabel(artifact),
                           ),
                         ),
                       ),
+                  designReviewing
+                    ? h(
+                        'div',
+                        { className: 'ds-wb-design-actions' },
+                        h(
+                          'button',
+                          {
+                            type: 'button',
+                            className: 'ds-btn ds-wb-btn ds-wb-design-preview',
+                            disabled: pipelineBusy,
+                            onClick: () => openDesignPreview(''),
+                          },
+                          h(EyeIcon),
+                          t('workbench.designPreview'),
+                        ),
+                        h(
+                          'button',
+                          {
+                            type: 'button',
+                            className: 'ds-btn ds-wb-btn',
+                            disabled: pipelineBusy || designShots.length === 0,
+                            title: designShots.length === 0 ? t('workbench.designEmpty') : undefined,
+                            onClick: () => void reviewPipelineStage('design', 'approve'),
+                          },
+                          t('pipeline.approve'),
+                        ),
+                        h(
+                          'button',
+                          {
+                            type: 'button',
+                            className: 'ds-btn ds-wb-btn ds-pipe-reject',
+                            disabled: pipelineBusy,
+                            onClick: () => void reviewPipelineStage('design', 'reject'),
+                          },
+                          t('pipeline.reject'),
+                        ),
+                      )
+                    : null,
+                  designReviewing
+                    ? h('input', {
+                        className: 'ds-pipe-input ds-wb-design-note',
+                        value: pipelineReviewNote,
+                        placeholder: t('pipeline.reviewNotePlaceholder'),
+                        spellCheck: false,
+                        'aria-label': t('pipeline.reviewNote'),
+                        onChange: (event) => setPipelineReviewNote(event.target.value),
+                      })
+                    : null,
                 )
           const assignmentSsh = workspaceRoot === null ? false : isSshRootPath(workspaceRoot)
           const assignmentWorking = assignmentRoleMeta.filter((meta) => assignmentMemberStatus(meta) === 'running').length
@@ -19416,6 +19929,14 @@ ${tail}
                   ),
                 ),
               ),
+              reviewStage !== null && reviewStage.id === 'design'
+                ? h(
+                    'div',
+                    { className: 'ds-wb-hero-design-banner', role: 'status' },
+                    h('span', { className: 'ds-wb-hero-design-icon', 'aria-hidden': true }, '⚠'),
+                    h('span', { className: 'ds-wb-hero-design-text' }, t('pipeline.designPendingTitle')),
+                  )
+                : null,
               h(
                 'div',
                 { className: 'ds-wb-hero-actions' },
@@ -19423,6 +19944,14 @@ ${tail}
                   ? h(
                       React.Fragment,
                       null,
+                      reviewStage.id === 'design' && designLocalArtifacts.length > 0
+                        ? h(
+                            'button',
+                            { type: 'button', className: 'ds-btn ds-wb-hero-secondary', disabled: pipelineBusy, onClick: () => openDesignPreview('') },
+                            h(EyeIcon),
+                            t('pipeline.previewDesign'),
+                          )
+                        : null,
                       h(
                         'button',
                         { type: 'button', className: 'ds-btn ds-wb-hero-primary', disabled: pipelineBusy, onClick: () => void reviewPipelineStage(reviewStage.id, 'approve') },
@@ -19704,9 +20233,19 @@ ${tail}
             approved: t('pipeline.status.approved'),
             failed: t('pipeline.status.failed'),
           }
-          const renderArtifact = (artifact) => {
+          /**
+           * One artifact row inside a stage card. Images stay thumbnails, HTML
+           * artifacts get a rendered preview entry plus a secondary source link
+           * (D1), and every other document keeps the plain source link.
+           */
+          const renderArtifact = (artifact, options = {}) => {
             if (artifact === null || typeof artifact !== 'object' || typeof artifact.path !== 'string') return null
-            const label = typeof artifact.label === 'string' && artifact.label.length > 0 ? artifact.label : artifact.path
+            const label = artifactLabel(artifact) || artifact.path
+            const design = options.design === true
+            const openPreview = () => {
+              if (design) openDesignPreview(artifact.path)
+              else void openHtmlPreviewFile(artifact.path)
+            }
             if (artifact.path.startsWith('http://') || artifact.path.startsWith('https://')) {
               return h(
                 'button',
@@ -19727,8 +20266,9 @@ ${tail}
                 {
                   key: artifact.path,
                   type: 'button',
-                  className: 'ds-pipe-shot',
+                  className: clsx('ds-pipe-shot', design ? 'ds-pipe-design-shot' : undefined),
                   title: artifact.path,
+                  'aria-label': label,
                   onClick: () => void openFile(artifact.path),
                 },
                 h('img', {
@@ -19737,6 +20277,34 @@ ${tail}
                   loading: 'lazy',
                 }),
                 h('span', { className: 'ds-pipe-shot-label' }, label),
+              )
+            }
+            if (isHtmlPath(artifact.path)) {
+              return h(
+                'div',
+                { key: artifact.path, className: 'ds-pipe-artifact ds-pipe-html-row' },
+                h('span', { className: 'ds-pipe-html-label', title: artifact.path }, label),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-linkbtn ds-pipe-html-preview',
+                    title: artifact.path,
+                    onClick: openPreview,
+                  },
+                  h(EyeIcon),
+                  design ? t('pipeline.designPreviewOpenHtml') : t('action.preview'),
+                ),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-linkbtn ds-pipe-html-source',
+                    title: artifact.path,
+                    onClick: () => void openFileAt(artifact.path, 1, 1),
+                  },
+                  t('pipeline.designPreviewSource'),
+                ),
               )
             }
             return h(
@@ -19759,7 +20327,28 @@ ${tail}
             const artifacts = Array.isArray(stage.artifacts) ? stage.artifacts : []
             const summary = typeof stage.summary === 'string' ? stage.summary.trim() : ''
             const note = typeof stage.note === 'string' ? stage.note.trim() : ''
+            const isDesign = stage.id === 'design'
+            const designArtifacts = isDesign ? designArtifactsOf(stage) : []
+            const designHasImage = designArtifacts.some((artifact) => designArtifactKind(artifact) === 'image')
+            const designHasHtml = designArtifacts.some((artifact) => designArtifactKind(artifact) === 'html')
+            const designReviewing = isDesign && status === 'review'
             const actions = []
+            if (isDesign && designArtifacts.length > 0 && status !== 'active') {
+              actions.push(
+                h(
+                  'button',
+                  {
+                    key: 'preview-design',
+                    type: 'button',
+                    className: 'ds-btn ds-pipe-design-preview',
+                    disabled: pipelineBusy,
+                    onClick: () => openDesignPreview(''),
+                  },
+                  h(EyeIcon),
+                  t('pipeline.previewDesign'),
+                ),
+              )
+            }
             if (status === 'review') {
               actions.push(
                 h(
@@ -19799,7 +20388,12 @@ ${tail}
             }
             return h(
               'div',
-              { key: stage.id, className: 'ds-pipe-stage', 'data-status': status },
+              {
+                key: stage.id,
+                className: clsx('ds-pipe-stage', designReviewing ? 'ds-pipe-design-review' : undefined),
+                'data-status': status,
+                'data-design': isDesign ? 'true' : undefined,
+              },
               h(
                 'div',
                 { className: 'ds-pipe-stage-head' },
@@ -19821,10 +20415,31 @@ ${tail}
                 ),
                 h('span', { className: 'ds-pipe-status', 'data-status': status }, statusLabels[status]),
               ),
+              designReviewing
+                ? h(
+                    'div',
+                    { className: 'ds-pipe-design-banner', role: 'status' },
+                    h(
+                      'div',
+                      { className: 'ds-pipe-design-banner-head' },
+                      h('span', { className: 'ds-pipe-design-badge' }, t('pipeline.designPendingBadge')),
+                      h('span', { className: 'ds-pipe-design-count' }, t('pipeline.designPreviewCount', { n: String(designArtifacts.length) })),
+                    ),
+                    h('div', { className: 'ds-pipe-design-banner-title' }, t('pipeline.designPendingTitle')),
+                    h('div', { className: 'ds-pipe-design-banner-hint' }, t('pipeline.designPendingHint')),
+                  )
+                : null,
               summary.length > 0 ? h('div', { className: 'ds-pipe-summary' }, summary) : null,
               note.length > 0 ? h('div', { className: 'ds-pipe-note', 'data-tone': status === 'failed' ? undefined : 'info' }, note) : null,
               artifacts.length > 0
-                ? h('div', { className: 'ds-pipe-artifacts' }, artifacts.slice(0, 20).map((artifact) => renderArtifact(artifact)))
+                ? h(
+                    'div',
+                    { className: clsx('ds-pipe-artifacts', isDesign ? 'ds-pipe-design-shots' : undefined) },
+                    artifacts.slice(0, 20).map((artifact) => renderArtifact(artifact, { design: isDesign })),
+                  )
+                : null,
+              isDesign && designHasHtml && !designHasImage
+                ? h('div', { className: 'ds-hint ds-pipe-design-htmlonly' }, t('pipeline.designPreviewHtmlOnly'))
                 : null,
               h(
                 'div',
@@ -19940,15 +20555,18 @@ ${tail}
                   {
                     className: 'ds-pipe-todo',
                     'data-kind': reviewStage !== null ? 'review' : activeStage !== null ? 'active' : 'next',
+                    'data-design': ownerGateStage !== null && ownerGateStage.id === 'design' ? 'true' : undefined,
                   },
                   h(
                     'div',
                     { className: 'ds-pipe-todo-text' },
                     ownerGateStage !== null
-                      ? t('pipeline.reviewBanner', {
-                          n: String(stages.findIndex((stage) => stage !== null && stage.id === ownerGateStage.id) + 1),
-                          stage: stageTitles[ownerGateStage.id] ?? ownerGateStage.id,
-                        })
+                      ? ownerGateStage.id === 'design'
+                        ? t('pipeline.designPendingTitle')
+                        : t('pipeline.reviewBanner', {
+                            n: String(stages.findIndex((stage) => stage !== null && stage.id === ownerGateStage.id) + 1),
+                            stage: stageTitles[ownerGateStage.id] ?? ownerGateStage.id,
+                          })
                       : activeStage !== null
                         ? t('pipeline.activeBanner', { stage: stageTitles[activeStage.id] ?? activeStage.id })
                         : t('pipeline.nextBanner', { stage: stageTitles[actionableStage.id] ?? actionableStage.id }),
@@ -19960,6 +20578,19 @@ ${tail}
                       ? h(
                           React.Fragment,
                           null,
+                          ownerGateStage.id === 'design' && designArtifactsOf(ownerGateStage).length > 0
+                            ? h(
+                                'button',
+                                {
+                                  type: 'button',
+                                  className: 'ds-btn ds-pipe-design-preview',
+                                  disabled: pipelineBusy,
+                                  onClick: () => openDesignPreview(''),
+                                },
+                                h(EyeIcon),
+                                t('pipeline.previewDesign'),
+                              )
+                            : null,
                           h(
                             'button',
                             { type: 'button', className: 'ds-btn', disabled: pipelineBusy, onClick: () => void reviewPipelineStage(ownerGateStage.id, 'approve') },
@@ -19988,7 +20619,11 @@ ${tail}
                         onChange: (event) => setPipelineReviewNote(event.target.value),
                       })
                     : null,
-                  h('div', { className: 'ds-pipe-todo-hint' }, t('pipeline.bannerHint')),
+                  h(
+                    'div',
+                    { className: 'ds-pipe-todo-hint' },
+                    ownerGateStage !== null && ownerGateStage.id === 'design' ? t('pipeline.designPendingHint') : t('pipeline.bannerHint'),
+                  ),
                 )
               : null,
             h('div', { className: 'ds-pipe-scroll' },
@@ -21412,6 +22047,326 @@ h(
           )
         }
 
+        /**
+         * Design-gate preview dialog (D2): artifact tabs, 360/768/1280 widths,
+         * sandboxed iframe rendering, source fallback and the approve / reject
+         * actions that reuse reviewPipelineStage.
+         */
+        function renderDesignPreviewModal() {
+          if (designPreview === null) return null
+          const root = store.get().root
+          const doc = pipelineDoc !== null && typeof pipelineDoc === 'object' ? pipelineDoc : null
+          const stage = designStageOf(doc)
+          const status = stage !== null && typeof stage.status === 'string' ? stage.status : 'pending'
+          const statusText = {
+            pending: t('pipeline.status.pending'),
+            active: t('pipeline.status.active'),
+            review: t('pipeline.status.review'),
+            approved: t('pipeline.status.approved'),
+            failed: t('pipeline.status.failed'),
+          }
+          const round = doc !== null && Number.isInteger(doc.round) && doc.round > 0 ? doc.round : 1
+          const artifacts = designArtifactsOf(stage)
+          const tabs = artifacts
+            .filter((artifact) => designArtifactKind(artifact) === 'image' || designArtifactKind(artifact) === 'html')
+            .slice(0, 20)
+          const active = tabs.find((artifact) => artifact.path === designPreview.artifactPath) ?? tabs[0] ?? null
+          const activeKind = active === null ? 'empty' : designArtifactKind(active)
+          const reviewing = status === 'review'
+          const hasImage = artifacts.some((artifact) => designArtifactKind(artifact) === 'image')
+          const hasHtml = tabs.some((artifact) => designArtifactKind(artifact) === 'html')
+          const pillStatus = reviewing ? 'review' : status === 'approved' ? 'approved' : status === 'failed' ? 'failed' : 'pending'
+          const device = [360, 768, 1280].includes(designPreview.device) ? designPreview.device : 1280
+          const frameError = designPreviewError
+          const selectTab = (artifact) => {
+            setDesignPreviewActionError(null)
+            setDesignPreviewError(null)
+            setDesignPreviewLoading(true)
+            setDesignPreview((current) => (current === null ? current : { ...current, artifactPath: artifact.path }))
+          }
+          const retryFrame = () => {
+            setDesignPreviewError(null)
+            setDesignPreviewLoading(true)
+            setDesignPreviewNonce((current) => current + 1)
+          }
+          const openSource = () => {
+            if (active === null) return
+            const target = active.path
+            const kind = activeKind
+            closeDesignPreview(true)
+            if (kind === 'html') void openFileAt(target, 1, 1)
+            else void openFile(target)
+          }
+          return h(
+            'div',
+            {
+              className: 'ds-modal-backdrop ds-dp-backdrop',
+              onPointerDown: (event) => {
+                if (event.target === event.currentTarget) closeDesignPreview()
+              },
+            },
+            h(
+              'div',
+              {
+                className: 'ds-modal ds-dp',
+                role: 'dialog',
+                'aria-modal': true,
+                'aria-labelledby': 'ds-dp-title',
+                ...(reviewing ? { 'aria-describedby': 'ds-dp-banner' } : {}),
+              },
+              h(
+                'div',
+                { className: 'ds-dp-head' },
+                h(
+                  'div',
+                  { className: 'ds-dp-head-main' },
+                  h(
+                    'div',
+                    { className: 'ds-dp-title-row' },
+                    h('h2', { className: 'ds-dp-title', id: 'ds-dp-title' }, t('pipeline.designPreviewTitle')),
+                    h('span', { className: 'ds-dp-pill', 'data-status': pillStatus }, statusText[status] ?? status),
+                  ),
+                  h(
+                    'div',
+                    { className: 'ds-dp-meta' },
+                    t('pipeline.round', { round: String(round) }),
+                    ' · ',
+                    t('pipeline.stage.design'),
+                    ' · ',
+                    t('pipeline.designPreviewCount', { n: String(artifacts.length) }),
+                  ),
+                ),
+                h(
+                  'button',
+                  {
+                    ref: designPreviewCloseRef,
+                    type: 'button',
+                    className: 'ds-dp-close',
+                    title: t('action.close'),
+                    'aria-label': t('action.close'),
+                    onClick: () => closeDesignPreview(),
+                  },
+                  h(CloseIcon),
+                ),
+              ),
+              reviewing
+                ? h(
+                    'div',
+                    { className: 'ds-dp-banner', id: 'ds-dp-banner', role: 'status' },
+                    h('span', { className: 'ds-dp-banner-icon', 'aria-hidden': true }, '⚠'),
+                    h(
+                      'div',
+                      { className: 'ds-dp-banner-body' },
+                      h('div', { className: 'ds-dp-banner-title' }, t('pipeline.designPendingTitle')),
+                      h('div', { className: 'ds-dp-banner-hint' }, t('pipeline.designPendingHint')),
+                    ),
+                    h('span', { className: 'ds-dp-banner-count' }, t('pipeline.designPreviewCount', { n: String(artifacts.length) })),
+                  )
+                : null,
+              h(
+                'div',
+                { className: 'ds-dp-toolbar' },
+                tabs.length === 0
+                  ? null
+                  : h(
+                      'div',
+                      { className: 'ds-dp-tabs', role: 'tablist', 'aria-label': t('pipeline.stage.design') },
+                      tabs.map((artifact) => {
+                        const kind = designArtifactKind(artifact)
+                        const selected = active !== null && artifact.path === active.path
+                        return h(
+                          'button',
+                          {
+                            key: artifact.path,
+                            type: 'button',
+                            role: 'tab',
+                            className: 'ds-dp-tab',
+                            'data-active': selected ? 'true' : undefined,
+                            'aria-selected': selected,
+                            title: artifact.path,
+                            onClick: () => {
+                              if (!selected) selectTab(artifact)
+                            },
+                          },
+                          kind === 'html' ? t('pipeline.designPreviewHtml') : t('pipeline.designPreviewImage'),
+                          h('span', { className: 'ds-dp-tab-name' }, artifactLabel(artifact)),
+                        )
+                      }),
+                    ),
+                h('span', { className: 'ds-spacer' }),
+                tabs.length === 0
+                  ? null
+                  : h(
+                      'div',
+                      { className: 'ds-dp-devices', role: 'group', 'aria-label': t('pipeline.designPreviewDevice') },
+                      [360, 768, 1280].map((width) =>
+                        h(
+                          'button',
+                          {
+                            key: String(width),
+                            type: 'button',
+                            className: 'ds-dp-device',
+                            'data-active': device === width ? 'true' : undefined,
+                            'aria-pressed': device === width,
+                            onClick: () => {
+                              if (device !== width) {
+                                setDesignPreview((current) => (current === null ? current : { ...current, device: width }))
+                              }
+                            },
+                          },
+                          String(width),
+                        ),
+                      ),
+                    ),
+                active === null
+                  ? null
+                  : h(
+                      'button',
+                      { type: 'button', className: 'ds-linkbtn ds-dp-source', onClick: openSource },
+                      h(CodeIcon),
+                      t('pipeline.designPreviewSource'),
+                    ),
+              ),
+              h(
+                'div',
+                { className: 'ds-dp-canvas', 'data-device': String(device), 'aria-busy': designPreviewLoading ? 'true' : undefined },
+                tabs.length === 0 || active === null
+                  ? h(
+                      'div',
+                      { className: 'ds-empty ds-dp-empty' },
+                      h('div', { className: 'ds-empty-title' }, t('pipeline.designPreviewEmpty')),
+                      h('div', { className: 'ds-empty-text' }, t('workbench.designEmpty')),
+                    )
+                  : root === null
+                    ? h('div', { className: 'ds-empty ds-dp-empty' }, h('div', { className: 'ds-empty-title' }, t('pipeline.needRoot')))
+                    : frameError !== null
+                      ? h(
+                          'div',
+                          { className: 'ds-empty ds-empty-error ds-dp-error' },
+                          h('div', { className: 'ds-empty-title' }, t('pipeline.designPreviewError')),
+                          h('div', { className: 'ds-empty-text' }, t('pipeline.designPreviewErrorHint')),
+                          frameError.message.length > 0 ? h('div', { className: 'ds-empty-text' }, frameError.message) : null,
+                          h(
+                            'div',
+                            { className: 'ds-empty-actions' },
+                            h('button', { type: 'button', className: 'ds-btn', onClick: retryFrame }, h(RefreshIcon), t('pipeline.designPreviewRetry')),
+                            h('button', { type: 'button', className: 'ds-btn', onClick: openSource }, h(CodeIcon), t('pipeline.designPreviewSource')),
+                          ),
+                        )
+                      : h(
+                          'div',
+                          { className: 'ds-dp-frame', style: { width: `${String(device)}px` } },
+                          activeKind === 'html'
+                            ? h('iframe', {
+                                key: `${active.path}:${String(designPreviewNonce)}`,
+                                className: 'ds-dp-iframe',
+                                src: rawUrl(root, active.path),
+                                title: `${t('pipeline.designPreviewTitle')}: ${active.path}`,
+                                sandbox: '',
+                                loading: 'lazy',
+                                onLoad: () => {
+                                  setDesignPreviewLoading(false)
+                                  setDesignPreviewError(null)
+                                },
+                                onError: () => {
+                                  setDesignPreviewLoading(false)
+                                  setDesignPreviewError({ path: active.path, message: '' })
+                                },
+                              })
+                            : h(
+                                'button',
+                                {
+                                  type: 'button',
+                                  className: 'ds-dp-image-btn',
+                                  title: active.path,
+                                  'aria-label': artifactLabel(active),
+                                  onClick: openSource,
+                                },
+                                h('img', {
+                                  key: `${active.path}:${String(designPreviewNonce)}`,
+                                  className: 'ds-dp-image',
+                                  src: rawUrl(root, active.path),
+                                  alt: artifactLabel(active),
+                                  loading: 'lazy',
+                                  onLoad: () => {
+                                    setDesignPreviewLoading(false)
+                                    setDesignPreviewError(null)
+                                  },
+                                  onError: () => {
+                                    setDesignPreviewLoading(false)
+                                    setDesignPreviewError({ path: active.path, message: '' })
+                                  },
+                                }),
+                              ),
+                        ),
+                designPreviewLoading && frameError === null && tabs.length > 0
+                  ? h(
+                      'div',
+                      { className: 'ds-dp-loading', 'aria-live': 'polite' },
+                      h('span', { className: 'ds-spinner' }),
+                      t('pipeline.designPreviewLoading'),
+                    )
+                  : null,
+              ),
+              h(
+                'div',
+                { className: 'ds-dp-foot' },
+                designPreviewActionError !== null ? h('div', { className: 'ds-errorline ds-dp-action-error' }, designPreviewActionError) : null,
+                !hasImage && hasHtml
+                  ? h('div', { className: 'ds-hint ds-dp-htmlonly' }, t('pipeline.designPreviewHtmlOnly'))
+                  : null,
+                reviewing
+                  ? h(
+                      React.Fragment,
+                      null,
+                      h('input', {
+                        className: 'ds-pipe-input ds-dp-note',
+                        value: pipelineReviewNote,
+                        placeholder: t('pipeline.designPreviewRejectReason'),
+                        spellCheck: false,
+                        'aria-label': t('pipeline.designPreviewRejectReason'),
+                        onChange: (event) => setPipelineReviewNote(event.target.value),
+                      }),
+                      h(
+                        'div',
+                        { className: 'ds-dp-actions' },
+                        h('span', { className: 'ds-dp-esc' }, t('pipeline.designPreviewEsc')),
+                        h('span', { className: 'ds-spacer' }),
+                        h(
+                          'button',
+                          {
+                            type: 'button',
+                            className: 'ds-btn ds-dp-reject',
+                            disabled: pipelineBusy,
+                            onClick: () => void reviewDesignFromPreview('reject'),
+                          },
+                          pipelineBusy ? t('pipeline.designPreviewBusy') : t('pipeline.designPreviewReject'),
+                        ),
+                        h(
+                          'button',
+                          {
+                            type: 'button',
+                            className: 'ds-btn ds-btn-primary ds-dp-confirm',
+                            disabled: pipelineBusy,
+                            onClick: () => void reviewDesignFromPreview('approve'),
+                          },
+                          pipelineBusy ? t('pipeline.designPreviewBusy') : t('pipeline.designPreviewConfirm'),
+                        ),
+                      ),
+                    )
+                  : h(
+                      'div',
+                      { className: 'ds-dp-actions' },
+                      h('span', { className: 'ds-dp-esc' }, t('pipeline.designPreviewNotReview')),
+                      h('span', { className: 'ds-spacer' }),
+                      h('button', { type: 'button', className: 'ds-btn', onClick: () => closeDesignPreview() }, t('action.close')),
+                    ),
+              ),
+            ),
+          )
+        }
+
+
         const tabMenuTab = tabMenu === null ? null : state.tabs.find((tab) => tab.path === tabMenu.path) ?? null
         const tabMenuIndex = tabMenuTab === null ? -1 : state.tabs.indexOf(tabMenuTab)
         const segments = activeTab === null || activeTab.mode === 'diff' || activeTab.mode === 'browser' || activeTab.mode === 'terminal' ? [] : breadcrumbSegments(activeTab)
@@ -22789,6 +23744,7 @@ h(
                   ),
                 ),
               ),
+          renderDesignPreviewModal(),
           renderAgentModal(),
           renderPalette(),
           toast === null ? null : h('div', { className: 'ds-toast', role: 'status' }, toast),
@@ -27226,6 +28182,432 @@ h(
   border-right: 1.5px solid var(--dsw-alias-label-caption);
   border-bottom: 1.5px solid var(--dsw-alias-label-caption);
   opacity: 0.75;
+}
+
+/* ================================================================== *
+ * v1.2.83 design confirmation gate + design preview (D1-D4)
+ * ================================================================== */
+/* ---------- D1 · pipeline design card ---------- */
+.ds-pipe-stage.ds-pipe-design-review {
+  border-color: var(--dsw-alias-state-warn-primary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--dsw-alias-state-warn-primary) 26%, transparent);
+}
+.ds-pipe-design-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 6px 0 3px;
+  padding: 7px 8px;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-state-warn-primary) 45%, var(--dsw-alias-border-l1));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 12%, var(--dsw-alias-bg-layer-1));
+}
+.ds-pipe-design-banner-head { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
+.ds-pipe-design-badge {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--dsw-alias-state-warn-primary);
+  color: #fff;
+  font-size: 8.5px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.ds-pipe-design-count { color: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 70%, var(--dsw-alias-label-primary)); font-size: 9px; font-weight: 600; }
+.ds-pipe-design-banner-title { color: var(--dsw-alias-label-primary); font-size: 10.5px; font-weight: 700; line-height: 1.35; }
+.ds-pipe-design-banner-hint { color: var(--dsw-alias-label-secondary); font-size: 9px; line-height: 1.4; }
+.ds-pipe-design-shots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; width: 100%; }
+.ds-pipe-design-shots .ds-pipe-shot { width: auto; margin: 0; }
+.ds-pipe-design-shots .ds-pipe-shot img { height: 52px; }
+.ds-pipe-design-shots .ds-pipe-shot-label { font-size: 8.5px; }
+.ds-pipe-html-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: 100%;
+  padding: 2px 0;
+  border-bottom: 1px dashed color-mix(in srgb, var(--dsw-alias-border-l1) 70%, transparent);
+  grid-column: 1 / -1;
+}
+.ds-pipe-html-label {
+  flex: 1 1 100%;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ds-pipe-html-row .ds-linkbtn { display: inline-flex; align-items: center; gap: 3px; margin: 0; font-size: 9.5px; }
+.ds-pipe-html-preview { color: var(--dsw-alias-brand-primary); font-weight: 600; }
+.ds-pipe-html-row svg { width: 11px; height: 11px; }
+.ds-pipe-design-htmlonly { margin-top: 3px; font-size: 9px; line-height: 1.45; }
+.ds-pipe-stage[data-design="true"] .ds-pipe-actions .ds-btn { min-height: 44px; }
+.ds-pipe-todo[data-design="true"] .ds-btn { min-height: 44px; }
+.ds-pipe-stage[data-design="true"] .ds-btn:focus-visible,
+.ds-pipe-stage[data-design="true"] .ds-linkbtn:focus-visible,
+.ds-pipe-stage[data-design="true"] .ds-pipe-shot:focus-visible,
+.ds-pipe-todo[data-design="true"] :focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 2px;
+}
+
+/* ---------- D2 · design preview dialog ---------- */
+.ds-dp-backdrop {
+  z-index: 1320;
+  padding: 24px;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 52%, transparent);
+  backdrop-filter: blur(2.5px);
+}
+.ds-modal.ds-dp {
+  --dp-warn: var(--dsw-alias-state-warn-primary);
+  --dp-ok: var(--dsw-alias-state-success-primary);
+  --dp-err: var(--dsw-alias-state-error-primary);
+  --dp-brand: var(--dsw-alias-brand-primary);
+  --dp-line: var(--dsw-alias-border-l1);
+  --dp-ink: var(--dsw-alias-label-primary);
+  --dp-ink-2: var(--dsw-alias-label-secondary);
+  --dp-ink-3: var(--dsw-alias-label-caption);
+  display: flex;
+  flex-direction: column;
+  width: min(1240px, 92vw);
+  height: min(840px, 92vh);
+  max-height: min(840px, 92vh);
+  padding: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--dsw-alias-bg-base);
+}
+.ds-dp-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex: 0 0 auto;
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid var(--dp-line);
+}
+.ds-dp-head-main { display: flex; flex: 1 1 auto; flex-direction: column; gap: 4px; min-width: 0; }
+.ds-dp-title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; min-width: 0; }
+.ds-dp-title { margin: 0; color: var(--dp-ink); font-size: 20px; font-weight: 700; line-height: 1.2; }
+.ds-dp-meta { color: var(--dp-ink-3); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+.ds-dp-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border: 1px solid var(--dp-line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-2) 70%, transparent);
+  color: var(--dp-ink-2);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ds-dp-pill[data-status="review"] { border-color: color-mix(in srgb, var(--dp-warn) 38%, transparent); background: color-mix(in srgb, var(--dp-warn) 14%, transparent); color: var(--dp-warn); }
+.ds-dp-pill[data-status="approved"] { border-color: color-mix(in srgb, var(--dp-ok) 34%, transparent); background: color-mix(in srgb, var(--dp-ok) 12%, transparent); color: var(--dp-ok); }
+.ds-dp-pill[data-status="failed"] { border-color: color-mix(in srgb, var(--dp-err) 34%, transparent); background: color-mix(in srgb, var(--dp-err) 12%, transparent); color: var(--dp-err); }
+.ds-dp-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--dp-line);
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dp-ink-2);
+  cursor: pointer;
+  transition: border-color 160ms cubic-bezier(0.2, 0.7, 0.3, 1), color 160ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.ds-dp-close:hover { border-color: color-mix(in srgb, var(--dp-warn) 45%, var(--dp-line)); color: var(--dp-ink); }
+.ds-dp-close:focus-visible,
+.ds-dp-tab:focus-visible,
+.ds-dp-device:focus-visible,
+.ds-dp-source:focus-visible,
+.ds-dp :is(.ds-btn, .ds-linkbtn, .ds-iconbtn, input):focus-visible {
+  outline: 2px solid var(--dp-brand);
+  outline-offset: 2px;
+}
+.ds-dp-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex: 0 0 auto;
+  margin: 12px 20px 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--dp-warn) 45%, var(--dp-line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--dp-warn) 12%, var(--dsw-alias-bg-layer-1));
+}
+.ds-dp-banner-icon { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: color-mix(in srgb, var(--dp-warn) 22%, transparent); color: var(--dp-warn); font-size: 11px; font-weight: 700; }
+.ds-dp-banner-body { display: flex; flex: 1 1 auto; flex-direction: column; gap: 2px; min-width: 0; }
+.ds-dp-banner-title { color: color-mix(in srgb, var(--dp-warn) 65%, var(--dp-ink)); font-size: 12.5px; font-weight: 700; line-height: 1.35; }
+.ds-dp-banner-hint { color: var(--dp-ink-2); font-size: 11px; line-height: 1.45; }
+.ds-dp-banner-count { flex: 0 0 auto; padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, var(--dp-warn) 18%, transparent); color: color-mix(in srgb, var(--dp-warn) 70%, var(--dp-ink)); font-size: 10.5px; font-weight: 600; line-height: 1.6; }
+.ds-dp-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--dp-line);
+}
+.ds-dp-tabs { display: flex; align-items: center; gap: 4px; min-width: 0; max-width: 100%; overflow-x: auto; }
+.ds-dp-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  height: 36px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dp-ink-2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 160ms cubic-bezier(0.2, 0.7, 0.3, 1), background 160ms cubic-bezier(0.2, 0.7, 0.3, 1), color 160ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.ds-dp-tab:hover { background: var(--dsw-alias-bg-layer-2); }
+.ds-dp-tab[data-active="true"] {
+  border-color: color-mix(in srgb, var(--dp-brand) 55%, var(--dp-line));
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dp-brand);
+  font-weight: 700;
+}
+.ds-dp-tab-name { max-width: 150px; overflow: hidden; color: var(--dp-ink-3); font-size: 10.5px; font-weight: 400; text-overflow: ellipsis; }
+.ds-dp-devices { display: inline-flex; align-items: center; gap: 2px; padding: 4px; border: 1px solid var(--dp-line); border-radius: 9px; background: var(--dsw-alias-bg-layer-2); }
+.ds-dp-device {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  min-width: 52px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dp-ink-2);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 160ms cubic-bezier(0.2, 0.7, 0.3, 1), color 160ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.ds-dp-device:hover { background: color-mix(in srgb, var(--dp-ink-2) 10%, transparent); }
+.ds-dp-device[data-active="true"] { background: var(--dsw-alias-bg-base); color: var(--dp-ink); box-shadow: 0 0 0 1px var(--dp-line), 0 1px 2px color-mix(in srgb, var(--dp-ink) 12%, transparent); }
+.ds-dp-source { display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; margin: 0; font-size: 12px; }
+.ds-dp-source svg { width: 13px; height: 13px; }
+.ds-dp-canvas {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: safe center;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 12px;
+  padding: 16px;
+  overflow: auto;
+  background:
+    radial-gradient(900px 320px at 20% 0%, color-mix(in srgb, var(--dp-brand) 5%, transparent), transparent 70%),
+    color-mix(in srgb, var(--dsw-alias-bg-layer-2) 60%, var(--dsw-alias-bg-base));
+}
+.ds-dp-frame {
+  flex: 0 0 auto;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid var(--dp-line);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--dp-ink) 10%, transparent), 0 18px 40px -26px color-mix(in srgb, var(--dp-ink) 32%, transparent);
+}
+.ds-dp-iframe { display: block; width: 100%; height: 640px; border: 0; background: #fff; }
+.ds-dp-image-btn { display: block; width: 100%; margin: 0; padding: 0; border: 0; background: transparent; cursor: zoom-in; }
+.ds-dp-image { display: block; width: 100%; height: auto; }
+.ds-dp-empty { flex: 1 1 auto; align-self: stretch; }
+.ds-dp-error { margin: auto; }
+.ds-dp-loading {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--dp-line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--dsw-alias-bg-overlay) 94%, transparent);
+  color: var(--dp-ink-2);
+  font-size: 12px;
+  box-shadow: 0 10px 30px -18px color-mix(in srgb, var(--dp-ink) 30%, transparent);
+  transform: translate(-50%, -50%);
+}
+.ds-dp-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--dp-line);
+  background: var(--dsw-alias-bg-layer-1);
+}
+.ds-dp-note { width: 100%; box-sizing: border-box; min-height: 36px; }
+.ds-dp-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.ds-dp-actions .ds-btn { min-height: 44px; font-size: 13px; font-weight: 600; }
+.ds-dp-reject { border-color: color-mix(in srgb, var(--dp-err) 45%, var(--dp-line)); color: var(--dp-err); }
+.ds-dp-reject:hover:not(:disabled) { background: color-mix(in srgb, var(--dp-err) 8%, transparent); }
+.ds-dp-confirm { min-width: 192px; }
+.ds-dp-confirm:disabled, .ds-dp-reject:disabled { opacity: 0.45; cursor: not-allowed; }
+.ds-dp-esc { color: var(--dp-ink-3); font-size: 10.5px; line-height: 1.4; }
+.ds-dp-htmlonly { font-size: 11px; }
+.ds-dp-action-error { margin: 0; }
+
+/* ---------- D3 · workbench design card ---------- */
+.ds-wb-hero-design-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  grid-column: 1 / -1;
+  padding: 8px 10px;
+  border: 1px solid rgba(252, 211, 77, 0.5);
+  border-radius: 10px;
+  background: rgba(252, 211, 77, 0.12);
+  color: #fcd34d;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.ds-wb-hero-design-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(252, 211, 77, 0.22);
+  font-size: 11px;
+  font-weight: 700;
+}
+.ds-wb-hero-design-text { min-width: 0; overflow-wrap: anywhere; }
+.ds-wb-design-review { border-color: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 48%, var(--dsw-alias-border-l1)); }
+.ds-wb-design-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 16%, transparent);
+  color: var(--dsw-alias-state-warn-primary);
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ds-wb-design-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-state-warn-primary) 42%, var(--dsw-alias-border-l1));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 10%, var(--dsw-alias-bg-layer-1));
+}
+.ds-wb-design-banner-icon { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 20%, transparent); color: var(--dsw-alias-state-warn-primary); font-size: 11px; font-weight: 700; }
+.ds-wb-design-banner-body { display: flex; flex: 1 1 auto; flex-direction: column; gap: 2px; min-width: 0; }
+.ds-wb-design-banner-title { color: var(--dsw-alias-label-primary); font-size: 12px; font-weight: 700; line-height: 1.4; }
+.ds-wb-design-banner-hint { color: var(--dsw-alias-label-secondary); font-size: 10.5px; line-height: 1.45; }
+.ds-wb-design-count { flex: 0 0 auto; padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 16%, transparent); color: var(--dsw-alias-state-warn-primary); font-size: 10.5px; font-weight: 600; line-height: 1.6; }
+.ds-wb-design-htmls { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 8px; }
+.ds-wb-design-html { display: inline-flex; align-items: center; gap: 4px; margin: 0; }
+.ds-wb-design-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.ds-wb-design-actions .ds-btn { min-height: 44px; }
+.ds-wb-design-note { width: 100%; box-sizing: border-box; margin-top: 8px; min-height: 40px; }
+.ds-wb-design-empty { margin-top: 4px; }
+.ds-wb-design-htmlonly { margin-top: 6px; }
+
+/* ---------- D4 · inline HTML file preview ---------- */
+.ds-htmlpreview { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; background: var(--dsw-alias-bg-layer-2); }
+.ds-htmlpreview-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-alias-bg-layer-1);
+}
+.ds-htmlpreview-url { flex: 1 1 auto; min-width: 0; overflow: hidden; color: var(--dsw-alias-label-caption); font-family: var(--ds-mono); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.ds-htmlpreview-loading { display: inline-flex; align-items: center; gap: 6px; color: var(--dsw-alias-label-caption); font-size: 10.5px; }
+.ds-htmlpreview .ds-empty { flex: 1 1 auto; }
+.ds-htmlpreview-frame { flex: 1 1 auto; width: 100%; min-height: 360px; border: 0; background: #fff; }
+.ds-htmlpreview-hint {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border-top: 1px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-caption);
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+/* ---------- responsive: 360 / 768 / 1280 ---------- */
+@media (max-width: 1023px) {
+  .ds-dp-backdrop { padding: 12px; }
+  .ds-modal.ds-dp { width: 92vw; height: 92vh; max-height: 92vh; }
+  .ds-dp-head { padding: 14px 16px 12px; }
+  .ds-dp-banner { margin: 10px 16px 0; }
+  .ds-dp-toolbar { gap: 6px; padding: 8px 16px; }
+  .ds-dp-canvas { padding: 12px; }
+  .ds-dp-iframe { height: 560px; }
+  .ds-dp-foot { padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); }
+  .ds-wb-design-banner { flex-wrap: wrap; }
+}
+@media (max-width: 700px) {
+  .ds-dp-backdrop { padding: 0; }
+  .ds-modal.ds-dp {
+    width: 100vw;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+  .ds-dp-head { flex-wrap: wrap; padding: 12px 12px 10px; }
+  .ds-dp-title { font-size: 17px; }
+  .ds-dp-close { width: 44px; height: 44px; }
+  .ds-dp-banner { margin: 8px 12px 0; padding: 8px 10px; flex-wrap: wrap; }
+  .ds-dp-banner-count { order: 3; }
+  .ds-dp-toolbar { flex-wrap: wrap; padding: 8px 12px; }
+  .ds-dp-tabs { flex: 1 1 100%; overflow-x: auto; }
+  .ds-dp-tab { height: 44px; }
+  .ds-dp-devices { width: 100%; justify-content: space-between; }
+  .ds-dp-device { flex: 1 1 0; height: 44px; min-width: 0; }
+  .ds-dp-source { margin-left: auto; min-height: 44px; }
+  .ds-dp-canvas { padding: 10px; justify-content: safe center; }
+  .ds-dp-frame { max-width: 100%; }
+  .ds-dp-iframe { height: 480px; }
+  .ds-dp-foot { padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); }
+  .ds-dp-actions { gap: 8px; }
+  .ds-dp-actions .ds-btn { min-height: 48px; }
+  .ds-dp-confirm { flex: 1 1 100%; min-width: 0; order: 3; }
+  .ds-dp-reject { flex: 1 1 auto; order: 2; }
+  .ds-dp-esc { flex: 1 1 100%; order: 1; }
+  .ds-wb-design-actions { flex-wrap: wrap; }
+  .ds-wb-design-actions .ds-btn { min-height: 48px; }
+  .ds-pipe-stage[data-design="true"] .ds-pipe-actions .ds-btn,
+  .ds-pipe-todo[data-design="true"] .ds-btn { min-height: 48px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-dp *,
+  .ds-dp *::before,
+  .ds-dp *::after,
+  .ds-wb-design-banner,
+  .ds-pipe-design-banner { transition: none !important; animation: none !important; }
 }
 `
 

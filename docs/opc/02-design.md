@@ -42,7 +42,9 @@
 - 正文：`docs/pipeline/design.md`；资源：`docs/pipeline/design/`（PNG/JPG/SVG/HTML）。
 - 命名：`<页面>-<状态>-<设备>.<ext>`（如 `preview-share-empty-mobile.png`）；HTML 预览可独立打开。
 - `docs/` 随 Git 进交付；`.dsh/evidence/` 只放测试证据，设计稿不放那里。
-- 每个关键页面至少 1 张图或 1 个 HTML 预览；**无 UI 变更**时也要写正文说明原因并给出本轮渲染证据（SVG/HTML/截图），不能空提交。
+- 每个关键页面至少 1 张**可直接查看的截图**（PNG/JPG/SVG/WebP）；HTML 预览只能作为可预览补充，不能替代截图（缺截图时 pipeline 会出现 design-no-image warning）。
+- **设计确认闸门（v1.2.83）**：design 提交后停在 review，Owner 会在流水线/工作台看截图或 HTML 渲染预览并点通过，development 才能启动；不要只交 HTML 源码或让 Owner 看源码。
+- **无 UI 变更**时也要写正文说明原因并给出本轮渲染证据（SVG/HTML/截图），不能空提交。
 
 **设计说明模板 v2（复制后替换占位符；在 v1.2.33 模板上新增调研、tokens、状态矩阵、评分、迭代）**
 
