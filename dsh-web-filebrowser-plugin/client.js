@@ -819,6 +819,7 @@ window.__ModuleLoader__.load({
       'acceptance.delete': '删除',
       'acceptance.report': '导出验收报告',
       'acceptance.pack': '打包交付（zip）',
+      'acceptance.packing': '打包中…',
       'acceptance.packConfirmTitle': '打包交付物？',
       'acceptance.packConfirmMessage': '将把构建产物与当前验收报告打包到 .dsh/deliveries/（不会上传或发布）。',
       'acceptance.packConfirmPending': '还有 {pending} 项验收未完成；仍要打包吗？',
@@ -2049,6 +2050,7 @@ window.__ModuleLoader__.load({
       'acceptance.delete': 'Delete',
       'acceptance.report': 'Export acceptance report',
       'acceptance.pack': 'Pack delivery (zip)',
+      'acceptance.packing': 'Packing…',
       'acceptance.packConfirmTitle': 'Pack the deliverable?',
       'acceptance.packConfirmMessage': 'Build outputs and the current acceptance report will be packed into .dsh/deliveries/ (no upload or release).',
       'acceptance.packConfirmPending': '{pending} acceptance item(s) are still open. Pack anyway?',
@@ -11664,13 +11666,13 @@ ${tail}
         async function runPackDelivery() {
           const targetRoot = store.get().root
           if (targetRoot === null) return
+          // Packaging must not touch the pipeline snapshot: the workbench decides
+          // between the project view and the "需求录入" intake view from
+          // `pipelineDoc`, so clearing it collapses the page (and its scroll
+          // position jumps to the top) until the next poll restores the doc.
           setDeliveryBusy(true)
           setAcceptanceError(null)
           setDeliveryBundle(null)
-          setPipelineDoc(null)
-          setPipelineError(null)
-          setPipelineEditing(false)
-          setPipelineReviewNote('')
           try {
             let reportMarkdown
             try {
@@ -17333,7 +17335,7 @@ ${tail}
                 h(
                   'button',
                   { type: 'button', className: 'ds-btn', disabled: deliveryBusy, onClick: () => void packDeliveryBundle() },
-                  deliveryBusy ? t('acceptance.saving') : t('acceptance.pack'),
+                  deliveryBusy ? t('acceptance.packing') : t('acceptance.pack'),
                 ),
                 h('button', { type: 'button', className: 'ds-btn', onClick: () => downloadBuildZip() }, t('acceptance.buildZip')),
               ),
@@ -18187,7 +18189,7 @@ ${tail}
               h(
                 'button',
                 { type: 'button', className: 'ds-btn ds-wb-btn', disabled: deliveryBusy, onClick: () => void packDeliveryBundle() },
-                deliveryBusy ? t('acceptance.saving') : t('workbench.pack'),
+                deliveryBusy ? t('acceptance.packing') : t('workbench.pack'),
               ),
               latestDelivery === null
                 ? null

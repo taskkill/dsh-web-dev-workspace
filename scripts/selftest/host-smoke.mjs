@@ -1141,6 +1141,29 @@ try {
     }
   })
 
+  await test('packaging keeps the pipeline snapshot so the workbench does not collapse to the intake view', async () => {
+    // Regression: runPackDelivery() used to clear pipelineDoc/pipelineError right
+    // before packaging. The workbench derives `hasProject` from
+    // pipelineDoc.requirement.title, so the page collapsed to the "需求录入"
+    // intake card and its scroll position jumped to the top until the next poll.
+    const clientSource = await fsp.readFile(new URL('../../dsh-web-filebrowser-plugin/client.js', import.meta.url), 'utf8')
+    const start = clientSource.indexOf('async function runPackDelivery()')
+    assert.ok(start > 0, 'client.js must define runPackDelivery()')
+    const end = clientSource.indexOf('/** Download a previously written delivery bundle', start)
+    assert.ok(end > start, 'runPackDelivery() body end must be found')
+    const body = clientSource.slice(start, end)
+    assert.equal(body.includes('setPipelineDoc('), false, 'packaging must not clear pipelineDoc')
+    assert.equal(body.includes('setPipelineError('), false, 'packaging must not clear the pipeline error state')
+    assert.equal(body.includes('setPipelineEditing('), false, 'packaging must not reset the pipeline editor')
+    assert.ok(body.includes('setDeliveryBusy(true)'), 'packaging must expose its busy state')
+    assert.ok(body.includes('loadDeliveryHistory()'), 'packaging must refresh the delivery history')
+    // The busy indicator must say "packing", not the generic "saving".
+    assert.ok(clientSource.includes("'acceptance.packing': '打包中…'"))
+    assert.ok(clientSource.includes("'acceptance.packing': 'Packing…'"))
+    assert.ok(clientSource.split("t('acceptance.packing')").length - 1 >= 2, 'both pack buttons use the packing label')
+    assert.equal(clientSource.includes("deliveryBusy ? t('acceptance.saving')"), false, 'no pack button falls back to the saving label')
+  })
+
 } finally {
   for (const root of roots) {
     await fsp.rm(root, { recursive: true, force: true }).catch(() => {})
