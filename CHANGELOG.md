@@ -2,6 +2,49 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.73 — 2026-10-27
+
+### Research-first, professional-quality agent capabilities
+
+- The three executing role agents now carry an explicit **research → borrow →
+  implement** discipline in both their stage prompts (`pipeline.js`
+  `STAGE_GUIDES`) and their handbooks (`docs/opc/01-product.md`,
+  `02-design.md`, `03-engineering.md`), and the acceptance review checks the
+  resulting evidence:
+  - **Product manager** — research ≥3 comparable requirements, industry standards
+    or design systems with `web_search`/`web_fetch`, record sources (URL + date +
+    takeaway), add a 「调研与借鉴」 section and a borrow/adopt decision table to the
+    PRD, separate proven patterns from new hypotheses, and never fabricate sources
+    (no network → mark blocked).
+  - **UI designer** — research ≥2 design systems/competitors, deliver against nine
+    hard standards (4/8px spacing grid, type scale and line height, token-based
+    contrast 4.5:1 / 3:1, 44×44 hit targets, eight-state matrix, 360/768/1280
+    responsive, 150–300ms motion with `prefers-reduced-motion`, keyboard/ARIA,
+    visual consistency), run the Nielsen 10 usability checklist, self-score on five
+    dimensions (each ≥3, average ≥4), and complete at least one
+    render → inspect → refine iteration.
+  - **Full-stack engineer** — for unfamiliar functionality, research ≥2 actively
+    maintained GitHub candidates with clear licenses, compare implementation
+    approaches, dependencies, activity, known issues and CVEs, then decide between
+    borrowing code, borrowing the pattern, or implementing from scratch. License
+    matrix: MIT/Apache-2.0/BSD/ISC may be reused with attribution; MPL/LGPL need
+    case-by-case review; GPL/AGPL/unlicensed code may not be copied (patterns
+    only). Record the comparison and sources in
+    `docs/pipeline/engineering-research.md`, add provenance/attribution for any
+    borrowed code, and keep reliability, security and performance checks (tests,
+    error handling, dependency audit and maintenance review, pinned versions,
+    input validation, measurements).
+- The acceptance stage prompt requires the project-manager agent to verify these
+  artefacts (research sources and decision tables, design score/state matrix/
+  contrast/iteration evidence, engineering research and license notes) and to
+  recommend a send-back with the right rollback stage when they are missing.
+- `PIPELINE_SECTION` (the system-prompt guide) now states the research-and-borrow
+  rule, and `docs/AGENT_TEAM.md`, `docs/PLAYBOOK.md`, the READMEs and the
+  acceptance test batch 11 describe the new capability bar.
+- Tests: `npm run check` and `npm test` stay green; the pipeline selftest asserts
+  the required research, design-quality and licensing/security keywords in the
+  stage prompts and handbooks. Version bumped to 1.2.73.
+
 ## 1.2.72 — 2026-10-26
 
 ### Dual-review mode: project-manager agent acceptance gate

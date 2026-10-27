@@ -55,13 +55,15 @@ Lead 收到后会：
 
 | 阶段 | 角色 | 面板 / 工具 | 产物（默认路径） |
 |---|---|---|---|
-| product | 产品经理 | 流水线 + `acceptance_add` | `docs/pipeline/requirements.md` + 验收项 |
-| design | UI 设计师 | 流水线 + 编辑器/浏览器 | `docs/pipeline/design.md` + `docs/pipeline/design/` |
-| development | 全栈开发 | 任务面板 + Problems + Git | 代码 + 构建/测试记录 |
+| product | 产品经理 | 流水线 + `acceptance_add` + `web_search`/`web_fetch` | `docs/pipeline/requirements.md`（含调研与借鉴决策表）+ 验收项 |
+| design | UI 设计师 | 流水线 + 编辑器/浏览器 + 设计规范调研 | `docs/pipeline/design.md`（含质量标准/状态矩阵/自检评分/迭代）+ `docs/pipeline/design/` |
+| development | 全栈开发 | 任务面板 + Problems + Git + GitHub 开源调研 | 代码 + `docs/pipeline/engineering-research.md` + 构建/测试记录 |
 | testing | 测试工程师 | 任务面板 + 验收台 + 证据 | `docs/pipeline/test-report.md` + `.dsh/evidence/` |
 | **acceptance** | **项目经理 Agent** | 流水线 + 验收台 + 任务面板复测 | `docs/pipeline/acceptance-review.md` + 证据 |
 | approval | **Owner（你）** | 流水线面板「通过/打回」 | 人工确认结论（第二道复核） |
 | release | 运维 | 交付打包 + 预览分享 + `pipeline_record_release` | `docs/pipeline/release.md` + 发布记录 |
+
+**三 Agent 能力（v1.2.73）**：产品经理先调研 ≥3 个同类需求/行业标准并写借鉴决策表；UI 设计师按 9 项设计硬标准交付、用五维 rubric 自检并完成渲染→检查→修正迭代；全栈开发遇到不熟悉功能先检索 ≥2 个活跃开源候选，按许可证矩阵决定借鉴方式，产出 `docs/pipeline/engineering-research.md` 并保证可靠/安全/高性能。验收复核关会检查这些证据，缺失即建议打回。
 
 ## 常用命令（Owner 可以直接说）
 

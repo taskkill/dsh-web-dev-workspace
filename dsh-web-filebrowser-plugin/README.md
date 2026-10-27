@@ -263,6 +263,20 @@ third-party runtime dependencies.
   store credentials. The workspace must be the repository root; commit and push run
   the repository's configured Git hooks.
 
+### Delivery pipeline and agent team
+
+- The Pipeline sidebar view runs a requirement through seven stages — product →
+  design → development → testing → **acceptance (AI project-manager review)** →
+  **approval (owner sign-off)** → release — with a dual-review gate before release
+  and fast mode that only auto-approves the five intermediate stages.
+- Since v1.2.73 each executing role has an explicit research-and-borrow discipline
+  in its stage prompt and handbook: the product manager researches comparable
+  requirements/standards (≥3 sources, decision table), the UI designer follows nine
+  hard design standards plus a scored self-review and render/inspect/refine loop,
+  and the full-stack engineer researches actively maintained, clearly licensed
+  GitHub projects before borrowing or implementing from scratch, with license,
+  security and performance checks. The acceptance review verifies these artefacts.
+
 ## Shortcuts
 
 | Shortcut | Action |

@@ -1,6 +1,6 @@
-# 验收清单（批次 0–10）
+# 验收清单（批次 0–11）
 
-> 面向项目经理的复测步骤。当前代码版本 **v1.2.72**（批次 0–4 写于 v1.2.30、批次 5 写于 v1.2.68、批次 6–9 写于 v1.2.69–v1.2.71；旧批次里的「六阶段/六关」是当时行为，现行**七阶段双复核**见批次 10）。**首次测试前请重启一次 Harness**（Host 路由/模型工具/`.dsh` 文档只在重启后生效；浏览器刷新只更新客户端）。
+> 面向项目经理的复测步骤。当前代码版本 **v1.2.73**（批次 0–4 写于 v1.2.30、批次 5 写于 v1.2.68、批次 6–9 写于 v1.2.69–v1.2.71、批次 10 写于 v1.2.72；旧批次里的「六阶段/六关」是当时行为，现行**七阶段双复核**见批次 10，三 Agent 能力升级见批次 11）。**首次测试前请重启一次 Harness**（Host 路由/模型工具/`.dsh` 文档只在重启后生效；浏览器刷新只更新客户端）。
 >
 > 预置：任选一个本地工作区；`node_modules` 已安装的项目体验最好。打开侧栏确认能看到 **任务**、**验收**、**流水线** 与 **工作台**。
 
@@ -122,17 +122,45 @@
 - [ ] **自动化全绿**：`npm run check`（全部模块语法）、`npm test`（host smoke）、`node .dsh/tmp/team/pipeline-selftest.mjs`（7 阶段/跳关/迁移/scope/fast/prompt）均 exit 0；`node --check dsh-web-filebrowser-plugin/client.js` 通过；`grep -n "六阶段\|六关\|six stages\|six-stage" dsh-web-filebrowser-plugin/client.js dsh-web-filebrowser-plugin/pipeline.js` 除历史注释外应为 0。
 - [ ] **回归检查**：批次 0–9 抽查不回退——任务运行/预览分享/验收证据/交付包/变更审阅/待办派发照旧可用；流水线发布记录与历史轮次仍可查看。
 
+## 批次 11 · 三 Agent 能力升级（v1.2.73）
+
+> 本轮把「先调研、再借鉴、后实现」写进产品 / 设计 / 开发三个角色，并让 acceptance 复核关检查这些专业质量证据；**不改流水线结构、不新增运行时依赖、不改业务功能代码**。
+> 升级后**先重启一次 Harness**（`pipeline.js` 的 STAGE_GUIDES 与 PIPELINE_SECTION 属 Host 改动），再刷新页面。纯提示词/手册/文档改动**无需重建客户端 bundle**；若未重启 Host，`pipeline_stage_prompt` 仍是旧提示词。
+> 复测前提：v1.2.73 已部署，任意本地工作区可调 `pipeline_stage_prompt({stageId})`。
+
+- [ ] **提示词可检索 · 四阶段**：重启 Harness 后让 agent 调 `pipeline_stage_prompt({stageId:'product'})`，提示词中可检索到 `调研` / `借鉴` / `web_search` / `web_fetch` / `来源` / `借鉴决策表` / `已验证模式` / `创新假设` / `反抄袭` / `blocked`，并要求 ≥3 个来源（URL + 访问日期 + 关键结论）。
+- [ ] **提示词可检索 · design**：`pipeline_stage_prompt({stageId:'design'})` 含 `4/8px` / `字号阶梯` / `行高` / `对比度` / `4.5:1` / `3:1` / `44×44` / `状态矩阵` / `360` / `768` / `1280` / `150–300ms` / `prefers-reduced-motion` / `ARIA` / `自检评分` / `迭代`（至少一轮「渲染→检查→修正」）。
+- [ ] **提示词可检索 · development**：`pipeline_stage_prompt({stageId:'development'})` 含 `GitHub` / `活跃` / `许可证` / `SPDX` / `MIT` / `Apache` / `GPL` / `AGPL` / `无许可证` / `engineering-research.md` / `npm audit` / `OSV` / `CVE` / `安全` / `性能`，要求 ≥2 个活跃候选。
+- [ ] **提示词可检索 · acceptance**：`pipeline_stage_prompt({stageId:'acceptance'})` 含三项新增复核「复核调研与借鉴」「复核设计质量」「复核工程调研与许可证」，以及 `N/A` 理由与「建议打回」。
+- [ ] **systemPrompt 可检索**：新开一个工作区会话 → 注入的流水线说明含「**调研与借鉴纪律**」段：product 用 web_search/web_fetch ≥3 来源 + 借鉴决策表；design 按 4/8px、对比度 4.5:1/3:1、44×44、八态、360/768/1280、150–300ms、ARIA 交付并自检评分 ≥4 + 至少一轮迭代；development 先检索 GitHub ≥2 活跃候选 + 许可证矩阵 + `docs/pipeline/engineering-research.md`；acceptance 复核上述证据、缺失即建议打回。
+- [ ] **三本手册新章节**：`docs/opc/01-product.md` §5「调研与借鉴」（来源门槛 ≥3、借鉴决策表、已验证/创新假设、反抄袭、无网络 blocked）；`docs/opc/02-design.md` §5「专业设计质量标准」（9 项 MUST、八态矩阵、五维 rubric、渲染→检查→修正、自检评分）；`docs/opc/03-engineering.md` §5「不熟悉功能：先调研再借鉴」（候选对比、SPDX/许可证矩阵、GPL/AGPL/无许可证禁止复制、engineering-research.md 模板、npm audit/OSV/CVE、性能预算）。
+- [ ] **grep 验收（自动）**：
+  ```bash
+  grep -nE "调研|借鉴|web_search|许可证|安全|对比度|状态矩阵|engineering-research" dsh-web-filebrowser-plugin/pipeline.js
+  grep -nE "调研与借鉴|借鉴决策表|已验证模式|创新假设|反抄袭|web_search|blocked" docs/opc/01-product.md
+  grep -nE "4/8px|对比度|4\.5:1|44×44|状态矩阵|360|768|1280|150–300ms|prefers-reduced-motion|ARIA|自检评分|rubric|渲染→检查→修正" docs/opc/02-design.md
+  grep -nE "engineering-research\.md|SPDX|MIT|Apache|GPL|AGPL|npm audit|OSV|CVE|性能预算|活跃度" docs/opc/03-engineering.md
+  ```
+  期望全部命中；`npm run check`、`npm test`、`node .dsh/tmp/team/pipeline-selftest.mjs` 均 exit 0。
+- [ ] **AGENT_TEAM / PLAYBOOK / README 同步**：`docs/AGENT_TEAM.md` 角色表三行含调研/质量/许可证职责与产物，且有「研究与借鉴纪律」段；`docs/PLAYBOOK.md` product/design/development/acceptance 段含调研/质量/许可证/安全步骤；`README.md`、`README.zh.md`、`dsh-web-filebrowser-plugin/README.md` 有 v1.2.73 能力说明。
+- [ ] **验收记录与版本一致**：本文件含「批次 11」；`CHANGELOG.md` 含 `## 1.2.73 — 2026-10-27`；根 `package.json` 与 `dsh-web-filebrowser-plugin/package.json` 均 `1.2.73`。
+- [ ] **无新增运行时依赖**：`git diff package.json dsh-web-filebrowser-plugin/package.json` 仅版本号变化，`dependencies` 未新增（仍仅 `ssh2`）。
+- [ ] **GUI 派发提示词显示**：流水线面板对 product/design/development 点「启动并派发」→ 对话收到的角色提示词包含上述关键词；纯提示词改动无需重建 bundle（Host 重启后生效）。
+- [ ] **双复核回归**：七阶段结构与 fast/normal 语义不变——fast 下五中间阶段仍自动通过、acceptance 可派发、approval/release 仍人工；acceptance 复核报告新增三项专业质量复核（调研证据 / 设计质量评分与迭代 / 工程调研与许可证，或 N/A 理由）。
+- [ ] **验收复核报告**：acceptance 阶段产出 `docs/pipeline/acceptance-review.md`，结论含「建议放行」，且含 ⑦ 专业质量复核（需求调研来源/借鉴决策、设计自检评分与迭代、engineering-research.md 与许可证记录，N/A 需理由）。
+
 ## 已知限制（不是缺陷）
 
 - **预览分享**：只改写 HTML；前端在 JS 里拼接的绝对路径需要 dev server 配置 `base`；公网访问要求预览端口可达（否则用隧道）。
 - **自动截图**：目前证据为手动上传（系统/手机截图、PDF、日志）；Host 侧无头浏览器截图需要额外安装 Playwright/Chromium，未内置。
 - **watcher**：只监听根目录与已展开目录，SSH 工作区不监听（仍可手动/轮询刷新）。
 - **重启依赖**：Host 路由（任务/验收/交付/预览/watcher/terminal list/review）与新增模型工具需要重启 Harness；仅刷新页面时旧 Host 会提示不可用或走降级路径。v1.2.72 的 acceptance 阶段、迁移逻辑与七阶段 prompt/工具文案同样必须重启 Host 才生效（客户端 7 关文案刷新即可）。
+- **提示词/手册升级（v1.2.73）**：三 Agent 的调研/质量/许可证要求写在 `pipeline.js` 的 STAGE_GUIDES / PIPELINE_SECTION 与 `docs/opc/0{1,2,3}-*.md`，Host 重启后新提示词才生效；纯提示词/文档改动无需重建客户端 bundle。调研依赖 Harness 原生 `web_search` / `web_fetch`，无网络时按提示词要求标 blocked，不得伪造来源。
 - **双复核迁移**：旧 6 阶段 `.dsh/pipeline.json` 在读取时按 id 归一化补 acceptance（首次写回后落盘）；旧已完成项目的 acceptance 迁移备注仅代表「升级前旧流程已完成」，不代表新流程重新复核过，不能作为新交付的放行依据。
 - **变更审阅签名**：`已审` 只在文件的 Git 状态（staged/unstaged/untracked/status）变化时失效；同一未暂存文件继续编辑不会自动失效（与现有 Git 面板一致）。
 - **验收历史上限**：每项 history 最多 50 条、文件 1 MB；极端 300 项 × 长历史可能触顶，届时可先清理已通过项。
 
 ## 回滚与恢复
 
-- 代码层：`git log --oneline` 查看批次提交（v1.2.23 → v1.2.72），可按批次 revert。
+- 代码层：`git log --oneline` 查看批次提交（v1.2.23 → v1.2.73），可按批次 revert。
 - 数据层：验收清单 `.dsh/acceptance.json`、交付记录 `.dsh/deliveries.json`、证据 `.dsh/evidence/`、运行账本 `.dsh/runs.json`、复测记录 `.dsh/verifications/`、变更审阅 `.dsh/review.json`、审阅标记（浏览器 localStorage）。这些都在 `.dsh/` 下且已被 `.gitignore` 忽略。

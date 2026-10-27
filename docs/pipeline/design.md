@@ -1,476 +1,722 @@
-# 七阶段双复核模式 UI 设计说明 v1.2.72（2026-10-26）
+# 专业设计质量标准与自检体系（UI 设计师能力升级）v1.2.73（2026-10-27）
 
-> 角色：UI 设计师（`opc-design`）｜上游需求：[requirements.md](requirements.md)｜下游：全栈开发实现。
-> 范围：Dev Workspace 的**流水线视图**与**工作台**显示 7 关、新增第 5 关「验收复核」卡、第 6 关「人工确认」的视觉区分、中英文文案与响应式/无障碍规范。
-> 一句话结论：**不新增页面、不改卡片结构、不新增组件**；在现有 `ds-pipe-*` / `ds-wb-*` 卡片上做「+1 关 + 2 个小标签 + 1 个备注色调 + 一批文案」，实现成本低、回归面小。
+> 角色：UI 设计师（`opc-design`）｜上游需求：[requirements.md](requirements.md)（团队三 Agent 能力升级，§4.2）｜下游：全栈开发（`pipeline.js STAGE_GUIDES.design` + `docs/opc/02-design.md`）。
+> 本轮性质：**不是页面改版**，设计对象是「UI 设计师角色的专业能力标准与自检体系」。因此本文本身就是一次示范交付：真实调研 → 硬标准 → 八态矩阵 → 自评 rubric → 至少一轮「渲染 → 检查 → 修正」→ 可执行条款清单。
+> 结论先行：设计阶段新增 **5 道质量门**（调研 → 硬标准 → 状态/高保真 → 自检评分 → 迭代），把「好看、好用」变成**可检查、可评分、可复核**的条款；不新增页面、不改流水线结构、不引入依赖。
 
 ---
 
-## 1. 页面清单与改造范围
+## 0. 一页摘要
 
-| 页面 | 入口 | 用户动作 | 复用/改造/新增 | 设计稿 |
+| 项 | 内容 |
+|---|---|
+| 质量门 | ① 调研 ≥2 来源 → ② 硬标准 4/8px、字号阶梯、对比度、44×44、八态、三档响应式、动效、ARIA → ③ 状态矩阵 + 高保真稿 → ④ 五维自检评分（均分 ≥4，must 一票否决）→ ⑤ 至少一轮「渲染 → 检查 → 修正」 |
+| MUST（不可协商） | 对比度 4.5:1 / 3:1；可点击目标 ≥44×44（指针密集桌面至少 24×24 + 间距）；八态中的 focus/disabled/loading/empty/error；键盘可达 + 焦点可见；调研与迭代记录；高保真稿不是纯文字 |
+| SHOULD（建议） | 48×48 触控目标；2 轮以上迭代；全组件八态齐备；深浅主题双跑；动效编排 |
+| 自检 rubric | 五维各 0–5：视觉层级 / 清晰度 / 一致性 / 反馈 / 可访问性；**每维 ≥3 且均分 ≥4** 才可提交；≥4.5 为优秀 |
+| 交付物 | `docs/pipeline/design.md`（本模板 §8）、`docs/pipeline/design/` 高保真稿、调研来源表、状态矩阵、tokens、可访问性说明、自检评分、迭代记录 |
+| 下游条款 | §9 给出 `pipeline.js` `STAGE_GUIDES.design` 与 `docs/opc/02-design.md` 的**可直接粘贴短句**与 grep 关键词 |
+| 本轮证据 | 调研 11 个可引用来源（§2）；质量门示意图 [design/design-quality-gate.svg](design/design-quality-gate.svg)；3 次渲染 / 2 轮修正的迭代记录（§7.4）；上一轮设计说明归档于 [design/archive-v1.2.72-seven-stage-design.md](design/archive-v1.2.72-seven-stage-design.md) |
+
+---
+
+## 1. 问题、目标与设计原则
+
+### 1.1 现状问题（来自需求 §1、§4.2）
+
+1. 设计交付偏「功能说明」：能讲清界面，但没有间距/字号/颜色体系，无法判断「是否好看、是否好用」。
+2. 「好看、体验好」没有判定依据：验收只能凭主观印象，返工时说不清哪里不达标。
+3. 状态不全：常见只有 happy path，空/加载/错误/禁用没有设计，开发临时补、测试无基线。
+4. 专业能力不可累积：每次靠个人状态，没有可复用的标准、模板与自检流程。
+
+### 1.2 设计目标
+
+- **可检查**：每条标准都能用工具或人工在 1 分钟内判定（如对比度 4.5:1、目标 44×44、八态齐备）。
+- **可评分**：五维 rubric 给出 0–5 分与证据，≥4 才可提交，评语必须指向具体问题与修正。
+- **可复核**：acceptance 复核关能按同一套条款抽查「调研 → 矩阵 → 对比度 → 迭代 → 评分」证据链。
+- **低负担**：MUST 压缩为 10 条最小集（§3.10），小需求 10 分钟内可完成自检；模板不追求大而全。
+- **可落地**：条款短句化、关键词可 grep，直接进入阶段提示词与角色手册，不引入新工具/依赖。
+
+### 1.3 设计原则
+
+1. **先调研，后设计**：≥2 个同类产品/设计系统，记录 URL + 访问日期 + 关键结论；不把「我觉得」当依据。
+2. **标准先于稿**：先定 tokens、字号、间距、状态矩阵，再出高保真稿；避免边画边改。
+3. **证据链**：每个结论都指向文件、数值或截图；无证据的评分按 0 计。
+4. **默认值优先**：复用既有 `--dsw-alias-*` token 与 `ds-*` 组件；新增值必须写理由与影响范围。
+5. **先能检查，再谈审美**：对比度、触控、状态、键盘属于底线；视觉层级与品牌表达在此之上。
+6. **诚实标注**：无网络、缺来源、抓取失败、N/A 都写清缺口，不伪造。
+
+### 1.4 范围与不做什么
+
+**做**：设计标准、状态矩阵模板、rubric、迭代协议、交付模板、下游条款、质量门示意图、本轮自检与迭代记录。
+
+**不做**：不改 `client.js`/UI 功能（本轮不改业务代码）；不改需求/验收标准；不新增依赖或设计系统；不定义品牌视觉识别（VI）；不替代 Owner 的设计评审与 acceptance 复核。
+
+---
+
+## 2. 调研与借鉴（2026-10-27，真实来源）
+
+### 2.1 方法与记录
+
+- 调研时间：2026-10-27（Asia/Shanghai）；方式：Harness 自带 `web_search`（2 轮共 8 条查询）+ `web_fetch`（16 次抓取）。
+- 结果：下表 **11 个来源取得可引用正文**（HTTP 200）；3 个来源因 JS 渲染/正文截断未能提取结论，如实列于 §2.5，**未作为证据使用**；Apple HIG 网页版仅返回标题，改用同内容 `.md` 数据端点取得正文。
+- 引用格式：`[来源标题](URL)（访问日期 YYYY-MM-DD，类型）——关键结论`。
+
+### 2.2 来源与关键结论
+
+| # | 来源 | URL | 访问日期 | 类型 | 关键结论（用于本设计） |
+|---|---|---|---|---|---|
+| 1 | NN/g · 10 Usability Heuristics（Jakob Nielsen，1994，2024-01-30 复核） | https://www.nngroup.com/articles/ten-usability-heuristics/ | 2026-10-27 | 可用性原则 | 10 条通用启发式：系统状态可见、贴合真实世界、用户可控/可退出、一致性与标准、错误预防、识别优于回忆、灵活高效、美学与极简、帮助识别/诊断/恢复错误、帮助与文档。→ 作为 §5 的走查清单 |
+| 2 | W3C WAI · WCAG 2.2 Understanding SC 1.4.3 Contrast (Minimum)（2026-09-06 更新） | https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html | 2026-10-27 | 无障碍标准 | 正文与背景对比度 **至少 4.5:1**；大字号（≥18pt 或 14pt bold，约 24px / 18.66px）**至少 3:1**；阈值不四舍五入（4.499:1 不算过）；禁用控件豁免；占位符/hover/focus 文本同样适用。→ §3.3 |
+| 3 | W3C WAI · WCAG 2.2 Understanding SC 1.4.11 Non-text Contrast | https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html | 2026-10-27 | 无障碍标准 | 识别控件与状态所需的非文本视觉信息（边界、图标、选中/焦点指示）对比度 **至少 3:1**；焦点指示必须与相邻背景有足够对比。→ §3.3、§3.8 |
+| 4 | W3C WAI · WCAG 2.2 Understanding SC 2.5.8 Target Size (Minimum) | https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html | 2026-10-27 | 无障碍标准 | AA 级指针目标 **至少 24×24 CSS px**（或满足间距例外）；更严格的 2.5.5 Target Size (Enhanced) 为 **44×44**；大目标更易操作。→ §3.4 |
+| 5 | W3C WAI · WCAG 2.2 Understanding SC 2.4.7 Focus Visible | https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html | 2026-10-27 | 无障碍标准 | 键盘操作必须有可见焦点指示，且不得限时消失；焦点指示同时受 1.4.11（3:1）约束。→ §3.8 |
+| 6 | W3C WAI · Technique SCR40: `prefers-reduced-motion` | https://www.w3.org/WAI/WCAG21/Techniques/client-side-script/SCR40 | 2026-10-27 | 无障碍技术 | 用 `prefers-reduced-motion` 检测用户动效偏好并抑制非必要动画；对交互触发的动画逐项测试。→ §3.7 |
+| 7 | Apple HIG · Accessibility | https://developer.apple.com/design/human-interface-guidelines/accessibility | 2026-10-27 | 设计系统 | 控件最小/默认尺寸：iOS 默认 44×44 pt、最小 28×28 pt；对比度参考 WCAG AA（≤17pt 4.5:1、≥18pt 3:1、粗体 3:1）；信息不能只靠颜色；支持 Reduce Motion（用淡出替代位移动画、避免深度/模糊动画）。→ §3.3/§3.4/§3.7 |
+| 8 | Apple HIG · Layout | https://developer.apple.com/design/human-interface-guidelines/layout | 2026-10-27 | 设计系统 | 视觉层级：按重要性排序、对齐与缩进表达层级、相关元素分组、渐进披露、区分控件与内容；适配尺寸/方向/动态字体，按可用空间（size classes）而非设备类型布局。→ §3.1/§3.6、§5 |
+| 9 | Apple HIG · Typography | https://developer.apple.com/design/human-interface-guidelines/typography | 2026-10-27 | 设计系统 | 平台默认/最小字号（iOS 17/11pt、macOS 13/10pt）；避免过细字重；用字号/字重/颜色建立层级；支持 Dynamic Type；尽量减少截断，大字号时调整布局。→ §3.2 |
+| 10 | Apple HIG · Buttons | https://developer.apple.com/design/human-interface-guidelines/buttons | 2026-10-27 | 设计系统 | 按钮命中区域**至少 44×44 pt**；自定义按钮必须有按下（press）态；同一视图主按钮 1–2 个；用样式而非尺寸区分主次。→ §3.4、§4 |
+| 11 | Tailwind CSS · Customizing Spacing | https://v2.tailwindcss.com/docs/customizing-spacing | 2026-10-27 | 间距体系 | 默认 spacing scale 以 **0.25rem = 4px** 为基本单位、等比例扩展（4/8/12/16/20/24/32/40…）。→ §3.1 的 4px 基单位与数值表 |
+
+### 2.3 借鉴决策表（采用 / 调整 / 不采用）
+
+| 借鉴点 | 来源 | 决策 | 理由 | 落点 |
 |---|---|---|---|---|
-| 流水线视图（侧栏单列 7 卡） | 「更多 › 项目 › 流水线」、工作台「查看流水线」 | 启动/重派阶段、normal 模式通过/打回、查看产物、记发布 | **改造**：+1 张验收复核卡；acceptance/approval 各加 1 个小标签；备注色区分 | [seven-stage-normal.svg](design/seven-stage-normal.svg)、[seven-stage-fast.svg](design/seven-stage-fast.svg) |
-| 工作台（Owner 首页） | 打开工作区默认落点 | 看进度、点「启动并派发」、审批、发起变更 | **改造**：进度 `done/7`、项目流程 7 步、流程角色/当前阶段文案 | [seven-stage-workbench.svg](design/seven-stage-workbench.svg) |
-| 工作台「需求与调整」 | 工作台卡片 | 追加/修改需求、发起变更轮 | **文案**：六→七、范围 hint 增加验收复核/跳过说明 | 见第 7 节文案表 |
-| 验收复核卡 5 态 | 流水线视图内 | 启动、等待提交、通过/打回、重派 | **改造**：新卡片的 5 种状态 | [acceptance-card-states.svg](design/acceptance-card-states.svg) |
-| 插件卡片描述（locale meta） | 扩展/插件列表 | 阅读能力说明 | **文案**：六阶段 → 七阶段双复核 | 见第 7 节 |
+| 10 条可用性启发式作为走查清单 | #1 | **采用** | 通用、无需工具、可在评审前 30 分钟内完成；覆盖状态可见/错误恢复/一致性 | §5 十项走查 + 模板 |
+| 正文 4.5:1、大字号 3:1 | #2、#7 | **采用（硬门槛）** | 可量化、可计算、可自动检查；直接回应「好看无从判定」 | §3.3、§9 条款 |
+| 非文本/焦点 3:1 | #3、#5 | **采用（硬门槛）** | 控件边界、焦点环、状态图标是可用性底线 | §3.3、§3.8 |
+| 44×44 触控目标 | #4（2.5.5）、#7、#10 | **采用为项目目标（MUST）** | 三个来源一致（WCAG 2.5.5 AAA 44、Apple 默认 44pt、需求 44×44）；WCAG AA 24×24 作为最小下限 | §3.4、§9 条款 |
+| 24×24 + 间距例外 | #4 | **采用为最低下限** | 桌面密集侧栏的现实约束；命中区可用 padding/伪元素扩展到 44，不改变视觉密度 | §3.4、§11 风险 1 |
+| 视觉层级/对齐/分组/渐进披露 | #8 | **采用** | 比「好看」更可操作的层级方法；适用于本项目信息密集的工作台 | §3.1、§5、§6 视觉层级维度 |
+| 字号/行高/字重层级、避免细字重 | #9 | **采用（调整为本项目阶梯）** | 采用 12/14/16/20/24/32 阶梯与 ≥1.4 正文行高；保留侧栏紧凑子阶梯并在模板中申报 | §3.2 |
+| 4px 基单位的间距比例 | #11 | **采用** | 与 4/8px 体系一致；数值可枚举、可 grep | §3.1 |
+| `prefers-reduced-motion` + Reduce Motion 降级 | #6、#7 | **采用** | 眩晕/前庭敏感用户保护；实现成本低（媒体查询） | §3.7 |
+| 整站绑定某一设计系统（Material 3 全套 / Apple 控件） | #7–#10 | **不采用** | 会锁死品牌与实现、增加迁移成本；本项目已有 token/组件体系 | §1.4、§11 |
+| 全局强制 7:1（WCAG AAA） | #2 延伸 | **不采用（本轮）** | 会挤压品牌色与现有语义色；AA 为门槛，7:1 作为可选加分 | §6 rubric |
+| APCA 对比度算法 | 调研中提及（Apple HIG 引用） | **不采用（本轮）** | 团队工具链与验收习惯基于 WCAG 2.x 公式；APCA 作为下一轮探索 | §11 |
+| 完整照搬 Apple 平台控件规范（visionOS 60pt 等） | #7/#10 | **不采用** | 本项目是 Web 跨平台工作区，仅借鉴尺寸/层级/降级原则 | §3.4 |
 
-**明确不做**：不改页面骨架与栅格、不新增路由/弹窗/图标/依赖、不新增大面积配色、不做整站视觉改版；验收复核报告是文本产物（`.md`），沿用现有「点开文件」交互，不做内嵌预览器。
+### 2.4 已验证模式 vs 创新假设
+
+**已验证模式（有来源）**：WCAG AA 对比度与 3:1 非文本对比；44×44/24×24 目标尺寸与间距例外；4px 基单位间距比例；视觉层级/对齐/分组/渐进披露；`prefers-reduced-motion` 降级；10 条可用性启发式。
+
+**创新假设（本项目自研，需在后续复盘验证）**：
+
+1. **五维自检 rubric 与 ≥4 门槛**：评分必然带主观性，需用「must 一票否决 + 证据条目」校准；验证方式：连续 3 个需求比较自评分与 Owner/acceptance 结论的一致性，偏差 >1 分则调整锚点。
+2. **八态矩阵的强制粒度**：全部组件八态可能过重；假设「可交互组件八态、只读区四态（empty/loading/error/success）」足够，验证方式：统计打回原因中状态缺失占比，若 <10% 可降级为「关键组件」。
+3. **44×44 与现有密集侧栏的兼容**：假设「视觉 22–28px + 命中区 44px」可行；验证方式：在 360px 手机与触屏笔记本实测误触率与布局稳定性。
+4. **只允许 4 的倍数的间距**：现有 UI 存在 6/7/9/10/11px 历史值；假设「新设计遵守 4/8、旧值作为债务记录」不阻塞交付；验证方式：下一轮变更时统计新增违规数，应趋近 0。
+5. **无网络 blocked 策略**：允许设计带缺口提交但必须标注；验证方式：观察是否造成交付拖延；必要时改为「先内网/既有来源 + 后续补外部来源」。
+
+### 2.5 抓取受限/未采用来源（诚实披露）
+
+| URL | 结果 | 处理 |
+|---|---|---|
+| https://m3.material.io/foundations/layout/grids-spacing | HTTP 200，但正文由 JS 渲染，仅取到标题 | **不采用为证据**；间距依据改用 #11（Tailwind 4px 基单位）+ 需求 4/8px 约定 |
+| https://m2.material.io/design/layout/spacing-methods.html | HTTP 200，SPA 仅返回标题 | **不采用为证据**；同上 |
+| https://atlassian.design/foundations/spacing/ | HTTP 200，正文截断，无可引用条目 | **不采用为证据**；同上 |
+| https://developer.apple.com/design/human-interface-guidelines/{layout,accessibility,typography,buttons} | 网页正文由 JS 渲染仅标题；同内容 `.md` 数据端点取得全文 | 采用 `.md` 数据端点正文，规范 URL 引用人类可读页面 |
+
+> 结论：本轮网络可用，11 个可引用来源均记录 URL + 访问日期 + 关键结论；不存在编造来源；受限来源已如实标注，不影响主要结论。
+
+### 2.6 调研如何影响本设计
+
+- 「先调研」从口号变成可检查门槛：来源表 + 借鉴决策表 + 采用/不采用理由（§2.3）。
+- 对比度/触控/焦点/动效/层级全部可追溯公开标准，从而可写入 §3 硬标准与 §9 可 grep 条款。
+- 10 条启发式直接变成 §5 走查表，而不是泛泛引用。
+- 不追求「全套设计系统」，保持与本项目 token/组件体系一致，降低落地成本。
 
 ---
 
-## 2. 信息架构与双复核模型
+## 3. 设计质量硬标准
 
-### 2.1 七关顺序（与 `PIPELINE_STAGES` 一致）
+> 分级：**MUST** = 不满足即不可提交/建议打回；**SHOULD** = 建议满足，缺失需在设计中写理由。
 
-| # | 阶段 id | 名称 | 角色 | 关性质 |
+### 3.1 间距与栅格（4/8px 体系）— MUST
+
+- 基本单位 **4px**，主节奏 **8px**；**4/8px 体系**允许的间距值为 **4 的倍数**：`0, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80`，优先 8 的倍数。
+- 容器 padding、卡片间距、区块 gap、表单行距全部取自该表；**禁止魔法数字**（如 6/7/9/10/11/13px）。
+- 例外（必须写明）：1px 边框、2px 焦点环、字体行高、图标内部绘制、SVG 画布坐标不属于间距。
+- 密排面板（侧栏/表格）：用 4px/8px 控制密度，不加 6/7px 微调；如必须微调，视为「历史债务」记录到 §11，不作为新设计依据。
+- 栅格：桌面内容区 12 列、`gap` 16/24px；卡片内部可用 4px 网格；对齐优先于均分（Apple HIG 层级/对齐原则）。
+- 圆角（SHOULD）：`4 / 8 / 12 / 16 / 999`；现有 6/7/9/10px 为债务，新组件不用新值。
+
+### 3.2 字号阶梯与行高 — MUST
+
+**基准阶梯（内容区）**：
+
+| Token | 字号 / 行高 | 行高比 | 用途 |
+|---|---|---|---|
+| `text-caption` | 12 / 18 | 1.50 | 辅助说明、标签（不得承载唯一信息时可 11/16） |
+| `text-meta` | 14 / 20 | 1.43 | 元信息、表格次列、时间 |
+| `text-body` | 16 / 24 | 1.50 | 正文默认 |
+| `text-body-sm` | 14 / 20 | 1.43 | 紧凑正文（面板、列表） |
+| `text-title` | 20 / 28 | 1.40 | 卡片/区块标题 |
+| `text-heading` | 24 / 32 | 1.33 | 页面标题（标题类不受 ≥1.4 限制） |
+| `text-display` | 32 / 40 | 1.25 | 仅空态/欢迎页等大标题 |
+
+- **正文字号阶梯 12/14/16/20/24/32，正文行高 ≥1.4**；`text-body` 与 `text-body-sm` 必须 ≥1.4。
+- **侧栏紧凑子阶梯**（申报制）：11/16、12/17、13/19（行高 ≥1.45），仅限既有右侧栏高密度面板（如流水线卡）；**11px 以下不得承载唯一信息**，9–10px 仅限非信息装饰（角标/装饰数字）。
+- 字重只用 400 / 500 / 600 / 700；避免 <400 的细字重（Apple HIG）。中文正文建议 400，标题 600，按钮 600。
+- 数字表格用 `font-variant-numeric: tabular-nums`；大写小标签可用 `letter-spacing: 0.05em`。
+- 放大 200%（浏览器缩放/系统字体）后不截断、不重叠（Apple Dynamic Type 思想）；大字号时允许布局换行。
+
+### 3.3 颜色 token 与对比度 — MUST
+
+**token 分层（复用 `--dsw-alias-*`）**：背景 `bg-base/layer-1/2/3`；文字 `label-primary/secondary/caption`；边框 `border-l1/l2`；品牌 `brand-primary`；语义 `state-success/warn/error-primary`；信息 `state-business-primary`。**禁止硬编码 hex**（token 定义处与设计稿注明近似值除外）。
+
+**对比度门槛（按 WCAG 2.2 AA 计算，浅色/深色主题都要过）**：
+
+| 内容 | 最低对比度 | 说明 |
+|---|---|---|
+| 正文（<18.66px 非粗体，或 <24px 粗体） | **≥4.5:1** | 含占位符、hover/focus 文本；阈值不四舍五入 |
+| 大字号（≥24px，或 ≥18.66px 且 600+ 粗体） | **≥3:1** | WCAG 18pt/14pt bold 换算 |
+| 控件边界、图标、状态/焦点指示（非文本） | **≥3:1** | 仅当边界是识别控件的唯一视觉线索时强制 |
+| 禁用态 | 豁免对比度 | 但仍需「可辨识」，不能完全看不见 |
+
+**现有 token 实测审计（浅色主题、白底；按 WCAG 相对亮度公式计算）**：
+
+| Token / 色值 | 白底对比度 | 判定 | 使用规则 |
+|---|---|---|---|
+| `label-primary` #0f1115 | 18.7:1 | ✅ | 标题/主文字 |
+| `label-secondary` #61666b | 5.8:1 | ✅ | 正文次文字、有意义的小字 |
+| `label-caption` #adb2b8 | 2.13:1 | ❌ 文本 | **仅装饰**；不得承载信息 |
+| `state-success-primary` #22c55e | 2.28:1 | ❌ 文本 | 仅图标/填充；文字用 `success-text` |
+| `state-warn-primary` #f59e0b | 2.15:1 | ❌ 文本 | 仅图标/描边；文字用 `warn-text` |
+| `state-error-primary` #ec1313 | 4.50:1（4.497，未达） | ❌ 正文 | 仅大字号/图标；文字用 `error-text` |
+| `state-business-primary` #4176e6 | 4.24:1 | ❌ 小字 | 6–9px 标签不达标；小字用 `info-text` |
+| `border-l2` #0000001a ≈ #e6e6e6 | 1.3:1 | ❌ 控件边界 | 仅装饰分隔；控件边界用 `border-control` |
+| 建议新增 `success-text` #1a7f37 | 5.08:1 | ✅ | 状态文字 |
+| 建议新增 `warn-text` #b45309 | 5.02:1 | ✅ | 状态文字 |
+| 建议新增 `error-text` #d1242f | 5.24:1 | ✅ | 状态文字 |
+| 建议新增 `info-text` #2563eb | 5.17:1 | ✅ | 小字号信息文字 |
+| 建议新增 `border-control` #8a919c | 3.18:1 | ✅ 非文本 | 输入/按钮边界 |
+
+> 结论：**语义色的 `*-primary` 适合图标/填充/描边，不适合小字文本**；现有界面 9–10px 语义色文字属于已存在债务（§11 风险 2），本轮只写入标准，不在本轮改 UI；新设计必须使用 `*-text` 变体。
+
+- 颜色不得单独表意：状态必须同时有文字/图标/形状（如「✓ 已通过」「! 已打回」）。
+- 深浅主题：同一 token 语义两套值都要过；**在浅色与深色各测一次对比度**，记录到 tokens 表。
+
+### 3.4 触控目标与命中区域 — MUST
+
+- **项目目标：可点击区域 ≥44×44 CSS px**（触屏、紧凑模式、移动端）；SHOULD 48×48。
+- **最低下限：24×24 CSS px**（WCAG 2.5.8 AA）且与相邻目标 **间距 ≥8px**（不满足时用 24px 直径圆的间距例外，等价于足够留白）。
+- 视觉尺寸可小于 44（如桌面密集按钮 22–28px），但**命中区域必须 ≥44×44**：用透明 padding / `::before` 扩展，不改变布局与视觉密度。
+- 危险操作（删除/打回/发布）不得紧邻常规操作；必须二次确认（沿用现有确认弹窗）。
+- 按钮必须有按下（press/active）反馈（Apple HIG）；加载中禁用防重复提交。
+- 指针（鼠标）密集桌面 UI 若无法扩展命中区，允许 24×24 + 8px 间距，并在设计说明中声明例外与理由。
+
+### 3.5 完整状态：八态矩阵 — MUST
+
+每个**可交互组件**必须定义 8 态：
+
+| 状态 | 触发 | 视觉 | 文案/语义 | 交互约束 | 验收 |
+|---|---|---|---|---|---|
+| 默认 default | 无交互 | 基础 token | 动词清晰 | 可操作 | 对比度/尺寸 |
+| 悬停 hover | 指针进入 | 背景/边框变化（不改变布局） | — | 光标 pointer | hover 态非唯一反馈 |
+| 聚焦 focus | 键盘 Tab | 2px 焦点环 + 2px offset，对比 ≥3:1 | — | 顺序与视觉一致 | 焦点可见、非限时 |
+| 按下 active | 按下/触发 | 颜色加深或 1px 位移/scale ≤0.98 | 即时反馈 | 防重复触发 | 有 press 态 |
+| 禁用 disabled | 条件不满足 | 降低不透明度/灰化，仍需可辨识 | 保留标签 + 可见原因（如 hint/title） | 不可聚焦、不可点击 | 说明可读 |
+| 加载 loading | 异步进行 | 骨架/旋转/按钮内 loading | 「保存中…/加载中…」+ aria-busy | 禁用重复提交 | 超时/失败可恢复 |
+| 空 empty | 无数据 | 图标/说明 + 下一步按钮 | 「还没有…，可以…」 | 给出可行动路径 | 文案可操作 |
+| 错误 error | 失败/校验 | 错误色 + 图标 + 具体原因 | 可重试、不丢输入 | 重试/返回 | 恢复路径明确 |
+
+- **只读区域**至少四态：empty / loading / error / success；无 hover/focus/active/disabled。
+- 不适用（N/A）必须写理由（例如纯静态标题没有 loading），不能留空。
+- 组件清单建议：按钮（主/次/危险）、输入、选择/开关、标签页、卡片、列表/表格、弹层/Toast、链接/产物、进度条、分页。
+
+### 3.6 响应式：360 / 768 / 1280 — MUST
+
+| 断点 | 范围 | 布局与行为 |
+|---|---|---|
+| Mobile | 320–767，基准 **360** | 单列；底部导航/抽屉；表格转卡片或横向滚动（滚动区有提示）；按钮 ≥44；无横向溢出 |
+| Tablet | 768–1279，基准 **768** | 双列/侧栏可折叠；内容最大宽 720–840；触控与指针双支持 |
+| Desktop | ≥1280，基准 **1280** | 侧栏 + 主内容；内容最大宽 1080–1200；信息密度提升但字号 ≥12 |
+
+- 三档都必须能完成核心任务（不是「能看」）；**360 / 768 / 1280** 各至少 1 张验证截图或渲染记录。
+- 文字放大 200% 后无截断/重叠；长文本 `overflow-wrap: anywhere`；表格/代码块可横向滚动并给出滚动暗示。
+- 断点用 `min-width` 或 `max-width` 保持一致；深浅主题 × 三档的组合至少抽查 mobile+desktop。
+
+### 3.7 动效 — MUST
+
+- 时长 **150–300ms**：微交互 150–200ms，进入 200–300ms，退出 150–200ms；超过 300ms 需说明理由。
+- 缓动：标准 `cubic-bezier(0.2, 0, 0, 1)`；进入 `ease-out`、退出 `ease-in`；进度类可用 linear。
+- 只动画 `transform` / `opacity`，避免触发布局抖动；不使用无限循环动画（loading 指示器除外）。
+- **必须支持 `prefers-reduced-motion`**：媒体查询下移除位移/缩放/视差，改为淡入淡出或直接切换；无自动播放、无闪烁（≤3 次/秒）。
+- 动效不得是唯一信息载体；关闭动效后功能与状态仍完整。
+
+### 3.8 键盘与 ARIA — MUST
+
+- 所有交互可 Tab 到达、可 Enter/Space 触发；焦点顺序与视觉顺序一致；不得有键盘陷阱；浮层 Esc 可关闭并归还焦点。
+- 焦点可见：`:focus-visible` 2px 环 + 2px offset，对比 ≥3:1（WCAG 2.4.7 + 1.4.11），不得 `outline: none` 后无替代。
+- 语义优先：`<button>`/`<a>`/`<input>` 原生元素；自定义控件补 `role` + 键盘行为。
+- 可读名称：图标按钮 `aria-label`/`title`；装饰图标 `aria-hidden="true"`；图片 `alt`（信息图）/空 alt（装饰）。
+- 表单：`<label for>` 关联；错误用 `aria-describedby` + `aria-invalid`；异步结果用 `aria-live="polite"`。
+- 状态：`aria-pressed`（开关）、`aria-expanded`（展开）、`aria-current`（当前项）、`aria-busy`（加载）。
+- 屏幕阅读器：关键流程至少一次 VoiceOver/NVDA/浏览器读屏抽查（记录工具与结论）。
+
+### 3.9 视觉层级与一致性 — MUST（可评分）
+
+- 一屏只允许 **1 个主行动**（primary），次行动 ≤2；用样式而非尺寸区分主次（Apple HIG）。
+- 信息按重要性排序；对齐与缩进表达层级；相关元素分组（间距/容器/分隔线）。
+- 视觉层级至少三级：标题 / 正文 / 辅助；同层级字号字重一致。
+- 组件、术语、图标、间距、圆角来自同一 token/组件库；不新增一次性样式。
+- 一致性检查：同功能不同叫法、同状态不同颜色、同间距不同值，均视为缺陷。
+
+### 3.10 MUST 最小集（10 条，供小需求 10 分钟自检）
+
+1. 调研 ≥2 来源（URL + 访问日期 + 关键结论）。
+2. 间距只用 4 的倍数（4/8px 体系）。
+3. 字号出自阶梯，正文行高 ≥1.4。
+4. 正文对比度 ≥4.5:1、大字号 ≥3:1（记录计算值）。
+5. 控件边界/焦点环非文本对比 ≥3:1。
+6. 触控目标 ≥44×44（指针密集桌面 ≥24×24 + 8px 间距）。
+7. focus / disabled / loading / empty / error 五态齐备。
+8. 360 / 768 / 1280 三档不溢出、可完成核心任务。
+9. 150–300ms 动效 + `prefers-reduced-motion` 降级。
+10. 键盘可达 + 焦点可见 + ARIA/可读名称 + 一轮「渲染→检查→修正」。
+
+---
+
+## 4. 状态矩阵模板与示例
+
+### 4.1 组件 × 八态矩阵（复制到设计说明 §5）
+
+| 组件 | default | hover | focus | active | disabled | loading | empty | error |
+|---|---|---|---|---|---|---|---|---|
+| 主按钮 |  |  |  |  |  |  | N/A |  |
+| 次按钮 |  |  |  |  |  |  | N/A |  |
+| 图标按钮 |  |  |  |  |  |  | N/A |  |
+| 输入框 |  |  |  |  |  |  |  |  |
+| 开关/勾选 |  |  |  |  |  |  | N/A |  |
+| 列表/表格 |  |  |  |  |  |  |  |  |
+| 异步区块 | N/A | N/A | N/A | N/A | N/A |  |  |  |
+| 弹层/Toast |  |  |  |  |  |  | N/A |  |
+
+填写要求：每格写「视觉（token/尺寸）+ 文案 + 交互 + 验收方式」；N/A 必须写理由。
+
+### 4.2 示例：现有项目组件（示范填写，供开发/测试对照）
+
+| 组件 | 关键状态要求 |
+|---|---|
+| `ds-btn`（通过/打回/启动） | default 深色/描边；hover 加深 4%；focus 2px ring；active 位移 1px；disabled 灰化 + 序列提示可见；loading 文案「保存中…」+ 禁用；危险「打回」需二次确认或备注 |
+| `ds-pipe-stage`（阶段卡） | 5 状态映射到卡片 `data-status`；空/加载/错误由外层容器承担；状态文字不得只用颜色（必须有「待开始/进行中/待评审/已通过/已打回」） |
+| `ds-pipe-note`（备注） | error 红；fast/迁移/跳过用说明灰；8.5–9.5px 说明文字必须改用 `label-secondary` |
+| `ds-wb-step`（流程步） | hover/focus 可见；current 有「● 当前」文字；disabled 不适用；空/加载由页面级承接 |
+| 产物链接/缩略图 | focus 可见；alt/title；失败打开给出错误提示；大图加载 loading 占位 |
+
+### 4.3 状态覆盖判定
+
+- 每个可交互组件 8 态；只读区 4 态；N/A 必须理由。
+- 「页面级」状态（整页空/加载/错误/无权限）与「组件级」状态分开写，不能互相替代。
+- 缺少任一 MUST 态（focus/disabled/loading/empty/error）→ 自评反馈维度 ≤2，不得提交。
+
+---
+
+## 5. 可用性检查：Nielsen 10 启发式走查
+
+### 5.1 十项走查表
+
+| # | 启发式 | 本项目的落点 | 检查问题（通过标准） |
+|---|---|---|---|
+| 1 | 系统状态可见 | 阶段状态 pill、顶部待办横幅、保存中/加载中 | 用户随时知道「现在到哪、下一步是什么」；异步操作 100ms 内有反馈 |
+| 2 | 贴合真实世界 | 「需求分析/验收复核/人工确认」业务语言 | 不用内部字段名当界面文案；中英文术语一致 |
+| 3 | 用户可控与自由 | 重新派发、取消编辑、打回、二次确认 | 危险操作可取消；浮层可 Esc；不强制长流程 |
+| 4 | 一致性与标准 | token、`ds-*` 组件、术语表 | 同功能同名、同状态同色、同间距同值 |
+| 5 | 错误预防 | 禁用启动 + 序列提示、发布确认、输入校验 | 约束在操作前可见；不可逆操作有确认 |
+| 6 | 识别优于回忆 | 卡片显示阶段名/角色/摘要/产物 | 关键信息在当前屏可见；不用记 ID 或上一页 |
+| 7 | 灵活高效 | 快速模式、键盘 Tab、工作台聚合 | 熟手可少点击；新手有路径；快捷方式不冲突 |
+| 8 | 美学与极简 | 信息分层、一屏一个主行动 | 无冗余装饰；密度可控；不堆叠同权重信息 |
+| 9 | 错误识别/诊断/恢复 | 错误行 + 重试、打回备注、失败原因 | 错误说明「什么错、为什么、怎么修」；不丢输入 |
+| 10 | 帮助与文档 | 字段说明、hint、title、角色提示词 | 帮助在需要处出现；不靠外部文档才能完成任务 |
+
+### 5.2 关键流程走查记录（本轮抽样：v1.2.72 七阶段流水线 + 工作台）
+
+| 流程/页面 | 启发式 | 发现 | 严重度 | 处理 |
 |---|---|---|---|---|
-| 1 | `product` | 需求分析 | 产品经理 | 工作阶段 |
-| 2 | `design` | UI 设计 | UI 设计师 | 工作阶段 |
-| 3 | `development` | 开发实现 | 全栈开发 | 工作阶段 |
-| 4 | `testing` | 测试验收 | 测试工程师 | 工作阶段 |
-| 5 | **`acceptance`** | **验收复核** | **项目经理 Agent** | **双复核第一关（AI 复核，给建议）** |
-| 6 | **`approval`** | **人工确认** | **项目经理（你）** | **双复核第二关（人工拍板）** |
-| 7 | `release` | 发布上线 | 运维 | 执行阶段 |
+| 流水线「验收复核」卡 | #1 状态可见 | 复核报告/摘要齐备；fast 自动通过备注曾用错误红，易误判为失败 | 中 | 已在 v1.2.72 设计改为说明灰（`data-tone="info"`）；本轮写入标准「语义色文字用 `*-text`」 |
+| 侧栏阶段卡 | #5 错误预防 / #8 极简 | 22px 高按钮 + 小间距，指针/触屏误触风险 | 中 | 标准：命中区扩至 44×44；密集桌面 ≥24×24 + 8px 间距 |
+| 流水线角色/说明文字 | #4 一致性 / #1 状态可见 | 9–10px caption 对比度 2.1:1，弱视用户难读 | 中 | 标准：`label-caption` 仅装饰；信息性小字用 `label-secondary`；记入 §11 债务 |
+| 「人工确认」进行中 | #1 / #10 | 卡片文案「等待 agent 提交评审」对人工确认关不准确 | 低 | 标准：人工确认 active 用「等待你确认（在顶部待办里通过/打回）」 |
+| 工作台流程条 | #6 识别优于回忆 / #7 高效 | 7 步横向滚动，小屏看不到后两步 | 低 | 记录为 §11 风险；标准要求 360 档可完成核心任务（滚动+当前步提示） |
+| 空/错误态 | #9 错误恢复 | 统一错误行 + 重试；部分面板错误后输入是否保留需逐页确认 | 低 | 模板强制「错误不丢输入」检查项 |
 
-- 双复核关系：**第 5 关 AI 查全/查实/留证据/给建议 → 第 6 关你拍板决定 → 第 7 关才可发布**。两关相邻、职责递进，任何模式下都不能跳过。
-- fast 模式只对**中间五阶段**（1–5）的「提交」自动通过；第 6/7 关永远人工。fast 不改变「打回」语义：打回仍然进入 `failed`。
-- 视觉上要一眼看出「AI 复核 ≠ 你确认」：第 5 关标签 `AI 复核`（信息蓝），第 6 关标签 `人工确认`（中性深色），角色名后缀区分 `项目经理 Agent` / `项目经理（你）`。
+> 走查结论：项目基础可用性良好；主要问题集中在**字号对比度、触控命中区、语义色误用**，已转化为 §3 硬标准；不要求本轮改 UI（本轮不改功能），但 acceptance 复核会按标准检查设计文档是否覆盖。
 
-### 2.2 布局与入口（不变）
+### 5.3 走查模板（每个设计阶段复制）
 
-- **流水线视图**：右侧栏单列竖向卡片流（现有 `.ds-pipe-scroll`），7 张卡顺序排列；顶部仍是工具条 + 待办横幅 + 需求卡；底部仍是 `pipeline.hint` / `pipeline.roleHint`。宽度 260–420px 均可用。
-- **工作台**：`项目状态` 卡显示「第 N 轮 · 已完成 x/7」，`项目流程` 卡横向 7 步（现有 `.ds-wb-steps` 横向滚动，不折行），`需要你处理` 卡显示「第 5/6 关待审批」，其余卡片不变。
-- 两个视图的入口不动：侧栏「更多 › 项目 › 流水线」、工作台「查看流水线」/「查看流水线」按钮；移动端 compact 模式底部栏不变。
+| 流程/页面 | 步骤 | 期望 | 现状 | 启发式 | 问题 | 修正 | 状态 |
+|---|---|---|---|---|---|---|---|
+|  |  |  |  |  |  |  |  |
 
 ---
 
-## 3. 卡片解剖
+## 6. 五维视觉质量评分 rubric（0–5，均分 ≥4 才可提交）
 
-### 3.1 通用 7 关卡片结构（复用现有 DOM，仅第 5/6 关加标签）
+### 6.1 维度与锚点
 
-```
-┌───────────────────────────────────────────────┐
-│ (5)  验收复核                     [待评审]     │  ← .ds-pipe-stage-head
-│      项目经理 Agent  (AI 复核)                  │  ← .ds-pipe-stage-role + .ds-pipe-tag
-│ 建议放行 · 阻断项 0 · 复测 3/3 通过              │  ← .ds-pipe-summary
-│ [验收复核报告] docs/pipeline/acceptance-review.md│  ← .ds-pipe-artifacts
-│ [通过] [打回]                                   │  ← .ds-pipe-actions
-└───────────────────────────────────────────────┘
-```
+| 维度 | 0–1（不合格） | 2（有明显缺陷） | 3（达到基础） | 4（良好，可提交） | 5（示范级） |
+|---|---|---|---|---|---|
+| **视觉层级** | 无层级，所有信息同权重 | 层级混乱/主次不分 | 有标题/正文/辅助三级 | 层级清晰，一屏一个主行动，扫视路径明确 | 层级即引导，可作团队范例 |
+| **清晰度** | 看不懂/术语混乱 | 关键信息缺失或歧义 | 主要信息可懂 | 文案准确、状态可读、无歧义，术语一致 | 新手无需解释即可完成 |
+| **一致性** | 风格混搭 | 多处 token/术语/间距不一致 | 基本沿用现有体系 | token/组件/术语统一，深浅主题一致 | 建立可复用模式并被他人沿用 |
+| **反馈** | 操作无反馈 | 缺 loading/错误/成功反馈 | 关键操作有反馈 | 八态关键项齐备，错误可恢复，防重复 | 反馈节奏与动效编排到位 |
+| **可访问性** | 不可键盘操作/对比度严重不足 | 多处对比度或 ARIA 缺陷 | 基本键盘可达、主要文本达标 | 对比度/焦点/ARIA/触控/降级全部达标 | 通过屏幕阅读器实测，体验完整 |
 
-| 区域 | 类名（复用） | 内容 | 来源 | 设计说明 |
+### 6.2 评分规则
+
+- 每维 **0–5**，以 0.5 为最小刻度；**每维 ≥3 且五维均分 ≥4.0** 才可提交；**≥4.5** 为优秀。
+- **must 一票否决**：以下任一项失败 → 不可提交，不论均分：
+  1. 正文对比度 <4.5:1 或大字号 <3:1；
+  2. 触控目标无 44×44 方案且无 24×24 + 间距说明；
+  3. focus / disabled / loading / empty / error 任一关键态缺失且无 N/A 理由；
+  4. 键盘不可达或焦点不可见；
+  5. 缺调研来源或伪造来源；
+  6. 缺迭代记录；
+  7. 资源死链/无法打开。
+- 评分必须附**证据**：文件路径、截图、对比度数值、grep 结果；无证据的分数降一档，关键项按 0 计。
+- 自评分不能替代 Owner 评审；acceptance 复核按同一 rubric 抽查，偏差 >1 分需说明。
+
+### 6.3 评分表模板（复制到设计说明 §10）
+
+| 维度 | 分数 | 证据（文件/截图/数值） | 扣分点 | 修正 | 复评分 |
+|---|---|---|---|---|---|
+| 视觉层级 | /5 |  |  |  |  |
+| 清晰度 | /5 |  |  |  |  |
+| 一致性 | /5 |  |  |  |  |
+| 反馈 | /5 |  |  |  |  |
+| 可访问性 | /5 |  |  |  |  |
+| **均分** | **/5** | must 项：通过 / 失败 |  |  |  |
+
+### 6.4 本轮自评示范（本设计说明 + 质量门 SVG）
+
+| 维度 | 分数 | 证据 | 扣分点 |
+|---|---|---|---|
+| 视觉层级 | 4 | 质量门 SVG：5 门 + 三态判定 + 评分/证据链分区；标题/正文/辅助三级 | 左下图例信息略密 |
+| 清晰度 | 5 | 每条标准短句 + 数值 + 判定规则；术语表统一 | — |
+| 一致性 | 4 | 复用 `--dsw-alias-*` 语义与 `ds-*` 术语；上一轮设计归档保留 | SVG 与实现 token 存在近似值差异（已注明） |
+| 反馈 | 4 | 通过/不通过/受阻三态 + 失败回路；迭代记录 R1/R2/R3 | 未包含真实用户测试反馈（本轮无 UI 变更） |
+| 可访问性 | 4 | 对比度计算表、44×44、焦点、ARIA、reduced-motion 都写入 MUST | 现有 UI 的 caption/语义色债务需后续修正（§11） |
+| **均分** | **4.2 / 5.0** | must 项：全部通过（含调研/迭代/对比度条款） | 结论：可提交 |
+
+---
+
+## 7. 迭代协议：渲染 → 检查 → 修正
+
+### 7.1 为什么必须迭代
+
+纯文本或未渲染的稿无法验证：字号在真实渲染中是否溢出、深浅主题是否可读、三档断点是否溢出、SVG/HTML 是否有字体依赖。**未渲染、未按标准复检的稿不得提交。**
+
+### 7.2 三轮协议（至少 1 轮；UI 变更建议 ≥2 轮）
+
+| 轮次 | 目标 | 渲染/检查内容 | 通过条件 |
+|---|---|---|---|
+| R1 结构 | 信息架构、布局、层级 | 1280 桌面渲染；检查间距/字号/层级/一屏一主行动 | 无溢出、层级清楚 |
+| R2 状态与视觉 | 八态、颜色、对比度、动效说明 | 浅色 + 深色；关键状态卡片/弹层；对比度抽算 | must 状态齐、对比度达标 |
+| R3 边界与无障碍 | 360/768/1280、长文本、空/错、键盘、reduced-motion | 三档渲染 + 200% 缩放 + 键盘走查 | 三档可用、焦点可见、无截断 |
+
+### 7.3 记录格式（写入设计说明 §9 迭代记录）
+
+| 轮次 | 触发（渲染/走查） | 发现（对照标准条目） | 修正 | 证据路径 | 复评分 |
+|---|---|---|---|---|---|
+| R1 | 1280 渲染 |  |  | `design/xxx-r1.png` |  |
+| R2 | 深色/关键态 |  |  | `design/xxx-r2.png` |  |
+| R3 | 360/768 + 键盘 |  |  | `design/xxx.png` |  |
+
+**渲染工具建议**：浏览器打开 SVG/HTML；或 Node `sharp`/`rsvg-convert` 渲染为 PNG 后逐张检查；无渲染工具时必须在设计说明写「未渲染」及原因（不得冒充已渲染）。迭代记录不写 → 视为未迭代。
+
+### 7.4 本轮真实迭代记录（design-quality-gate.svg）
+
+| 轮次 | 触发 | 发现（对照 §3/§6） | 修正 | 证据 |
 |---|---|---|---|---|
-| 序号 | `.ds-pipe-index` | 1–7 圆形序号 | `index + 1` | 不变；7 关自然变成 1–7 |
-| 标题 | `.ds-pipe-stage-title` | 阶段名 | locale `pipeline.stage.*` | 新增 acceptance 键 |
-| 角色 | `.ds-pipe-stage-role` | 角色名 | locale `pipeline.role.*` | 新增 acceptance；approval 改为「项目经理（你）」 |
-| 双复核标签 | **`.ds-pipe-tag`（新增最小样式）** | `AI 复核` / `人工确认` | locale `pipeline.tag.*` | 仅第 5/6 关；作为角色行内联子节点，不新增容器 |
-| 状态 | `.ds-pipe-status` `data-status` | 待开始/进行中/待评审/已通过/已打回 | 阶段 `status` | 沿用 5 态与状态色 |
-| 摘要 | `.ds-pipe-summary` | 阶段结论 | 阶段 `summary` | 验收复核摘要要求含结论三要素（见 3.2） |
-| 备注 | `.ds-pipe-note` | 打回原因 / 跳过原因 / 快速模式自动通过 / 迁移说明 | 阶段 `note` | **新增 `data-tone`**：`failed` 用错误红（现状），其余用说明灰，避免「自动通过」被红字误读为失败 |
-| 产物 | `.ds-pipe-artifacts` / `.ds-pipe-artifact` / `.ds-pipe-shot` | 报告链接、截图缩略图 | 阶段 `artifacts` | 文档按钮点击 `openFileAt`；图片走缩略图；外部链接 `↗` |
-| 动作 | `.ds-pipe-actions` / `.ds-btn` | 启动并派发 / 发送角色提示 / 通过 / 打回 / 重新派发 | 阶段状态 | 完全复用现有按钮与逻辑 |
-| 序列提示 | `.ds-pipe-seq-hint` | 「需上一阶段通过后才能启动。」 | 前序未通过时 | approval/release 未解锁时显示 |
-| 人工确认提示 | `.ds-pipe-seq-hint`（新文案） | `pipeline.approvalReady` | acceptance 已通过且 approval 未开始/进行中 | 第 6 关专属，说明 AI 复核已完成、发布未解锁 |
+| R1 | `sharp` 渲染 1280×960 @140dpi | ① 硬标准卡片「360/768/1280」文字溢出胶囊；② 表头/脚注 `#8a919c` 对比度 3.2:1（<4.5:1）不可读；③ 评分汇总「4.2/5.0」缺「均分」二字；④ 4 分门槛无视觉标记 | ① 胶囊 76→86px 并右移第二枚；② 文字改 `#61666b`（5.8:1）；③ 加「均分」；④ 加虚线门槛 | `design/design-quality-gate-r1.png` |
+| R2 | 复渲染 @140dpi | ⑤ 门槛文字「门槛≥4」与 1–5 表头挤在同一行，可读性差 | ⑤ 移除表头标签，改为底部说明「虚线 = 4 分门槛」，虚线保留 | `design/design-quality-gate-r2.png` |
+| R3 | 复渲染 @170dpi（3022×2267） | ⑤ 已修；⑥ 迭代计数表述与记录不一致（原「2 轮」→ 实为 3 次渲染 / 2 轮修正） | 改为「3 次渲染 / 2 轮修正」并复渲染 | `design/design-quality-gate.png`、`design/design-quality-gate.svg` |
 
-### 3.2 第 5 关「验收复核」卡（新）
+> 迭代结果：R1→R3 共修正 6 处；自评从「可读性扣分」回到 4.2/5.0；最终稿见 [design/design-quality-gate.svg](design/design-quality-gate.svg)。本轮同时验证了「SVG + 系统 CJK 字体」的渲染路径与 PNG 兜底。
 
-- **序号 5**、标题「验收复核」、角色「项目经理 Agent」、标签 `AI 复核`。
-- **状态**：`pending`（待开始）/ `active`（进行中）/ `review`（待评审）/ `approved`（已通过）/ `failed`（已打回）。
-- **摘要**（`summary`）由模型提交，设计上要求三要素，便于你 10 秒决策：
-  1. 结论：`建议放行` / `建议打回`；
-  2. 阻断项数量（0 时写 0）；
-  3. 复测结果（如 `复测 3/3 通过`）。
-  示例：`建议放行 · 阻断项 0 · 复测 3/3 通过（npm test / pipeline-selftest）`。
-- **产物**：固定第一项 `docs/pipeline/acceptance-review.md`（label「验收复核报告」），可点开；其后可跟关键证据（截图显示为缩略图）。
-- **动作**：
-  - `pending`（testing 已通过）→「启动并派发」；
-  - `active` →「发送角色提示」+「等待 agent 提交评审…」；
-  - `review`（normal）→「通过」「打回」（打回备注写原因与建议回退阶段）；
-  - `failed` →「重新派发」（保留上次备注）；
-  - `approved`（fast/通过）→ `✓ 已通过`，无动作。
-- **fast 特例**：提交即 `approved`，备注显示「快速模式自动通过」；不得显示红色错误样式。
-- **迁移特例**：旧 6 阶段已完成项目迁移为 `approved` + 备注「升级迁移：验收复核为更新新增，旧流程已完成」，以说明灰展示，**不要**将其表达为「新流程已复核」。
+### 7.5 无 UI 变更时的迭代要求
 
-### 3.3 第 6 关「人工确认」卡（与第 5 关的差异）
-
-- 标题「人工确认」、角色「项目经理（你）」、标签 `人工确认`；`roleTitle`/locale 与 Host `PIPELINE_STAGES` 保持一致。
-- **状态**：`pending` / `active` / `review` / `approved` / `failed`。
-  - `pending`（acceptance 已通过）→「启动并派发」；
-  - `active`（你已开始确认）→ 卡片动作仍是「发送角色提示」；**真正的通过/打回在顶部待办横幅**（现状逻辑），同时卡片下显示 `approvalReady` 提示；
-  - `review`（少见）→ 卡片内「通过」「打回」；
-  - `approved` → `✓ 已通过`，第 7 关解锁；`failed` → 重新派发。
-- **永不自动通过**：fast 模式下第 6 关仍停在 `pending`/`active` 等你；`approvalReady` 与顶部横幅文案必须明确「发布未解锁」。
-- **备注色调**：`failed` 红；其余说明灰；不新增图标。
-
-### 3.4 第 7 关「发布上线」卡（仅锁定关系变化）
-
-- 解锁条件由「approval 通过」决定，视觉不变：`pending` 时启动按钮禁用 + 序列提示；`active/review/approved` 时显示现有发布表单/发布记录。
-- 第 6 关通过后，第 7 关卡片与发布表单自然出现；无需新样式。
-
-### 3.5 工作台「项目流程」条
-
-- 7 个 `.ds-wb-step`：序号/✓ + 阶段名 + 角色 + 状态 + 可选耗时/备注；横向滚动（`overflow-x: auto`），**不折行**。
-- 第 5 步文案：`验收复核` / `项目经理 Agent`；第 6 步：`人工确认` / `项目经理（你）`；状态色沿用 `.ds-wb-step[data-status]`。
-- 当前阶段摘要行（`.ds-wb-flow-now`）显示：`当前：验收复核 · 待评审 · 负责：项目经理 Agent`；进入第 6 关后变为 `当前：人工确认 · 进行中 · 负责：项目经理（你）`。
-- 工作台流程条**不新增标签**（7 步空间紧、横向滚动宽度有限），角色名已能区分；双复核标签只在流水线卡出现，避免重复信息。
+若需求只改文档/提示词（如本轮），仍需：① 渲染交付物（SVG/HTML/截图）并按 §3 检查；② 记录渲染与修正；③ 书面说明「无页面变更」及原因。不得空提交。
 
 ---
 
-## 4. 状态矩阵
-
-状态机（每关一致）：`pending → active → review → approved`；`review` 打回 → `failed`；`failed` 重新开始 → `active`（保留打回备注）。fast 只影响**提交后的自动通过**。
-
-### 4.1 acceptance（第 5 关）
-
-| 状态 | normal 模式 | fast 模式 | 视觉 | 动作 |
-|---|---|---|---|---|
-| `pending` 待开始 | testing 通过后出现，可启动 | 启动后提交前短暂停留（提交即通过） | 默认卡；`启动并派发` 可用 | 启动并派发 |
-| `active` 进行中 | agent 正在逐项复核/写报告 | 同左 | 品牌色边框（深色描边） | 发送角色提示 + 等待提交 |
-| `review` 待评审 | 报告已提交，等你通过/打回 | 不出现（直接 approved） | 警示色边框 + `待评审` | 通过 / 打回 + 备注 |
-| `approved` 已通过 | 通过后解锁 approval | 自动通过 + `快速模式自动通过` 说明 | 成功色 ✓；备注说明灰 | 无 |
-| `failed` 已打回 | 打回，回退 development/testing（按报告建议 + 你的备注） | 同左（reject 不自动） | 错误色边框 + 红备注 | 重新派发 |
-
-### 4.2 approval（第 6 关）与 release（第 7 关）——两种模式相同
-
-| 状态 | approval | release | 视觉/动作 |
-|---|---|---|---|
-| `pending` | acceptance 通过后解锁；正常/fast 都停在这里等你 | 未解锁（按钮禁用 + 序列提示） | 默认/锁定 |
-| `active` | 你已开始确认；顶部横幅出现「通过/打回」+ 备注输入 | 发布表单（仅 approval 已通过后） | 品牌色边框 |
-| `review` | 少见（agent 启动后提交）；同样走通过/打回 | 发布待审 | 警示色边框 |
-| `approved` | 你确认通过 → release 解锁 | 发布记录可记 | 成功色 ✓ |
-| `failed` | 你打回 → 回退 acceptance/development（按备注） | — | 错误色 + 备注 |
-
-**互斥/顺序规则（UI 必须体现）**：`acceptance` 未 `approved` 时 `approval` 启动按钮禁用；`approval` 未 `approved` 时 `release` 启动按钮禁用；任何模式都不得出现 approval/release 被自动通过的视觉。
-
----
-
-## 5. 两种关键状态设计稿
-
-### 5.1 设计稿 A：normal 模式，验收复核待评审
-
-**文件**：[design/seven-stage-normal.svg](design/seven-stage-normal.svg)（1280×1030，浅色主题）
-
-场景数据（设计稿采用）：
-
-| 阶段 | 状态 | 摘要/备注 |
-|---|---|---|
-| 1 需求分析 | 已通过 | 七阶段双复核需求说明，9 条验收点 |
-| 2 UI 设计 | 已通过 | 设计说明 + 3 张 SVG 高保真稿 |
-| 3 开发实现 | 已通过 | 7 阶段常量、迁移、闸门逻辑；npm test 通过 |
-| 4 测试验收 | 已通过 | 42 项验收全 pass；测试报告已出 |
-| **5 验收复核** | **待评审** | **建议放行 · 阻断项 0 · 复测 3/3 通过**；产物 `acceptance-review.md` |
-| 6 人工确认 | 待开始（锁定） | 启动按钮禁用 +「需上一阶段通过后才能启动。」 |
-| 7 发布上线 | 待开始（锁定） | 同上 |
-
-界面表现（评审时逐项看）：
-1. 顶部待办横幅：`第 5 关「验收复核」待你审批` + `通过` / `打回` + 备注输入 + 横幅提示；横幅底色为待审警示色。
-2. 第 5 卡：`(5) 验收复核`、`项目经理 Agent`、`AI 复核` 标签、`待评审`、三要素摘要、可点开的复核报告、`通过/打回`。
-3. 第 6 卡：`(6) 人工确认`、`项目经理（你）`、`人工确认` 标签、`待开始`、禁用的「启动并派发」+ 序列提示。
-4. 第 7 卡：`(7) 发布上线`、`运维`、`待开始`、禁用 + 序列提示。
-5. 右侧标注：双复核关系图（AI 建议 → 你决定 → 才可发布）、卡片要点、颜色图例。
-
-### 5.2 设计稿 B：fast 模式，验收复核自动通过、人工确认待你拍板
-
-**文件**：[design/seven-stage-fast.svg](design/seven-stage-fast.svg)（1280×1030，浅色主题）
-
-场景数据：第 1–5 关均 `已通过`（第 5 关备注「快速模式自动通过」，说明灰），第 6 关 `进行中`（你已点「启动并派发」），第 7 关锁定。
-
-界面表现（评审时逐项看）：
-1. 工具条「快速模式」开关为勾选态（hover 显示 `pipeline.fastHint`）。
-2. 顶部待办横幅：`第 6 关「人工确认」待你审批` + `通过` / `打回` + 备注输入；横幅提示仍为「你只需要点通过 / 打回……」。
-3. 第 5 卡：`已通过` + `快速模式自动通过`（**说明灰**，不是红色）+ 复核报告仍可点开。
-4. 第 6 卡：`进行中`、`人工确认` 标签、`approvalReady` 提示「AI 验收复核已完成；你确认通过后才会解锁发布阶段。」；卡片动作「发送角色提示」，等待文案改为「等待你确认（在顶部待办里通过/打回）」（建议，见第 10 节）。
-5. 第 7 卡：仍锁定；fast 不会自动通过它。
-6. 右侧标注：fast 规则（五中间阶段自动通过；人工确认与发布永远人工）、双复核关系图（第 5 关自动 ✓）、「只有人工确认与发布需要你」。
-
-### 5.3 设计稿 C：验收复核卡 5 种状态
-
-**文件**：[design/acceptance-card-states.svg](design/acceptance-card-states.svg)（1100×960）
-
-逐状态给出卡片外观、触发条件、动作与文案；重点看 `review`（normal 主路径）与 `approved + 快速模式自动通过`（fast 主路径），以及 `failed` 的打回备注与「重新派发」。
-
-### 5.4 设计稿 D：工作台 7 步流程条
-
-**文件**：[design/seven-stage-workbench.svg](design/seven-stage-workbench.svg)（1100×560）
-
-展示 `项目流程` 卡 7 步横向条、当前步骤摘要行「当前：验收复核 · 待评审 · 负责：项目经理 Agent」、`已完成 4/7` 进度；验证 7 步在 1080px 内容宽下的排布与横向滚动行为。
-
----
-
-## 6. 交互流程
-
-### 6.1 normal 模式（逐关审批）
-
-1. `testing` 通过 → acceptance 变 `pending`（可启动），流水线顶部横幅 `下一步：启动「验收复核」`。
-2. 你/Lead 点「启动并派发」→ acceptance `active`，卡片显示「进行中」+「发送角色提示」+「等待 agent 提交评审…」。
-3. 项目经理 Agent 逐项复核并写 `docs/pipeline/acceptance-review.md` → `pipeline_submit_stage({stageId:'acceptance', summary, artifacts})`。
-4. acceptance `review`：流水线顶部横幅变为 `第 5 关「验收复核」待你审批`（警示色），含通过/打回与备注；卡片同步出现通过/打回。
-5. 你点「通过」→ acceptance `approved` → approval `pending`（解锁）；点「启动并派发」→ approval `active` → 顶部横幅 `第 6 关「人工确认」待你审批` → 你通过 → release 解锁。
-6. 你点「打回」→ acceptance `failed` + 备注（写原因与建议回退阶段）→ 开发/测试修复 → acceptance 卡「重新派发」→ 回到步骤 2。默认回退到 development 还是 testing 由复核报告「建议回退阶段」+ 你的备注决定，UI 不预设。
-
-### 6.2 fast 模式
-
-1. 第 1–5 关提交后自动 `approved`（Host 返回 `autoApproved=true`，下一个是 approval）；acceptance 卡备注显示「快速模式自动通过」，且仍保留复核报告可查。
-2. approval 保持 `pending`：你需点「启动并派发」→ `active`，顶部横幅出现「通过/打回」。
-3. 你通过 → release 解锁；你打回 → approval `failed`，按备注回到 acceptance/development 修复。
-4. fast 开关只影响之后的提交，不回退已 approved 阶段；任何阶段打回都不会被自动通过。
-
-### 6.3 变更轮 scope 的显示
-
-| scope | acceptance 显示 | 说明 |
-|---|---|---|
-| `full` | 正常执行 | 完整七关 |
-| `development` | 正常执行 | 跳过需求/设计，开发→测试→**验收复核**→确认→发布 |
-| `release` | `approved` + 跳过备注 | 本轮不执行 acceptance，注释「跳过：本次变更仅调整发布物」；approval 仍须已通过 |
-| `product` / `design` / `product-design` | `approved` + 跳过备注 | 需求/设计重做后本轮结束；workbench 流程条显示「跳过」（现有 `note.startsWith('跳过')` 逻辑） |
-
-跳过关的备注同样用**说明灰**，不显示为成功/失败。
-
-### 6.4 迁移（旧 6 阶段数据）
-
-- 全 `pending` / 进行中：验收复核补为 `pending`，流水线自然显示 7 卡，之后按新顺序执行。
-- 旧已完成：acceptance 迁移为 `approved` + 迁移备注，以说明灰展示；`✓ 已通过` 仍显示，但备注明确「旧流程已完成，不代表新流程重新复核」。
-- UI 不新增「迁移」徽标/弹窗；只靠备注文案。
-
-### 6.5 空 / 加载 / 错误态（沿用）
-
-- 流水线数据未加载（`stages.length === 0`）：沿用「读取流水线失败：—」提示；不做新占位。
-- 保存中：`pipelineBusy` 时禁用按钮，工具条显示「保存中…」。
-- 请求失败：顶部错误行 + 重试（现有 `pipelineError`）。
-- 验收复核产物未登记：不显示产物区（不新增空态占位，避免噪音）；摘要为空时仅显示状态。
-
----
-
-## 7. 中英文文案表
-
-术语统一：**验收复核 / Acceptance review**、**人工确认 / Human sign-off**、**AI 复核 / AI review**、**双复核 / dual review**、**项目经理 Agent / Project manager agent**、**项目经理（你）/ Project manager (you)**。中文界面不出现「六阶段/六关」，英文不出现「six-stage」。
-
-### 7.1 必需键（新增/变更）
-
-| Key | 中文 | English | 用途/位置 |
-|---|---|---|---|
-| `pipeline.stage.acceptance` | 验收复核 | Acceptance review | 第 5 关卡标题；工作台流程步名 |
-| `pipeline.role.acceptance` | 项目经理 Agent | Project manager agent | 第 5 关卡角色；工作台流程角色 |
-| `pipeline.stage.approval` | 人工确认 | Human sign-off | **变更**：原「PM / 客户确认」→「人工确认」 |
-| `pipeline.role.approval` | 项目经理（你） | Project manager (you) | **变更**：原「项目经理」→「项目经理（你）」 |
-| `pipeline.fastHint` | 中间五阶段（需求/设计/开发/测试/验收复核）提交后自动通过并推进；只有人工确认与发布需要你点。 | The five intermediate stages (product/design/development/testing/acceptance) auto-approve and advance on submit; only the human sign-off and release need you. | 快速模式开关 title；工作台快速模式 title |
-| `pipeline.approvalReady` | AI 验收复核已完成；你确认通过后才会解锁发布阶段。 | The AI acceptance review is done; release unlocks only after your sign-off. | 第 6 关卡提示（acceptance 已通过时） |
-| `pipeline.hint` | 需求由你下发；产品经理→UI 设计→开发→测试→**AI 验收复核**→你确认→运维发布（双复核）。每个阶段的角色边界写在派发提示词里，评审由你在面板上把关。 | You issue the requirement; product → design → development → testing → **AI acceptance review** → your sign-off → ops release (dual review). Role boundaries live in the dispatched prompts; every gate is yours to approve. | 流水线底部说明 |
-| `pipeline.tag.ai`（新增） | AI 复核 | AI review | 第 5 关标签 |
-| `pipeline.tag.human`（新增） | 人工确认 | Human sign-off | 第 6 关标签 |
-| `pipeline.approvalWaiting`（新增，建议） | 等待你确认（在顶部待办里通过 / 打回） | Waiting for your confirmation (approve or request changes in the banner above) | approval `active` 时替代「等待 agent 提交评审…」 |
-| `pipeline.autoApproved`（新增，可选） | 快速模式自动通过 | Auto-approved in fast mode | fast 自动通过备注的本地化显示；不新增则直接显示 Host 备注 |
-
-### 7.2 工作台与流程文案（六 → 七）
-
-| Key | 中文（改后） | English（改后） |
-|---|---|---|
-| `workbench.redoHint` | 从所选阶段开始重做，之后的阶段都会重置；例如选「需求分析」会按新需求重跑全部**七关**，选「开发实现」只重做开发及之后。 | The chosen stage and everything after it reset; e.g. picking “Requirement” reruns all **seven stages**, picking “Development” redoes development onward. |
-| `workbench.reqScope.full` | **完整七关** | **Full seven stages** |
-| `workbench.reqScope.fullHint` | 需求 → 设计 → 开发 → 测试 → **验收复核** → 确认 → 发布。 | Product → design → development → testing → **acceptance review** → sign-off → release. |
-| `workbench.reqScope.productHint` | 只重做需求与验收项：产品 → 完成。设计/开发/测试/**验收复核**/确认/发布跳过，适合只改需求文档。 | Redo the requirement and acceptance items only: product → done. Design/development/testing/**acceptance review**/sign-off/release are skipped — for requirement-document-only changes. |
-| `workbench.reqScope.designHint` | 只重做设计：跳过需求，设计 → 完成。开发/测试/**验收复核**/确认/发布跳过，适合只改设计稿。 | Redo the design only: product is skipped, design → done. Development/testing/**acceptance review**/sign-off/release are skipped — for design-only changes. |
-| `workbench.reqScope.product-designHint` | 重做需求与设计：产品 → 设计 → 完成。开发/测试/**验收复核**/确认/发布跳过。 | Redo requirement and design: product → design → done. Development/testing/**acceptance review**/sign-off/release are skipped. |
-| `workbench.reqScope.developmentHint` | 跳过需求与设计：开发 → 测试 → **验收复核** → 确认 → 发布。适合代码/配置调整。 | Skip product and design: development → testing → **acceptance review** → sign-off → release. For code/config changes. |
-| `workbench.reqScope.releaseHint` | 跳过需求/设计/开发/测试/**验收复核**：只做确认 → 发布。适合发布物调整。 | Skip product/design/development/testing/**acceptance review**: sign-off → release only. For packaging changes. |
-| `workbench.changeHintIncomplete` | 完成全部**七关**后，才能发起新轮变更 | Start a change round once all **seven stages** are approved |
-| `workbench.reqMode.changeHint` | 归档本轮**七关**并重新走一遍：项目全部完成后可用。 | Archive this round and run the **seven stages** again; available once every stage is approved. |
-| `todo.dispatchChangeMessage` | 当前项目已完成。将用「{title}」发起完整**七关**的新一轮变更，并从产品经理阶段开始。 | The current project is complete. Start a full **seven-stage** change round with “{title}” and begin at the product stage. |
-| `pipeline.hint` | 见 7.1（同时含双复核说明） | 见 7.1 |
-| `pipeline.fastHint` | 见 7.1 | 见 7.1 |
-| `pipeline.approvalReady` | 见 7.1 | 见 7.1 |
-
-### 7.3 派发提示文案（`buildIntakePrompt`，中文）
-
-- 「快速模式已开启：**中间四阶段**提交后自动通过」→「中间**五**阶段（含验收复核）提交后自动通过」。
-- 步骤 3：「之后继续编排 design / development / testing」→ 补 `acceptance`：「design / development / testing / **acceptance（验收复核，派给项目经理 Agent）**」。
-- 「到 approval 闸门停下」保持；可补一句「AI 复核报告是人工确认的输入，不能替代 Owner 确认」。
-
-### 7.4 插件描述（locale meta）
-
-- `locale/zh.json`：`六阶段交付流水线` → **`七阶段双复核交付流水线（AI 验收复核 + 人工确认）`**。
-- `locale/en.json`：`a six-stage delivery pipeline` → **`a seven-stage dual-review delivery pipeline (AI acceptance review + human sign-off)`**。
-
-### 7.5 不需要改的文案
-
-`pipeline.reviewBanner`（`第 {n} 关「{stage}」待你审批`）、`pipeline.activeBanner`、`pipeline.nextBanner`、`workbench.reviewGate`、`notify.stageReview*` 都用动态 `n`/`stage`，7 关自动正确，不要硬编码关数。
-
----
-
-## 8. 视觉规范
-
-### 8.1 颜色（只用 token）
-
-| Token | 用途 | SVG 近似（浅色稿，仅供预览） |
-|---|---|---|
-| `--dsw-alias-bg-base` / `bg-layer-1` | 面板/卡片底 | `#ffffff`；页面底 `#f9fafb` |
-| `--dsw-alias-bg-layer-2` | 序号底、pill 底、输入底 | `#f1f3f5` |
-| `--dsw-alias-border-l1` / `l2` | 卡片/输入边框 | `#e6e9ee` / `#d5dae1`（预览加深） |
-| `--dsw-alias-label-primary` | 标题、主文字 | `#0f1115` |
-| `--dsw-alias-label-secondary` | 摘要、次文字 | `#61666b` |
-| `--dsw-alias-label-caption` | 角色、hint、标签说明 | `#8a919c`（预览加深；实现用 token） |
-| `--dsw-alias-state-business-primary` | **AI 复核标签**（蓝） | `#4176e6` |
-| `--dsw-alias-state-success-primary` | 已通过 | `#22c55e` |
-| `--dsw-alias-state-warn-primary` | 待评审边框/状态 | `#f59e0b` |
-| `--dsw-alias-state-error-primary` | 已打回/错误备注 | `#ec1313` |
-
-- **AI 复核** = 信息蓝（冷色，表示「机器建议」）；**人工确认** = 中性深色（`label-primary`，表示「你的决定」）；两者都不使用成功/警告色，避免与状态混淆。
-- 深浅主题：全部走 token，主题切换自动适配；SVG 只提供浅色稿，开发需在深色主题下自查（验收步骤见第 11 节）。
-
-### 8.2 新增样式（唯一两处，均为增量）
-
-**① 双复核标签**（插在 `.ds-pipe-stage-role` 文本后，作为其子节点，不新增容器）：
-
-```css
-.ds-pipe-tag {
-  display: inline-block; margin-left: 4px; padding: 0 5px; border-radius: 8px;
-  background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-secondary);
-  font-size: 8.5px; line-height: 14px; font-weight: 600; vertical-align: 1px;
-}
-.ds-pipe-tag[data-kind="ai"] {
-  background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 10%, transparent);
-  color: var(--dsw-alias-state-business-primary);
-}
-.ds-pipe-tag[data-kind="human"] {
-  background: color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent);
-  color: var(--dsw-alias-label-primary);
-}
-```
-
-**② 备注色调**（现有 `.ds-pipe-note` 默认错误红，新增说明灰变体）：
-
-```css
-.ds-pipe-note[data-tone="info"] { color: var(--dsw-alias-label-caption); }
-```
-
-> 结构不变：标签是角色行内联文本；备注只加 `data-tone` 属性；按钮、产物、状态全部复用现有类。除此之外不新增任何 `ds-pipe-*`/`ds-wb-*` 样式。
-
-### 8.3 字号 / 间距 / 圆角（不新增）
-
-- 侧栏：卡片标题 11px/600、角色 9px、摘要 10px、提示 9.5px、标签 8.5px；卡片圆角 7px、内边距 6×7、卡间距 6px。
-- 工作台：卡片标题 10.5px、步骤名 11px、角色 9px、当前摘要 11px；卡片圆角 10px、内边距 10×12、栅格间距 10px（窄屏单列）。
-- 按钮：侧栏 22px 高、工作台 28px 高（compact 34px）；不动。
-- 动效：无新增（沿用 `border-color` 0.15s 过渡）。
-
-### 8.4 状态色规则（与现有 `data-status` 一致）
-
-| 状态 | 边框 | 状态 pill 文字 | 动作 |
-|---|---|---|---|
-| pending | 默认 | caption | 启动并派发（禁用时附序列提示） |
-| active | `brand-primary` | `brand-primary` | 发送角色提示 / 等待 |
-| review | `state-warn-primary` | `state-warn-primary` | 通过 / 打回 |
-| approved | 默认 + `✓ 已通过` | `state-success-primary` | — |
-| failed | `state-error-primary` | `state-error-primary` | 重新派发 |
-
----
-
-## 9. 响应式与无障碍
-
-### 9.1 响应式
-
-- **侧栏 260–420px**：卡片单列、不横向滚动；头部 `flex` 允许标题压缩，`待评审/进行中` pill 不换行；长摘要沿用 `overflow-wrap: anywhere`。260px 下若 `角色 + AI 复核标签` 挤行，标签允许换到下一行（inline，不溢出）。
-- **7 步流程条**：保持横向滚动、不折行；1080px 内容宽下 7×116 + 6×20（连接线）= 932px 可完整显示；≤700px 单列卡片网格下流程条仍横向滚动。
-- **compact 模式**（`data-compact="true"`）：按钮增大到 34px；流水线视图同样为单列、动作按钮换行；不新增折叠/抽屉。
-- 设计稿按桌面侧栏宽度绘制；手机模式以「同组件、单列、可滚动」为准，不单独出新布局。
-
-### 9.2 无障碍
-
-- **颜色不单独表意**：状态 pill 有文字（待开始/进行中/待评审/已通过/已打回），标签有文字（AI 复核/人工确认），序号 1–7 可见；即使色弱也能分辨。
-- **对比度**：主文字/标题用 `label-primary`；摘要用 `label-secondary`；`label-caption` 仅用于辅助信息（角色、hint），不作为唯一信息载体。AI 标签蓝底浅蓝（`state-business-primary` + 10% 混合）加 600 字重，仍需在实现后实测；若 8.5px 下不达标，提高到 9px 或改用 `label-secondary` 文本 + 蓝色圆点（二选一，优先加字号）。
-- **键盘**：顺序 = 工具条（快速模式 → 刷新）→ 待办横幅（通过 → 打回 → 备注输入）→ 需求卡 → 7 张卡依次（动作按钮 → 产物链接）。禁用按钮不进入 Tab 顺序，因此「需上一阶段通过后才能启动。」必须作为**可见文本**存在（现状 `.ds-pipe-seq-hint` 已满足）。
-- **可读名称**：本设计不新增图标按钮。产物按钮 `title=路径`；图片产物 `alt=label`；本轮新增的标签是文本，无需 aria-label。approval `active` 的等待文案要写明「在顶部待办里通过/打回」，避免屏幕阅读器用户只听到「等待」。
-- **动效减少**：无新增动画，现有 0.15s 边框过渡可忽略。
-
----
-
-## 10. 实现注意点（给开发）
-
-### 10.1 `client.js` 必改位置（按当前 v1.2.71 行号，±几行以实际为准）
-
-| # | 位置 | 改动 | 不做的后果 |
-|---|---|---|---|
-| 1 | 工作台 `stageTitles`（≈16376–16383） | 增加 `acceptance: t('pipeline.stage.acceptance')` | 工作台流程第 5 步标题显示原始 id `acceptance` |
-| 2 | 工作台 `roleLabels`（≈16407–16414） | 增加 `acceptance: t('pipeline.role.acceptance')` | 第 5 步角色为空 |
-| 3 | 工作台 `const total = stages.length === 0 ? 6 : stages.length`（≈16375） | `6 → 7` | 无数据时显示 `/6` |
-| 4 | 流水线视图 `roleLabels`（≈17475–17482） | 增加 acceptance 角色 | 第 5 卡角色显示 `acceptance` |
-| 5 | 流水线视图 `stageTitles`（≈17483–17490） | 增加 acceptance 标题 | 第 5 卡标题显示 `acceptance` |
-| 6 | 中文字典（≈586–597） | 新增/变更 stage、role、tag、fastHint、approvalReady、hint、approvalWaiting | 中文缺键回退 key 名 |
-| 7 | 英文字典（≈1636–1647） | 同上英文 | 英文缺键回退 key 名 |
-| 8 | `stageNode` 角色行（≈17602） | 角色 span 内追加双复核标签：`stage.id === 'acceptance' ? AI 复核 : stage.id === 'approval' ? 人工确认 : null` | 两关视觉无法区分 |
-| 9 | `stageNode` 备注行（≈17607） | 加 `'data-tone': status === 'failed' ? undefined : 'info'`（或按 note 前缀） | fast/迁移/跳过备注显示成红色错误 |
-| 10 | approval 等待文案（≈17615） | `stage.id === 'approval' ? t('pipeline.approvalWaiting') : t('pipeline.waitingAgent')`（建议） | 第 6 关显示「等待 agent 提交评审…」误导 |
-| 11 | CSS 流水线区（≈22540 状态 pill 之后） | 加 `.ds-pipe-tag` 3 条规则、`.ds-pipe-note[data-tone="info"]` 1 条 | 标签无样式、说明备注仍红 |
-| 12 | 工作台「需求与调整」文案：`redoHint`(≈453)、`reqScope.*`(≈458–469)、`changeHintIncomplete`(≈470)、`reqMode.changeHint`(≈477) | 六→七，补验收复核 | 变更轮提示仍说「六关」 |
-| 13 | `todo.dispatchChangeMessage`（≈837） | 六→七 | 已完成后发起变更提示不一致 |
-| 14 | `buildIntakePrompt`（≈10053–10068） | 「中间四阶段」→「五阶段」；步骤 3 补 `acceptance`（项目经理 Agent） | 交给 Lead 的派发提示仍按旧流程 |
-| 15 | `pipeline.hint`(≈567/1617)、`pipeline.fastHint`(≈580/1630)、`pipeline.approvalReady`(≈628/1678) | 按 7.1 改 | 底部说明与开关 title 仍写旧流程 |
-| 16 | locale meta（`locale/zh.json`、`en.json`） | 插件描述改七阶段双复核 | 插件卡片仍写六阶段 |
-
-另有两处经检查**不需要改**，避免开发误改：
-
-- `buildRequirementPrompt`（≈10079–10096）：只讲需求修订与打回哪一关，没有阶段数量文案；保持原样。
-- `pipeline.stage.*` 的通用调用（≈8521 `t('pipeline.stage.' + stage.id)`、≈10161、≈11817）：补上 locale 键后自动显示「验收复核」，无需逐个硬编码。
-- release 前置提示：客户端没有独立的 release 提示文案，锁定由按钮禁用 + `pipeline.sequenceHint` 表达；Host `STAGE_GUIDES.release`（`pipeline.js`）已写「approval 已通过后发布」，UI 侧无需新增文案。
-
-> 第 6/7 关审批逻辑**不需要改**：`ownerGateStage` 已覆盖 `review` 与 approval `active`；横幅关数用 `findIndex + 1` 动态计算，自动变成 5/6；`approvalReady` 触发条件 `stages[index-1].status === 'approved'` 在 acceptance 通过后自然成立。
-
-### 10.2 Host 侧依赖（不在本设计写范围，但影响 UI 呈现）
-
-- `PIPELINE_STAGES` 7 阶段 + `{ id:'acceptance', role:'project-manager-agent', roleTitle:'项目经理 Agent', title:'验收复核' }`，approval `roleTitle` →「项目经理（你）」。UI 角色名来自 locale，但必须与 Host 保持一致，避免提示词/面板角色名不一致。
-- fast 自动通过备注由 Host 写入；建议固定文案「快速模式自动通过」，供客户端按前缀本地化（可选）；若保留「快速模式：Owner 预授权自动通过」，UI 用说明灰展示即可。
-- 迁移备注「升级迁移：验收复核为更新新增，旧流程已完成」；UI 只负责说明灰展示，不新增状态语义。
-- 变更轮 `release` scope 跳过 acceptance 的 note 沿用「跳过：…」，工作台已按 `note.startsWith('跳过')` 显示「跳过」。
-
-### 10.3 自查清单（开发提交前）
-
-- [ ] 中英文各切一遍：7 关标题/角色正确，第 5 卡无 `acceptance` 原始 id，第 6 卡角色「项目经理（你）」。
-- [ ] normal 走一遍：testing 通过 → 启动 acceptance → 提交 → 横幅/卡片通过 → approval 解锁 → 通过 → release 解锁。
-- [ ] fast 走一遍：中间五阶段自动通过；acceptance 显示「快速模式自动通过」且为说明灰；approval 仍需启动+人工通过；release 不自动。
-- [ ] 打回 acceptance：failed 红备注 + 重新派发可用；approval/release 保持锁定。
-- [ ] 深色主题：标签/边框/说明灰可读；260px 侧栏不溢出；工作台 7 步横向滚动正常。
-- [ ] `grep -n "六阶段\|六关\|six-stage\|six stages" dsh-web-filebrowser-plugin/client.js` 仅历史 CHANGELOG 例外。
-
----
-
-## 11. 验收对照（需求 §7 第 6 条为主）
-
-| 验收点 | 页面/控件落点 | 设计稿 | 验证方式 |
-|---|---|---|---|
-| 流水线恰好 7 关且顺序固定 | 流水线视图 7 张卡序号 1–7；工作台 7 步流程条 | A/B/C/D | 刷新页面数卡片/步骤；序号与阶段名逐一对照 |
-| 新角色「项目经理 Agent」可见 | 第 5 卡标题/角色、`AI 复核` 标签；工作台第 5 步角色 | A/C/D | 中英文各看一次，角色文案正确 |
-| 第 6 关「人工确认 / 项目经理（你）」 | 第 6 卡标题/角色/`人工确认` 标签 | A/B | 与第 5 卡相邻对比，一眼可区分 |
-| normal：acceptance 待评审可通过/打回 | 顶部横幅 + 第 5 卡动作 + 复核报告产物 | A/C | 切 normal 提交 acceptance，点通过/打回观察状态与解锁 |
-| fast：acceptance 自动通过、approval 待你确认 | 第 5 卡「快速模式自动通过」+ 第 6 卡进行中 + 横幅 | B | 切 fast 提交 acceptance，确认 autoApproved 后 approval 仍需人工 |
-| approval/release 永不自动 | 两卡在 fast 下不出现「✓ 已通过」自动态 | B | fast 模式检查两关始终需启动/审批 |
-| 复核卡可启动派发 | 第 5 卡「启动并派发」可用（testing 通过后） | A/C | 点击后变进行中并派发提示 |
-| 工作台无「六阶段」残留 | 进度 x/7、流程 7 步、范围 hint | D + 文案表 | grep + 中英文界面走查 |
-| 验收报告可点开 | 第 5 卡产物链接 `docs/pipeline/acceptance-review.md` | A/B/C | 点击在编辑器中打开文件 |
-
----
+## 8. 设计交付模板 v2（升级版）
+
+> 在 v1.2.33 模板上新增：调研与借鉴、设计 tokens、状态矩阵、自检评分、迭代记录、可访问性说明；复制后替换占位符。
+
+```md
+# <项目> 设计说明 v<N>（<日期>）
+
+## 0. 元信息
+- 角色：UI 设计师｜关联需求：docs/pipeline/requirements.md
+- 验收项映射：<acceptance item id/title>
+- 本轮性质：<页面改造 / 无 UI 变更（原因）>
+- 结论：<可提交 / 有阻塞；must 通过情况>
+
+## 1. 调研与借鉴（必填）
+### 1.1 来源表
+| # | 来源 | URL | 访问日期 | 类型 | 关键结论 |
+### 1.2 借鉴决策表
+| 借鉴点 | 来源 | 采用/调整/不采用 | 理由 | 落点 |
+### 1.3 已验证模式 vs 创新假设
+- 已验证模式（有来源）：
+- 创新假设（需验证，写验证方式与失败预案）：
+### 1.4 抓取受限/无网络说明
+- <URL / 原因 / 处理；无网络写 blocked 与缺口>
+
+## 2. 页面与组件清单
+| 页面/组件 | 入口 | 用户动作 | 复用/改造/新增 | 关联验收项 |
+
+## 3. 信息架构与关键流程
+- 布局/层级/固定与滚动区；正常流程；异常流程（失败/超时/无权限）。
+
+## 4. 设计 tokens
+- 间距：4/8px 体系，列出使用值（4/8/12/16/24/32…）。
+- 字号阶梯与行高：text-caption 12/18、text-meta 14/20、text-body 16/24…（正文 ≥1.4）。
+- 颜色：token 名 + 用途 + 计算对比度（正文 ≥4.5:1，大字/非文本 ≥3:1），深浅主题各一组。
+- 圆角/阴影/动效时长与 easing（150–300ms）。
+
+## 5. 状态矩阵（八态）
+| 组件 | default | hover | focus | active | disabled | loading | empty | error |
+（每格写视觉 + 文案 + 交互 + N/A 理由；只读区至少 empty/loading/error/success）
+
+## 6. 响应式（360 / 768 / 1280）
+| 断点 | 布局 | 导航 | 内容宽度 | 验证方式/截图 |
+
+## 7. 可访问性说明
+- 键盘路径与顺序；焦点样式；ARIA/可读名称；屏幕阅读器抽查（工具/结论）。
+- 对比度实测表；触控目标（≥44×44 / 24×24+间距）；prefers-reduced-motion 降级。
+- 不用颜色单独表意清单。
+
+## 8. 资源
+- docs/pipeline/design/<file>（页面/状态/设备）+ 打开方式；渲染环境与字体说明。
+
+## 9. 迭代记录（≥1 轮）
+| 轮次 | 触发 | 发现（对照标准） | 修正 | 证据路径 | 复评分 |
+
+## 10. 自检评分
+| 维度 | 分数 | 证据 | 扣分点 | 修正 | 复评分 |
+| 视觉层级 / 清晰度 / 一致性 / 反馈 / 可访问性 |
+- 均分：__/5；must 项：通过/失败；结论：可提交/不可提交。
+
+## 11. 给开发/测试的交接
+- 开发：组件/状态对照、tokens、交互细节、防重复与错误恢复、可自由调整 vs 不可偏离。
+- 测试：每状态视觉基线、三档断点、深浅主题、键盘/ARIA、错误文案与复测步骤。
 
 ## 12. 未决问题与风险
-
-| # | 问题/风险 | 影响 | 当前设计决定 | 负责人/确认时间 |
-|---|---|---|---|---|
-| 1 | normal 打回 acceptance 默认回退到 development 还是 testing | 修复路径不清 | 由复核报告「建议回退阶段」+ 你的打回备注决定，UI 不预设（与需求 §10.2 一致） | Owner/Lead（实施前确认） |
-| 2 | fast 自动通过备注的中文化/英文化 | 英文界面出现中文备注 | 核心先做「说明灰」；本地化（`pipeline.autoApproved`）为可选 P1 | 开发/Lead |
-| 3 | 迁移 approved 的 acceptance 是否要额外视觉标记 | 可能误解为「新流程已复核」 | 只用备注说明灰，不加新状态/徽标（与需求 §10.1 一致） | Owner（默认按此） |
-| 4 | 侧栏极窄（260px）下标签与状态 pill 挤压 | 换行/溢出 | 标签 inline 允许换行；必要时实现后按实测微调标签字号（8.5–9px） | 开发自测 |
-| 5 | 工作台 7 步流程条横向滚动是否足够 | 小屏看不到后两步 | 本轮保持横向滚动（复用现有组件）；若 Owner 觉得不便，下一轮可改两行/紧凑模式 | Owner 验收时决定 |
-| 6 | approval `active` 等待文案改动是否会牵连测试快照 | 1 处条件文案变更 | 建议改（更准确）；若开发要最小改动可保留旧文案，但需在文档记录 | 开发/QA |
-| 7 | `--dsw-alias-state-business-primary` 在小字号下的对比度 | AI 标签可读性 | 加 600 字重 + 浅色底；实测不达标优先加字号到 9px | QA 验收 |
+- <问题> — 负责人/确认时间/临时假设。
+```
 
 ---
 
-## 13. 资源清单
+## 9. 给开发的可执行条款清单（pipeline.js 与 02-design.md）
 
-| 文件 | 内容 | 对应页面/状态 |
+> 用法：以下短句可直接粘贴进 `dsh-web-filebrowser-plugin/pipeline.js` 的 `STAGE_GUIDES.design` 与 `docs/opc/02-design.md`；每条都含可 grep 关键词，供 selftest/验收断言。
+
+### 9.1 `STAGE_GUIDES.design` 建议文本（替换/新增）
+
+```js
+design: {
+  mission:
+    '把已通过需求转成可评审、可实现、可测量的设计：先调研 ≥2 个同类产品/设计系统（web_search / web_fetch，记录 URL + 访问日期 + 关键结论），' +
+    '再按 4/8px 间距、字号阶梯与行高、token 对比度（正文 4.5:1、大字 3:1）、44×44 触控、八态状态矩阵、360/768/1280 响应式、150–300ms 动效与 ARIA 交付，并给出自检评分与至少一轮迭代记录。',
+  does: [
+    '调研：用 web_search / web_fetch 检索 ≥2 个同类产品/设计系统，记录 URL + 访问日期 + 关键结论；写进设计说明「调研与借鉴」，无网络标 blocked 并写缺口，不伪造来源。',
+    '硬标准：4/8px 间距体系；字号阶梯（12/14/16/20/24/32）与行高（正文 ≥1.4）；颜色 token 化，正文对比度 ≥4.5:1、大字号 ≥3:1、非文本 ≥3:1；可点击区域 ≥44×44。',
+    '状态矩阵：默认/hover/focus/active/disabled/loading/empty/error 八态齐备；每个可交互组件填写，N/A 需理由。',
+    '响应式与动效：覆盖 360/768/1280 三档；动效 150–300ms 且支持 prefers-reduced-motion。',
+    '可访问性：键盘可达、焦点可见、ARIA/可读名称、不用颜色单独表意。',
+    '自检与迭代：五维自检评分（视觉层级/清晰度/一致性/反馈/可访问性）每维 ≥3、均分 ≥4；至少一轮「渲染→检查→修正」并记录前后差异。',
+  ],
+  doesNot: [
+    '不跳过调研只凭经验出稿；不伪造来源、访问日期或抓取结论。',
+    '不硬编码颜色/间距；不新增设计系统或运行时依赖；不复制受版权保护的文案、商标与界面素材。',
+    '不只画 happy path：不得省略空/加载/错误/禁用等状态；不得只写文字描述而不给高保真稿。',
+    '不把未渲染、未自检的稿提交评审；不自批、不改需求范围与验收标准。',
+  ],
+  deliverables: [
+    'docs/pipeline/design.md：信息架构、页面/组件清单、设计 tokens、八态状态矩阵、360/768/1280 响应式、可访问性说明、调研与借鉴、自检评分、迭代记录。',
+    'docs/pipeline/design/：关键页面与关键状态的高保真稿/截图（SVG/PNG/可预览 HTML），命名 <页面>-<状态>-<设备>.<ext>。',
+    '交接段：给开发的组件/状态对照表 + 给测试的视觉基线与复测步骤。',
+  ],
+}
+```
+
+**关键词覆盖**（selftest 可断言）：`调研`、`借鉴`、`web_search`、`web_fetch`、`4/8px`、`字号阶梯`、`行高`、`对比度`、`4.5:1`、`3:1`、`44×44`、`状态矩阵`、`默认`、`hover`、`focus`、`active`、`disabled`、`loading`、`empty`、`error`、`360`、`768`、`1280`、`150–300ms`、`prefers-reduced-motion`、`ARIA`、`键盘`、`自检评分`、`渲染→检查→修正`、`迭代`。
+
+可选：在 `PIPELINE_SECTION`「团队能力纪律」补一句（供 product/design/development/acceptance 共用）：
+
+```text
+团队能力纪律：先调研再借鉴后实现（product ≥3、design ≥2 来源，记录 URL + 访问日期 + 结论）；设计按 4/8px、对比度 4.5:1/3:1、44×44、八态、360/768/1280、150–300ms、ARIA 交付并自检评分 ≥4 + 至少一轮迭代；开发先调研 ≥2 个活跃开源候选，记录许可证与安全（docs/pipeline/engineering-research.md）；acceptance 复核上述证据，缺失即建议打回。
+```
+
+### 9.2 `docs/opc/02-design.md` 逐节条款（建议原文）
+
+**头部版本**：`> 版本随插件发布（当前 v1.2.73）。`
+
+**§1 使命**追加：
+```
+把「好看、好用」落成可检查的硬标准：先调研、再设计、后自检；交付 tokens、八态状态矩阵、响应式与可访问性说明、高保真稿、自检评分与迭代记录。
+```
+
+**§2 边界**新增：
+```
+- 先调研：用 web_search / web_fetch 检索 ≥2 个同类产品/设计系统，记录 URL + 访问日期 + 关键结论；无网络标注 blocked，不伪造来源。
+- 不硬编码颜色/间距，不新增设计系统；设计必须复用 --dsw-alias-* token 与现有 ds-* 组件。
+- 不跳过渲染与自检：未渲染、未按标准复检的稿不提交。
+```
+
+**§3 输入**新增一行：
+```
+| 设计标准 | 本手册 §4/§6 与 WCAG 2.2 AA、Apple HIG、NN/g 10 Heuristics | 间距/字号/对比度/触控/状态/响应式/动效/ARIA 判定依据 |
+```
+
+**§4 产出与模板**：替换为本文 §8 模板（含调研与借鉴、tokens、状态矩阵、响应式、可访问性、迭代记录、自检评分）；保留落盘约定与命名规则。
+
+**§5 SOP** 改为（关键新增 3–7）：
+```
+1. 读需求 + 验收项 + 上游；列页面/组件/状态清单。
+2. 调研：web_search / web_fetch ≥2 个同类产品/设计系统，写来源表 + 借鉴决策表。
+3. 查设计系统：token 与现有组件，确定 4/8px 间距与字号阶梯。
+4. 先写 tokens 与八态状态矩阵，再出高保真稿（关键页面/状态各 ≥1 张）。
+5. 自检：对比度（正文 4.5:1、大字 3:1、非文本 3:1）、44×44、360/768/1280、键盘/ARIA、prefers-reduced-motion。
+6. 迭代：渲染 → 检查 → 修正，至少 1 轮，记录前后差异与证据。
+7. 五维自检评分（视觉层级/清晰度/一致性/反馈/可访问性）每维 ≥3、均分 ≥4，must 项一票否决。
+8. 写交接段；提交 design 闸门，等待 Owner 审批，不自行进入 development。
+```
+
+**§6 设计评审清单**（替换为，含全部关键词）：
+```
+- [ ] 调研 ≥2 来源：URL + 访问日期 + 关键结论 + 采用/不采用理由。
+- [ ] 间距只用 4 的倍数（4/8px 体系），无 6/7/9/10px 魔法数字。
+- [ ] 字号来自阶梯（12/14/16/20/24/32），正文行高 ≥1.4。
+- [ ] 颜色全部 token 化；正文对比度 ≥4.5:1，大字号 ≥3:1，非文本/焦点 ≥3:1（记录实测值）。
+- [ ] 可点击区域 ≥44×44（或 24×24 + 8px 间距并说明）；危险操作不紧邻常规操作。
+- [ ] 八态状态矩阵齐备（默认/hover/focus/active/disabled/loading/empty/error），N/A 有理由。
+- [ ] 360/768/1280 三档均可完成核心任务，无溢出/截断。
+- [ ] 动效 150–300ms，支持 prefers-reduced-motion，无闪烁。
+- [ ] 键盘可达、焦点可见；ARIA/可读名称；不用颜色单独表意。
+- [ ] 高保真稿覆盖关键页面与关键状态（非纯文字）。
+- [ ] 自检评分五维均 ≥3、均分 ≥4；must 项通过；评分有证据。
+- [ ] 至少一轮「渲染→检查→修正」记录（渲染环境/证据/复评分）。
+- [ ] 与现有设计系统一致（token/组件/术语/圆角）；深浅主题都过。
+- [ ] 给开发/测试的交接段完整；未决问题有负责人与假设。
+```
+
+**§7 交接**追加：
+```
+给开发：tokens（间距/字号/颜色/动效）、八态矩阵、响应式断点、键盘/ARIA 行为、错误恢复与防重复；标注可自由调整 vs 不可偏离。
+给测试：每状态视觉基线、对比度实测值、三档断点、深浅主题、键盘/读屏抽查、reduced-motion 验证。
+```
+
+**§8 常见失败模式**新增：
+```
+| 未调研就出稿 | 方案无依据、返工 | 来源表 + 借鉴决策表 |
+| 只画 happy path/缺八态 | 开发临时补、测试无基线 | 状态矩阵逐格检查 |
+| 字号/间距随手值 | 不一致、难维护 | 4/8px + 字号阶梯 |
+| 对比度不达标 | 低视力不可读、验收打回 | 实测表 + must 一票否决 |
+| 未渲染/未迭代 | 溢出与断点问题到开发才暴露 | 渲染→检查→修正记录 |
+```
+
+**§9 汇报格式**：
+```
+1. 方案摘要；2. 产物路径；3. 调研来源数与关键借鉴；4. 硬标准达成（对比度/44/八态/三档）；5. 自检评分与迭代轮次；6. 风险/未决；7. 下一步等 design 闸门。
+```
+
+### 9.3 验收 grep 建议
+
+```bash
+grep -nE "4/8px|4px|8px" docs/opc/02-design.md
+grep -n "字号阶梯" docs/opc/02-design.md
+grep -n "行高" docs/opc/02-design.md
+grep -nE "对比度|4\.5:1|3:1" docs/opc/02-design.md
+grep -n "44×44" docs/opc/02-design.md
+grep -n "状态矩阵" docs/opc/02-design.md
+grep -nE "默认.*hover.*focus.*active.*disabled.*loading.*empty.*error" docs/opc/02-design.md
+grep -nE "360|768|1280" docs/opc/02-design.md
+grep -n "150–300ms" docs/opc/02-design.md
+grep -n "prefers-reduced-motion" docs/opc/02-design.md
+grep -n "ARIA" docs/opc/02-design.md
+grep -n "键盘" docs/opc/02-design.md
+grep -n "自检评分" docs/opc/02-design.md
+grep -n "渲染→检查→修正" docs/opc/02-design.md
+grep -nE "调研|web_search|借鉴" docs/opc/02-design.md
+grep -n "rubric" docs/opc/02-design.md
+```
+
+### 9.4 落地顺序与文件范围
+
+1. `pipeline.js`：`STAGE_GUIDES.design` 的 mission/does/doesNot/deliverables 替换为 §9.1；可选在 `PIPELINE_SECTION` 加 §9.1 尾句。
+2. `docs/opc/02-design.md`：按 §9.2 逐节改；模板引用本文 §8。
+3. 不新增依赖、不改 UI 代码、不动流水线结构。
+4. selftest 断言（建议）：对 `buildStagePrompt(doc,'design')` 与 `PIPELINE_SECTION` 依次检查 §9.1 关键词表全部命中；对 `docs/opc/02-design.md` 做 §9.3 grep。
+
+### 9.5 若时间紧：MUST 最小落地集
+
+`STAGE_GUIDES.design` 至少补：`调研 ≥2 来源（web_search/web_fetch）`、`4/8px`、`对比度 4.5:1 / 大字 3:1`、`44×44`、`状态矩阵（八态）`、`360/768/1280`、`150–300ms + prefers-reduced-motion`、`ARIA/键盘`、`自检评分 ≥4`、`渲染→检查→修正 ≥1 轮`。`02-design.md` 至少补 §9.2 的 §5 SOP 与 §6 评审清单。
+
+---
+
+## 10. 验收对照
+
+| 要求（task-8 / 需求 §4.2、§5.1） | 本文落点 | 可验证方式 |
 |---|---|---|
-| [design/seven-stage-normal.svg](design/seven-stage-normal.svg) | normal 模式流水线视图 7 关，acceptance 待评审、approval/release 锁定，含双复核关系与要点标注 | 设计稿 A |
-| [design/seven-stage-fast.svg](design/seven-stage-fast.svg) | fast 模式，acceptance 自动通过（备注说明灰）、approval 进行中待你确认、release 锁定 | 设计稿 B |
-| [design/acceptance-card-states.svg](design/acceptance-card-states.svg) | 验收复核卡 5 状态（待开始/进行中/待评审/已通过/已打回）与动作 | 设计稿 C |
-| [design/seven-stage-workbench.svg](design/seven-stage-workbench.svg) | 工作台项目流程 7 步、当前阶段摘要、4/7 进度 | 设计稿 D |
+| 先调研 ≥2 个同类产品/设计系统，记录 URL + 访问日期 + 结论 | §2.1–2.2（11 来源） | 数来源行；抽查 URL 可访问 |
+| 采用/不采用决策 | §2.3 决策表（13 行） | 每行有来源、决策、理由、落点 |
+| 4/8px 间距体系 | §3.1、§9.1/§9.2 | grep `4/8px`、`4 的倍数` |
+| 字号阶梯与行高（正文 ≥1.4） | §3.2 表 | grep `12/14/16/20/24/32`、`行高` |
+| 颜色 token 与对比度 4.5:1 / 3:1 | §3.3（含实测审计表） | grep `4.5:1`、`3:1`、`token` |
+| 触控 ≥44×44 | §3.4 | grep `44×44`、`24×24` |
+| 八态矩阵（默认…error） | §3.5、§4、§8 模板 | grep 八态列表、`状态矩阵` |
+| 响应式 360/768/1280 | §3.6、§8 | grep 三个断点 |
+| 动效 150–300ms + prefers-reduced-motion | §3.7 | grep `150–300ms`、`prefers-reduced-motion` |
+| 键盘焦点可见/ARIA | §3.8 | grep `ARIA`、`键盘`、`focus` |
+| Nielsen 10 走查 | §5 十项 + 抽样记录 | 数 10 行；有发现/处理 |
+| 五维 rubric，≥4 才提交 | §6（锚点/门槛/模板/本轮 4.2） | grep `rubric`、`≥4`、五维名 |
+| ≥1 轮「渲染→检查→修正」+ 记录方式 | §7（协议 + 本轮真实 R1/R2/R3） | 看迭代表与 `design-quality-gate-r1.png` |
+| 升级后的交付模板 | §8 | 模板含调研/tokens/状态矩阵/响应式/A11y/迭代/评分 |
+| 给 pipeline.js + 02-design.md 的可执行条款 | §9（含关键词与 grep） | 直接粘贴可用；关键词可断言 |
+| 质量门示意图（中文可读） | [design/design-quality-gate.svg](design/design-quality-gate.svg) + PNG 渲染 | 浏览器打开；中文正常 |
+| acceptance 复核三项新检查（设计部分） | 见 §9.2 与本文证据链 | 报告可按 §10 表复核 |
 
-> SVG 内嵌中文使用系统字体栈（PingFang SC / Microsoft YaHei / Noto Sans CJK SC / Noto Sans SC）；颜色为浅色主题 token 近似值，实现必须使用 `--dsw-alias-*`。设计稿可直接用浏览器打开或放入 `docs/` 预览。
+---
+
+## 11. 未决问题与风险
+
+| # | 风险/未决 | 影响 | 当前决定/缓解 | 负责人 |
+|---|---|---|---|---|
+| 1 | **44×44 与现有密集侧栏（22px 按钮）冲突** | 直接放大按钮会破坏信息密度；不改则触屏误触 | 视觉保持 22–28px，命中区用透明 padding/伪元素扩至 44×44；指针密集桌面按 24×24 + 8px 间距并声明例外。需开发确认实现方式 | 开发/Lead |
+| 2 | **现有 UI 的 token 债务**：caption 2.13:1、语义色小字不达标、border-l1 仅装饰 | 现有界面不满足新标准，但本轮不改 UI | 标准只约束新设计与新组件；旧值记录为债务，下一轮 UI 变更修复；acceptance 不对本轮 UI 判罚 | Owner/Lead |
+| 3 | **评分主观性** | 自评偏高或偏低 | must 一票否决 + 证据条目 + 连续 3 次与 Owner/acceptance 对比校准（§2.4） | Owner/acceptance |
+| 4 | **提示词变长导致模型忽略关键检查点** | 设计质量条款失效 | 关键词前置、短句分条、selftest 断言 §9.1 关键词；必要时压缩为 MUST 10 条 | Lead/开发 |
+| 5 | **模板变重拖慢小需求** | 团队抵触、形式化 | 提供 §3.10 MUST 最小集；小需求可复用既有来源但需记录 | Lead |
+| 6 | **无网络时调研受限** | 来源缺失、方案依据不足 | 标 `blocked` + 写缺口与影响；不伪造；可先用既有/内网来源并标注 | UI/Lead |
+| 7 | **SVG 中文依赖系统字体** | 部分环境显示方框 | 字体栈含 PingFang/YaHei/Noto；同时输出 PNG 渲染兜底（`design-quality-gate.png`） | UI |
+| 8 | **迭代记录可能流于形式** | 渲染发现问题但未真改 | 记录必须含证据路径与复评分；acceptance 抽查前后差异 | acceptance |
+| 9 | **本轮无 UI 变更**，质量标准缺少真实页面验证 | 标准可能过于理想 | 本轮以 meta 交付 + v1.2.72 抽样走查验证；下一轮真实 UI 变更时复评并校准 rubric | Owner/Lead |
+
+---
+
+## 12. 资源与证据
+
+| 文件 | 内容 |
+|---|---|
+| `docs/pipeline/design.md` | 本设计说明（标准、rubric、模板、条款） |
+| `docs/pipeline/design/design-quality-gate.svg` | 质量门示意图（1280×960，中文可读，含三态判定/评分卡/证据链） |
+| `docs/pipeline/design/design-quality-gate.png` | 最终渲染（3022×2267，@170dpi，Noto Sans SC） |
+| `docs/pipeline/design/design-quality-gate-r1.png` | 迭代 R1 证据（修正前） |
+| `docs/pipeline/design/design-quality-gate-r2.png` | 迭代 R2 证据（修正中） |
+| `docs/pipeline/design/archive-v1.2.72-seven-stage-design.md` | 上一轮（七阶段双复核 UI）设计说明归档 |
+| `docs/pipeline/design/seven-stage-*.svg` | 上一轮高保真稿（保留，供新模板示例） |
+
+> 渲染环境：Node `sharp`（librsvg）+ Noto Sans SC；截图见上表。回归方式：用同一命令重建 PNG；或直接用浏览器打开 SVG 检查。
+
+---
+
+## 13. 版本记录
+
+| 版本 | 日期 | 变更 |
+|---|---|---|
+| v1.2.72 | 2026-10-26 | 七阶段双复核 UI 设计说明（已归档） |
+| **v1.2.73** | **2026-10-27** | 新增专业设计质量标准与自检体系：调研与借鉴、9 项硬标准、八态矩阵、Nielsen 走查、五维 rubric、迭代协议、交付模板 v2、下游可执行条款、质量门示意图与本轮迭代记录 |

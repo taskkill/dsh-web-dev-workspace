@@ -1,0 +1,240 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="960" viewBox="0 0 1280 960" role="img" aria-labelledby="title desc">
+  <title id="title">设计质量门：调研 → 规范 → 自检 → 迭代 → 提交</title>
+  <desc id="desc">UI 设计师角色的五道设计质量门与提交判定：调研至少两个来源、硬标准（4/8px、字号阶梯、对比度 4.5:1/3:1、44×44 触控、八态、360/768/1280、150–300ms 动效、ARIA）、状态矩阵与高保真稿、五维自检评分（均分≥4，must 一票否决）、至少一轮渲染→检查→修正；含通过/不通过/受阻三种判定、本轮评分卡与证据链。</desc>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif; }
+    .kicker { font-size: 9.5px; font-weight: 700; letter-spacing: 0.12em; fill: #61666b; }
+    .h1 { font-size: 22px; font-weight: 700; fill: #0f1115; }
+    .sub { font-size: 11.5px; fill: #4e5561; }
+    .sec { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; fill: #61666b; }
+    .cardtitle { font-size: 12px; font-weight: 700; fill: #0f1115; }
+    .cardnum { font-size: 10px; font-weight: 700; fill: #4176e6; }
+    .cardtag { font-size: 8px; font-weight: 600; fill: #61666b; }
+    .line { font-size: 10.5px; fill: #4e5561; }
+    .chip { font-size: 8.5px; fill: #61666b; }
+    .out-title { font-size: 11px; font-weight: 700; fill: #0f1115; }
+    .out-text { font-size: 10px; fill: #4e5561; }
+    .score-label { font-size: 10.5px; font-weight: 600; fill: #0f1115; }
+    .score-evidence { font-size: 8.5px; fill: #61666b; }
+    .chain { font-size: 9.5px; fill: #4e5561; }
+    .footer { font-size: 9.5px; fill: #61666b; }
+    .white { fill: #ffffff; }
+  </style>
+
+  <rect width="1280" height="960" fill="#f7f8fa"/>
+
+  <text x="60" y="54" class="kicker">UI 设计师 · 专业设计质量门 · v1.2.73</text>
+  <text x="60" y="86" class="h1">设计质量门：调研 → 规范 → 自检 → 迭代 → 提交</text>
+  <text x="60" y="112" class="sub">不是「画完就交」：每道门都有可检查的证据；任一门不通过 → 修正后重新渲染复评；缺失来源不得伪造。</text>
+
+  <text x="60" y="152" class="sec">五道质量门（design 阶段内部）</text>
+
+  <!-- Gate 1 -->
+  <rect x="60" y="166" width="190" height="190" rx="10" fill="#ffffff" stroke="#e3e8ef"/>
+  <circle cx="82" cy="192" r="11" fill="#eef4ff"/>
+  <text x="82" y="196" text-anchor="middle" class="cardnum">1</text>
+  <text x="102" y="196" class="cardtitle">调研</text>
+  <text x="236" y="182" text-anchor="end" class="cardtag">MUST</text>
+  <text x="76" y="240" class="line">web_search / web_fetch</text>
+  <text x="76" y="260" class="line">≥2 个同类产品/设计系统</text>
+  <text x="76" y="280" class="line">URL + 访问日期 + 结论</text>
+  <rect x="76" y="302" width="52" height="18" rx="9" fill="#f1f3f5"/>
+  <text x="102" y="315" text-anchor="middle" class="chip">来源表</text>
+  <rect x="134" y="302" width="60" height="18" rx="9" fill="#f1f3f5"/>
+  <text x="164" y="315" text-anchor="middle" class="chip">借鉴决策</text>
+
+  <line x1="252" y1="261" x2="266" y2="261" stroke="#b6bdc7" stroke-width="1.5"/>
+  <polygon points="270,261 264,257 264,265" fill="#b6bdc7"/>
+
+  <!-- Gate 2 -->
+  <rect x="270" y="166" width="190" height="190" rx="10" fill="#ffffff" stroke="#e3e8ef"/>
+  <circle cx="292" cy="192" r="11" fill="#eef4ff"/>
+  <text x="292" y="196" text-anchor="middle" class="cardnum">2</text>
+  <text x="312" y="196" class="cardtitle">硬标准</text>
+  <text x="446" y="182" text-anchor="end" class="cardtag">MUST</text>
+  <text x="286" y="240" class="line">4/8px 间距 · 字号阶梯</text>
+  <text x="286" y="260" class="line">对比度 4.5:1 · 大字 3:1</text>
+  <text x="286" y="280" class="line">44×44 · 八态 · ARIA</text>
+  <rect x="286" y="302" width="86" height="18" rx="9" fill="#f1f3f5"/>
+  <text x="329" y="315" text-anchor="middle" class="chip">360/768/1280</text>
+  <rect x="378" y="302" width="68" height="18" rx="9" fill="#f1f3f5"/>
+  <text x="412" y="315" text-anchor="middle" class="chip">150–300ms</text>
+
+  <line x1="462" y1="261" x2="476" y2="261" stroke="#b6bdc7" stroke-width="1.5"/>
+  <polygon points="480,261 474,257 474,265" fill="#b6bdc7"/>
+
+  <!-- Gate 3 -->
+  <rect x="480" y="166" width="190" height="190" rx="10" fill="#ffffff" stroke="#e3e8ef"/>
+  <circle cx="502" cy="192" r="11" fill="#eef4ff"/>
+  <text x="502" y="196" text-anchor="middle" class="cardnum">3</text>
+  <text x="522" y="196" class="cardtitle">状态与稿</text>
+  <text x="656" y="182" text-anchor="end" class="cardtag">MUST</text>
+  <text x="496" y="240" class="line">八态矩阵（默认 → error）</text>
+  <text x="496" y="260" class="line">关键页面/状态各 ≥1 张</text>
+  <text x="496" y="280" class="line">深浅主题 × 三档断点</text>
+  <rect x="496" y="302" width="76" height="18" rx="9" fill="#f1f3f5"/>
+  <text x="534" y="315" text-anchor="middle" class="chip">SVG/PNG/HTML</text>
+  <rect x="578" y="302" width="52" height="18" rx="9" fill="#f1f3f5"/>
+  <text x="604" y="315" text-anchor="middle" class="chip">截图</text>
+
+  <line x1="672" y1="261" x2="686" y2="261" stroke="#b6bdc7" stroke-width="1.5"/>
+  <polygon points="690,261 684,257 684,265" fill="#b6bdc7"/>
+
+  <!-- Gate 4 -->
+  <rect x="690" y="166" width="190" height="190" rx="10" fill="#ffffff" stroke="#e3e8ef"/>
+  <circle cx="712" cy="192" r="11" fill="#eef4ff"/>
+  <text x="712" y="196" text-anchor="middle" class="cardnum">4</text>
+  <text x="732" y="196" class="cardtitle">自检评分</text>
+  <text x="866" y="182" text-anchor="end" class="cardtag">GATE</text>
+  <text x="706" y="240" class="line">五维 0–5：层级/清晰/一致</text>
+  <text x="706" y="260" class="line">反馈/可访问性；每维 ≥3</text>
+  <text x="706" y="280" class="line">均分 ≥4；must 一票否决</text>
+  <rect x="706" y="302" width="48" height="18" rx="9" fill="#f1f3f5"/>
+  <text x="730" y="315" text-anchor="middle" class="chip">rubric</text>
+  <rect x="760" y="302" width="64" height="18" rx="9" fill="#f1f3f5"/>
+  <text x="792" y="315" text-anchor="middle" class="chip">问题+修正</text>
+
+  <line x1="882" y1="261" x2="896" y2="261" stroke="#b6bdc7" stroke-width="1.5"/>
+  <polygon points="900,261 894,257 894,265" fill="#b6bdc7"/>
+
+  <!-- Gate 5 -->
+  <rect x="900" y="166" width="190" height="190" rx="10" fill="#ffffff" stroke="#e3e8ef"/>
+  <circle cx="922" cy="192" r="11" fill="#eef4ff"/>
+  <text x="922" y="196" text-anchor="middle" class="cardnum">5</text>
+  <text x="942" y="196" class="cardtitle">迭代</text>
+  <text x="1076" y="182" text-anchor="end" class="cardtag">MUST</text>
+  <text x="916" y="240" class="line">渲染 → 检查 → 修正</text>
+  <text x="916" y="260" class="line">至少 1 轮并记录差异</text>
+  <text x="916" y="280" class="line">UI 变更建议 ≥2 轮</text>
+  <rect x="916" y="302" width="60" height="18" rx="9" fill="#f1f3f5"/>
+  <text x="946" y="315" text-anchor="middle" class="chip">迭代记录</text>
+  <rect x="982" y="302" width="60" height="18" rx="9" fill="#f1f3f5"/>
+  <text x="1012" y="315" text-anchor="middle" class="chip">before/after</text>
+
+  <line x1="1092" y1="261" x2="1106" y2="261" stroke="#b6bdc7" stroke-width="1.5"/>
+  <polygon points="1110,261 1104,257 1104,265" fill="#b6bdc7"/>
+
+  <!-- Submit -->
+  <rect x="1110" y="166" width="110" height="190" rx="10" fill="#0f1115"/>
+  <text x="1126" y="200" style="font-size:12px;font-weight:700;fill:#ffffff">提交</text>
+  <text x="1126" y="224" style="font-size:9.5px;fill:#d5dae1">design 闸门</text>
+  <text x="1126" y="244" style="font-size:9.5px;fill:#d5dae1">Lead 代提交</text>
+  <text x="1126" y="264" style="font-size:9.5px;fill:#d5dae1">artifacts</text>
+  <rect x="1126" y="286" width="78" height="18" rx="9" fill="#2c2c2e"/>
+  <text x="1165" y="299" text-anchor="middle" style="font-size:8px;fill:#ffffff">design.md</text>
+  <rect x="1126" y="312" width="78" height="18" rx="9" fill="#2c2c2e"/>
+  <text x="1165" y="325" text-anchor="middle" style="font-size:8px;fill:#ffffff">design/*.svg</text>
+
+  <!-- outcome -->
+  <text x="60" y="390" class="sec">质量门判定（三选一）</text>
+  <rect x="60" y="402" width="370" height="82" rx="9" fill="#e6faed" stroke="#bfe6cc"/>
+  <text x="76" y="426" class="out-title">通过 → 提交评审</text>
+  <text x="76" y="446" class="out-text">五维均分 ≥4 且 must 项 0 失败</text>
+  <text x="76" y="466" class="out-text">证据齐全：调研 / 矩阵 / 稿 / 迭代 / 评分</text>
+
+  <rect x="460" y="402" width="370" height="82" rx="9" fill="#fef2f2" stroke="#f5c2c2"/>
+  <text x="476" y="426" class="out-title">不通过 → 修正后重评</text>
+  <text x="476" y="446" class="out-text">任一 must 失败，或均分 &lt;4，或缺迭代/来源</text>
+  <text x="476" y="466" class="out-text">回到 ②/③ 修正 → 重新渲染 → 复评分数</text>
+
+  <rect x="860" y="402" width="370" height="82" rx="9" fill="#fef5e7" stroke="#f0e3cc"/>
+  <text x="876" y="426" class="out-title">受阻 → 如实标注</text>
+  <text x="876" y="446" class="out-text">无网络 / 来源不可访问 / 缺设计系统输入</text>
+  <text x="876" y="466" class="out-text">标 blocked + 写缺口与影响；不得伪造来源</text>
+
+  <!-- loop arrow -->
+  <path d="M830 402 V376 H995 V364" fill="none" stroke="#d1242f" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <polygon points="995,356 990,365 1000,365" fill="#d1242f"/>
+  <text x="842" y="390" style="font-size:8.5px;fill:#d1242f">不通过回路</text>
+
+  <!-- Left: scorecard -->
+  <rect x="60" y="512" width="640" height="368" rx="10" fill="#ffffff" stroke="#e3e8ef"/>
+  <text x="76" y="538" style="font-size:10.5px;font-weight:700;letter-spacing:0.05em;fill:#8a919c">自检评分卡 · 本轮示范</text>
+  <text x="684" y="540" text-anchor="end" style="font-size:15px;font-weight:700;fill:#1a9e4b">均分 4.2 / 5.0 ✓</text>
+
+  <text x="76" y="574" style="font-size:9px;fill:#61666b">维度</text>
+  <text x="250" y="574" style="font-size:9px;fill:#8a919c">1</text>
+  <text x="276" y="574" style="font-size:9px;fill:#8a919c">2</text>
+  <text x="302" y="574" style="font-size:9px;fill:#8a919c">3</text>
+  <text x="328" y="574" style="font-size:9px;fill:#8a919c">4</text>
+  <text x="354" y="574" style="font-size:9px;fill:#8a919c">5</text>
+  <text x="400" y="574" style="font-size:9px;fill:#8a919c">得分</text>
+  <text x="446" y="574" style="font-size:9px;fill:#61666b">证据 / 扣分点</text>
+  <line x1="76" y1="582" x2="684" y2="582" stroke="#eceef1"/>
+
+  <line x1="341" y1="586" x2="341" y2="764" stroke="#b6bdc7" stroke-dasharray="3 3"/>
+
+  <!-- row 1 -->
+  <text x="76" y="610" class="score-label">视觉层级</text>
+  <circle cx="250" cy="606" r="5.5" fill="#0f1115"/><circle cx="276" cy="606" r="5.5" fill="#0f1115"/><circle cx="302" cy="606" r="5.5" fill="#0f1115"/><circle cx="328" cy="606" r="5.5" fill="#0f1115"/><circle cx="354" cy="606" r="5.5" fill="#ffffff" stroke="#b6bdc7"/>
+  <text x="400" y="610" class="score-label">4</text>
+  <text x="446" y="610" class="score-evidence">5 道门 + 三态判定分层清楚</text>
+
+  <!-- row 2 -->
+  <text x="76" y="646" class="score-label">清晰度</text>
+  <circle cx="250" cy="642" r="5.5" fill="#0f1115"/><circle cx="276" cy="642" r="5.5" fill="#0f1115"/><circle cx="302" cy="642" r="5.5" fill="#0f1115"/><circle cx="328" cy="642" r="5.5" fill="#0f1115"/><circle cx="354" cy="642" r="5.5" fill="#0f1115"/>
+  <text x="400" y="646" class="score-label">5</text>
+  <text x="446" y="646" class="score-evidence">术语与证据链可读、可 grep</text>
+
+  <!-- row 3 -->
+  <text x="76" y="682" class="score-label">一致性</text>
+  <circle cx="250" cy="678" r="5.5" fill="#0f1115"/><circle cx="276" cy="678" r="5.5" fill="#0f1115"/><circle cx="302" cy="678" r="5.5" fill="#0f1115"/><circle cx="328" cy="678" r="5.5" fill="#0f1115"/><circle cx="354" cy="678" r="5.5" fill="#ffffff" stroke="#b6bdc7"/>
+  <text x="400" y="682" class="score-label">4</text>
+  <text x="446" y="682" class="score-evidence">沿用 ds-*/token；旧稿已归档</text>
+
+  <!-- row 4 -->
+  <text x="76" y="718" class="score-label">反馈</text>
+  <circle cx="250" cy="714" r="5.5" fill="#0f1115"/><circle cx="276" cy="714" r="5.5" fill="#0f1115"/><circle cx="302" cy="714" r="5.5" fill="#0f1115"/><circle cx="328" cy="714" r="5.5" fill="#0f1115"/><circle cx="354" cy="714" r="5.5" fill="#ffffff" stroke="#b6bdc7"/>
+  <text x="400" y="718" class="score-label">4</text>
+  <text x="446" y="718" class="score-evidence">失败→修正回路与复评明确</text>
+
+  <!-- row 5 -->
+  <text x="76" y="754" class="score-label">可访问性</text>
+  <circle cx="250" cy="750" r="5.5" fill="#0f1115"/><circle cx="276" cy="750" r="5.5" fill="#0f1115"/><circle cx="302" cy="750" r="5.5" fill="#0f1115"/><circle cx="328" cy="750" r="5.5" fill="#0f1115"/><circle cx="354" cy="750" r="5.5" fill="#ffffff" stroke="#b6bdc7"/>
+  <text x="400" y="754" class="score-label">4</text>
+  <text x="446" y="754" class="score-evidence">对比度/键盘/ARIA 写入硬标准</text>
+
+  <line x1="76" y1="774" x2="684" y2="774" stroke="#eceef1"/>
+  <text x="76" y="798" style="font-size:10px;fill:#4e5561">门槛：每维 ≥3 · 均分 ≥4（虚线 = 4 分门槛）· must 项一票否决（对比度 / 八态关键 / 键盘 / 迭代 / 来源）</text>
+  <rect x="76" y="812" width="588" height="24" rx="6" fill="#f1f3f5"/>
+  <text x="86" y="828" style="font-size:9.5px;fill:#1a9e4b">✓ must 检查通过　·　均分 4.2 ≥ 4　·　迭代记录 3 次渲染 / 2 轮修正　·　结论：可提交</text>
+  <text x="76" y="858" style="font-size:9px;fill:#8a919c">评分为自评，不代表 Owner 通过；acceptance 复核会按同一 rubric 抽查证据。</text>
+
+  <!-- Right: evidence chain -->
+  <rect x="720" y="512" width="500" height="368" rx="10" fill="#ffffff" stroke="#e3e8ef"/>
+  <text x="736" y="538" style="font-size:10.5px;font-weight:700;letter-spacing:0.05em;fill:#8a919c">证据链 · 从调研到双复核</text>
+
+  <rect x="736" y="558" width="468" height="40" rx="7" fill="#f4f8ff" stroke="#cfdcf5"/>
+  <text x="748" y="575" class="chain">① design.md · 调研来源表 + 借鉴决策表</text>
+  <text x="748" y="590" class="chain" style="font-size:8.5px;fill:#8a919c">URL + 访问日期 + 关键结论；采用/调整/不采用</text>
+  <text x="1188" y="582" text-anchor="end" class="chain" style="fill:#4176e6">≥2</text>
+
+  <rect x="736" y="606" width="468" height="40" rx="7" fill="#ffffff" stroke="#e3e8ef"/>
+  <text x="748" y="623" class="chain">② design.md · 设计 tokens + 八态状态矩阵</text>
+  <text x="748" y="638" class="chain" style="font-size:8.5px;fill:#8a919c">4/8px · 字号/行高 · token · 八态 · 三档断点</text>
+
+  <rect x="736" y="654" width="468" height="40" rx="7" fill="#ffffff" stroke="#e3e8ef"/>
+  <text x="748" y="671" class="chain">③ design/*.svg、*.png · 关键页面与状态高保真稿</text>
+  <text x="748" y="686" class="chain" style="font-size:8.5px;fill:#8a919c">每页/每关键状态 ≥1 张；命名 &lt;页面&gt;-&lt;状态&gt;-&lt;设备&gt;</text>
+
+  <rect x="736" y="702" width="468" height="40" rx="7" fill="#ffffff" stroke="#e3e8ef"/>
+  <text x="748" y="719" class="chain">④ 迭代记录 · R1/R2「渲染→检查→修正」差异</text>
+  <text x="748" y="734" class="chain" style="font-size:8.5px;fill:#8a919c">发现 → 修正 → 复检证据；不记录视为未迭代</text>
+
+  <rect x="736" y="750" width="468" height="40" rx="7" fill="#ffffff" stroke="#e3e8ef"/>
+  <text x="748" y="767" class="chain">⑤ 自检评分 · 五维 ≥4 + must 结论</text>
+  <text x="748" y="782" class="chain" style="font-size:8.5px;fill:#8a919c">评分表 + 扣分点 + 修正证据</text>
+
+  <rect x="736" y="798" width="468" height="40" rx="7" fill="#fdf6ea" stroke="#f0b74a"/>
+  <text x="748" y="815" class="chain">⑥ acceptance 复核 · 查调研/矩阵/对比度/迭代</text>
+  <text x="748" y="830" class="chain" style="font-size:8.5px;fill:#8a919c">缺失即建议打回并写回退阶段；approval 仍由 Owner 拍板</text>
+
+  <line x1="970" y1="598" x2="970" y2="604" stroke="#b6bdc7" stroke-width="1.2"/>
+  <line x1="970" y1="646" x2="970" y2="652" stroke="#b6bdc7" stroke-width="1.2"/>
+  <line x1="970" y1="694" x2="970" y2="700" stroke="#b6bdc7" stroke-width="1.2"/>
+  <line x1="970" y1="742" x2="970" y2="748" stroke="#b6bdc7" stroke-width="1.2"/>
+  <line x1="970" y1="790" x2="970" y2="796" stroke="#b6bdc7" stroke-width="1.2"/>
+
+  <text x="60" y="916" class="footer">调研来源：WCAG 2.2 · Apple HIG · NN/g 10 Heuristics · Tailwind 间距体系（访问 2026-10-27，详见 design.md §2）；本图颜色为浅色 token 近似值。</text>
+  <text x="60" y="936" class="footer">实现必须使用 --dsw-alias-* 变量；设计稿中的中文依赖系统字体（PingFang SC / Microsoft YaHei / Noto Sans SC）。</text>
+</svg>

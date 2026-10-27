@@ -647,6 +647,116 @@ try {
     assert.ok(submitDescription.includes('release'))
   })
 
+  await test('v1.2.73 stage prompts carry research/quality/license/security requirements', async () => {
+    const doc = pipeline.emptyPipeline()
+    const prompts = {}
+    for (const stageId of ['product', 'design', 'development', 'acceptance']) {
+      prompts[stageId] = pipeline.buildStagePrompt(doc, stageId)
+    }
+    const missing = (text, keys) => keys.filter((key) => !text.includes(key))
+    const assertKeys = (stageId, keys) => {
+      assert.deepEqual(missing(prompts[stageId], keys), [], `${stageId} prompt missing: ${missing(prompts[stageId], keys).join(', ')}`)
+    }
+    // Product manager: research ≥3 sources + borrow decision table + no fabrication.
+    assertKeys('product', [
+      '调研',
+      '借鉴',
+      'web_search',
+      'web_fetch',
+      '来源',
+      '借鉴决策表',
+      '已验证模式',
+      '创新假设',
+      '反抄袭',
+      'blocked',
+      '验收标准',
+    ])
+    // UI designer: research + the hard design standards + self-review/iteration.
+    assertKeys('design', [
+      '调研',
+      '借鉴',
+      'web_search',
+      '4/8px',
+      '字号阶梯',
+      '行高',
+      '对比度',
+      '4.5:1',
+      '3:1',
+      '44×44',
+      '状态矩阵',
+      '360',
+      '768',
+      '1280',
+      '150–300ms',
+      'prefers-reduced-motion',
+      'ARIA',
+      '自检评分',
+      '渲染→检查→修正',
+      '迭代',
+    ])
+    // The literal term "rubric" lives in the designer handbook; the stage prompt
+    // uses the equivalent 五维自检评分 wording (requirement §5.1 design row).
+    assert.match(prompts.design, /自检评分|rubric/u)
+    // Full-stack developer: candidate research, license matrix, security/performance.
+    assertKeys('development', [
+      '调研',
+      '借鉴',
+      'web_search',
+      'web_fetch',
+      'GitHub',
+      '活跃',
+      '许可证',
+      'SPDX',
+      'MIT',
+      'Apache',
+      'GPL',
+      'AGPL',
+      '无许可证',
+      'engineering-research.md',
+      'npm audit',
+      'OSV',
+      'CVE',
+      '安全',
+      '性能',
+    ])
+    // Acceptance review: the three new professional-quality checks.
+    assertKeys('acceptance', [
+      '调研',
+      '借鉴',
+      '来源',
+      '借鉴决策表',
+      '设计质量',
+      '自检评分',
+      '状态矩阵',
+      '对比度',
+      '44×44',
+      'engineering-research.md',
+      '许可证',
+      'N/A',
+      '专业质量',
+      '建议打回',
+    ])
+    for (const marker of ['复核调研与借鉴', '复核设计质量', '复核工程调研与许可证']) {
+      assert.ok(prompts.acceptance.includes(marker), `acceptance prompt missing ${marker}`)
+    }
+    // Injected system-prompt section: the team capability discipline is searchable.
+    const sectionKeys = [
+      '调研与借鉴纪律',
+      '调研',
+      '借鉴',
+      'web_search',
+      'web_fetch',
+      '许可证',
+      '安全',
+      '对比度',
+      '状态矩阵',
+      '44×44',
+      'engineering-research.md',
+    ]
+    const sectionMissing = sectionKeys.filter((key) => !pipeline.PIPELINE_SECTION.includes(key))
+    assert.deepEqual(sectionMissing, [], `PIPELINE_SECTION missing: ${sectionMissing.join(', ')}`)
+  })
+
   await test('change scopes can redo requirement/design only across seven stages', async () => {
     const root = await workspace('scopes')
     await pipeline.setRequirement(root, { title: 'Scope smoke', detail: 'A requirement detail' })

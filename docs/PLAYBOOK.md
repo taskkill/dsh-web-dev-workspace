@@ -1,7 +1,8 @@
 # Playbook：从一个需求到客户交付（双复核模式）
 
-> 适用版本 **v1.2.72**。插件：Dev Workspace（`@local/dsh-web-dev-workspace`）+ Harness 原生 Agent Teams。
+> 适用版本 **v1.2.73**。插件：Dev Workspace（`@local/dsh-web-dev-workspace`）+ Harness 原生 Agent Teams。
 > 角色分工与闸门细节见 [AGENT_TEAM.md](AGENT_TEAM.md)；团队编制、角色边界手册与立项话术见 [opc/](opc/README.md)；功能复测步骤见 [ACCEPTANCE.md](ACCEPTANCE.md)。
+> v1.2.73 起三个执行角色带「调研与借鉴」纪律：产品先做同类调研、设计按专业质量硬标准自检、开发遇到不熟悉功能先检索 GitHub 活跃开源项目并核对许可证/安全；acceptance 复核关会检查这些证据。
 
 一次完整交付 = **1 个需求 → 7 个流水线阶段 → 双复核（AI 项目经理验收复核 + 你的人工确认）→ 1 次发布 → 1 套交付包**。
 
@@ -28,9 +29,9 @@
 
 | 角色 | 谁执行 | 在插件哪里 | 关键工具/面板 |
 |---|---|---|---|
-| 产品经理 | 子代理 / Lead | 流水线（需求 + 产品阶段） | `pipeline_*`、`acceptance_add` |
-| UI 设计师 | 子代理 / Lead | 流水线 + 编辑器/预览 | 设计文档、图片预览、内置浏览器 |
-| 全栈开发 | 子代理 / Lead | 任务、Git、编辑器 | 任务面板、Problems、Git diff |
+| 产品经理 | 子代理 / Lead | 流水线（需求 + 产品阶段） | `pipeline_*`、`acceptance_add`、`web_search/web_fetch`（≥3 来源调研） |
+| UI 设计师 | 子代理 / Lead | 流水线 + 编辑器/预览 | 设计文档、图片预览、内置浏览器、web_search/web_fetch（≥2 参照） |
+| 全栈开发 | 子代理 / Lead | 任务、Git、编辑器 | 任务面板、Problems、Git diff、web_search/web_fetch（GitHub 候选调研） |
 | 测试工程师 | 子代理 / Lead | 任务、验收、证据 | 任务面板、`acceptance_update`、证据上传 |
 | **项目经理 Agent** | 子代理 / Lead | 流水线（验收复核关）、验收、Git | `acceptance_list/report`、`task_run` 复测、`pipeline_submit_stage(acceptance)` |
 | 项目经理（你，Owner） | 你 | 流水线、验收、Git | 通过/打回（人工确认）、验收勾选、审阅标记 |
@@ -48,6 +49,7 @@
 ### ② 产品经理阶段
 
 - 面板点「启动并派发」（或 agent 调 `pipeline_start_stage({stageId:'product'})`），对话会收到该角色的提示词。
+- **先调研（v1.2.73 起必做）**：用 `web_search` / `web_fetch` 检索 ≥3 个同类需求/行业标准/设计系统/同类 PRD，记录来源 URL、访问日期与关键结论；需求文档写「调研与借鉴」+ 借鉴决策表（采用/不采用 + 理由），并区分已验证模式与创新假设。来源不可伪造，无网络就标注 blocked。
 - Lead 用 `spawn_teammate` 组建产品经理（或在当前会话直接执行），成员按提示词产出：
   - `docs/pipeline/requirements.md`（目标、用户故事、范围、验收标准）
   - 用 `acceptance_add` 拆出可勾选验收项（title 写结论、requirement 写验证条件、category 分组）
@@ -57,12 +59,14 @@
 ### ③ UI 设计阶段
 
 - 启动 `design` → 设计师产出 `docs/pipeline/design.md`（信息架构、页面/组件、交互、视觉规范）+ 设计资源；**有 UI 界面时必须提交界面截图/高保真稿**（PNG/JPG/SVG 或 HTML 静态稿，放 `docs/pipeline/design/`），工作台「设计稿」卡片与流水线产物会显示缩略图，直接点开看图。
+- **专业质量门（v1.2.73 起）**：先调研 ≥2 个设计系统/同类产品；按 9 项 MUST 硬标准交付（4/8px 间距、字号阶梯、对比度 4.5:1/3:1、44×44 命中、八态矩阵、360/768/1280、150–300ms + reduced-motion、键盘/ARIA、视觉一致性）；用五维 rubric 自检（每维 ≥3、均分 ≥4），并至少完成一轮「渲染→检查→修正」，把迭代记录写进设计说明。
 - 提交 + artifacts（例如设计说明 + 关键页面截图路径）。
 - **闸门（你）**：通过 / 打回（打回备注写清要改什么）。
 
 ### ④ 开发实现阶段
 
 - 启动 `development` → 开发按需求 + 设计实现代码。
+- **先调研再实现（v1.2.73 起，遇到不熟悉功能必做）**：用 `web_search`/`web_fetch` 检索 GitHub 上 ≥2 个维护活跃、许可证明确的同类开源项目，比较实现思路/依赖/最近提交与 issue 响应/已知问题与 CVE；按许可证矩阵决定「借鉴代码 / 只借鉴模式 / 自己实现」（MIT/Apache/BSD/ISC 可借鉴并保留出处；GPL/AGPL/无许可证禁止复制代码）。产出 `docs/pipeline/engineering-research.md` 记录候选对比与决策，保证可靠、安全、高性能（关键路径测试、依赖 audit、输入校验、性能测量）。
 - 过程中用：**任务面板**跑 build/test、**Problems** 点击跳错、**Git 变更列表**审阅+「已审」标记、终端/任务日志。
 - 提交：`pipeline_submit_stage({stageId:'development', summary, artifacts:[...代码/构建记录路径]})`。
 - **闸门（你）**：看变更（Git 已审标记）→ 通过 / 打回。
