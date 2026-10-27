@@ -113,4 +113,5 @@ fcfb3bec0223f21e265fbfdf90ff3647784908cab8caf7ec4f16f0bab97ae8b8  docs/ACCEPTANC
   - v1.2.76 工作台 UI 三区重构：commit `0d841f4`（基线 `97316d2`），24 个文件，自测 check + test 31/31 + pipeline 38/38 + review 22/22 + assignments 27/27；`releases` 已记录。
   - v1.2.75 工作台 Agent 指派器 MVP：commit `eff0c76`（基线 `322064c`），35 个文件，test 31/31 + pipeline 38/38 + review 22/22 + assignments 27/27；`releases` 已记录。
   - v1.2.73 团队三 Agent 能力升级：commit `0e764b2`（基线 `b3c1e77`），26 个文件；v1.2.72 双复核模式：commit `2d8c761`（基线 `a504f99`），30 个文件；`releases` 均已记录。
-  - 本轮 v1.2.77 的 `releases` 记录由 Lead 补写；交付后根版本 +1 至 1.2.78。
+  - 本轮 v1.2.77 发布提交：commit `7bed396`（基线 `ddbd843`），7 个文件（+380/−324），自测 check + test 31/31 + pipeline 38/38 + review 22/22 + assignments 27/27 + qa-static-v1277 STATIC PASS；`releases` 已由 Lead 记录（environment=`local-workspace`，url=`http://127.0.0.1:3080`）。
+- **交付后版本规则**：按工作区硬性规定「每次修改完成后根 `package.json` 版本 +1」，发布审批通过后由 Lead 提交 `chore` 将根从 1.2.77 升至 **1.2.78**（代表下一轮迭代号）；插件 `package.json` 保持本次发布的 1.2.77；下一轮发布时插件对齐 1.2.78。
