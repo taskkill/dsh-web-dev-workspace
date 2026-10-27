@@ -25625,12 +25625,8 @@ h(
 .ds-wb-project-cell { min-width: 0; }
 .ds-wb-project-cell-wide { grid-column: 1 / -1; }
 @media (min-width: 768px) {
-  .ds-wb-page.ds-wb-v1279 .ds-wb-project-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ds-wb-page.ds-wb-v1279 .ds-wb-project-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
   .ds-wb-page.ds-wb-v1279 .ds-wb-project-grid .ds-wb-project-cell-wide { grid-column: 1 / -1; }
-}
-@media (min-width: 1600px) {
-  .ds-wb-page.ds-wb-v1279 .ds-wb-project-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .ds-wb-page.ds-wb-v1279 .ds-wb-project-grid .ds-wb-project-cell-wide { grid-column: auto; }
 }
 .ds-wb-page.ds-wb-v1279 .ds-wb-project-cell .ds-wb-actions .ds-btn { min-height: 30px; height: auto; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 /* 团队卡 */

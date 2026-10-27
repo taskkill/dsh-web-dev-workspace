@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.82 — 2026-10-27
+
+### Workbench project area: always two columns + full-width requirement
+
+- Removed the ≥1600px three-column override introduced in 1.2.81: on wide
+  screens the project area kept falling back to three ~400px cards, so the
+  requirement title/summary and the team chips stayed cramped. The project
+  area is now **two columns plus a full-width requirement card at every width
+  ≥768px** (status | team on the first row, requirement below), with 16px gap;
+  ≤700px stays a single column.
+- Client-only change (no host modules, dependencies or data changes).
+  `docs/ACCEPTANCE.md` gains batch 19; plugin `1.2.82` (root stays 1.2.82,
+  bumped to 1.2.83 after delivery).
+
 ## 1.2.81 — 2026-10-27
 
 ### Workbench layout: full-width hero, two-column project area, 2×2 delivery grid
