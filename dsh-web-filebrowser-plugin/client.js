@@ -21206,10 +21206,16 @@ ${tail}
         }
 
         function renderHarnessPanel() {
-          if (harnessConfig !== null) {
-            return h(
+          /** Every branch must live in the harness view shell: a bare hint would
+           *  otherwise leak into the files pane (and float above the footer). */
+          const shell = (...children) =>
+            h(
               'div',
               { className: 'ds-side-view ds-harness-view', style: { display: showHarness ? 'flex' : 'none' } },
+              ...children,
+            )
+          if (harnessConfig !== null) {
+            return shell(
               h(
                 'div',
                 { className: 'ds-harness-config-head' },
@@ -21236,11 +21242,9 @@ ${tail}
               h('pre', { className: 'ds-harness-config' }, harnessConfig.content),
             )
           }
-          if (harnessBusy && harnessInfo === null) return h('div', { className: 'ds-hint' }, t('harness.loading'))
+          if (harnessBusy && harnessInfo === null) return shell(h('div', { className: 'ds-hint' }, t('harness.loading')))
           if (harnessError !== null) {
-            return h(
-              'div',
-              { className: 'ds-side-view ds-harness-view', style: { display: showHarness ? 'flex' : 'none' } },
+            return shell(
               h('div', { className: 'ds-errorline' }, harnessError),
               h(
                 'button',
@@ -21249,7 +21253,7 @@ ${tail}
               ),
             )
           }
-          if (harnessInfo === null) return h('div', { className: 'ds-hint' }, t('harness.loading'))
+          if (harnessInfo === null) return shell(h('div', { className: 'ds-hint' }, t('harness.loading')))
           const bundles = Array.isArray(harnessInfo.bundles) ? harnessInfo.bundles : []
           const dependencies = Array.isArray(harnessInfo.dependencies) ? harnessInfo.dependencies : []
           const files = Array.isArray(harnessInfo.files) ? harnessInfo.files : []
@@ -22126,11 +22130,23 @@ h(
               select: openMemory,
             })
           }
+          developViews.push({
+            id: 'harness',
+            label: t('side.harness'),
+            icon: h(HarnessIcon),
+            active: showHarness,
+            select: () => void openHarness(),
+          })
+          // The workbench lives in the editor area (its own document tab), so it is
+          // a command here, not a side-pane view: opening it focuses that tab and
+          // resets the pane to files. Marking it active would light up the "more"
+          // tab on startup next to the real selected view, which looks like two
+          // selected bottom tabs.
           const homeView = {
             id: 'workbench',
             label: t('workbench.title'),
             icon: h(WorkbenchIcon),
-            active: workbenchTabActive,
+            command: true,
             select: openWorkbench,
           }
           const groups = [
@@ -22143,7 +22159,12 @@ h(
           const width = sideTabsWidth
           const labelBudget = width > 0 ? width / slots : 0
           const iconOnly = !(width <= 0 || labelBudget >= SIDE_TAB_LABEL_WIDTH)
-          const groupedActive = groupedViews.some((view) => view.active)
+          // Exactly one tab may look selected at a time. The "more" tab stands in
+          // for a grouped view only when no primary view is showing; opening the
+          // menu never selects it (the menu itself carries that state).
+          const groupedActive = groupedViews.some((view) => view.active === true)
+          const primaryActive = primaryViews.some((view) => view.active === true)
+          const moreActive = groupedActive && !primaryActive
           const groupedCount = groupedViews.some((view) => typeof view.count === 'number' && view.count > 0)
           const groupedWarn = groupedViews.some((view) => view.countTone === 'warn' && view.count > 0)
 
@@ -22187,15 +22208,17 @@ h(
           }
 
           function renderMenuItem(view) {
+            /** Commands open an editor tab instead of switching the pane view. */
+            const command = view.command === true
             return h(
               'button',
               {
                 key: view.id,
                 type: 'button',
-                role: 'menuitemradio',
-                'aria-checked': view.active,
+                role: command ? 'menuitem' : 'menuitemradio',
+                'aria-checked': command ? undefined : view.active,
                 className: 'ds-side-views-item',
-                'data-active': view.active ? 'true' : undefined,
+                'data-active': !command && view.active ? 'true' : undefined,
                 onClick: () => {
                   setSideViewsOpen(false)
                   view.select()
@@ -22240,7 +22263,8 @@ h(
                 {
                   type: 'button',
                   className: 'ds-side-tab ds-side-tab-more',
-                  'data-active': sideViewsOpen || groupedActive ? 'true' : undefined,
+                  'data-active': moreActive ? 'true' : undefined,
+                  'data-open': sideViewsOpen ? 'true' : undefined,
                   title: t('side.more'),
                   'aria-label': t('side.more'),
                   'aria-haspopup': 'menu',
@@ -25455,6 +25479,9 @@ h(
   cursor: pointer;
 }
 .ds-side-tab:hover { color: var(--dsw-alias-label-primary); background: color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent); }
+/* An open "more" menu is a transient state, not a selection: emphasise the icon
+   without painting a second selected tab next to the real current view. */
+.ds-side-tab[data-open="true"] { color: var(--dsw-alias-label-primary); }
 .ds-side-tab[data-active="true"] {
   color: var(--dsw-alias-brand-primary);
   background: color-mix(in srgb, var(--dsw-alias-brand-primary) 9%, transparent);

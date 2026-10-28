@@ -2,6 +2,32 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.91 — 2026-10-28
+
+### One selected sidebar tab, and no Harness placeholder in the Files pane
+
+- **The bottom Files / Search / Git / More strip can no longer show two selected
+  tabs.** The Workbench is an editor tab, not a sidebar view, but it was still
+  marked as the active *view* whenever its tab was focused — so on every fresh
+  workspace the overflow (More) tab painted a second selected block next to the
+  real current view. The More menu entry for Workbench is now a command (no radio
+  check), and More only takes the selected look when the current view actually
+  lives inside it, never merely because the overflow menu is open (`data-open`
+  only emphasises the label).
+- **Every pane view now has a current tab.** The Harness view had no entry in the
+  overflow menu, so opening it left the strip with nothing selected; it now sits
+  in the Development group next to Tasks and Memory.
+- **The “Reading Harness information…” hint no longer leaks into the Files pane.**
+  The Harness panel's loading / error early returns rendered a bare hint outside
+  its view container, so the line floated above the footer path bar until the
+  Harness view had been opened once; every branch now renders inside the hidden
+  harness container.
+- **Verification.** `npm run check`, `npm run check:json` and `npm test` pass
+  (37/37). The view-state matrix — files / search / Git / pipeline / acceptance /
+  todo / tasks / memory / Harness, with and without Git — yields exactly one
+  selected tab in every case. Plugin `1.2.89`, root `1.2.91` (workspace rule: +1
+  after each change).
+
 ## 1.2.90 — 2026-10-27
 
 ### Reset categories: tick exactly what to clear
