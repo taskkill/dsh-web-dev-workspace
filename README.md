@@ -49,8 +49,9 @@ it for you.
   stash, branch switching, diffs, compare and fetch/pull/push; the bottom Git tab
   shows an amber badge with the number of uncommitted files.
 - **Built-in terminal** — vendored xterm.js terminals that move between the bottom
-  panel and editor tabs, with manual project quick commands for local workspaces
-  and interactive remote shells over ssh2 for SSH workspaces.
+  panel and editor tabs, with detected project commands plus owner-saved quick
+  commands for local workspaces and interactive remote shells over ssh2 for SSH
+  workspaces.
 - **Built-in browser** — preview a running dev server beside the code, with
   PC/mobile viewports, workspace-stored address bookmarks, protocol/host settings
   and a public-page proxy fallback.
@@ -79,8 +80,9 @@ it for you.
 - **Redesigned welcome screen** — an empty workspace now shows a hero icon, shortcut keycaps, a primary action and a 2×2 quick-action grid (Workbench / browser / quick open / terminal) instead of a vertical button column.
 - **One-click requirement intake** — paste a requirement, drop screenshots or requirement documents, and one click hands it to the product manager: the workbench turns it into a landable plan, starts the pipeline, auto-advances the four implementation stages (including the AI acceptance review), and asks the owner to **confirm the design mockups** before development as well as at the human sign-off and release gates. **Only workbench-initiated delivery requests enter the seven-stage flow**: a requirement typed straight into the chat is completed in the default Harness flow (no pipeline, no acceptance checklist, no role agents) unless you explicitly ask for the pipeline.
 - **One requirement, one conversation (recommended, v1.2.88)** — workbench actions (hand to the product manager / kick off / start and dispatch / start a change) only send the role prompt to the **current conversation**, so start a new requirement in a fresh conversation (the chat panel's **new conversation** button) before entering it; this keeps the previous round's long tool outputs and logs from crowding the context and raising the per-turn token cost. Delivery state lives in `.dsh/` and is shared across conversations (one `workspace_status` call resumes it), and large searches / build logs / batch verification go to `subagent` / `spawn_teammate` (fresh) so the main conversation only receives conclusions. The rule ships in the injected system prompt and workbench copy, so **users who install the plugin fresh get it too**, without a per-workspace memory entry.
-- **One-click workspace data reset with per-category selection (v1.2.90)** — the workbench header gains a **Reset data** button whose dialog lists thirteen categories as checkboxes: delivery pipeline, acceptance checklist, review and re-checked marks, workspace todos, run history, preview bookmarks, role assignments, delivery history and bundles, acceptance evidence, verification records, requirement attachments, workspace memory and temporary files — with "select all / select none" shortcuts. Everything except workspace memory is ticked by default, and only ticked categories are removed, so starting a new delivery round can keep evidence and history. The Host receives the category list (unknown ids are rejected, an empty selection clears nothing), still only removes a fixed allow-list, never `.dsh` itself or unknown files, unlinks symlinks instead of following them, and is disabled for SSH workspaces.
+- **One-click workspace data reset with per-category selection (v1.2.90)** — the workbench header gains a **Reset data** button whose dialog lists fourteen categories as checkboxes: delivery pipeline, acceptance checklist, review and re-checked marks, workspace todos, run history, preview bookmarks, role assignments, delivery history and bundles, acceptance evidence, verification records, requirement attachments, workspace memory, project notes and quick commands, and temporary files — with "select all / select none" shortcuts. Everything except workspace memory is ticked by default, and only ticked categories are removed, so starting a new delivery round can keep evidence and history. The Host receives the category list (unknown ids are rejected, an empty selection clears nothing), still only removes a fixed allow-list, never `.dsh` itself or unknown files, unlinks symlinks instead of following them, and is disabled for SSH workspaces.
 - **One selected sidebar tab (v1.2.91)** — the bottom Files / Search / Git / More strip now always shows exactly one current tab. The Workbench is an editor tab rather than a sidebar view, so focusing it no longer lights up More next to the real current view; opening the overflow menu no longer paints a second selection; the Harness view gained a Development-group entry so it has a visible current tab; and the stray “Reading Harness information…” hint that leaked into the Files pane above the footer path is gone.
+- **Project notes and saved terminal quick commands (v1.2.92)** — the sidebar’s Development group gains a **Notes** view: one free-form scratchpad per workspace for temporary data (one-off commands, endpoint URLs, debugging clues), autosaved to `.dsh/notes.json` with an unsaved/saving/autosaved status, character counter, save-now, copy, a two-step clear and SSH degradation. The terminal quick-command bar gains a **+** manager: save name/command pairs to `.dsh/quick-commands.json`, edit, delete or fill one into the run input; the dropdown groups **My quick commands** above the auto-detected **Detected** commands. Both documents stay with the project, refuse symlinked/out-of-root state files, and the workbench reset dialog clears them through its new “Project notes and quick commands” category.
 - **Design-first confirmation (v1.2.83)** — the design stage is an owner gate even in fast mode: when the designer submits, the flow stops in review and the owner sees the design screenshots as thumbnails / a full-size viewer (HTML mockups render in a sandboxed iframe at 360 / 768 / 1280 instead of showing source). Development stays locked until the owner approves the design; opening any `.html`/`.htm` file defaults to the rendered preview with a preview/source toggle.
 - **Collapsible acceptance board (v1.2.84)** — the acceptance sidebar keeps the checklist as the main content: the evidence library, verification center and delivery & preview sharing collapse into compact 44px headers with count badges (collapsed by default, remembered in `localStorage`), one toolbar toggle expands/collapses the whole board, category groups fold with their own count badges, and the selected-item detail gets a collapsible header while the highlighted row stays selected.
 - **Workbench tab** — the Workbench lives as an editor tab in the main content area (switch back and forth with file tabs) and is focused when a workspace opens showing the full seven-stage project flow (status, owner role, elapsed time and a flow log), the approvals that need the owner, acceptance results, deliverables and running tasks with direct actions; the sidebar keeps Files / Search / Git / More, with project and development views grouped in the overflow menu.
@@ -238,6 +240,25 @@ it for you.
   500 tasks per workspace, 500 characters per title, 4,000 per note and 8 tags per
   task. SSH remote roots have no local todos; without the `tools` / `systemPrompt`
   services the panel still works but the model tools stay off.
+
+### Project notes
+
+- The **Notes (备注)** view in the sidebar's Development group is a free-form
+  scratchpad for temporary project data — one-off commands, endpoint URLs, test
+  accounts, debugging clues — instead of polluting the todo board or memory.
+- One document per **local workspace** at `.dsh/notes.json` (missing file reads
+  empty). Edits autosave after a short debounce and are flushed on blur and when
+  the view closes; the header reports unsaved / saving / autosaved with a
+  timestamp, plus a live character count.
+- Save-now, copy and a two-step clear sit in the header (Clear arms for three
+  seconds, then removes the text). A corrupt or oversized document is reported
+  with a retry instead of being silently overwritten.
+- Limits: 20,000 characters and 128 KB per document; the file is written with a
+  temp-file rename, the first write creates `.dsh/.gitignore`, and symlinked or
+  out-of-root state files are refused.
+- SSH remote roots have no local notes and show the same hint as memory/todo.
+  The workbench reset dialog owns the document through its “Project notes and
+  quick commands” category.
 
 ### Editor
 
@@ -399,6 +420,11 @@ it for you.
   check follows the shell cwd read from `/proc`. The Host still caches the list
   for 30 seconds, so manual refreshes do not rescan the project repeatedly.
   Recursive `.jar` / `.dll` discovery only runs in Java or .NET projects.
+- Save your own shortcuts with the **+** button next to the bar: name + command,
+  stored in the workspace (`.dsh/quick-commands.json`). Saved commands appear in
+  a **My quick commands** group in the dropdown and can be edited, deleted or
+  filled into the input from the manager; they are local-workspace only, like
+  command detection.
 
 ### Built-in browser
 
@@ -855,6 +881,7 @@ dsh-web-filebrowser/
 │   ├── index.js              # /api/dsh-web-filebrowser host routes
 │   ├── memory.js             # per-workspace cross-session memory store and tools
 │   ├── todo.js               # per-workspace todo store and model tools
+│   ├── scratchpad.js         # per-workspace project notes + saved terminal quick commands
 │   ├── ssh.js                # optional SFTP backend
 │   ├── client.js             # main panel, sidebar entries, explorer/editor UI
 │   ├── cordis.patch.yml      # standalone component row

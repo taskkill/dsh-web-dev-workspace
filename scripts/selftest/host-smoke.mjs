@@ -24,6 +24,7 @@ import * as assignments from '../../dsh-web-filebrowser-plugin/assignments.js'
 import * as delivery from '../../dsh-web-filebrowser-plugin/delivery.js'
 import * as pipeline from '../../dsh-web-filebrowser-plugin/pipeline.js'
 import * as review from '../../dsh-web-filebrowser-plugin/review.js'
+import * as scratchpad from '../../dsh-web-filebrowser-plugin/scratchpad.js'
 import * as workspaceState from '../../dsh-web-filebrowser-plugin/workspace-state.js'
 import { apply, resetWorkspaceDataAt, WORKSPACE_RESET_GROUPS } from '../../dsh-web-filebrowser-plugin/index.js'
 
@@ -793,9 +794,9 @@ try {
   await test('v1.2.89 workspace reset only removes the ticked categories', async () => {
     // Every reset category is a selectable group with a stable id.
     const ids = WORKSPACE_RESET_GROUPS.map((group) => group.id)
-    assert.equal(ids.length, 13, `expected 13 reset categories, got ${String(ids.length)}`)
+    assert.equal(ids.length, 14, `expected 14 reset categories, got ${String(ids.length)}`)
     assert.deepEqual(ids, [...new Set(ids)], 'reset category ids must be unique')
-    for (const expected of ['pipeline', 'acceptance', 'review', 'todos', 'runs', 'bookmarks', 'assignments', 'delivery', 'evidence', 'verifications', 'intake', 'memory', 'tmp']) {
+    for (const expected of ['pipeline', 'acceptance', 'review', 'todos', 'runs', 'bookmarks', 'assignments', 'delivery', 'evidence', 'verifications', 'intake', 'memory', 'notes', 'tmp']) {
       assert.ok(ids.includes(expected), `reset categories must include ${expected}`)
     }
     const root = await workspace('reset')
@@ -808,6 +809,8 @@ try {
       await fsp.writeFile(path.join(dsh, 'acceptance.json'), '{"version":1}')
       await fsp.writeFile(path.join(dsh, 'todos.json'), '{"items":[]}')
       await fsp.writeFile(path.join(dsh, 'memory.json'), '{"memories":[]}')
+      await fsp.writeFile(path.join(dsh, 'notes.json'), '{"version":1,"text":"临时数据","updatedAt":1}')
+      await fsp.writeFile(path.join(dsh, 'quick-commands.json'), '{"version":1,"commands":[],"updatedAt":1}')
       await fsp.writeFile(path.join(dsh, 'evidence', 'shot.png'), 'png')
       await fsp.writeFile(path.join(dsh, 'tmp', 'cache.bin'), 'cache')
       // Unknown files in `.dsh` are not plugin data and must survive a reset.
@@ -818,7 +821,7 @@ try {
     await seed()
     const result = await resetWorkspaceDataAt(root)
     assert.deepEqual(result.failed, [], 'reset must not fail on the allow-list')
-    for (const name of ['pipeline.json', 'acceptance.json', 'todos.json', 'memory.json', 'evidence', 'tmp']) {
+    for (const name of ['pipeline.json', 'acceptance.json', 'todos.json', 'memory.json', 'notes.json', 'quick-commands.json', 'evidence', 'tmp']) {
       assert.equal(await exists(name), false, `${name} must be removed by default`)
     }
     assert.ok((await fsp.stat(dsh)).isDirectory(), '.dsh itself must stay')
@@ -831,6 +834,8 @@ try {
     assert.equal(await exists('tmp'), false)
     assert.equal(await exists('pipeline.json'), true, 'unticked pipeline file must stay')
     assert.equal(await exists('evidence'), true, 'unticked evidence directory must stay')
+    assert.equal(await exists('notes.json'), true, 'unticked project notes must stay')
+    assert.equal(await exists('quick-commands.json'), true, 'unticked quick commands must stay')
     // An empty selection clears nothing and an unknown id is rejected.
     const none = await resetWorkspaceDataAt(root, { groups: [] })
     assert.deepEqual(none.removed, [])
@@ -1327,6 +1332,66 @@ try {
     assert.ok(clientSource.includes("'acceptance.packing': 'Packing…'"))
     assert.ok(clientSource.split("t('acceptance.packing')").length - 1 >= 2, 'both pack buttons use the packing label')
     assert.equal(clientSource.includes("deliveryBusy ? t('acceptance.saving')"), false, 'no pack button falls back to the saving label')
+  })
+
+  await test('v1.2.92 project notes and manual quick commands persist in .dsh', async () => {
+    const root = await workspace('scratchpad')
+    // A missing document reads empty instead of failing.
+    const empty = await scratchpad.readNotes(root)
+    assert.equal(empty.text, '')
+    assert.equal(empty.updatedAt, 0)
+    // Save/read round-trip, including clearing the body.
+    const saved = await scratchpad.saveNotes(root, '临时接口 http://127.0.0.1:8080\n测试账号 demo')
+    assert.ok(saved.text.includes('临时接口'), 'notes text must round-trip')
+    assert.ok(saved.updatedAt > 0)
+    assert.equal((await scratchpad.readNotes(root)).text, saved.text)
+    assert.equal((await scratchpad.saveNotes(root, '')).text, '')
+    await rejectsWithCode(scratchpad.saveNotes(root, 'x'.repeat(scratchpad.NOTES_MAX_CHARS + 1)), 'too-long')
+    // Quick commands: add, duplicate guard, validation, update, delete.
+    const first = await scratchpad.saveQuickCommand(root, { label: '查看日志', command: 'tail -n 200 logs/app.log' })
+    assert.equal(first.commands.length, 1)
+    assert.equal(first.id, first.commands[0].id)
+    await rejectsWithCode(
+      scratchpad.saveQuickCommand(root, { label: '重复', command: 'tail -n 200 logs/app.log' }),
+      'duplicate',
+    )
+    await rejectsWithCode(scratchpad.saveQuickCommand(root, { label: '  ', command: 'ls' }), 'bad-label')
+    await rejectsWithCode(scratchpad.saveQuickCommand(root, { label: '两行', command: 'ls\npwd' }), 'bad-command')
+    const updated = await scratchpad.saveQuickCommand(root, {
+      id: first.id,
+      label: '查看日志（尾部）',
+      command: 'tail -n 500 logs/app.log',
+    })
+    assert.equal(updated.commands[0].label, '查看日志（尾部）')
+    assert.equal(updated.commands[0].command, 'tail -n 500 logs/app.log')
+    assert.equal((await scratchpad.deleteQuickCommand(root, first.id)).commands.length, 0)
+    await rejectsWithCode(scratchpad.deleteQuickCommand(root, first.id), 'unknown-id')
+    // Concurrent saves serialize: no lost rows and no temp files.
+    await Promise.all(
+      Array.from({ length: 6 }, (_value, index) =>
+        scratchpad.saveQuickCommand(root, { label: `命令 ${String(index)}`, command: `echo ${String(index)}` }),
+      ),
+    )
+    assert.equal((await scratchpad.listQuickCommands(root)).total, 6)
+    const leftovers = (await fsp.readdir(path.join(root, '.dsh'))).filter((name) => name.endsWith('.tmp'))
+    assert.deepEqual(leftovers, [], 'atomic writes leave no temp files behind')
+    // Plugin state stays out of Git and symlinked documents are refused.
+    assert.equal(await fsp.readFile(path.join(root, '.dsh', '.gitignore'), 'utf8'), '*\n')
+    const outside = await workspace('scratchpad-outside')
+    await fsp.writeFile(path.join(outside, 'notes.json'), '{}')
+    const linkRoot = await workspace('scratchpad-link')
+    await fsp.mkdir(path.join(linkRoot, '.dsh'), { recursive: true })
+    await fsp.symlink(path.join(outside, 'notes.json'), path.join(linkRoot, '.dsh', 'notes.json'))
+    await rejectsWithCode(scratchpad.readNotes(linkRoot), 'unsafe')
+    // The workspace reset owns both documents.
+    const resetGroup = WORKSPACE_RESET_GROUPS.find((group) => group.id === 'notes')
+    assert.ok(resetGroup !== undefined, 'reset categories must include notes')
+    assert.deepEqual(resetGroup.entries, ['notes.json', 'quick-commands.json'])
+    // index.js wires the five owner-only host ops that back the two panels.
+    const indexSource = await fsp.readFile(new URL('../../dsh-web-filebrowser-plugin/index.js', import.meta.url), 'utf8')
+    for (const op of ['notesLoad', 'notesSave', 'quickCommands', 'quickCommandSave', 'quickCommandDelete']) {
+      assert.ok(indexSource.includes(`case '${op}':`), `index.js must wire ${op}`)
+    }
   })
 
 } finally {

@@ -30,6 +30,7 @@ import * as delivery from './delivery.js'
 import * as memory from './memory.js'
 import * as pipeline from './pipeline.js'
 import * as review from './review.js'
+import * as scratchpad from './scratchpad.js'
 import * as ssh from './ssh.js'
 import { createTaskManager } from './tasks.js'
 import { createPreviewManager } from './preview.js'
@@ -401,6 +402,16 @@ async function dispatch(ctx, op, body) {
       return pipelineRestartStage(ctx, body)
     case 'browserBookmarks':
       return listBrowserBookmarks(ctx, body)
+    case 'notesLoad':
+      return notesLoad(ctx, body)
+    case 'notesSave':
+      return notesSave(ctx, body)
+    case 'quickCommands':
+      return quickCommands(ctx, body)
+    case 'quickCommandSave':
+      return quickCommandSave(ctx, body)
+    case 'quickCommandDelete':
+      return quickCommandDelete(ctx, body)
     case 'browserBookmarkAdd':
       return addBrowserBookmark(ctx, body)
     case 'browserBookmarkRemove':
@@ -1374,6 +1385,75 @@ async function browserBookmarkRoot(ctx, requested) {
 }
 
 /**
+ * Resolve a local workspace root for a scratchpad operation. Project notes and
+ * manual quick commands live in the workspace's `.dsh` directory, so SSH remote
+ * roots have none.
+ * @param ctx - Host context.
+ * @param requested - root path sent by the browser.
+ * @param label - feature name used in the unsupported message.
+ * @returns canonical local root.
+ */
+async function scratchpadRoot(ctx, requested, label) {
+  const root = await resolveRoot(ctx, requested)
+  if (ssh.isSshRoot(root)) throw new SideError('ssh-unsupported', `SSH 远程工作区暂不支持${label}`)
+  return root
+}
+
+/**
+ * Read one workspace's free-form project notes.
+ * @param ctx - Host context.
+ * @param body - `{ root }`.
+ * @returns `{ version, text, updatedAt, path }`.
+ */
+async function notesLoad(ctx, body) {
+  return scratchpad.readNotes(await scratchpadRoot(ctx, body.root, '项目备注'))
+}
+
+/**
+ * Replace one workspace's free-form project notes.
+ * @param ctx - Host context.
+ * @param body - `{ root, text }`.
+ * @returns `{ version, text, updatedAt, path }`.
+ */
+async function notesSave(ctx, body) {
+  return scratchpad.saveNotes(await scratchpadRoot(ctx, body.root, '项目备注'), body.text)
+}
+
+/**
+ * Read one workspace's manual terminal quick commands.
+ * @param ctx - Host context.
+ * @param body - `{ root }`.
+ * @returns `{ version, commands, total, updatedAt, path }`.
+ */
+async function quickCommands(ctx, body) {
+  return scratchpad.listQuickCommands(await scratchpadRoot(ctx, body.root, '保存快捷命令'))
+}
+
+/**
+ * Add or update one manual terminal quick command.
+ * @param ctx - Host context.
+ * @param body - `{ root, id?, label, command }`.
+ * @returns the refreshed snapshot plus the saved row id.
+ */
+async function quickCommandSave(ctx, body) {
+  return scratchpad.saveQuickCommand(await scratchpadRoot(ctx, body.root, '保存快捷命令'), {
+    id: body.id,
+    label: body.label,
+    command: body.command,
+  })
+}
+
+/**
+ * Remove one manual terminal quick command.
+ * @param ctx - Host context.
+ * @param body - `{ root, id }`.
+ * @returns the refreshed snapshot.
+ */
+async function quickCommandDelete(ctx, body) {
+  return scratchpad.deleteQuickCommand(await scratchpadRoot(ctx, body.root, '保存快捷命令'), body.id)
+}
+
+/**
  * Read one workspace's built-in browser bookmarks and start-page settings.
  * @param ctx - Host context.
  * @param body - `{ root }`.
@@ -1889,6 +1969,7 @@ export const WORKSPACE_RESET_GROUPS = [
   { id: 'verifications', label: '复测记录', entries: ['verifications'] },
   { id: 'intake', label: '需求附件', entries: ['intake'] },
   { id: 'memory', label: '工作区记忆', entries: ['memory.json'] },
+  { id: 'notes', label: '项目备注与快捷命令', entries: ['notes.json', 'quick-commands.json'] },
   { id: 'tmp', label: '临时文件', entries: ['tmp'] },
 ]
 

@@ -2,6 +2,36 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.92 — 2026-10-28
+
+### Project notes scratchpad and saved terminal quick commands
+
+- **A new “Notes” (备注) view under the sidebar's Development group.** One
+  free-form scratchpad per workspace for temporary project data — one-off
+  commands, endpoint URLs, accounts, debugging clues — stored in
+  `.dsh/notes.json`. The panel autosaves after a short debounce, flushes on blur
+  and when the view closes, and reports its state (unsaved / saving / autosaved
+  with a timestamp). It also has a character counter, save-now, copy, a two-step
+  clear, a retry when a corrupt document or an older Host is in the way, and the
+  same SSH degradation as memory/todo (SSH workspaces have no local `.dsh`).
+- **Manual terminal quick commands, saved per workspace.** The quick-command bar
+  gains a **+** manager: save a name + command pair to
+  `.dsh/quick-commands.json`, edit, delete, or fill one into the run input. The
+  dropdown now groups **My quick commands** above the auto-detected **Detected**
+  commands, so the owner's own commands survive reloads and are one click away;
+  detected commands keep their existing manual refresh. Host ops validate the
+  label/command bounds, reject duplicates and multi-line commands, serialize
+  writes per document and refuse symlinked or out-of-root state files.
+- **Reset categories now include the scratch documents.** The workbench reset
+  dialog gained a fourteenth category (“Project notes and quick commands”) that
+  owns `notes.json` and `quick-commands.json`; the Host allow-list, the browser
+  category table and the host smoke test were updated together.
+- **Verification.** `npm run check`, `npm run check:json` and `npm test` pass
+  (38/38; new scratchpad cases cover the notes round-trip, bounds, command
+  add/update/delete, duplicate and multi-line guards, concurrent saves, symlink
+  refusal, `.gitignore`, reset ownership, and the 14-category table). Plugin
+  `1.2.90`, root `1.2.92` (workspace rule: +1 after each change).
+
 ## 1.2.91 — 2026-10-28
 
 ### One selected sidebar tab, and no Harness placeholder in the Files pane

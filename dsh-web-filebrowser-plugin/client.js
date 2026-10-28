@@ -29,7 +29,7 @@ window.__ModuleLoader__.load({
     /** Local Git companion route (host bridge bundle). */
     const GIT_PATH = 'api/dsh-web-filebrowser-git'
 
-    /** Workspace reset categories, in the Host's canonical order (v1.2.90). */
+    /** Workspace reset categories, in the Host's canonical order (v1.2.92). */
     const RESET_GROUP_IDS = [
       'pipeline',
       'acceptance',
@@ -43,6 +43,7 @@ window.__ModuleLoader__.load({
       'verifications',
       'intake',
       'memory',
+      'notes',
       'tmp',
     ]
 
@@ -302,6 +303,30 @@ window.__ModuleLoader__.load({
       'terminal.run': '运行',
       'terminal.commandsEmpty': '点刷新检测项目命令，也可直接输入',
       'terminal.refreshCommands': '刷新项目命令',
+      'terminal.custom.manage': '管理快捷命令',
+      'terminal.custom.title': '快捷命令',
+      'terminal.custom.hint': '保存常用命令，之后从下拉框选择或直接执行；保存在当前工作区的 .dsh/quick-commands.json。',
+      'terminal.custom.empty': '还没有自定义快捷命令。',
+      'terminal.custom.group': '我的快捷命令',
+      'terminal.custom.detected': '自动检测',
+      'terminal.custom.labelPlaceholder': '名称，如：查看日志',
+      'terminal.custom.commandPlaceholder': '命令，如：tail -n 200 logs/app.log',
+      'terminal.custom.save': '保存',
+      'terminal.custom.saving': '保存中…',
+      'terminal.custom.cancel': '取消',
+      'terminal.custom.edit': '编辑',
+      'terminal.custom.delete': '删除',
+      'terminal.custom.use': '填入',
+      'terminal.custom.close': '关闭',
+      'terminal.custom.editing': '正在编辑：{label}',
+      'terminal.custom.saved': '快捷命令已保存',
+      'terminal.custom.deleted': '快捷命令已删除',
+      'terminal.custom.loadFailed': '读取快捷命令失败：{message}',
+      'terminal.custom.saveFailed': '保存快捷命令失败：{message}',
+      'terminal.custom.deleteFailed': '删除快捷命令失败：{message}',
+      'terminal.custom.restartRequired': 'Host 仍在运行旧版本，请重启 DSH 后再保存快捷命令。',
+      'terminal.custom.sshUnsupported': 'SSH 远程工作区暂不支持保存快捷命令',
+      'terminal.custom.limit': '最多保存 {count} 条，可在管理面板删除旧的。',
       'chat.title': 'DeepSeek 对话',
       'chat.openFloating': '在悬浮窗口中打开当前对话',
       'chat.close': '关闭悬浮对话',
@@ -379,6 +404,31 @@ window.__ModuleLoader__.load({
       'memory.help': 'DeepSeek 可通过 memory_save / memory_search / memory_update / memory_delete 读写这些记忆。',
       'memory.justNow': '刚刚',
       'memory.updatedAt': '更新于 {time}',
+      'side.notes': '备注',
+      'notes.title': '项目备注',
+      'notes.hint': '记录当前项目的临时数据：临时命令、接口地址、调试线索…',
+      'notes.placeholder': '例如：测试账号 / 临时接口地址 / 明天要查的问题…',
+      'notes.file': '.dsh/notes.json',
+      'notes.fileHint': '自动保存在当前工作区，仅对本项目生效；.dsh/.gitignore 会默认忽略它。',
+      'notes.loading': '正在读取备注…',
+      'notes.saving': '保存中…',
+      'notes.saved': '已自动保存',
+      'notes.savedAt': '已自动保存 · {time}',
+      'notes.updating': '有修改待保存…',
+      'notes.copy': '复制备注',
+      'notes.copied': '备注已复制',
+      'notes.copyFailed': '复制失败：{message}',
+      'notes.saveNow': '立即保存',
+      'notes.clear': '清空',
+      'notes.clearArmed': '确认清空',
+      'notes.cleared': '备注已清空',
+      'notes.count': '{count} 字符',
+      'notes.noRoot': '请先选择工作区',
+      'notes.sshUnsupported': 'SSH 远程工作区没有本地项目备注',
+      'notes.loadFailed': '读取备注失败：{message}',
+      'notes.saveFailed': '保存备注失败：{message}',
+      'notes.restartRequired': 'Host 仍在运行旧版本，请重启 DSH 后再使用备注面板。',
+      'notes.retry': '重试',
       'side.todo': '待办',
       'side.tasks': '任务',
       'tasks.title': '任务与复测',
@@ -449,6 +499,7 @@ window.__ModuleLoader__.load({
       'workbench.reset.group.verifications': '复测记录',
       'workbench.reset.group.intake': '需求附件',
       'workbench.reset.group.memory': '工作区记忆',
+      'workbench.reset.group.notes': '项目备注与快捷命令',
       'workbench.reset.group.tmp': '临时文件',
       'workbench.attachments': '附件',
       'workbench.needInput': '先写需求或加一个附件。',
@@ -1603,6 +1654,30 @@ window.__ModuleLoader__.load({
       'terminal.run': 'Run',
       'terminal.commandsEmpty': 'Refresh to detect project commands',
       'terminal.refreshCommands': 'Refresh project commands',
+      'terminal.custom.manage': 'Manage quick commands',
+      'terminal.custom.title': 'Quick commands',
+      'terminal.custom.hint': 'Save commands you run often; pick them from the list or run them directly. Stored in this workspace (.dsh/quick-commands.json).',
+      'terminal.custom.empty': 'No custom quick commands yet.',
+      'terminal.custom.group': 'My quick commands',
+      'terminal.custom.detected': 'Detected',
+      'terminal.custom.labelPlaceholder': 'Name, e.g. View logs',
+      'terminal.custom.commandPlaceholder': 'Command, e.g. tail -n 200 logs/app.log',
+      'terminal.custom.save': 'Save',
+      'terminal.custom.saving': 'Saving…',
+      'terminal.custom.cancel': 'Cancel',
+      'terminal.custom.edit': 'Edit',
+      'terminal.custom.delete': 'Delete',
+      'terminal.custom.use': 'Use',
+      'terminal.custom.close': 'Close',
+      'terminal.custom.editing': 'Editing: {label}',
+      'terminal.custom.saved': 'Quick command saved',
+      'terminal.custom.deleted': 'Quick command deleted',
+      'terminal.custom.loadFailed': 'Could not load quick commands: {message}',
+      'terminal.custom.saveFailed': 'Could not save the quick command: {message}',
+      'terminal.custom.deleteFailed': 'Could not delete the quick command: {message}',
+      'terminal.custom.restartRequired': 'The Host is still running an older build. Restart DSH to save quick commands.',
+      'terminal.custom.sshUnsupported': 'SSH remote workspaces cannot store quick commands yet',
+      'terminal.custom.limit': 'Up to {count} saved commands; delete one in the manager.',
       'chat.title': 'DeepSeek conversation',
       'chat.openFloating': 'Open the current conversation in a floating panel',
       'chat.close': 'Close the floating conversation',
@@ -1680,6 +1755,31 @@ window.__ModuleLoader__.load({
       'memory.help': 'DeepSeek reads and writes these notes through memory_save / memory_search / memory_update / memory_delete.',
       'memory.justNow': 'just now',
       'memory.updatedAt': 'Updated {time}',
+      'side.notes': 'Notes',
+      'notes.title': 'Project notes',
+      'notes.hint': 'Jot down temporary project data: one-off commands, endpoint URLs, debugging clues…',
+      'notes.placeholder': 'e.g. test account / temporary endpoint / question to investigate tomorrow…',
+      'notes.file': '.dsh/notes.json',
+      'notes.fileHint': 'Autosaved in this workspace and scoped to the project; .dsh/.gitignore keeps it out of Git.',
+      'notes.loading': 'Reading notes…',
+      'notes.saving': 'Saving…',
+      'notes.saved': 'Autosaved',
+      'notes.savedAt': 'Autosaved · {time}',
+      'notes.updating': 'Unsaved changes…',
+      'notes.copy': 'Copy notes',
+      'notes.copied': 'Notes copied',
+      'notes.copyFailed': 'Could not copy: {message}',
+      'notes.saveNow': 'Save now',
+      'notes.clear': 'Clear',
+      'notes.clearArmed': 'Confirm clear',
+      'notes.cleared': 'Notes cleared',
+      'notes.count': '{count} characters',
+      'notes.noRoot': 'Choose a workspace first',
+      'notes.sshUnsupported': 'SSH remote workspaces have no local project notes',
+      'notes.loadFailed': 'Could not read notes: {message}',
+      'notes.saveFailed': 'Could not save notes: {message}',
+      'notes.restartRequired': 'The Host is still running an older build. Restart DSH to use the notes panel.',
+      'notes.retry': 'Retry',
       'side.todo': 'Todo',
       'side.tasks': 'Tasks',
       'tasks.title': 'Tasks and retest',
@@ -1750,6 +1850,7 @@ window.__ModuleLoader__.load({
       'workbench.reset.group.verifications': 'Verification records',
       'workbench.reset.group.intake': 'Requirement attachments',
       'workbench.reset.group.memory': 'Workspace memory',
+      'workbench.reset.group.notes': 'Project notes and quick commands',
       'workbench.reset.group.tmp': 'Temporary files',
       'workbench.attachments': 'Attachments',
       'workbench.needInput': 'Write the requirement or add an attachment first.',
@@ -5298,6 +5399,13 @@ window.__ModuleLoader__.load({
       )
     }
 
+    function NoteIcon() {
+      return icon(15,
+        h('path', { d: 'M3.4 2.6h8.2a1 1 0 0 1 1 1v7.8a1 1 0 0 1-1 1H3.4a1 1 0 0 1-1-1V3.6a1 1 0 0 1 1-1Z' }),
+        h('path', { d: 'M4.9 5.4h5.2M4.9 7.5h5.2M4.9 9.6h3.1' }),
+      )
+    }
+
     function TodoIcon() {
       return icon(15,
         h('rect', { x: 2.1, y: 2.6, width: 11.8, height: 10.8, rx: 2.1 }),
@@ -7743,6 +7851,27 @@ window.__ModuleLoader__.load({
      */
     const terminalCommandCache = new Map()
 
+    /**
+     * Last loaded manual quick commands per workspace root. A terminal view
+     * remounts when its tab moves between the panel and the editor, so the
+     * cached list keeps the picker from flashing empty and skips a duplicate
+     * Host read; a save/delete refreshes it explicitly.
+     */
+    const terminalCustomCommandCache = new Map()
+
+    /** Keep only rows that look like a saved quick command. */
+    function normalizeCustomCommands(value) {
+      const rows = Array.isArray(value?.commands) ? value.commands : []
+      return rows.filter(
+        (row) =>
+          row !== null &&
+          typeof row === 'object' &&
+          typeof row.id === 'string' &&
+          typeof row.label === 'string' &&
+          typeof row.command === 'string',
+      )
+    }
+
     function terminalAssetUrl(name) {
       const url = new URL(TERMINAL_PATH, document.baseURI)
       url.searchParams.set('op', 'asset')
@@ -7822,8 +7951,118 @@ window.__ModuleLoader__.load({
       const [exited, setExited] = useState(false)
       const [commands, setCommands] = useState(() => terminalCommandCache.get(session.hostId)?.commands ?? [])
       const [commandsRoot, setCommandsRoot] = useState(() => terminalCommandCache.get(session.hostId)?.root ?? null)
+      const [customCommands, setCustomCommands] = useState(() => terminalCustomCommandCache.get(session.root) ?? [])
+      const [managerOpen, setManagerOpen] = useState(false)
+      const [managerLabel, setManagerLabel] = useState('')
+      const [managerCommand, setManagerCommand] = useState('')
+      const [managerEditingId, setManagerEditingId] = useState(null)
+      const [managerSaving, setManagerSaving] = useState(false)
+      const [managerError, setManagerError] = useState(null)
       const [command, setCommand] = useState('')
       statusRef.current = onStatus
+      /** Manual quick commands need a local workspace `.dsh` document. */
+      const customAllowed =
+        session.ssh !== true &&
+        typeof session.root === 'string' &&
+        session.root.length > 0 &&
+        !isSshRootPath(session.root)
+
+      // Load the owner's saved quick commands for this workspace.
+      useEffect(() => {
+        if (!customAllowed) return undefined
+        const root = session.root
+        const cached = terminalCustomCommandCache.get(root)
+        if (cached !== undefined) setCustomCommands(cached)
+        let alive = true
+        void (async () => {
+          try {
+            const value = await call('quickCommands', { root })
+            if (!alive) return
+            const list = normalizeCustomCommands(value)
+            terminalCustomCommandCache.set(root, list)
+            setCustomCommands(list)
+          } catch {
+            /* older Host or a transient failure: detected commands still work */
+          }
+        })()
+        return () => {
+          alive = false
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [session.root, customAllowed])
+
+      /** Explain a Host that was not restarted after the plugin update. */
+      function customCommandErrorText(error) {
+        return errorCode(error) === 'bad-op' ? t('terminal.custom.restartRequired') : errorText(error)
+      }
+
+      /** Adopt one snapshot returned by a quick-command mutation. */
+      function applyCustomCommands(value) {
+        const list = normalizeCustomCommands(value)
+        terminalCustomCommandCache.set(session.root, list)
+        setCustomCommands(list)
+        return list
+      }
+
+      function closeCustomManager() {
+        setManagerOpen(false)
+        setManagerError(null)
+        setManagerEditingId(null)
+        setManagerLabel('')
+        setManagerCommand('')
+      }
+
+      function resetCustomForm() {
+        setManagerEditingId(null)
+        setManagerLabel('')
+        setManagerCommand('')
+        setManagerError(null)
+      }
+
+      function startEditCustom(item) {
+        setManagerEditingId(item.id)
+        setManagerLabel(item.label)
+        setManagerCommand(item.command)
+        setManagerError(null)
+      }
+
+      /** Put a saved command into the run input and close the manager. */
+      function useCustomCommand(item) {
+        setCommand(item.command)
+        closeCustomManager()
+      }
+
+      async function saveCustomCommand() {
+        if (managerSaving || !customAllowed) return
+        setManagerSaving(true)
+        setManagerError(null)
+        try {
+          const value = await call('quickCommandSave', {
+            root: session.root,
+            id: managerEditingId === null ? undefined : managerEditingId,
+            label: managerLabel,
+            command: managerCommand,
+          })
+          applyCustomCommands(value)
+          resetCustomForm()
+        } catch (failure) {
+          setManagerError(t('terminal.custom.saveFailed', { message: customCommandErrorText(failure) }))
+        } finally {
+          setManagerSaving(false)
+        }
+      }
+
+      async function removeCustomCommand(item) {
+        if (!customAllowed) return
+        setManagerError(null)
+        try {
+          const value = await call('quickCommandDelete', { root: session.root, id: item.id })
+          applyCustomCommands(value)
+          if (managerEditingId === item.id) resetCustomForm()
+        } catch (failure) {
+          setManagerError(t('terminal.custom.deleteFailed', { message: customCommandErrorText(failure) }))
+        }
+      }
 
       useEffect(() => {
         let alive = true
@@ -8067,7 +8306,7 @@ window.__ModuleLoader__.load({
             session.ssh ? t('terminal.sshRemote') : null,
             session.ssh
               ? null
-              : commands.length > 0
+              : commands.length + customCommands.length > 0
                 ? h(
                     'select',
                     {
@@ -8079,7 +8318,22 @@ window.__ModuleLoader__.load({
                       },
                     },
                     h('option', { value: '' }, t('terminal.quick')),
-                    commands.map((item) => h('option', { key: item.id, value: item.command }, item.label)),
+                    customCommands.length > 0
+                      ? h(
+                          'optgroup',
+                          { label: t('terminal.custom.group') },
+                          customCommands.map((item) =>
+                            h('option', { key: `custom-${item.id}`, value: item.command }, item.label),
+                          ),
+                        )
+                      : null,
+                    commands.length > 0
+                      ? h(
+                          'optgroup',
+                          { label: t('terminal.custom.detected') },
+                          commands.map((item) => h('option', { key: item.id, value: item.command }, item.label)),
+                        )
+                      : null,
                   )
                 : h(
                     'span',
@@ -8098,6 +8352,21 @@ window.__ModuleLoader__.load({
                   },
                   h(RefreshIcon),
                 ),
+            customAllowed
+              ? h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-terminal-command-manage',
+                    title: t('terminal.custom.manage'),
+                    onClick: () => {
+                      setManagerError(null)
+                      setManagerOpen(true)
+                    },
+                  },
+                  h(PlusIcon),
+                )
+              : null,
           ),
           h('input', {
             className: 'ds-terminal-command-input',
@@ -8127,6 +8396,146 @@ window.__ModuleLoader__.load({
         loading ? h('div', { className: 'ds-terminal-overlay' }, h('span', { className: 'ds-spinner' }), t('terminal.loading')) : null,
         error !== null ? h('div', { className: 'ds-terminal-overlay ds-terminal-error' }, error) : null,
         exited ? h('div', { className: 'ds-terminal-exited' }, t('terminal.exited')) : null,
+        managerOpen
+          ? h(
+              'div',
+              {
+                className: 'ds-termcmd-backdrop',
+                onPointerDown: (event) => {
+                  if (event.target === event.currentTarget) closeCustomManager()
+                },
+              },
+              h(
+                'div',
+                {
+                  className: 'ds-termcmd-dialog',
+                  role: 'dialog',
+                  'aria-modal': 'true',
+                  'aria-label': t('terminal.custom.title'),
+                  onKeyDown: (event) => {
+                    if (event.key === 'Escape') {
+                      event.preventDefault()
+                      closeCustomManager()
+                    }
+                  },
+                },
+                h('div', { className: 'ds-termcmd-title' }, t('terminal.custom.title')),
+                h('div', { className: 'ds-termcmd-hint' }, t('terminal.custom.hint')),
+                h(
+                  'div',
+                  { className: 'ds-termcmd-list' },
+                  customCommands.length === 0
+                    ? h('div', { className: 'ds-termcmd-empty' }, t('terminal.custom.empty'))
+                    : customCommands.map((item) =>
+                        h(
+                          'div',
+                          {
+                            key: item.id,
+                            className: 'ds-termcmd-row',
+                            'data-editing': managerEditingId === item.id ? 'true' : undefined,
+                          },
+                          h(
+                            'div',
+                            { className: 'ds-termcmd-meta' },
+                            h('span', { className: 'ds-termcmd-label', title: item.label }, item.label),
+                            h('code', { className: 'ds-termcmd-text', title: item.command }, item.command),
+                          ),
+                          h(
+                            'div',
+                            { className: 'ds-termcmd-actions' },
+                            h(
+                              'button',
+                              { type: 'button', className: 'ds-termcmd-action', onClick: () => useCustomCommand(item) },
+                              t('terminal.custom.use'),
+                            ),
+                            h(
+                              'button',
+                              { type: 'button', className: 'ds-termcmd-action', onClick: () => startEditCustom(item) },
+                              t('terminal.custom.edit'),
+                            ),
+                            h(
+                              'button',
+                              {
+                                type: 'button',
+                                className: 'ds-termcmd-action',
+                                onClick: () => void removeCustomCommand(item),
+                              },
+                              t('terminal.custom.delete'),
+                            ),
+                          ),
+                        ),
+                      ),
+                ),
+                h(
+                  'div',
+                  { className: 'ds-termcmd-form' },
+                  h('input', {
+                    className: 'ds-termcmd-input',
+                    autoFocus: true,
+                    value: managerLabel,
+                    maxLength: 60,
+                    placeholder: t('terminal.custom.labelPlaceholder'),
+                    spellCheck: false,
+                    disabled: managerSaving,
+                    onChange: (event) => setManagerLabel(event.target.value),
+                  }),
+                  h('input', {
+                    className: 'ds-termcmd-input',
+                    'data-mono': 'true',
+                    value: managerCommand,
+                    maxLength: 2000,
+                    placeholder: t('terminal.custom.commandPlaceholder'),
+                    spellCheck: false,
+                    disabled: managerSaving,
+                    onChange: (event) => setManagerCommand(event.target.value),
+                    onKeyDown: (event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault()
+                        void saveCustomCommand()
+                      }
+                    },
+                  }),
+                  h(
+                    'div',
+                    { className: 'ds-termcmd-form-foot' },
+                    managerEditingId === null
+                      ? h('span', { className: 'ds-termcmd-note' }, t('terminal.custom.limit', { count: '50' }))
+                      : h(
+                          'span',
+                          { className: 'ds-termcmd-editing', title: managerLabel },
+                          t('terminal.custom.editing', { label: managerLabel.trim().length > 0 ? managerLabel : '—' }),
+                        ),
+                    h(
+                      'button',
+                      { type: 'button', className: 'ds-btn', disabled: managerSaving, onClick: resetCustomForm },
+                      t('terminal.custom.cancel'),
+                    ),
+                    h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'ds-btn ds-btn-primary',
+                        disabled:
+                          managerSaving || managerLabel.trim().length === 0 || managerCommand.trim().length === 0,
+                        onClick: () => void saveCustomCommand(),
+                      },
+                      managerSaving ? t('terminal.custom.saving') : t('terminal.custom.save'),
+                    ),
+                  ),
+                ),
+                managerError !== null ? h('div', { className: 'ds-termcmd-error' }, managerError) : null,
+                h(
+                  'div',
+                  { className: 'ds-termcmd-footer' },
+                  h(
+                    'button',
+                    { type: 'button', className: 'ds-btn', onClick: closeCustomManager },
+                    t('terminal.custom.close'),
+                  ),
+                ),
+              ),
+            )
+          : null,
       )
     }
 
@@ -8560,6 +8969,24 @@ window.__ModuleLoader__.load({
         const [memoryTagsDraft, setMemoryTagsDraft] = useState('')
         const [memoryEditing, setMemoryEditing] = useState(null)
         const [memorySaving, setMemorySaving] = useState(false)
+        // Project notes (v1.2.92): one free-form scratchpad per workspace,
+        // autosaved to `.dsh/notes.json`; see renderNotesPanel().
+        const [notesText, setNotesText] = useState('')
+        const [notesPath, setNotesPath] = useState(null)
+        const [notesUpdatedAt, setNotesUpdatedAt] = useState(0)
+        const [notesLoading, setNotesLoading] = useState(false)
+        const [notesSaving, setNotesSaving] = useState(false)
+        const [notesDirty, setNotesDirty] = useState(false)
+        const [notesLoadFailed, setNotesLoadFailed] = useState(false)
+        const [notesError, setNotesError] = useState(null)
+        const [notesClearArmed, setNotesClearArmed] = useState(false)
+        const notesTextRef = useRef('')
+        const notesRootRef = useRef(null)
+        const notesTimerRef = useRef(null)
+        const notesSavingRef = useRef(false)
+        const notesDirtyRef = useRef(false)
+        const notesRequestRef = useRef(0)
+        const notesClearTimerRef = useRef(null)
         const [todoTasks, setTodoTasks] = useState([])
         const [todoPath, setTodoPath] = useState(null)
         const [todoUpdatedAt, setTodoUpdatedAt] = useState(0)
@@ -8623,6 +9050,7 @@ window.__ModuleLoader__.load({
           verifications: true,
           intake: true,
           memory: false,
+          notes: true,
           tmp: true,
         }))
         const [resetBusy, setResetBusy] = useState(false)
@@ -8994,6 +9422,7 @@ window.__ModuleLoader__.load({
           }
           if (paneView === 'harness') void loadHarness()
           if (paneView === 'memory') void loadMemory()
+          if (paneView === 'notes') activateNotes()
           if (paneView === 'todo') void loadTodo()
           if (paneView === 'tasks') {
             void loadTasks()
@@ -9018,6 +9447,33 @@ window.__ModuleLoader__.load({
           }
           return undefined
         }, [paneView, state.root, workbenchTabActive])
+
+        // Notes autosave is debounced: flush the last keystrokes when the owner
+        // leaves the view (or the whole plugin unmounts) instead of dropping them.
+        const notesPreviousViewRef = useRef(paneView)
+        useEffect(() => {
+          const previous = notesPreviousViewRef.current
+          notesPreviousViewRef.current = paneView
+          if (previous !== 'notes' || paneView === 'notes') return
+          if (notesTimerRef.current === null && !notesDirtyRef.current) return
+          cancelNotesTimer()
+          void saveNotesNow()
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [paneView])
+
+        useEffect(
+          () => () => {
+            if (notesTimerRef.current !== null || notesDirtyRef.current) {
+              cancelNotesTimer()
+              const root = notesRootRef.current
+              if (root !== null && !isSshRootPath(root) && notesDirtyRef.current) {
+                void call('notesSave', { root, text: notesTextRef.current }).catch(() => {})
+              }
+            }
+            if (notesClearTimerRef.current !== null) window.clearTimeout(notesClearTimerRef.current)
+          },
+          [],
+        )
 
         useEffect(() => {
           if (paneView !== 'todo') return undefined
@@ -9058,9 +9514,9 @@ window.__ModuleLoader__.load({
           const ssh = isSshRootPath(root)
           void (async () => {
             const saved = readStorage(`${VIEW_KEY}:${root}`)
-            const valid = ['files', 'search', 'todo', 'tasks', 'acceptance', 'pipeline', 'git', 'memory']
+            const valid = ['files', 'search', 'todo', 'tasks', 'acceptance', 'pipeline', 'git', 'memory', 'notes']
             if (typeof saved === 'string' && valid.includes(saved)) {
-              if (alive && !(ssh && (saved === 'git' || saved === 'memory'))) setPaneView(saved)
+              if (alive && !(ssh && (saved === 'git' || saved === 'memory' || saved === 'notes'))) setPaneView(saved)
               return
             }
             try {
@@ -9593,11 +10049,12 @@ window.__ModuleLoader__.load({
         const showSearch = paneView === 'search'
         const showMemory = paneView === 'memory' && gitAvailable
         const showHarness = paneView === 'harness'
+        const showNotes = paneView === 'notes'
         const showTodo = paneView === 'todo'
         const showTasks = paneView === 'tasks'
         const showAcceptance = paneView === 'acceptance'
         const showPipeline = paneView === 'pipeline'
-        const showFiles = !showGit && !showSearch && !showMemory && !showHarness && !showTodo && !showTasks && !showAcceptance && !showPipeline
+        const showFiles = !showGit && !showSearch && !showMemory && !showHarness && !showNotes && !showTodo && !showTasks && !showAcceptance && !showPipeline
         const todoOpenCount = todoTasks.reduce((count, task) => count + (task.status === 'open' ? 1 : 0), 0)
         const treeDisplayWidth = compact
           ? '100%'
@@ -9966,6 +10423,7 @@ window.__ModuleLoader__.load({
             { id: 'terminal', label: t('terminal.open'), run: () => void openTerminal('panel') },
             { id: 'browser', label: t('browser.open'), run: () => openBrowser() },
             { id: 'memory', label: t('side.memory'), run: openMemory },
+            { id: 'notes', label: t('notes.title'), run: openNotes },
             { id: 'todo', label: t('todo.title'), run: openTodo },
             { id: 'tasks', label: t('tasks.title'), run: openTasks },
             { id: 'acceptance', label: t('acceptance.title'), run: openAcceptance },
@@ -10117,6 +10575,183 @@ window.__ModuleLoader__.load({
           } catch {
             return ''
           }
+        }
+
+        /** Explain a Host that was not restarted after the plugin update. */
+        function notesErrorText(error) {
+          return errorCode(error) === 'bad-op' ? t('notes.restartRequired') : errorText(error)
+        }
+
+        /** Short, stable label for one notes timestamp. */
+        function formatNotesTime(value) {
+          if (!Number.isFinite(value) || value <= 0) return ''
+          if (Date.now() - value < 60_000) return t('memory.justNow')
+          try {
+            return new Date(value).toLocaleString()
+          } catch {
+            return ''
+          }
+        }
+
+        /** Cancel a pending autosave timer (the text itself is kept). */
+        function cancelNotesTimer() {
+          if (notesTimerRef.current === null) return
+          window.clearTimeout(notesTimerRef.current)
+          notesTimerRef.current = null
+        }
+
+        /** Load `.dsh/notes.json` for the active workspace. */
+        async function loadNotes(force = false) {
+          const root = store.get().root
+          // Already loaded for this workspace: keep the live text (and any
+          // pending autosave timer) instead of re-reading and resetting it.
+          if (!force && notesRootRef.current === root) return
+          const request = notesRequestRef.current + 1
+          notesRequestRef.current = request
+          cancelNotesTimer()
+          if (root === null) {
+            notesRootRef.current = null
+            notesTextRef.current = ''
+            setNotesText('')
+            setNotesPath(null)
+            setNotesUpdatedAt(0)
+            setNotesDirty(false)
+            notesDirtyRef.current = false
+            setNotesLoading(false)
+            setNotesLoadFailed(false)
+            setNotesError(null)
+            return
+          }
+          if (isSshRootPath(root)) {
+            notesRootRef.current = root
+            notesTextRef.current = ''
+            setNotesText('')
+            setNotesPath(null)
+            setNotesUpdatedAt(0)
+            setNotesDirty(false)
+            notesDirtyRef.current = false
+            setNotesLoading(false)
+            setNotesLoadFailed(false)
+            setNotesError(t('notes.sshUnsupported'))
+            return
+          }
+          notesRootRef.current = root
+          setNotesLoading(true)
+          setNotesLoadFailed(false)
+          setNotesError(null)
+          try {
+            const value = await call('notesLoad', { root })
+            if (request !== notesRequestRef.current || store.get().root !== root) return
+            const text = typeof value?.text === 'string' ? value.text : ''
+            notesTextRef.current = text
+            setNotesText(text)
+            setNotesPath(typeof value?.path === 'string' ? value.path : null)
+            setNotesUpdatedAt(Number.isFinite(value?.updatedAt) ? value.updatedAt : 0)
+            setNotesDirty(false)
+            notesDirtyRef.current = false
+            setNotesLoadFailed(false)
+          } catch (error) {
+            if (request !== notesRequestRef.current) return
+            notesRootRef.current = null
+            setNotesLoadFailed(true)
+            setNotesError(t('notes.loadFailed', { message: notesErrorText(error) }))
+          } finally {
+            if (request === notesRequestRef.current) setNotesLoading(false)
+          }
+        }
+
+        /** Open the notes view, flushing the previous workspace's pending text. */
+        function activateNotes() {
+          const root = store.get().root
+          if (root !== null && notesRootRef.current !== null && notesRootRef.current !== root) {
+            // A workspace switch while the panel is open: the old document is
+            // flushed before the new one is read, so nothing typed is lost.
+            const previousRoot = notesRootRef.current
+            if (notesDirtyRef.current && !isSshRootPath(previousRoot)) {
+              cancelNotesTimer()
+              const pending = notesTextRef.current
+              void call('notesSave', { root: previousRoot, text: pending }).catch(() => {})
+            }
+            notesRootRef.current = null
+          }
+          void loadNotes()
+        }
+
+        /** Save the current notes body now, coalescing concurrent saves. */
+        async function saveNotesNow() {
+          if (notesSavingRef.current) {
+            if (notesDirtyRef.current && notesTimerRef.current === null) scheduleNotesSave()
+            return
+          }
+          const root = notesRootRef.current
+          if (root === null || isSshRootPath(root)) return
+          const text = notesTextRef.current
+          notesSavingRef.current = true
+          setNotesSaving(true)
+          setNotesError(null)
+          try {
+            const value = await call('notesSave', { root, text })
+            if (notesRootRef.current !== root) return
+            if (typeof value?.text === 'string' && value.text === notesTextRef.current) {
+              notesDirtyRef.current = false
+              setNotesDirty(false)
+            }
+            setNotesUpdatedAt(Number.isFinite(value?.updatedAt) ? value.updatedAt : Date.now())
+            if (typeof value?.path === 'string') setNotesPath(value.path)
+          } catch (error) {
+            setNotesError(t('notes.saveFailed', { message: notesErrorText(error) }))
+          } finally {
+            notesSavingRef.current = false
+            setNotesSaving(false)
+          }
+        }
+
+        /** Debounced autosave after one keystroke. */
+        function scheduleNotesSave() {
+          cancelNotesTimer()
+          notesTimerRef.current = window.setTimeout(() => {
+            notesTimerRef.current = null
+            void saveNotesNow()
+          }, 700)
+        }
+
+        /** Update the note body and schedule its autosave. */
+        function updateNotesText(value) {
+          notesTextRef.current = value
+          setNotesText(value)
+          notesDirtyRef.current = true
+          setNotesDirty(true)
+          setNotesClearArmed(false)
+          scheduleNotesSave()
+        }
+
+        /** Copy the whole note body to the clipboard. */
+        async function copyNotesText() {
+          try {
+            if (typeof navigator.clipboard?.writeText !== 'function') throw new Error('clipboard unavailable')
+            await navigator.clipboard.writeText(notesTextRef.current)
+            showToast(t('notes.copied'))
+          } catch (error) {
+            showToast(t('notes.copyFailed', { message: errorText(error) }))
+          }
+        }
+
+        /** Clear the notes after a second confirming click. */
+        function clearNotesText() {
+          if (!notesClearArmed) {
+            setNotesClearArmed(true)
+            if (notesClearTimerRef.current !== null) window.clearTimeout(notesClearTimerRef.current)
+            notesClearTimerRef.current = window.setTimeout(() => {
+              notesClearTimerRef.current = null
+              setNotesClearArmed(false)
+            }, 3000)
+            return
+          }
+          setNotesClearArmed(false)
+          updateNotesText('')
+          cancelNotesTimer()
+          void saveNotesNow()
+          showToast(t('notes.cleared'))
         }
 
         /** Save the draft as a new memory or as the entry being edited. */
@@ -12914,6 +13549,12 @@ ${tail}
           } finally {
             setEvidenceBusy(false)
           }
+        }
+
+        /** Open the project notes scratchpad for the current workspace. */
+        function openNotes() {
+          setPaneView('notes')
+          setCompactView('tree')
         }
 
         /** Open the Todo panel for the current workspace. */
@@ -21339,6 +21980,121 @@ ${tail}
           )
         }
 
+        /**
+         * Render the project notes scratchpad. One free-form document per
+         * workspace, autosaved to `.dsh/notes.json` (debounced, flushed on blur
+         * and when the view closes).
+         */
+        function renderNotesPanel() {
+          const root = state.root
+          const local = root !== null && !isSshRootPath(root)
+          const count = [...notesText].length
+          const status =
+            notesError !== null
+              ? notesError
+              : notesLoading
+                ? t('notes.loading')
+                : notesSaving
+                  ? t('notes.saving')
+                  : notesDirty
+                    ? t('notes.updating')
+                    : notesUpdatedAt > 0
+                      ? t('notes.savedAt', { time: formatNotesTime(notesUpdatedAt) })
+                      : t('notes.saved')
+          return h(
+            'div',
+            { className: 'ds-side-view ds-notes-view', style: { display: showNotes ? 'flex' : 'none' } },
+            h(
+              'div',
+              { className: 'ds-notes-intro' },
+              h(
+                'div',
+                { className: 'ds-notes-head' },
+                h('span', { className: 'ds-notes-title' }, t('notes.title')),
+                h('span', { className: 'ds-notes-count' }, t('notes.count', { count: String(count) })),
+                h('span', { className: 'ds-spacer' }),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-iconbtn ds-iconbtn-sm',
+                    title: t('notes.saveNow'),
+                    disabled: !local || !notesDirty || notesSaving,
+                    onClick: () => {
+                      cancelNotesTimer()
+                      void saveNotesNow()
+                    },
+                  },
+                  h(SaveIcon),
+                ),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-iconbtn ds-iconbtn-sm',
+                    title: t('notes.copy'),
+                    disabled: !local,
+                    onClick: () => void copyNotesText(),
+                  },
+                  h(CopyIcon),
+                ),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'ds-linkbtn ds-notes-clear',
+                    'data-armed': notesClearArmed ? 'true' : undefined,
+                    disabled: !local,
+                    onClick: clearNotesText,
+                  },
+                  notesClearArmed ? t('notes.clearArmed') : t('notes.clear'),
+                ),
+              ),
+              h('div', { className: 'ds-notes-hint' }, t('notes.hint')),
+              h('div', { className: 'ds-notes-status', 'data-tone': notesError !== null ? 'error' : undefined }, status),
+            ),
+            root === null
+              ? h('div', { className: 'ds-hint' }, t('notes.noRoot'))
+              : !local
+                ? h('div', { className: 'ds-hint' }, t('notes.sshUnsupported'))
+                : notesLoadFailed
+                  ? h(
+                      'div',
+                      { className: 'ds-notes-failed' },
+                      h('div', { className: 'ds-notes-error' }, notesError ?? t('notes.loadFailed', { message: '' })),
+                      h(
+                        'button',
+                        { type: 'button', className: 'ds-btn', onClick: () => void loadNotes(true) },
+                        t('notes.retry'),
+                      ),
+                    )
+                  : h(
+                      'div',
+                      { className: 'ds-notes-body' },
+                      h('textarea', {
+                        className: 'ds-notes-input',
+                        value: notesText,
+                        placeholder: t('notes.placeholder'),
+                        spellCheck: false,
+                        disabled: notesLoading,
+                        onChange: (event) => updateNotesText(event.target.value),
+                        onBlur: () => {
+                          if (notesTimerRef.current === null) return
+                          cancelNotesTimer()
+                          void saveNotesNow()
+                        },
+                      }),
+                      h(
+                        'div',
+                        { className: 'ds-notes-foot' },
+                        h('span', { className: 'ds-notes-path', title: notesPath ?? '' }, notesPath ?? t('notes.file')),
+                        h('span', { className: 'ds-spacer' }),
+                        h('span', { className: 'ds-notes-file-hint' }, t('notes.fileHint')),
+                      ),
+                    ),
+          )
+        }
+
         function renderMemoryPanel() {
           const local = !isSshRootPath(state.root)
           const editing = memoryEditing !== null
@@ -22136,6 +22892,15 @@ h(
             icon: h(HarnessIcon),
             active: showHarness,
             select: () => void openHarness(),
+          })
+          // Project notes: a scratchpad for the current workspace, kept under the
+          // Development group next to Tasks / Memory / Harness.
+          developViews.push({
+            id: 'notes',
+            label: t('side.notes'),
+            icon: h(NoteIcon),
+            active: showNotes,
+            select: openNotes,
           })
           // The workbench lives in the editor area (its own document tab), so it is
           // a command here, not a side-pane view: opening it focuses that tab and
@@ -23156,7 +23921,7 @@ h(
               'aside',
               {
                 className: 'ds-side',
-                'data-view': showGit ? 'git' : showSearch ? 'search' : showMemory ? 'memory' : showHarness ? 'harness' : showTodo ? 'todo' : showTasks ? 'tasks' : showAcceptance ? 'acceptance' : showPipeline ? 'pipeline' : 'files',
+                'data-view': showGit ? 'git' : showSearch ? 'search' : showMemory ? 'memory' : showHarness ? 'harness' : showNotes ? 'notes' : showTodo ? 'todo' : showTasks ? 'tasks' : showAcceptance ? 'acceptance' : showPipeline ? 'pipeline' : 'files',
                 style: { width: treeDisplayWidth, display: showSide ? undefined : 'none' },
               },
               h(
@@ -23168,7 +23933,7 @@ h(
                   h(
                     'span',
                     { className: 'ds-pane-title-text' },
-                    showGit ? t('git.title') : showSearch ? t('side.search') : showMemory ? t('side.memory') : showHarness ? t('side.harness') : showTodo ? t('todo.title') : showTasks ? t('tasks.title') : showAcceptance ? t('acceptance.title') : showPipeline ? t('pipeline.title') : t('explorer'),
+                    showGit ? t('git.title') : showSearch ? t('side.search') : showMemory ? t('side.memory') : showHarness ? t('side.harness') : showNotes ? t('notes.title') : showTodo ? t('todo.title') : showTasks ? t('tasks.title') : showAcceptance ? t('acceptance.title') : showPipeline ? t('pipeline.title') : t('explorer'),
                   ),
                   h(
                     'button',
@@ -23428,6 +24193,7 @@ h(
               renderSearchPanel(),
               renderHarnessPanel(),
               renderMemoryPanel(),
+              renderNotesPanel(),
               renderTodoPanel(),
               renderTasksPanel(),
               renderAcceptancePanel(),
@@ -24746,7 +25512,8 @@ h(
 .ds-side[data-view="workbench"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
 .ds-side[data-view="acceptance"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
 .ds-side[data-view="pipeline"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
-.ds-side[data-view="memory"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch) { display: none; }
+.ds-side[data-view="memory"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch),
+.ds-side[data-view="notes"] .ds-pane-actions .ds-iconbtn:not(.ds-side-switch) { display: none; }
 .ds-git-toggle[data-active="true"] {
   color: var(--dsw-alias-brand-primary);
   background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent);
@@ -25722,6 +26489,93 @@ h(
 .ds-memory-action:hover { color: var(--dsw-alias-label-primary); text-decoration: underline; }
 .ds-memory-action-danger:hover { color: var(--dsw-alias-state-error-primary); }
 .ds-memory-help { padding: 8px 10px 12px; color: var(--dsw-alias-label-caption); font-size: 9.5px; line-height: 1.5; }
+.ds-notes-view { overflow: hidden; }
+.ds-notes-intro {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-alias-bg-layer-1);
+}
+.ds-notes-head { display: flex; align-items: center; gap: 6px; }
+.ds-notes-title { font-size: 12px; font-weight: 600; }
+.ds-notes-count {
+  padding: 0 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+  line-height: 16px;
+}
+.ds-notes-hint { margin-top: 3px; color: var(--dsw-alias-label-secondary); font-size: 10.5px; line-height: 1.5; }
+.ds-notes-status {
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--dsw-alias-label-caption);
+  font-size: 9.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ds-notes-status[data-tone="error"] { color: var(--dsw-alias-state-error-primary); white-space: normal; }
+.ds-notes-failed {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 0;
+  padding: 10px;
+  overflow: auto;
+}
+.ds-notes-error { color: var(--dsw-alias-state-error-primary); font-size: 10.5px; line-height: 1.6; overflow-wrap: anywhere; }
+.ds-notes-failed .ds-btn { height: 26px; padding: 0 12px; font-size: 11px; }
+.ds-notes-clear { flex: 0 0 auto; font-size: 10px; }
+.ds-notes-clear[data-armed="true"] { color: var(--dsw-alias-state-error-primary); font-weight: 600; }
+.ds-notes-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  padding: 8px;
+}
+.ds-notes-input {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 11.5px;
+  line-height: 1.65;
+  outline: none;
+  resize: none;
+  tab-size: 2;
+}
+.ds-notes-input:focus { border-color: var(--dsw-alias-brand-primary); }
+.ds-notes-input::placeholder { color: var(--dsw-alias-label-caption); }
+.ds-notes-foot { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; min-width: 0; }
+.ds-notes-path {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--dsw-alias-label-caption);
+  font-family: var(--ds-mono);
+  font-size: 9.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+}
+.ds-notes-file-hint {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--dsw-alias-label-caption);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .ds-todo-view { overflow: hidden; }
 .ds-todo-intro {
   flex: 0 0 auto;
@@ -27640,6 +28494,107 @@ h(
   cursor: pointer;
 }
 .ds-terminal-command-refresh:hover { color: var(--dsw-alias-label-primary); border-color: var(--dsw-alias-border-l2); }
+.ds-terminal-command-manage {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+.ds-terminal-command-manage:hover { color: var(--dsw-alias-label-primary); border-color: var(--dsw-alias-border-l2); }
+/* Saved quick-command manager dialog (v1.2.92). */
+.ds-termcmd-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: var(--dsw-alias-bg-mask-1);
+}
+.ds-termcmd-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(460px, calc(100vw - 32px));
+  max-height: min(72vh, 560px);
+  padding: 14px 16px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-base);
+  box-shadow: 0 18px 48px color-mix(in srgb, var(--dsw-alias-label-primary) 26%, transparent);
+}
+.ds-termcmd-title { color: var(--dsw-alias-label-primary); font-size: 13px; font-weight: 600; }
+.ds-termcmd-hint { margin-top: 3px; color: var(--dsw-alias-label-secondary); font-size: 10.5px; line-height: 1.5; }
+.ds-termcmd-list {
+  flex: 1 1 auto;
+  min-height: 56px;
+  margin-top: 8px;
+  overflow: auto;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+}
+.ds-termcmd-empty { padding: 14px 10px; color: var(--dsw-alias-label-secondary); font-size: 11px; }
+.ds-termcmd-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-bottom: 1px solid var(--dsw-alias-border-l1); }
+.ds-termcmd-row:last-child { border-bottom: 0; }
+.ds-termcmd-row[data-editing="true"] { background: color-mix(in srgb, var(--dsw-alias-brand-primary) 7%, transparent); }
+.ds-termcmd-meta { display: flex; flex: 1 1 auto; flex-direction: column; gap: 2px; min-width: 0; }
+.ds-termcmd-label {
+  overflow: hidden;
+  color: var(--dsw-alias-label-primary);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ds-termcmd-text {
+  overflow: hidden;
+  color: var(--dsw-alias-label-secondary);
+  font-family: var(--ds-mono);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ds-termcmd-actions { display: flex; flex: 0 0 auto; gap: 2px; }
+.ds-termcmd-action {
+  padding: 2px 5px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+.ds-termcmd-action:hover { background: color-mix(in srgb, var(--dsw-alias-label-primary) 8%, transparent); color: var(--dsw-alias-label-primary); }
+.ds-termcmd-form { display: flex; flex: 0 0 auto; flex-direction: column; gap: 6px; margin-top: 8px; }
+.ds-termcmd-input {
+  width: 100%;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 5px;
+  background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 11px;
+  outline: none;
+}
+.ds-termcmd-input[data-mono="true"] { font-family: var(--ds-mono); font-size: 10.5px; }
+.ds-termcmd-input:focus { border-color: var(--dsw-alias-brand-primary); }
+.ds-termcmd-form-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ds-termcmd-editing { flex: 1 1 auto; min-width: 0; overflow: hidden; color: var(--dsw-alias-brand-primary); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.ds-termcmd-note { flex: 1 1 auto; color: var(--dsw-alias-label-caption); font-size: 9.5px; }
+.ds-termcmd-error { color: var(--dsw-alias-state-error-primary); font-size: 10.5px; line-height: 1.5; }
+.ds-termcmd-footer { display: flex; justify-content: flex-end; gap: 6px; margin-top: 10px; }
+.ds-termcmd-footer .ds-btn { height: 28px; font-size: 11px; }
 .ds-terminal-command-run {
   flex: 0 0 auto;
   height: 24px;

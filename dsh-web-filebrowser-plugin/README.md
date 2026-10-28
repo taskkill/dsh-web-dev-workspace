@@ -56,6 +56,10 @@ third-party runtime dependencies.
 - A **Todo** tab (local workspaces only) is a per-workspace task board with
   quick add, priorities, due dates, tags, notes, filters and sorting; it shows the
   open-task count on the tab.
+- A **Notes** view in the **More → Development** group is a per-workspace scratchpad
+  for temporary project data (one-off commands, endpoint URLs, debugging clues),
+  autosaved to `.dsh/notes.json` with a saved/unsaved status, character counter,
+  copy and a two-step clear.
 - The bottom view strip adapts to the sidebar width: full labels when they fit,
   icon-only tabs with tooltips when they do not, and a **More views** menu once
   even the icons no longer fit. The active view stays visible.
@@ -127,6 +131,13 @@ third-party runtime dependencies.
 - The quick-command bar is filled only by its refresh button (manual) or the
   one-off check after `cd` / `pushd` / `popd`; opening a terminal detects
   nothing, and there is no timer, focus or visibility refresh.
+- The same bar's **+** button manages owner-saved quick commands: a name + one-line
+  command pair stored per local workspace in `.dsh/quick-commands.json` (host ops
+  `quickCommands` / `quickCommandSave` / `quickCommandDelete`; add, edit,
+  delete, fill into the input). Saved commands appear in a **My quick commands**
+  group above the detected list; limits are 50 commands, 60 label characters and
+  2,000 command characters, duplicates and multi-line commands are rejected, and
+  writes are serialized per document.
 - An `ssh://` root opens a remote shell instead of a local PTY: `ssh.js`
   requests a PTY on the pooled ssh2 connection, execs `$SHELL -l` in the remote
   root, and the manager drives the resulting channel through the same
@@ -371,6 +382,11 @@ file clears the workspace's memory; nothing is shared with another root.
 Todos are stored per workspace at `.dsh/todos.json` and are not in localStorage
 either. The same generated `.dsh/.gitignore` keeps them out of Git; deleting the
 JSON file clears the board.
+
+Project notes live in `.dsh/notes.json` and the owner-saved terminal quick
+commands in `.dsh/quick-commands.json`; both are local-workspace only, use the
+same generated `.dsh/.gitignore`, and are part of the Workbench reset
+categories.
 
 The project-delivery state lives under the workspace `.dsh/` directory as well:
 `.dsh/acceptance.json` (checklist, evidence, history), `.dsh/pipeline.json`
