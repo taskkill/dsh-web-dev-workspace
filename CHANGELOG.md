@@ -2,6 +2,27 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.93 — 2026-10-28
+
+### Terminal input: ordered, coalesced keystroke writes
+
+- **Typing used to send one HTTP write per key, with no queue and no retry.**
+  Fast typing could interleave several requests (a later key overtaking an
+  earlier one on another connection), a transient failure silently dropped the
+  character, and a burst of tiny requests competed with the terminal's long poll
+  for connections. The terminal view now keeps **one write in flight** and
+  coalesces everything typed meanwhile into the next request, nudges the output
+  poll once per flushed batch, retries up to three times after putting the bytes
+  back in front, and guards a stalled request with a six-second timeout; the
+  queue is dropped on teardown.
+- **Measured baseline.** One keystroke's full server round trip (write POST →
+  PTY echo → long-poll response) against the running Host is 3–9 ms, so the echo
+  path itself is not the bottleneck; the request burst/ordering was the part the
+  browser could feel under load.
+- **Verification.** `npm run check`, `npm run check:json` and `npm test` pass
+  (38/38). Client-only change: refresh the page to load it (no Host restart
+  needed). Plugin `1.2.91`, root `1.2.93`.
+
 ## 1.2.92 — 2026-10-28
 
 ### Project notes scratchpad and saved terminal quick commands

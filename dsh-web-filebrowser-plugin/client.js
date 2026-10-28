@@ -8114,6 +8114,12 @@ window.__ModuleLoader__.load({
         let fallbackResize = null
         let terminal = null
         let since = 0
+        // Outbound keystroke queue: one write in flight, typed bytes coalesced
+        // into the next request (see sendInput below).
+        let pendingInput = ''
+        let inputInFlight = false
+        let inputRetryTimer = null
+        let inputFailures = 0
 
         function report(status, code) {
           if (typeof statusRef.current === 'function') statusRef.current(session.id, status, code)
@@ -8156,8 +8162,55 @@ window.__ModuleLoader__.load({
             }
             void poll()
           }
+          const flushInput = () => {
+            if (disposed || inputInFlight || pendingInput.length === 0) return
+            const data = pendingInput
+            pendingInput = ''
+            inputInFlight = true
+            let timeoutId = null
+            const timeout = new Promise((_resolve, reject) => {
+              timeoutId = window.setTimeout(() => reject(new Error('write timeout')), 6000)
+            })
+            const settle = (okay) => {
+              if (timeoutId !== null) {
+                window.clearTimeout(timeoutId)
+                timeoutId = null
+              }
+              inputInFlight = false
+              if (disposed) return
+              if (okay) {
+                inputFailures = 0
+                nudgePoll()
+                flushInput()
+                return
+              }
+              // Put the bytes back before anything typed meanwhile and retry,
+              // so a transient request failure no longer silently drops keys.
+              pendingInput = data + pendingInput
+              inputFailures += 1
+              if (inputFailures > 3) {
+                pendingInput = ''
+                return
+              }
+              if (inputRetryTimer !== null) return
+              inputRetryTimer = window.setTimeout(() => {
+                inputRetryTimer = null
+                flushInput()
+              }, 250)
+            }
+            void Promise.race([callTerminal('write', { id: session.hostId, data }), timeout]).then(
+              () => settle(true),
+              () => settle(false),
+            )
+          }
+          // Keystrokes are POSTed to the Host one request at a time. A fast
+          // typist therefore sends a few ordered requests instead of one per
+          // key, a later key can never overtake an earlier one on another HTTP
+          // connection, and the echo poll is nudged once per flushed batch.
           const sendInput = (data) => {
-            void callTerminal('write', { id: session.hostId, data }).then(nudgePoll, () => {})
+            if (disposed) return
+            pendingInput += data
+            flushInput()
           }
           const runLine = (line) => {
             const text = String(line ?? '').trim()
@@ -8280,6 +8333,8 @@ window.__ModuleLoader__.load({
         return () => {
           disposed = true
           runCommandRef.current = null
+          pendingInput = ''
+          if (inputRetryTimer !== null) clearTimeout(inputRetryTimer)
           if (pollTimer !== null) clearTimeout(pollTimer)
           if (observer !== null) observer.disconnect()
           if (fallbackResize !== null) window.removeEventListener('resize', fallbackResize)
