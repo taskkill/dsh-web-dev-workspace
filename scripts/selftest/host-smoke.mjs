@@ -1394,6 +1394,18 @@ try {
     }
   })
 
+  await test('v1.2.94 design stage start button keeps the shared compact stage-button size', async () => {
+    // Regression: the v1.2.83 design gate enlarged every .ds-btn in the design
+    // stage's action row to a 44px touch target, which also stretched its
+    // "Start and dispatch" button to twice the height of every other stage.
+    const clientSource = await fsp.readFile(new URL('../../dsh-web-filebrowser-plugin/client.js', import.meta.url), 'utf8')
+    assert.ok(clientSource.includes("className: 'ds-btn ds-pipe-start'"), 'the stage start button must carry ds-pipe-start')
+    const scoped = (clientSource.match(/\.ds-pipe-stage\[data-design="true"\] \.ds-pipe-actions \.ds-btn:not\(\.ds-pipe-start\)/g) ?? []).length
+    assert.equal(scoped, 2, 'both the 44px rule and the compact-screen 48px rule must exclude the start button')
+    const unscoped = /\.ds-pipe-stage\[data-design="true"\] \.ds-pipe-actions \.ds-btn(?!:not\()/g
+    assert.equal((clientSource.match(unscoped) ?? []).length, 0, 'no unscoped design-gate rule may remain')
+  })
+
 } finally {
   for (const root of roots) {
     await fsp.rm(root, { recursive: true, force: true }).catch(() => {})

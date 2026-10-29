@@ -2,6 +2,32 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.94 — 2026-10-29
+
+### Pipeline: the design stage's “Start and dispatch” button matched the other stages
+
+- **Symptom.** In the Pipeline sidebar every stage row shares one compact
+  “启动并派发 / Start and dispatch” button (22px tall), except the **UI 设计**
+  row, whose button rendered at the design-gate touch size (44px, and 48px on
+  compact screens) — roughly twice as tall as the button in stage 1 or 3, so the
+  row looked broken next to its neighbours.
+- **Cause.** v1.2.83's design confirmation gate added
+  `.ds-pipe-stage[data-design="true"] .ds-pipe-actions .ds-btn { min-height: 44px }`
+  to give the owner's **preview / approve / reject** controls a 44×44 hit target.
+  The start button lives in the same `.ds-pipe-actions` row, so the blanket rule
+  caught it too and its `height: 22px` from `.ds-pipe-actions .ds-btn` was
+  overridden by the larger `min-height`.
+- **Fix.** The stage start button now carries its own `ds-pipe-start` class, and
+  both the 44px rule and the compact-screen 48px rule exclude it with
+  `:not(.ds-pipe-start)`. Only the owner gate controls keep the enlarged hit
+  target; every stage's start button is exactly the same compact size.
+- **Verification.** `npm run check`, `npm run check:json` and `npm test` pass
+  (39/39, including a new static regression check that no unscoped design-gate
+  rule remains). The running Host already re-composed the client bundle: the
+  served `@local/dsh-web-dev-workspace/client.js` contains both the new class and
+  the scoped selectors, so a **page refresh** (client-only change, no Host
+  restart) shows the fix. Plugin `1.2.91`, root `1.2.94`.
+
 ## 1.2.93 — 2026-10-28
 
 ### Terminal input: ordered, coalesced keystroke writes

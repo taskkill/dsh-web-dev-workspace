@@ -21511,7 +21511,7 @@ ${tail}
                   {
                     key: 'start',
                     type: 'button',
-                    className: 'ds-btn',
+                    className: 'ds-btn ds-pipe-start',
                     disabled: pipelineBusy || !previousApproved,
                     title: previousApproved ? undefined : t('pipeline.sequenceHint'),
                     onClick: () => void startPipelineStage(stage.id),
@@ -29759,7 +29759,7 @@ h(
 .ds-pipe-html-preview { color: var(--dsw-alias-brand-primary); font-weight: 600; }
 .ds-pipe-html-row svg { width: 11px; height: 11px; }
 .ds-pipe-design-htmlonly { margin-top: 3px; font-size: 9px; line-height: 1.45; }
-.ds-pipe-stage[data-design="true"] .ds-pipe-actions .ds-btn { min-height: 44px; }
+.ds-pipe-stage[data-design="true"] .ds-pipe-actions .ds-btn:not(.ds-pipe-start) { min-height: 44px; }
 .ds-pipe-todo[data-design="true"] .ds-btn { min-height: 44px; }
 .ds-pipe-stage[data-design="true"] .ds-btn:focus-visible,
 .ds-pipe-stage[data-design="true"] .ds-linkbtn:focus-visible,
@@ -30116,7 +30116,7 @@ h(
   .ds-dp-esc { flex: 1 1 100%; order: 1; }
   .ds-wb-design-actions { flex-wrap: wrap; }
   .ds-wb-design-actions .ds-btn { min-height: 48px; }
-  .ds-pipe-stage[data-design="true"] .ds-pipe-actions .ds-btn,
+  .ds-pipe-stage[data-design="true"] .ds-pipe-actions .ds-btn:not(.ds-pipe-start),
   .ds-pipe-todo[data-design="true"] .ds-btn { min-height: 48px; }
 }
 @media (prefers-reduced-motion: reduce) {
