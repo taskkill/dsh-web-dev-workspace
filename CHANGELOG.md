@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.102 — 2026-11-01
+
+### 群组议题流程：议题 → 讨论 → 方案 → Owner 确认 → 执行（Host 半需重启一次 Harness）
+
+- **Symptom.** 群组只能自由讨论：没有议题边界与轮次上限，讨论结论要靠人工转成任务；成员侧也没有任何机制阻止「方案尚未经 Owner 确认就把执行类任务/交接投递出去」，存在绕过确认直接执行的风险。缺少「议题 → 讨论 → 方案 → 确认 → 执行」四段式的收敛路径。
+- **Fix.** Host（`groups.js`）新增 6 态状态机 `phase = topic | discuss | plan | approve | execute | closed` 与 7 个 owner-only 路由 op（`groupTopicSet` / `groupRoundOpen` / `groupPlanSubmit` / `groupPlanConfirm` / `groupPlanReject` / `groupFlowClose` / `groupFlowReopen`），讨论默认 1 轮、Owner 可追加 1 轮互评、第 3 轮 `round-limit`；**硬闸门**对 4 条执行类投递路径（`sendMessage(purpose=execution)` / `createTask` / `group_handoff` / 确认后自动投递）在 `phase !== execute` 时抛 `gate-blocked`，不写 delivery、不唤醒成员；`groupPlanConfirm` 在同一事务内把方案卡转任务卡并按 assignee 分派（`task.planId`/`cardId` 溯源）；新增 3 个成员工具 `group_topic_read` / `group_plan_read` / `group_plan_write`（成员不能 confirm/reject/execute）。`groups.json` 保持 `version: 1`，仅新增 `phase/topic/plan/rounds/log`、`message.purpose`、`task.planId/cardId` 字段，由 normalize 补默认，旧文件无需迁移。Client（`client.js`）新增四步阶段条（六态映射四步）、时间线尾部方案卡、吸底「确认并执行 / 打回」操作条（二次确认并预告「将生成 N 张任务卡」、打回必填原因、10 分钟撤销窗口）、稳定错误码文案与 `groups.flow.*` 中英全量 i18n；旧 Host 自动降级并提示重启。**Host 半需重启一次 Harness 才生效，客户端改动刷新页面即可。**
+- **Verification.** `npm run check` exit 0；`npm test` exit 0（`host smoke 39/39` + `groups-client-selftest` + `groups-host-selftest` 三脚本全绿）；契约 `contract.md` §7 八条逐条 pass（见 `qa-report.md`，含闸门负向探针：4 路径均 `gate-blocked`、deliveries 0、唤醒 0）。GUI 手测：① 无议题时旧行为不变；② 发起议题 → 讨论发言（讨论不拦截）；③ 提交方案 → 确认并执行 → 生成 N 张任务卡且可溯源；④ 打回（原因为空不可提交）→ 回讨论 → 重新提交版本递增；⑤ 关闭 / 重开；⑥ 旧 `groups.json` 读取不报错。Plugin `1.2.92`, root `1.2.102`。
+
 ## 1.2.101 — 2026-11-01
 
 ### Groups follow the workspace: switch refreshes group data and member candidates

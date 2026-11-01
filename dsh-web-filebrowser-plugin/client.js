@@ -1723,6 +1723,94 @@ window.__ModuleLoader__.load({
       'groups.taskState.failed': '失败',
       'groups.taskState.cancelled': '已取消',
       'groups.noTasks': '还没有任务',
+      'groups.flow.stageLabel': '议题流程阶段',
+      'groups.flow.step.topic': '议题',
+      'groups.flow.step.discuss': '讨论',
+      'groups.flow.step.plan': '方案',
+      'groups.flow.step.execute': '执行',
+      'groups.flow.phase.topic': '待发起议题',
+      'groups.flow.phase.discuss': '讨论中',
+      'groups.flow.phase.plan': '方案草拟',
+      'groups.flow.phase.approve': '待确认',
+      'groups.flow.phase.execute': '执行中',
+      'groups.flow.phase.closed': '已关闭',
+      'groups.flow.topic': '议题',
+      'groups.flow.topicEmptyTitle': '还没有议题',
+      'groups.flow.topicEmpty': '发起议题后先讨论出方案；方案被 Owner 确认前，执行类投递会被硬闸门拦住。',
+      'groups.flow.topicStart': '发起议题',
+      'groups.flow.topicStarted': '议题已发起，进入第 1 轮讨论',
+      'groups.flow.topicTitle': '议题标题',
+      'groups.flow.topicTitlePlaceholder': '一句话说明要讨论什么，例如「登录页改版方案」',
+      'groups.flow.topicDetail': '议题说明',
+      'groups.flow.topicDetailPlaceholder': '背景、范围与期望产出（可选）',
+      'groups.flow.topicMaxRounds': '最多讨论轮次',
+      'groups.flow.topicNeedTitle': '请填写议题标题',
+      'groups.flow.topicRounds': '第 {count}/{max} 轮',
+      'groups.flow.topicStartHint': '默认 1 轮发言，Owner 可手动追加 1 轮互评；第 3 轮会被拒绝。',
+      'groups.flow.topicExists': '已有进行中的议题',
+      'groups.flow.roundAdd': '追加一轮互评',
+      'groups.flow.roundAdded': '已追加第 {count} 轮',
+      'groups.flow.roundLimit': '已达到轮次上限，无法再追加',
+      'groups.flow.plan': '方案卡',
+      'groups.flow.planVersion': 'v{version}',
+      'groups.flow.planStatus.draft': '草稿',
+      'groups.flow.planStatus.pending': '待确认',
+      'groups.flow.planStatus.approved': '已确认',
+      'groups.flow.planStatus.rejected': '已打回',
+      'groups.flow.planCards': '{count} 张任务卡',
+      'groups.flow.planMoreCards': '另有 {count} 张未展开',
+      'groups.flow.planEmpty': '方案卡还没有内容',
+      'groups.flow.planAuthor': '补写方案卡',
+      'groups.flow.planSummaryLabel': '方案摘要',
+      'groups.flow.planSummaryPlaceholder': '一句话方案摘要',
+      'groups.flow.planSectionsLabel': '方案要点',
+      'groups.flow.planSectionsPlaceholder': '一行一节：标题 | 正文',
+      'groups.flow.planCardsLabel': '任务卡',
+      'groups.flow.planCardsPlaceholder': '一行一张：角色id | 标题 | 验收1;验收2（如 development | 实现登录页 | 截图;命令通过）',
+      'groups.flow.planSubmitFlag': '保存后标记为「待确认」，进入 Owner 确认阶段',
+      'groups.flow.planSave': '保存方案卡',
+      'groups.flow.planSaved': '方案卡已保存（草稿），讨论继续',
+      'groups.flow.planSavedPending': '方案卡已保存并提交确认',
+      'groups.flow.planInvalidEmpty': '方案卡不能为空：至少填写摘要、要点或任务卡之一',
+      'groups.flow.planRejectedNote': '打回原因：{note}',
+      'groups.flow.planApprovedAt': '确认于 {time}',
+      'groups.flow.planInvalid': '方案格式不合法',
+      'groups.flow.confirm': '确认并执行',
+      'groups.flow.confirmTitle': '确认方案并执行？',
+      'groups.flow.confirmHint': '将生成 {count} 张任务卡并分派给成员；确认后 10 分钟内可撤销。',
+      'groups.flow.confirmHintShort': '确认后生成 {count} 张任务卡',
+      'groups.flow.confirmDone': '已确认执行：生成 {count} 张任务卡',
+      'groups.flow.undoWindow': '撤销窗口剩余 {minutes} 分钟',
+      'groups.flow.undoExpired': '撤销窗口已结束（确认后 10 分钟）',
+      'groups.flow.reject': '打回',
+      'groups.flow.rejectTitle': '打回方案',
+      'groups.flow.rejectPlaceholder': '必填：说明打回原因，成员据此修改方案',
+      'groups.flow.rejectNeedNote': '请填写打回原因',
+      'groups.flow.rejectDone': '方案已打回，回到讨论阶段',
+      'groups.flow.close': '关闭议题',
+      'groups.flow.closeConfirm': '关闭议题流程后转为只读存档，可随时重新开启。',
+      'groups.flow.closeDone': '议题已关闭',
+      'groups.flow.closedHint': '议题已关闭，只读存档',
+      'groups.flow.reopen': '重新开启议题',
+      'groups.flow.reopenConfirm': '重新开启会清空当前议题与方案卡并重关闸门，确定继续？',
+      'groups.flow.reopenDone': '议题已重新开启',
+      'groups.flow.actionBar': '议题流程操作',
+      'groups.flow.busy': '处理中…',
+      'groups.flow.actionFailed': '操作失败：{message}',
+      'groups.flow.gateBlocked': '方案未确认，执行类操作已被拒绝',
+      'groups.flow.badPhase': '当前阶段不允许该操作',
+      'groups.flow.unsupported': '当前 Host 不支持议题流程，请重启 Harness',
+      'groups.flow.clientModeHint': '议题流程需要新版 Host：重启 Harness 后可用（当前为页面模式）。',
+      'groups.flow.pickTeam': '按 OPC 团队一键选择',
+      'groups.flow.pickTeamDone': '已选中 {count} 个角色会话',
+      'groups.role.product': '产品',
+      'groups.role.design': '设计',
+      'groups.role.development': '开发',
+      'groups.role.testing': '测试',
+      'groups.role.projectManager': '项目经理',
+      'groups.role.devops': '运维',
+      'groups.role.fullstackDeveloper': '全栈开发',
+      'groups.role.qaEngineer': '测试',
     }
 
     const en = {
@@ -3175,6 +3263,94 @@ window.__ModuleLoader__.load({
       'groups.taskState.failed': 'Failed',
       'groups.taskState.cancelled': 'Cancelled',
       'groups.noTasks': 'No tasks yet',
+      'groups.flow.stageLabel': 'Topic flow stages',
+      'groups.flow.step.topic': 'Topic',
+      'groups.flow.step.discuss': 'Discussion',
+      'groups.flow.step.plan': 'Plan',
+      'groups.flow.step.execute': 'Execute',
+      'groups.flow.phase.topic': 'No topic yet',
+      'groups.flow.phase.discuss': 'Discussing',
+      'groups.flow.phase.plan': 'Plan drafting',
+      'groups.flow.phase.approve': 'Awaiting approval',
+      'groups.flow.phase.execute': 'Executing',
+      'groups.flow.phase.closed': 'Closed',
+      'groups.flow.topic': 'Topic',
+      'groups.flow.topicEmptyTitle': 'No topic yet',
+      'groups.flow.topicEmpty': 'Start a topic so the team discusses a plan first. Until the Owner approves it, execution deliveries are blocked by the hard gate.',
+      'groups.flow.topicStart': 'Start topic',
+      'groups.flow.topicStarted': 'Topic started; round 1 is open',
+      'groups.flow.topicTitle': 'Topic title',
+      'groups.flow.topicTitlePlaceholder': 'One line, e.g. “login page redesign plan”',
+      'groups.flow.topicDetail': 'Topic description',
+      'groups.flow.topicDetailPlaceholder': 'Background, scope and expected output (optional)',
+      'groups.flow.topicMaxRounds': 'Max discussion rounds',
+      'groups.flow.topicNeedTitle': 'Enter a topic title',
+      'groups.flow.topicRounds': 'Round {count}/{max}',
+      'groups.flow.topicStartHint': 'One speaking round by default; the Owner can add one peer-review round. A third round is rejected.',
+      'groups.flow.topicExists': 'A topic is already active',
+      'groups.flow.roundAdd': 'Add review round',
+      'groups.flow.roundAdded': 'Round {count} added',
+      'groups.flow.roundLimit': 'Round limit reached; cannot add another',
+      'groups.flow.plan': 'Plan card',
+      'groups.flow.planVersion': 'v{version}',
+      'groups.flow.planStatus.draft': 'Draft',
+      'groups.flow.planStatus.pending': 'Awaiting approval',
+      'groups.flow.planStatus.approved': 'Approved',
+      'groups.flow.planStatus.rejected': 'Rejected',
+      'groups.flow.planCards': '{count} task card(s)',
+      'groups.flow.planMoreCards': '{count} more not shown',
+      'groups.flow.planEmpty': 'The plan card is empty',
+      'groups.flow.planAuthor': 'Write plan card',
+      'groups.flow.planSummaryLabel': 'Plan summary',
+      'groups.flow.planSummaryPlaceholder': 'One-line plan summary',
+      'groups.flow.planSectionsLabel': 'Plan sections',
+      'groups.flow.planSectionsPlaceholder': 'One section per line: heading | body',
+      'groups.flow.planCardsLabel': 'Task cards',
+      'groups.flow.planCardsPlaceholder': 'One card per line: role id | title | acceptance1;acceptance2 (e.g. development | build login page | screenshot;commands pass)',
+      'groups.flow.planSubmitFlag': 'Mark as pending approval after saving; moves to the Owner approval phase',
+      'groups.flow.planSave': 'Save plan card',
+      'groups.flow.planSaved': 'Plan card saved as a draft; discussion continues',
+      'groups.flow.planSavedPending': 'Plan card saved and submitted for approval',
+      'groups.flow.planInvalidEmpty': 'The plan cannot be empty: fill in a summary, sections or task cards',
+      'groups.flow.planRejectedNote': 'Rejection note: {note}',
+      'groups.flow.planApprovedAt': 'Approved at {time}',
+      'groups.flow.planInvalid': 'The plan is invalid',
+      'groups.flow.confirm': 'Approve & execute',
+      'groups.flow.confirmTitle': 'Approve the plan and execute?',
+      'groups.flow.confirmHint': 'This creates {count} task card(s) and assigns them to members; it can be undone within 10 minutes.',
+      'groups.flow.confirmHintShort': 'Creates {count} task card(s) after approval',
+      'groups.flow.confirmDone': 'Approved: {count} task card(s) created',
+      'groups.flow.undoWindow': 'Undo window: {minutes} min left',
+      'groups.flow.undoExpired': 'Undo window closed (10 min after approval)',
+      'groups.flow.reject': 'Reject',
+      'groups.flow.rejectTitle': 'Reject the plan',
+      'groups.flow.rejectPlaceholder': 'Required: why this plan is rejected',
+      'groups.flow.rejectNeedNote': 'Enter a rejection reason',
+      'groups.flow.rejectDone': 'Plan rejected; back to discussion',
+      'groups.flow.close': 'Close topic',
+      'groups.flow.closeConfirm': 'Closing archives the topic flow as read-only; you can reopen it later.',
+      'groups.flow.closeDone': 'Topic closed',
+      'groups.flow.closedHint': 'Topic closed; read-only archive',
+      'groups.flow.reopen': 'Reopen topic',
+      'groups.flow.reopenConfirm': 'Reopening clears the current topic and plan card and re-arms the gate. Continue?',
+      'groups.flow.reopenDone': 'Topic reopened',
+      'groups.flow.actionBar': 'Topic flow actions',
+      'groups.flow.busy': 'Working…',
+      'groups.flow.actionFailed': 'Action failed: {message}',
+      'groups.flow.gateBlocked': 'The plan is not approved, so execution actions were rejected',
+      'groups.flow.badPhase': 'This action is not allowed in the current phase',
+      'groups.flow.unsupported': 'This Host does not support the topic flow; restart Harness',
+      'groups.flow.clientModeHint': 'The topic flow needs the newer Host: restart Harness to enable it (page mode is active).',
+      'groups.flow.pickTeam': 'Select the OPC team',
+      'groups.flow.pickTeamDone': '{count} role sessions selected',
+      'groups.role.product': 'Product',
+      'groups.role.design': 'Design',
+      'groups.role.development': 'Development',
+      'groups.role.testing': 'Testing',
+      'groups.role.projectManager': 'Project manager',
+      'groups.role.devops': 'DevOps',
+      'groups.role.fullstackDeveloper': 'Full-stack developer',
+      'groups.role.qaEngineer': 'QA engineer',
     }
 
     /* ------------------------------------------------------------------ *
@@ -9143,8 +9319,136 @@ window.__ModuleLoader__.load({
     const GROUP_MAX_REPLY = 2 * 1024
     const GROUP_CONTEXT_MESSAGES = 6
     const GROUP_MAX_MEMBERS = 8
+    const GROUP_TEAM_ROLES = 6
     const GROUP_MAX_MESSAGES = 500
     const GROUP_REPLY_STALE_MS = 24 * 60 * 60 * 1000
+
+    /* Session groups (v1.1): topic → discussion → plan → approval → execution.
+     * The Host owns the state machine; the client only renders it and forwards
+     * Owner actions through the frozen route contract (contract.md §1/§3). */
+    const GROUP_FLOW_PHASES = ['topic', 'discuss', 'plan', 'approve', 'execute', 'closed']
+    const GROUP_FLOW_STEPS = ['topic', 'discuss', 'plan', 'execute']
+    // Six Host phases fold into the four-step header bar (contract.md §5).
+    const GROUP_FLOW_PHASE_STEP = { topic: 0, discuss: 1, plan: 2, approve: 2, execute: 3, closed: 3 }
+    const GROUP_PLAN_STATUSES = ['draft', 'pending', 'approved', 'rejected']
+    const GROUP_ROLE_KEYS = {
+      product: 'groups.role.product',
+      design: 'groups.role.design',
+      development: 'groups.role.development',
+      testing: 'groups.role.testing',
+      'project-manager': 'groups.role.projectManager',
+      'project-manager-agent': 'groups.role.projectManager',
+      devops: 'groups.role.devops',
+      'fullstack-developer': 'groups.role.fullstackDeveloper',
+      'qa-engineer': 'groups.role.qaEngineer',
+    }
+    const GROUP_MAX_TOPIC_TITLE = 80
+    const GROUP_MAX_TOPIC_DETAIL = 1000
+    const GROUP_MAX_PLAN_SUMMARY = 2000
+    const GROUP_MAX_PLAN_SECTIONS = 12
+    const GROUP_MAX_PLAN_CARDS = 20
+    const GROUP_MAX_FLOW_ROUNDS = 2
+    const GROUP_MAX_FLOW_ROUNDS_HARD = 9
+    const GROUP_FLOW_UNDO_MS = 10 * 60 * 1000
+
+    function groupString(value, limit) {
+      return typeof value === 'string' ? value.slice(0, limit) : ''
+    }
+
+    function normalizeGroupTopic(topic) {
+      if (topic === null || topic === undefined || typeof topic !== 'object') return null
+      const maxRounds = Math.min(GROUP_MAX_FLOW_ROUNDS_HARD, Math.max(1, Number(topic.maxRounds) || GROUP_MAX_FLOW_ROUNDS))
+      return {
+        id: typeof topic.id === 'string' ? topic.id : newGroupRecordId('tpc_'),
+        title: groupString(topic.title, GROUP_MAX_TOPIC_TITLE),
+        detail: groupString(topic.detail, GROUP_MAX_TOPIC_DETAIL),
+        createdAt: Number(topic.createdAt) || 0,
+        // Never show "round 3/2": the Host enforces the same ceiling.
+        roundCount: Math.min(maxRounds, Math.max(1, Number(topic.roundCount) || 1)),
+        maxRounds,
+      }
+    }
+
+    function normalizeGroupPlanSection(section) {
+      return { heading: groupString(section.heading, 200), body: groupString(section.body, 4000) }
+    }
+
+    function normalizeGroupPlanCard(card) {
+      return {
+        id: typeof card.id === 'string' ? card.id : newGroupRecordId('crd_'),
+        title: groupString(card.title, 200),
+        detail: groupString(card.detail, 2000),
+        acceptance: Array.isArray(card.acceptance)
+          ? card.acceptance.filter((line) => typeof line === 'string').slice(0, 10)
+          : [],
+        role: typeof card.role === 'string' ? card.role : null,
+        assigneeSessionId: typeof card.assigneeSessionId === 'string' ? card.assigneeSessionId : null,
+      }
+    }
+
+    function normalizeGroupPlan(plan) {
+      if (plan === null || plan === undefined || typeof plan !== 'object') return null
+      return {
+        id: typeof plan.id === 'string' ? plan.id : newGroupRecordId('pln_'),
+        version: Number(plan.version) || 1,
+        summary: groupString(plan.summary, GROUP_MAX_PLAN_SUMMARY),
+        sections: Array.isArray(plan.sections)
+          ? plan.sections
+              .filter((section) => section !== null && typeof section === 'object')
+              .slice(0, GROUP_MAX_PLAN_SECTIONS)
+              .map(normalizeGroupPlanSection)
+          : [],
+        cards: Array.isArray(plan.cards)
+          ? plan.cards
+              .filter((card) => card !== null && typeof card === 'object')
+              .slice(0, GROUP_MAX_PLAN_CARDS)
+              .map(normalizeGroupPlanCard)
+          : [],
+        status: GROUP_PLAN_STATUSES.includes(plan.status) ? plan.status : 'draft',
+        approvedAt: Number(plan.approvedAt) || 0,
+        approvedBy: typeof plan.approvedBy === 'string' ? plan.approvedBy : null,
+        rejectedAt: Number(plan.rejectedAt) || 0,
+        rejectNote: groupString(plan.rejectNote, 1000),
+      }
+    }
+
+    function normalizeGroupRound(round) {
+      return {
+        id: typeof round.id === 'string' ? round.id : newGroupRecordId('rnd_'),
+        at: Number(round.at) || 0,
+        targets: Array.isArray(round.targets) ? round.targets.filter((id) => typeof id === 'string') : [],
+        state: round.state === 'closed' ? 'closed' : 'open',
+      }
+    }
+
+    function normalizeGroupLogEntry(entry) {
+      const actions = ['topic', 'round', 'plan', 'approve', 'reject', 'execute', 'close', 'reopen']
+      return {
+        at: Number(entry.at) || 0,
+        action: actions.includes(entry.action) ? entry.action : 'plan',
+        by: entry.by === 'member' || entry.by === 'host' ? entry.by : 'owner',
+        sessionId: typeof entry.sessionId === 'string' ? entry.sessionId : null,
+        note: groupString(entry.note, 500),
+      }
+    }
+
+    function groupPlanCardCount(group) {
+      const plan = group?.plan
+      return plan === null || plan === undefined || !Array.isArray(plan.cards) ? 0 : plan.cards.length
+    }
+
+    function groupPhaseStep(phase) {
+      const step = GROUP_FLOW_PHASE_STEP[phase]
+      return Number.isInteger(step) ? step : 0
+    }
+
+    function groupHasActiveFlow(group) {
+      return group !== null && group !== undefined && group.topic !== null && group.topic !== undefined
+    }
+
+    function groupFlowWritable(group) {
+      return groupHasActiveFlow(group) && group.phase !== 'closed'
+    }
 
     function GroupIcon() {
       return icon(
@@ -9172,6 +9476,9 @@ window.__ModuleLoader__.load({
         mentions: Array.isArray(message.mentions) ? message.mentions.filter((id) => typeof id === 'string') : [],
         memberSessionId: typeof message.memberSessionId === 'string' ? message.memberSessionId : null,
         taskId: typeof message.taskId === 'string' ? message.taskId : null,
+        // contract.md §1: discussion by default; execution is gated by the Host.
+        purpose: message.purpose === 'execution' ? 'execution' : 'discussion',
+        planId: typeof message.planId === 'string' ? message.planId : null,
         createdAt: Number(message.createdAt) || Date.now(),
         deliveries: Array.isArray(message.deliveries)
           ? message.deliveries
@@ -9204,6 +9511,9 @@ window.__ModuleLoader__.load({
         priority: typeof task.priority === 'string' ? task.priority : 'P1',
         state: states.includes(task.state) ? task.state : 'pending',
         messageId: typeof task.messageId === 'string' ? task.messageId : null,
+        // contract.md §1: optional provenance for tasks generated from a plan.
+        planId: typeof task.planId === 'string' ? task.planId : null,
+        cardId: typeof task.cardId === 'string' ? task.cardId : null,
         createdAt: Number(task.createdAt) || Date.now(),
         updatedAt: Number(task.updatedAt) || Date.now(),
       }
@@ -9230,7 +9540,10 @@ window.__ModuleLoader__.load({
                 .map((member) => ({
                   sessionId: member.sessionId,
                   label: typeof member.label === 'string' && member.label.trim().length > 0 ? member.label.trim().slice(0, 40) : member.sessionId.slice(0, 12),
-                  role: 'member',
+                  role:
+                    typeof member.role === 'string' && (member.role === 'member' || GROUP_ROLE_KEYS[member.role] !== undefined)
+                      ? member.role
+                      : 'member',
                   joinedAt: Number(member.joinedAt) || 0,
                 }))
             : [],
@@ -9239,6 +9552,23 @@ window.__ModuleLoader__.load({
             : [],
           tasks: Array.isArray(group.tasks)
             ? group.tasks.filter((task) => task !== null && typeof task === 'object' && typeof task.id === 'string').map(normalizeGroupTask)
+            : [],
+          // v1.1 flow fields: additive only, so an old groups.json still opens
+          // (contract.md §1: topic=null means the gate is not active).
+          phase: GROUP_FLOW_PHASES.includes(group.phase) ? group.phase : 'topic',
+          topic: normalizeGroupTopic(group.topic),
+          plan: normalizeGroupPlan(group.plan),
+          rounds: Array.isArray(group.rounds)
+            ? group.rounds
+                .filter((round) => round !== null && typeof round === 'object')
+                .slice(0, 20)
+                .map(normalizeGroupRound)
+            : [],
+          log: Array.isArray(group.log)
+            ? group.log
+                .filter((entry) => entry !== null && typeof entry === 'object')
+                .slice(-50)
+                .map(normalizeGroupLogEntry)
             : [],
           createdAt: Number(group.createdAt) || Date.now(),
           updatedAt: Number(group.updatedAt) || Date.now(),
@@ -9508,6 +9838,22 @@ window.__ModuleLoader__.load({
         const [groupsMentionOpen, setGroupsMentionOpen] = useState(false)
         const [groupsMentionQuery, setGroupsMentionQuery] = useState('')
         const [groupsMentionIndex, setGroupsMentionIndex] = useState(0)
+        /* Session groups (v1.1): Owner-side topic flow UI state. */
+        const [groupsTopicOpen, setGroupsTopicOpen] = useState(false)
+        const [groupsTopicTitle, setGroupsTopicTitle] = useState('')
+        const [groupsTopicDetail, setGroupsTopicDetail] = useState('')
+        const [groupsTopicMaxRounds, setGroupsTopicMaxRounds] = useState(GROUP_MAX_FLOW_ROUNDS)
+        const [groupsTopicError, setGroupsTopicError] = useState(null)
+        const [groupsRejectOpen, setGroupsRejectOpen] = useState(false)
+        const [groupsRejectNote, setGroupsRejectNote] = useState('')
+        const [groupsRejectError, setGroupsRejectError] = useState(null)
+        const [groupsPlanOpen, setGroupsPlanOpen] = useState(false)
+        const [groupsPlanSummary, setGroupsPlanSummary] = useState('')
+        const [groupsPlanSections, setGroupsPlanSections] = useState('')
+        const [groupsPlanCards, setGroupsPlanCards] = useState('')
+        const [groupsPlanSubmit, setGroupsPlanSubmit] = useState(false)
+        const [groupsPlanError, setGroupsPlanError] = useState(null)
+        const [groupsFlowBusy, setGroupsFlowBusy] = useState(false)
 
         const groupsActiveGroup =
           groupsDoc === null || groupsDoc === undefined
@@ -9546,6 +9892,21 @@ window.__ModuleLoader__.load({
           setGroupsTaskAcceptance('')
           setGroupsTaskAssignee('')
           setGroupsTaskError(null)
+          setGroupsTopicOpen(false)
+          setGroupsTopicTitle('')
+          setGroupsTopicDetail('')
+          setGroupsTopicMaxRounds(GROUP_MAX_FLOW_ROUNDS)
+          setGroupsTopicError(null)
+          setGroupsRejectOpen(false)
+          setGroupsRejectNote('')
+          setGroupsRejectError(null)
+          setGroupsPlanOpen(false)
+          setGroupsPlanSummary('')
+          setGroupsPlanSections('')
+          setGroupsPlanCards('')
+          setGroupsPlanSubmit(false)
+          setGroupsPlanError(null)
+          setGroupsFlowBusy(false)
           if (state.root === null) return undefined
           if (isSshRootPath(state.root)) {
             setGroupsError(t('groups.sshUnsupported'))
@@ -10054,6 +10415,7 @@ window.__ModuleLoader__.load({
                 mentions,
                 kind: options.kind === 'task' ? 'task' : 'owner',
                 taskId: options.taskId ?? null,
+                purpose: 'discussion',
               })
               if (options.keepDraft !== true) {
                 setGroupsDraft('')
@@ -10063,7 +10425,7 @@ window.__ModuleLoader__.load({
               }
               return { id: value?.messageId ?? null }
             } catch (error) {
-              showToast(t('groups.sendFailed', { message: errorText(error) }))
+              showToast(t('groups.sendFailed', { message: groupsErrorText(error) }))
               return null
             } finally {
               setGroupsBusy(false)
@@ -10078,6 +10440,8 @@ window.__ModuleLoader__.load({
             mentions,
             memberSessionId: null,
             taskId: options.taskId ?? null,
+            purpose: 'discussion',
+            planId: null,
             createdAt: now,
             deliveries: targets.map((member) => ({
               sessionId: member.sessionId,
@@ -10285,7 +10649,7 @@ window.__ModuleLoader__.load({
             try {
               await hostGroupsOp('groupTaskUpdate', { groupId: group.id, taskId, state })
             } catch (error) {
-              showToast(t('groups.saveFailed', { message: errorText(error) }))
+              showToast(t('groups.saveFailed', { message: groupsErrorText(error) }))
             }
             return
           }
@@ -10329,7 +10693,7 @@ window.__ModuleLoader__.load({
               setGroupsTaskAssignee('')
               setGroupsTaskError(null)
             } catch (error) {
-              setGroupsTaskError(t('groups.saveFailed', { message: errorText(error) }))
+              setGroupsTaskError(t('groups.saveFailed', { message: groupsErrorText(error) }))
             }
             return
           }
@@ -20382,6 +20746,230 @@ ${tail}
         }
 
         /** Render the group chat page (v1.0: client-side delivery + `.dsh/groups.json`). */
+        /* Session groups (v1.1): Owner topic-flow actions. The Host owns every
+         * state transition; this layer only forwards the frozen route ops
+         * (contract.md §3) and maps stable error codes to readable copy. */
+        function groupsErrorText(error) {
+          const code = errorCode(error)
+          if (code === 'gate-blocked') return t('groups.flow.gateBlocked')
+          if (code === 'bad-phase') return t('groups.flow.badPhase')
+          if (code === 'round-limit') return t('groups.flow.roundLimit')
+          if (code === 'topic-exists') return t('groups.flow.topicExists')
+          if (code === 'plan-invalid') return t('groups.flow.planInvalid')
+          if (code === 'flow-unsupported') return t('groups.flow.unsupported')
+          return errorText(error)
+        }
+
+        function groupsFlowGroup() {
+          return groupActiveDoc()
+        }
+
+        async function runGroupsFlowOp(op, params, successText) {
+          const group = groupsFlowGroup()
+          if (group === null) return null
+          if (!groupsHostRef.current) {
+            showToast(t('groups.flow.clientModeHint'))
+            return null
+          }
+          if (groupsFlowBusy) return null
+          setGroupsFlowBusy(true)
+          try {
+            const value = await hostGroupsOp(op, { groupId: group.id, ...params })
+            setGroupsRejectOpen(false)
+            setGroupsRejectNote('')
+            setGroupsRejectError(null)
+            if (typeof successText === 'string' && successText.length > 0) showToast(successText)
+            return value
+          } catch (error) {
+            showToast(t('groups.flow.actionFailed', { message: groupsErrorText(error) }))
+            return null
+          } finally {
+            setGroupsFlowBusy(false)
+          }
+        }
+
+        async function startGroupsTopic() {
+          const group = groupsFlowGroup()
+          if (group === null) return
+          const title = groupsTopicTitle.trim()
+          if (title.length === 0) {
+            setGroupsTopicError(t('groups.flow.topicNeedTitle'))
+            return
+          }
+          const value = await runGroupsFlowOp(
+            'groupTopicSet',
+            {
+              title: title.slice(0, GROUP_MAX_TOPIC_TITLE),
+              detail: groupsTopicDetail.trim().slice(0, GROUP_MAX_TOPIC_DETAIL),
+              maxRounds: groupsTopicMaxRounds,
+            },
+            t('groups.flow.topicStarted'),
+          )
+          if (value === null) return
+          setGroupsTopicOpen(false)
+          setGroupsTopicTitle('')
+          setGroupsTopicDetail('')
+          setGroupsTopicError(null)
+        }
+
+        async function addGroupsRound() {
+          const group = groupsFlowGroup()
+          if (group === null || group.topic === null) return
+          if (group.topic.roundCount >= group.topic.maxRounds) {
+            showToast(t('groups.flow.roundLimit'))
+            return
+          }
+          await runGroupsFlowOp(
+            'groupRoundOpen',
+            {},
+            t('groups.flow.roundAdded', { count: String(group.topic.roundCount + 1) }),
+          )
+        }
+
+        function parseGroupsPlanSections(text) {
+          return String(text ?? '')
+            .split('\n')
+            .map((line) => line.trim())
+            .filter((line) => line.length > 0)
+            .slice(0, GROUP_MAX_PLAN_SECTIONS)
+            .map((line) => {
+              const at = line.indexOf('|')
+              return at === -1
+                ? { heading: '', body: line.slice(0, 4000) }
+                : { heading: line.slice(0, at).trim().slice(0, 200), body: line.slice(at + 1).trim().slice(0, 4000) }
+            })
+        }
+
+        function parseGroupsPlanCards(text) {
+          return String(text ?? '')
+            .split('\n')
+            .map((line) => line.trim())
+            .filter((line) => line.length > 0)
+            .slice(0, GROUP_MAX_PLAN_CARDS)
+            .map((line) => {
+              const parts = line.split('|').map((part) => part.trim())
+              const hasRole = parts.length >= 2
+              const title = (hasRole ? parts[1] : parts[0]).slice(0, 200)
+              return {
+                role: hasRole && parts[0].length > 0 ? parts[0] : null,
+                title,
+                detail: '',
+                acceptance:
+                  parts.length >= 3
+                    ? parts[2]
+                        .split(/[;；]/u)
+                        .map((item) => item.trim())
+                        .filter((item) => item.length > 0)
+                        .slice(0, 10)
+                    : [],
+              }
+            })
+        }
+
+        /* Owner fallback for `groupPlanSubmit` (contract.md §3): paste a plan card
+         * when the project-manager member has not submitted one yet. */
+        async function submitGroupsPlan() {
+          const group = groupsFlowGroup()
+          if (group === null) return
+          const summary = groupsPlanSummary.trim().slice(0, GROUP_MAX_PLAN_SUMMARY)
+          const sections = parseGroupsPlanSections(groupsPlanSections)
+          const cards = parseGroupsPlanCards(groupsPlanCards)
+          if (summary.length === 0 && sections.length === 0 && cards.length === 0) {
+            setGroupsPlanError(t('groups.flow.planInvalidEmpty'))
+            return
+          }
+          const value = await runGroupsFlowOp(
+            'groupPlanSubmit',
+            { plan: { summary, sections, cards }, submit: groupsPlanSubmit === true },
+            groupsPlanSubmit === true ? t('groups.flow.planSavedPending') : t('groups.flow.planSaved'),
+          )
+          if (value === null) return
+          setGroupsPlanOpen(false)
+          setGroupsPlanSummary('')
+          setGroupsPlanSections('')
+          setGroupsPlanCards('')
+          setGroupsPlanSubmit(false)
+          setGroupsPlanError(null)
+        }
+
+        function requestGroupsConfirm() {
+          const group = groupsFlowGroup()
+          if (group === null) return
+          if (!groupsHostRef.current) {
+            showToast(t('groups.flow.clientModeHint'))
+            return
+          }
+          const count = groupPlanCardCount(group)
+          setModal({
+            title: t('groups.flow.confirmTitle'),
+            message: t('groups.flow.confirmHint', { count: String(count) }),
+            confirmLabel: t('groups.flow.confirm'),
+            onConfirm: () => {
+              setModal(null)
+              void runGroupsFlowOp('groupPlanConfirm', {}, t('groups.flow.confirmDone', { count: String(count) }))
+            },
+          })
+        }
+
+        function openGroupsReject() {
+          setGroupsRejectOpen(true)
+          setGroupsRejectNote('')
+          setGroupsRejectError(null)
+        }
+
+        async function submitGroupsReject() {
+          const group = groupsFlowGroup()
+          if (group === null) return
+          const note = groupsRejectNote.trim()
+          if (note.length === 0) {
+            setGroupsRejectError(t('groups.flow.rejectNeedNote'))
+            return
+          }
+          const value = await runGroupsFlowOp('groupPlanReject', { note: note.slice(0, 1000) }, t('groups.flow.rejectDone'))
+          if (value === null) return
+          setGroupsRejectOpen(false)
+          setGroupsRejectNote('')
+          setGroupsRejectError(null)
+        }
+
+        function closeGroupsFlow() {
+          const group = groupsFlowGroup()
+          if (group === null) return
+          setModal({
+            title: t('groups.flow.close'),
+            message: t('groups.flow.closeConfirm'),
+            confirmLabel: t('groups.flow.close'),
+            onConfirm: () => {
+              setModal(null)
+              void runGroupsFlowOp('groupFlowClose', {}, t('groups.flow.closeDone'))
+            },
+          })
+        }
+
+        function reopenGroupsFlow() {
+          const group = groupsFlowGroup()
+          if (group === null) return
+          setModal({
+            title: t('groups.flow.reopen'),
+            message: t('groups.flow.reopenConfirm'),
+            confirmLabel: t('groups.flow.reopen'),
+            onConfirm: () => {
+              setModal(null)
+              void runGroupsFlowOp('groupFlowReopen', {}, t('groups.flow.reopenDone'))
+            },
+          })
+        }
+
+        /* D4 client half: one click pre-selects up to six role sessions in the
+         * new-group form. Session creation itself stays on the Host side. */
+        function pickGroupsTeam() {
+          const picked = groupCandidates()
+            .slice(0, GROUP_TEAM_ROLES)
+            .map((candidate) => candidate.sessionId)
+          setGroupsNewMembers(picked)
+          showToast(t('groups.flow.pickTeamDone', { count: String(picked.length) }))
+        }
+
         function renderGroupsPage() {
           const doc = groupsDoc
           const groups = doc !== null && doc !== undefined && Array.isArray(doc.groups) ? doc.groups : []
@@ -20404,6 +20992,474 @@ ${tail}
             const replied = message.deliveries.filter((delivery) => delivery.state === 'replied').length
             const delivered = message.deliveries.filter((delivery) => delivery.state === 'delivered' || delivery.state === 'collecting' || delivery.state === 'replied').length
             return t('groups.deliveryCount', { delivered: String(delivered), total: String(total), replied: String(replied) })
+          }
+
+          const flowNow = Date.now()
+          const phaseLabel = (phase) => t('groups.flow.phase.' + phase)
+          const planStatusText = (status) => t('groups.flow.planStatus.' + status)
+          const roleLabel = (role) => {
+            const key = GROUP_ROLE_KEYS[role]
+            return typeof key === 'string' ? t(key) : ''
+          }
+
+          function renderFlowStageBar(currentGroup) {
+            const step = groupPhaseStep(currentGroup.phase)
+            return h(
+              'ol',
+              { className: 'ds-grp-steps', 'aria-label': t('groups.flow.stageLabel') },
+              GROUP_FLOW_STEPS.map((id, index) =>
+                h(
+                  'li',
+                  { key: id, className: 'ds-grp-step-item' },
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'ds-grp-step',
+                      'data-state': index < step ? 'done' : index === step ? 'current' : 'locked',
+                      'aria-current': index === step ? 'step' : undefined,
+                      disabled: index > step,
+                      title: t('groups.flow.step.' + id),
+                      onClick: () => groupsTimelineRef.current?.scrollTo?.({ top: 0, behavior: 'smooth' }),
+                    },
+                    h('span', { className: 'ds-grp-step-index', 'aria-hidden': 'true' }, String(index + 1)),
+                    h('span', { className: 'ds-grp-step-label' }, t('groups.flow.step.' + id)),
+                  ),
+                ),
+              ),
+            )
+          }
+
+          function renderTopicPanel(currentGroup) {
+            const topic = currentGroup.topic
+            const canWrite = groupsHostMode
+            if (topic === null) {
+              return h(
+                'div',
+                { className: 'ds-grp-topic ds-grp-topic-empty' },
+                h(
+                  'div',
+                  { className: 'ds-grp-topic-head' },
+                  h('span', { className: 'ds-grp-topic-badge' }, t('groups.flow.topic')),
+                  h('span', { className: 'ds-grp-topic-title' }, t('groups.flow.topicEmptyTitle')),
+                ),
+                h('div', { className: 'ds-grp-topic-detail' }, t('groups.flow.topicEmpty')),
+                !canWrite ? h('div', { className: 'ds-grp-flow-hint' }, t('groups.flow.clientModeHint')) : null,
+                canWrite && !groupsTopicOpen
+                  ? h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'ds-btn ds-btn-primary ds-grp-flow-btn',
+                        onClick: () => {
+                          setGroupsTopicOpen(true)
+                          setGroupsTopicError(null)
+                        },
+                      },
+                      t('groups.flow.topicStart'),
+                    )
+                  : null,
+                canWrite && groupsTopicOpen
+                  ? h(
+                      'div',
+                      { className: 'ds-grp-form ds-grp-topic-form' },
+                      h('input', {
+                        className: 'ds-grp-field',
+                        value: groupsTopicTitle,
+                        maxLength: GROUP_MAX_TOPIC_TITLE,
+                        placeholder: t('groups.flow.topicTitlePlaceholder'),
+                        spellCheck: false,
+                        'aria-label': t('groups.flow.topicTitle'),
+                        onChange: (event) => setGroupsTopicTitle(event.target.value),
+                      }),
+                      h('textarea', {
+                        className: 'ds-grp-field ds-grp-field-area',
+                        rows: 2,
+                        value: groupsTopicDetail,
+                        maxLength: GROUP_MAX_TOPIC_DETAIL,
+                        placeholder: t('groups.flow.topicDetailPlaceholder'),
+                        'aria-label': t('groups.flow.topicDetail'),
+                        onChange: (event) => setGroupsTopicDetail(event.target.value),
+                      }),
+                      h(
+                        'label',
+                        { className: 'ds-grp-form-label' },
+                        t('groups.flow.topicMaxRounds'),
+                        h(
+                          'select',
+                          {
+                            className: 'ds-grp-field ds-grp-rounds-select',
+                            value: String(groupsTopicMaxRounds),
+                            onChange: (event) => setGroupsTopicMaxRounds(Number(event.target.value) || GROUP_MAX_FLOW_ROUNDS),
+                          },
+                          [1, 2, 3].map((rounds) => h('option', { key: rounds, value: String(rounds) }, String(rounds))),
+                        ),
+                      ),
+                      groupsTopicError !== null ? h('div', { className: 'ds-grp-error' }, groupsTopicError) : null,
+                      h(
+                        'div',
+                        { className: 'ds-grp-form-actions' },
+                        h(
+                          'button',
+                          {
+                            type: 'button',
+                            className: 'ds-btn ds-grp-flow-btn',
+                            onClick: () => {
+                              setGroupsTopicOpen(false)
+                              setGroupsTopicError(null)
+                            },
+                          },
+                          t('action.cancel'),
+                        ),
+                        h(
+                          'button',
+                          {
+                            type: 'button',
+                            className: 'ds-btn ds-btn-primary ds-grp-flow-btn',
+                            disabled: groupsFlowBusy,
+                            onClick: () => void startGroupsTopic(),
+                          },
+                          groupsFlowBusy ? t('groups.flow.busy') : t('groups.flow.topicStart'),
+                        ),
+                      ),
+                      h('div', { className: 'ds-grp-card-hint' }, t('groups.flow.topicStartHint')),
+                    )
+                  : null,
+              )
+            }
+            const canAddRound = canWrite && currentGroup.phase === 'discuss' && topic.roundCount < topic.maxRounds
+            const canAuthorPlan =
+              canWrite && (currentGroup.phase === 'discuss' || currentGroup.phase === 'plan')
+            return h(
+              'div',
+              { className: 'ds-grp-topic' },
+              h(
+                'div',
+                { className: 'ds-grp-topic-head' },
+                h('span', { className: 'ds-grp-topic-badge' }, t('groups.flow.topic')),
+                h('span', { className: 'ds-grp-topic-title' }, topic.title),
+                h('span', { className: 'ds-grp-status', 'data-status': currentGroup.phase }, phaseLabel(currentGroup.phase)),
+                h('span', { className: 'ds-spacer' }),
+                h(
+                  'span',
+                  { className: 'ds-grp-topic-rounds' },
+                  t('groups.flow.topicRounds', { count: String(topic.roundCount), max: String(topic.maxRounds) }),
+                ),
+                canAddRound
+                  ? h(
+                      'button',
+                      { type: 'button', className: 'ds-btn ds-grp-flow-btn', disabled: groupsFlowBusy, onClick: () => void addGroupsRound() },
+                      t('groups.flow.roundAdd'),
+                    )
+                  : null,
+                canAuthorPlan
+                  ? h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'ds-btn ds-grp-flow-btn',
+                        onClick: () => {
+                          setGroupsPlanOpen((value) => !value)
+                          setGroupsPlanError(null)
+                        },
+                      },
+                      t('groups.flow.planAuthor'),
+                    )
+                  : null,
+              ),
+              topic.detail.length > 0 ? h('div', { className: 'ds-grp-topic-detail' }, topic.detail) : null,
+              canAuthorPlan && groupsPlanOpen
+                ? h(
+                    'div',
+                    { className: 'ds-grp-form ds-grp-plan-form' },
+                    h('input', {
+                      className: 'ds-grp-field',
+                      value: groupsPlanSummary,
+                      maxLength: GROUP_MAX_PLAN_SUMMARY,
+                      placeholder: t('groups.flow.planSummaryPlaceholder'),
+                      'aria-label': t('groups.flow.planSummaryLabel'),
+                      onChange: (event) => setGroupsPlanSummary(event.target.value),
+                    }),
+                    h('textarea', {
+                      className: 'ds-grp-field ds-grp-field-area',
+                      rows: 3,
+                      value: groupsPlanSections,
+                      placeholder: t('groups.flow.planSectionsPlaceholder'),
+                      'aria-label': t('groups.flow.planSectionsLabel'),
+                      onChange: (event) => setGroupsPlanSections(event.target.value),
+                    }),
+                    h('textarea', {
+                      className: 'ds-grp-field ds-grp-field-area',
+                      rows: 3,
+                      value: groupsPlanCards,
+                      placeholder: t('groups.flow.planCardsPlaceholder'),
+                      'aria-label': t('groups.flow.planCardsLabel'),
+                      onChange: (event) => setGroupsPlanCards(event.target.value),
+                    }),
+                    h(
+                      'label',
+                      { className: 'ds-grp-candidate' },
+                      h('input', {
+                        type: 'checkbox',
+                        checked: groupsPlanSubmit,
+                        onChange: (event) => setGroupsPlanSubmit(event.target.checked),
+                      }),
+                      h('span', null, t('groups.flow.planSubmitFlag')),
+                    ),
+                    groupsPlanError !== null ? h('div', { className: 'ds-grp-error' }, groupsPlanError) : null,
+                    h(
+                      'div',
+                      { className: 'ds-grp-form-actions' },
+                      h(
+                        'button',
+                        {
+                          type: 'button',
+                          className: 'ds-btn ds-grp-flow-btn',
+                          onClick: () => {
+                            setGroupsPlanOpen(false)
+                            setGroupsPlanError(null)
+                          },
+                        },
+                        t('action.cancel'),
+                      ),
+                      h(
+                        'button',
+                        {
+                          type: 'button',
+                          className: 'ds-btn ds-btn-primary ds-grp-flow-btn',
+                          disabled: groupsFlowBusy,
+                          onClick: () => void submitGroupsPlan(),
+                        },
+                        groupsFlowBusy ? t('groups.flow.busy') : t('groups.flow.planSave'),
+                      ),
+                    ),
+                  )
+                : null,
+              !canWrite ? h('div', { className: 'ds-grp-flow-hint' }, t('groups.flow.clientModeHint')) : null,
+            )
+          }
+
+          function renderPlanCard(currentGroup) {
+            const plan = currentGroup.plan
+            if (plan === null) return null
+            const cardCount = plan.cards.length
+            const cardMeta = (card) => {
+              const owner =
+                card.assigneeSessionId === null
+                  ? card.role === null
+                    ? '—'
+                    : roleLabel(card.role)
+                  : (memberById.get(card.assigneeSessionId)?.label ?? t('groups.kind.member'))
+              return card.acceptance.length > 0
+                ? `${owner} · ${t('groups.taskAcceptanceCount', { count: String(card.acceptance.length) })}`
+                : owner
+            }
+            return h(
+              'div',
+              { className: 'ds-grp-plan', 'data-status': plan.status, id: 'ds-grp-plan-card' },
+              h(
+                'div',
+                { className: 'ds-grp-plan-head' },
+                h('span', { className: 'ds-grp-plan-title' }, t('groups.flow.plan')),
+                h('span', { className: 'ds-grp-plan-version' }, t('groups.flow.planVersion', { version: String(plan.version) })),
+                h('span', { className: 'ds-grp-status', 'data-status': plan.status }, planStatusText(plan.status)),
+                h('span', { className: 'ds-spacer' }),
+                h('span', { className: 'ds-grp-plan-count' }, t('groups.flow.planCards', { count: String(cardCount) })),
+              ),
+              plan.summary.length > 0
+                ? h('div', { className: 'ds-grp-plan-summary' }, plan.summary)
+                : h('div', { className: 'ds-grp-plan-summary ds-hint' }, t('groups.flow.planEmpty')),
+              plan.sections.length > 0
+                ? h(
+                    'ol',
+                    { className: 'ds-grp-plan-sections' },
+                    plan.sections.slice(0, 6).map((section, index) =>
+                      h(
+                        'li',
+                        { key: index, className: 'ds-grp-plan-section' },
+                        h('div', { className: 'ds-grp-plan-section-head' }, section.heading),
+                        h('div', { className: 'ds-grp-plan-section-body' }, section.body),
+                      ),
+                    ),
+                  )
+                : null,
+              cardCount > 0
+                ? h(
+                    'div',
+                    { className: 'ds-grp-plan-cards' },
+                    plan.cards.slice(0, 6).map((card) =>
+                      h(
+                        'div',
+                        { key: card.id, className: 'ds-grp-plan-card-item' },
+                        h('span', { className: 'ds-grp-plan-card-title' }, card.title),
+                        h('span', { className: 'ds-grp-plan-card-meta' }, cardMeta(card)),
+                      ),
+                    ),
+                    cardCount > 6 ? h('div', { className: 'ds-grp-flow-hint' }, t('groups.flow.planMoreCards', { count: String(cardCount - 6) })) : null,
+                  )
+                : null,
+              plan.status === 'rejected' && plan.rejectNote.length > 0
+                ? h('div', { className: 'ds-grp-plan-note' }, t('groups.flow.planRejectedNote', { note: plan.rejectNote }))
+                : null,
+              plan.status === 'approved' && plan.approvedAt > 0
+                ? h('div', { className: 'ds-grp-plan-note' }, t('groups.flow.planApprovedAt', { time: timeText(plan.approvedAt) }))
+                : null,
+              currentGroup.phase === 'approve'
+                ? h(
+                    'div',
+                    { className: 'ds-grp-plan-actions' },
+                    h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'ds-btn ds-btn-primary ds-grp-flow-btn',
+                        disabled: groupsFlowBusy || !groupsHostMode,
+                        onClick: requestGroupsConfirm,
+                      },
+                      t('groups.flow.confirm'),
+                    ),
+                    h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'ds-btn ds-grp-flow-btn',
+                        disabled: groupsFlowBusy || !groupsHostMode,
+                        onClick: openGroupsReject,
+                      },
+                      t('groups.flow.reject'),
+                    ),
+                    !groupsHostMode ? h('span', { className: 'ds-grp-flow-hint' }, t('groups.flow.clientModeHint')) : null,
+                  )
+                : null,
+            )
+          }
+
+          function renderFlowActionBar(currentGroup) {
+            if (currentGroup.topic === null) return null
+            const phase = currentGroup.phase
+            const plan = currentGroup.plan
+            const canWrite = groupsHostMode
+            const undoLeft = plan !== null && plan.approvedAt > 0 ? plan.approvedAt + GROUP_FLOW_UNDO_MS - flowNow : 0
+            const showConfirm = canWrite && phase === 'approve' && plan !== null
+            const showClose = canWrite && phase === 'execute'
+            const showReopen = canWrite && phase === 'closed'
+            const showUndo = phase === 'execute' && plan !== null && plan.approvedAt > 0
+            if (!showConfirm && !showClose && !showReopen && !showUndo && canWrite) return null
+            return h(
+              'div',
+              { className: 'ds-grp-flow-bar', role: 'group', 'aria-label': t('groups.flow.actionBar') },
+              showConfirm
+                ? h(
+                    'div',
+                    { className: 'ds-grp-flow-bar-main' },
+                    h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'ds-btn ds-btn-primary ds-grp-flow-btn',
+                        disabled: groupsFlowBusy,
+                        onClick: requestGroupsConfirm,
+                      },
+                      groupsFlowBusy ? t('groups.flow.busy') : t('groups.flow.confirm'),
+                    ),
+                    h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'ds-btn ds-grp-flow-btn',
+                        disabled: groupsFlowBusy,
+                        onClick: openGroupsReject,
+                      },
+                      t('groups.flow.reject'),
+                    ),
+                    h(
+                      'span',
+                      { className: 'ds-grp-flow-hint' },
+                      t('groups.flow.confirmHintShort', { count: String(groupPlanCardCount(currentGroup)) }),
+                    ),
+                  )
+                : null,
+              showConfirm && groupsRejectOpen
+                ? h(
+                    'div',
+                    { className: 'ds-grp-flow-reject' },
+                    h('textarea', {
+                      className: 'ds-grp-field ds-grp-field-area',
+                      rows: 2,
+                      value: groupsRejectNote,
+                      placeholder: t('groups.flow.rejectPlaceholder'),
+                      'aria-label': t('groups.flow.rejectTitle'),
+                      onChange: (event) => setGroupsRejectNote(event.target.value),
+                    }),
+                    groupsRejectError !== null ? h('div', { className: 'ds-grp-error' }, groupsRejectError) : null,
+                    h(
+                      'div',
+                      { className: 'ds-grp-form-actions' },
+                      h(
+                        'button',
+                        {
+                          type: 'button',
+                          className: 'ds-btn ds-grp-flow-btn',
+                          onClick: () => {
+                            setGroupsRejectOpen(false)
+                            setGroupsRejectError(null)
+                          },
+                        },
+                        t('action.cancel'),
+                      ),
+                      h(
+                        'button',
+                        {
+                          type: 'button',
+                          className: 'ds-btn ds-btn-danger ds-grp-flow-btn',
+                          disabled: groupsFlowBusy,
+                          onClick: () => void submitGroupsReject(),
+                        },
+                        groupsFlowBusy ? t('groups.flow.busy') : t('groups.flow.reject'),
+                      ),
+                    ),
+                  )
+                : null,
+              showClose
+                ? h(
+                    'div',
+                    { className: 'ds-grp-flow-bar-main' },
+                    h(
+                      'button',
+                      { type: 'button', className: 'ds-btn ds-grp-flow-btn', disabled: groupsFlowBusy, onClick: closeGroupsFlow },
+                      t('groups.flow.close'),
+                    ),
+                    showUndo
+                      ? h(
+                          'span',
+                          { className: 'ds-grp-flow-hint' },
+                          undoLeft > 0
+                            ? t('groups.flow.undoWindow', { minutes: String(Math.ceil(undoLeft / 60000)) })
+                            : t('groups.flow.undoExpired'),
+                        )
+                      : null,
+                  )
+                : null,
+              showReopen
+                ? h(
+                    'div',
+                    { className: 'ds-grp-flow-bar-main' },
+                    h(
+                      'button',
+                      { type: 'button', className: 'ds-btn ds-grp-flow-btn', disabled: groupsFlowBusy, onClick: reopenGroupsFlow },
+                      t('groups.flow.reopen'),
+                    ),
+                    h('span', { className: 'ds-grp-flow-hint' }, t('groups.flow.closedHint')),
+                  )
+                : null,
+              !canWrite
+                ? h(
+                    'div',
+                    { className: 'ds-grp-flow-bar-main' },
+                    h('span', { className: 'ds-grp-flow-hint' }, t('groups.flow.clientModeHint')),
+                  )
+                : null,
+            )
           }
 
           function renderMessage(message) {
@@ -20526,7 +21582,16 @@ ${tail}
                 spellCheck: false,
                 onChange: (event) => setGroupsNewGoal(event.target.value),
               }),
-              h('div', { className: 'ds-grp-form-label' }, t('groups.chooseMembers')),
+              h(
+                'div',
+                { className: 'ds-grp-form-label' },
+                t('groups.chooseMembers'),
+                h(
+                  'button',
+                  { type: 'button', className: 'ds-linkbtn ds-grp-pickteam', onClick: pickGroupsTeam },
+                  t('groups.flow.pickTeam'),
+                ),
+              ),
               h(
                 'div',
                 { className: 'ds-grp-candidates' },
@@ -20603,6 +21668,9 @@ ${tail}
                           'div',
                           { className: 'ds-grp-member-top' },
                           h('span', { className: 'ds-grp-member-label' }, member.label),
+                          member.role !== 'member' && roleLabel(member.role).length > 0
+                            ? h('span', { className: 'ds-grp-role' }, roleLabel(member.role))
+                            : null,
                           h('span', { className: 'ds-grp-member-sub' }, runningSet.has(member.sessionId) ? t('groups.memberRunning') : t('groups.memberIdle')),
                         ),
                         h(
@@ -20888,13 +21956,17 @@ ${tail}
                       ),
                       group.goal.length > 0 ? h('div', { className: 'ds-grp-goal' }, group.goal) : null,
                       group.status === 'paused' ? h('div', { className: 'ds-grp-paused' }, t('groups.pausedBanner')) : null,
+                      renderFlowStageBar(group),
+                      renderTopicPanel(group),
                       h(
                         'div',
                         { className: 'ds-grp-timeline', ref: groupsTimelineRef },
                         group.messages.length === 0
                           ? h('div', { className: 'ds-grp-empty-inline' }, t('groups.noMessages'))
                           : group.messages.map(renderMessage),
+                        renderPlanCard(group),
                       ),
+                      renderFlowActionBar(group),
                       h(
                         'div',
                         { className: 'ds-grp-composer' },
@@ -32402,6 +33474,64 @@ h(
 .ds-grp-page[data-compact='true'] .ds-grp-center { min-height: 380px; }
 .ds-grp-page[data-compact='true'] .ds-grp-side { flex: 0 0 auto; flex-direction: row; flex-wrap: wrap; border-left: none; border-top: 1px solid var(--dsw-alias-border-l1); }
 .ds-grp-page[data-compact='true'] .ds-grp-side .ds-grp-card { flex: 1 1 240px; }
+
+/* Session groups (v1.1): topic flow stage bar, plan card and approval bar. */
+.ds-grp-steps { display: flex; align-items: stretch; gap: 6px; flex: 0 0 auto; margin: 0; padding: 8px 16px; list-style: none; border-bottom: 1px solid var(--dsw-alias-border-l1); background: var(--dsw-alias-bg-layer-1); overflow-x: auto; }
+.ds-grp-step-item { display: flex; flex: 1 1 0; min-width: 0; }
+.ds-grp-step { display: flex; flex: 1 1 auto; align-items: center; justify-content: center; gap: 6px; min-width: 0; min-height: 44px; padding: 4px 8px; border: 1px solid transparent; border-radius: 9px; background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 12px; cursor: pointer; }
+.ds-grp-step:disabled { cursor: default; opacity: 0.55; }
+.ds-grp-step[data-state='done'] { color: var(--dsw-alias-label-primary); }
+.ds-grp-step[data-state='current'] { color: var(--dsw-alias-brand-primary); border-color: color-mix(in srgb, var(--dsw-alias-brand-primary) 45%, transparent); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 9%, transparent); }
+.ds-grp-step-index { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 18px; height: 18px; border-radius: 50%; font-size: 10.5px; font-weight: 700; background: color-mix(in srgb, currentColor 14%, transparent); }
+.ds-grp-step-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-grp-topic { display: flex; flex-direction: column; gap: 6px; flex: 0 0 auto; padding: 10px 16px; border-bottom: 1px solid var(--dsw-alias-border-l1); background: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 60%, transparent); }
+.ds-grp-topic-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.ds-grp-topic-badge { flex: 0 0 auto; padding: 1px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 700; color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 12%, transparent); }
+.ds-grp-topic-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 650; color: var(--dsw-alias-label-primary); }
+.ds-grp-topic-rounds { font-size: 11px; color: var(--dsw-alias-label-caption); white-space: nowrap; }
+.ds-grp-topic-detail { font-size: 12px; line-height: 1.55; color: var(--dsw-alias-label-secondary); white-space: pre-wrap; word-break: break-word; }
+.ds-grp-topic-form { margin-top: 2px; }
+.ds-grp-rounds-select { max-width: 96px; }
+.ds-grp-plan { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; padding: 11px 12px; border: 1px solid color-mix(in srgb, var(--dsw-alias-brand-primary) 32%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--dsw-alias-brand-primary) 5%, var(--dsw-alias-bg-layer-1)); }
+.ds-grp-plan[data-status='approved'] { border-color: color-mix(in srgb, var(--dsw-alias-state-success-primary) 40%, transparent); background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 6%, var(--dsw-alias-bg-layer-1)); }
+.ds-grp-plan[data-status='rejected'] { border-color: color-mix(in srgb, var(--dsw-alias-state-error-primary) 40%, transparent); background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 6%, var(--dsw-alias-bg-layer-1)); }
+.ds-grp-plan-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.ds-grp-plan-title { font-size: 13px; font-weight: 700; color: var(--dsw-alias-label-primary); }
+.ds-grp-plan-version { font-size: 10.5px; color: var(--dsw-alias-label-caption); }
+.ds-grp-plan-count { font-size: 11px; color: var(--dsw-alias-label-caption); }
+.ds-grp-plan-summary { font-size: 12.5px; line-height: 1.55; color: var(--dsw-alias-label-primary); white-space: pre-wrap; word-break: break-word; }
+.ds-grp-plan-sections { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.ds-grp-plan-section { padding: 6px 8px; border-radius: 8px; background: var(--dsw-alias-bg-layer-2); }
+.ds-grp-plan-section-head { font-size: 11.5px; font-weight: 650; color: var(--dsw-alias-label-primary); }
+.ds-grp-plan-section-body { margin-top: 2px; font-size: 11.5px; line-height: 1.5; color: var(--dsw-alias-label-secondary); white-space: pre-wrap; word-break: break-word; }
+.ds-grp-plan-cards { display: flex; flex-direction: column; gap: 4px; }
+.ds-grp-plan-card-item { display: flex; align-items: baseline; gap: 8px; min-width: 0; padding: 4px 8px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 7px; background: var(--dsw-alias-bg-layer-1); }
+.ds-grp-plan-card-title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; font-weight: 600; color: var(--dsw-alias-label-primary); }
+.ds-grp-plan-card-meta { flex: 0 0 auto; font-size: 10.5px; color: var(--dsw-alias-label-caption); }
+.ds-grp-plan-note { font-size: 11px; color: var(--dsw-alias-label-secondary); white-space: pre-wrap; }
+.ds-grp-plan-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.ds-grp-flow-bar { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; padding: 9px 16px; border-top: 1px solid var(--dsw-alias-border-l1); background: var(--dsw-alias-bg-layer-1); }
+.ds-grp-flow-bar-main { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.ds-grp-flow-reject { display: flex; flex-direction: column; gap: 6px; }
+.ds-grp-flow-hint { font-size: 11px; line-height: 1.45; color: var(--dsw-alias-label-caption); }
+.ds-grp-flow-btn { min-width: 44px; min-height: 44px; }
+.ds-grp-flow-btn:focus-visible,
+.ds-grp-step:focus-visible,
+.ds-grp-topic .ds-grp-field:focus-visible,
+.ds-grp-flow-reject .ds-grp-field:focus-visible { outline: 2px solid var(--dsw-alias-brand-primary); outline-offset: 2px; }
+.ds-grp-role { flex: 0 0 auto; padding: 1px 6px; border-radius: 999px; font-size: 10px; font-weight: 600; color: var(--dsw-alias-state-business-primary); background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 12%, transparent); }
+.ds-grp-pickteam { margin-left: 8px; }
+@media (max-width: 900px) {
+  .ds-grp-body { flex-direction: column; overflow: auto; }
+  .ds-grp-list { flex: 0 0 auto; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--dsw-alias-border-l1); }
+  .ds-grp-list-head, .ds-grp-list-count, .ds-grp-new { display: none; }
+  .ds-grp-list-item { flex: 0 0 200px; }
+  .ds-grp-center { min-height: 380px; }
+  .ds-grp-side { flex: 0 0 auto; flex-direction: row; flex-wrap: wrap; border-left: none; border-top: 1px solid var(--dsw-alias-border-l1); }
+  .ds-grp-side .ds-grp-card { flex: 1 1 240px; }
+  .ds-grp-step { font-size: 11px; padding: 4px 4px; }
+  .ds-grp-flow-bar-main .ds-btn { flex: 1 1 140px; }
+}
 
 `
 

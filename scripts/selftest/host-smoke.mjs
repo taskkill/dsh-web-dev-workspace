@@ -209,7 +209,7 @@ try {
     // Route registration is asynchronous (Promise.then), give it a turn.
     await new Promise((resolve) => setTimeout(resolve, 0))
     const names = host.tools.map((definition) => definition.name)
-    assert.equal(host.tools.length, 42, `expected 42 tools, got ${String(host.tools.length)}: ${names.join(',')}`)
+    assert.equal(host.tools.length, 45, `expected 45 tools, got ${String(host.tools.length)}: ${names.join(',')}`)
     for (const name of [
       'task_detect',
       'task_run',
@@ -1309,7 +1309,7 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 0))
     const names = host.tools.map((definition) => definition.name)
     assert.equal(names.filter((name) => /assignment/iu.test(name)).length, 0, 'assignments must stay owner-only')
-    assert.equal(host.tools.length, 42)
+    assert.equal(host.tools.length, 45)
     assert.equal(host.routes.length, 10)
     const indexSource = await fsp.readFile(new URL('../../dsh-web-filebrowser-plugin/index.js', import.meta.url), 'utf8')
     for (const op of ['assignmentList', 'assignmentSave', 'assignmentUpdate', 'assignmentDelete']) {

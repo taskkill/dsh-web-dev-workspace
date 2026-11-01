@@ -211,6 +211,186 @@ check(
   afterReconcile.groups[0].messages.some((message) => message.memberSessionId === 'ses_b' && message.text === '开发也看完了'),
 )
 
+// ------------------------------------------------------------------
+// Topic flow v1 (contract: docs/proposals/group-topic/contract.md)
+// ------------------------------------------------------------------
+const flowCreated = await route('groupCreate', {
+  name: '议题演示组',
+  members: [
+    { sessionId: 'ses_a', label: '产品经理' },
+    { sessionId: 'ses_b', label: '开发' },
+  ],
+})
+const flowGroupId = flowCreated.groupId
+check('flow: new group starts in topic phase', flowCreated.group.phase === 'topic' && flowCreated.group.topic === null)
+check('flow: flow fields normalized', Array.isArray(flowCreated.group.rounds) && Array.isArray(flowCreated.group.log) && flowCreated.group.plan === null)
+
+const legacyTask = await route('groupTaskCreate', { groupId: flowGroupId, title: '无议题时的旧行为任务', assigneeSessionId: 'ses_a' })
+check('flow: task creation without a topic keeps legacy behaviour', typeof legacyTask.taskId === 'string')
+
+const topic = await route('groupTopicSet', { groupId: flowGroupId, title: '群组议题流程', detail: '讨论→方案→确认→执行', maxRounds: 2 })
+check('flow: topicSet opens discuss with round 1', topic.phase === 'discuss' && topic.topic.roundCount === 1 && topic.topic.maxRounds === 2)
+check('flow: topicSet records the round', (await route('groupList')).groups.find((group) => group.id === flowGroupId).rounds.length === 1)
+
+const topicRead = await tools.get('group_topic_read').execute({ group: flowGroupId }, execA)
+check('flow: group_topic_read returns the flow summary', topicRead.result.flow.phase === 'discuss' && topicRead.result.flow.topic.title === '群组议题流程')
+check('flow: owner-only ops are not member tools', !tools.has('group_plan_confirm') && !tools.has('group_plan_reject') && !tools.has('group_flow_close'))
+
+const discussion = await route('groupSend', { groupId: flowGroupId, text: '请各角色讨论', purpose: 'discussion' })
+check('flow: discussion delivery is allowed during discuss', discussion.deliveries.length === 2 && discussion.deliveries.every((entry) => entry.state === 'delivered'))
+
+const beforeBlocked = (await route('groupList')).groups.find((group) => group.id === flowGroupId)
+const wakeBeforeBlocked = followups.length
+let gateError = null
+try {
+  await route('groupSend', { groupId: flowGroupId, text: '未确认就执行', purpose: 'execution' })
+} catch (error) {
+  gateError = error
+}
+check('flow: execution delivery blocked before approval', gateError !== null && gateError.code === 'gate-blocked')
+let taskGate = null
+try {
+  await route('groupTaskCreate', { groupId: flowGroupId, title: '提前建卡', assigneeSessionId: 'ses_a' })
+} catch (error) {
+  taskGate = error
+}
+check('flow: task creation blocked before approval', taskGate !== null && taskGate.code === 'gate-blocked')
+let handoffGate = null
+try {
+  await tools.get('group_handoff').execute({ group: flowGroupId, to: '开发', title: '提前交接' }, execA)
+} catch (error) {
+  handoffGate = error
+}
+check('flow: handoff blocked before approval', handoffGate !== null && handoffGate.code === 'gate-blocked')
+let toolExecGate = null
+try {
+  await tools.get('group_send').execute({ group: flowGroupId, text: '工具侧执行', purpose: 'execution', notify: 'all' }, execA)
+} catch (error) {
+  toolExecGate = error
+}
+check('flow: member execution speech blocked before approval', toolExecGate !== null && toolExecGate.code === 'gate-blocked')
+const afterBlocked = (await route('groupList')).groups.find((group) => group.id === flowGroupId)
+check(
+  'flow: blocked attempts write nothing and wake nobody',
+  afterBlocked.messages.length === beforeBlocked.messages.length && afterBlocked.tasks.length === beforeBlocked.tasks.length && followups.length === wakeBeforeBlocked,
+)
+
+const round2 = await route('groupRoundOpen', { groupId: flowGroupId })
+check('flow: second discussion round allowed', round2.roundCount === 2)
+let roundError = null
+try {
+  await route('groupRoundOpen', { groupId: flowGroupId })
+} catch (error) {
+  roundError = error
+}
+check('flow: third round rejected with round-limit', roundError !== null && roundError.code === 'round-limit')
+
+let jumpError = null
+try {
+  await route('groupPlanConfirm', { groupId: flowGroupId })
+} catch (error) {
+  jumpError = error
+}
+check('flow: illegal jump to confirm rejected', jumpError !== null && jumpError.code === 'bad-phase')
+
+const toolDraft = await tools.get('group_plan_write').execute({ group: flowGroupId, summary: '成员草稿' }, execA)
+check('flow: member can save a plan draft', toolDraft.result.plan.status === 'draft' && toolDraft.result.phase === 'plan')
+
+let invalidPlan = null
+try {
+  await route('groupPlanSubmit', { groupId: flowGroupId, submit: true, plan: { summary: '缺指派', cards: [{ title: '没有指派' }] } })
+} catch (error) {
+  invalidPlan = error
+}
+check('flow: pending plan requires assigned cards', invalidPlan !== null && invalidPlan.code === 'plan-invalid')
+
+const pending = await route('groupPlanSubmit', {
+  groupId: flowGroupId,
+  submit: true,
+  plan: {
+    summary: '执行方案',
+    sections: [{ heading: '任务', body: '两张卡' }],
+    cards: [
+      { title: '实现硬闸门', detail: 'Host 侧', acceptance: ['负向用例通过'], role: 'fullstack-developer', assigneeSessionId: 'ses_b' },
+      { title: '写自动化测试', detail: 'QA 侧', acceptance: ['npm test 全绿'], role: 'qa-engineer', assigneeSessionId: 'ses_a' },
+    ],
+  },
+})
+check('flow: pending plan moves to approve', pending.phase === 'approve' && pending.plan.status === 'pending' && pending.plan.cards.length === 2)
+
+let rejectNote = null
+try {
+  await route('groupPlanReject', { groupId: flowGroupId })
+} catch (error) {
+  rejectNote = error
+}
+check('flow: reject requires a note', rejectNote !== null && rejectNote.code === 'bad-request')
+const rejected = await route('groupPlanReject', { groupId: flowGroupId, note: '请补风险说明' })
+check('flow: reject returns to discuss', rejected.phase === 'discuss' && rejected.plan.status === 'rejected' && rejected.plan.rejectNote === '请补风险说明')
+
+const resubmit = await route('groupPlanSubmit', {
+  groupId: flowGroupId,
+  submit: true,
+  plan: {
+    summary: '执行方案 v2（已补风险）',
+    cards: [
+      { title: '实现硬闸门', assigneeSessionId: 'ses_b', acceptance: [] },
+      { title: '写自动化测试', assigneeSessionId: 'ses_a', acceptance: [] },
+    ],
+  },
+})
+check('flow: resubmitted plan bumps the version', resubmit.plan.version > pending.plan.version && resubmit.phase === 'approve')
+
+const wakeBeforeConfirm = followups.length
+const confirmed = await route('groupPlanConfirm', { groupId: flowGroupId })
+check('flow: confirm approves and enters execute', confirmed.phase === 'execute' && confirmed.planId.startsWith('pln_'))
+check('flow: confirm creates one task per card', confirmed.tasks.length === 2 && confirmed.failures.length === 0)
+check('flow: confirm delivers execution tasks', confirmed.deliveries.length === 2 && confirmed.deliveries.every((entry) => entry.state === 'delivered') && followups.length === wakeBeforeConfirm + 2)
+const flowDocument = (await route('groupList')).groups.find((group) => group.id === flowGroupId)
+const planTasks = flowDocument.tasks.filter((task) => task.planId === confirmed.planId)
+check('flow: plan tasks trace back to the plan', planTasks.length === 2 && planTasks.every((task) => typeof task.cardId === 'string'))
+check('flow: approval is recorded in the flow log', flowDocument.log.some((entry) => entry.action === 'approve' && entry.by === 'owner'))
+
+const execAllowed = await route('groupSend', { groupId: flowGroupId, text: '开始执行', purpose: 'execution' })
+check('flow: execution delivery allowed after approval', execAllowed.deliveries.length === 2 && execAllowed.deliveries.every((entry) => entry.state === 'delivered'))
+
+const closed = await route('groupFlowClose', { groupId: flowGroupId })
+check('flow: close moves to closed', closed.phase === 'closed')
+let closedGate = null
+try {
+  await route('groupSend', { groupId: flowGroupId, text: '关闭后执行', purpose: 'execution' })
+} catch (error) {
+  closedGate = error
+}
+check('flow: closed topic blocks execution deliveries', closedGate !== null && closedGate.code === 'gate-blocked')
+const reopened = await route('groupFlowReopen', { groupId: flowGroupId })
+check('flow: reopen clears the topic', reopened.phase === 'topic')
+
+// Legacy documents (no flow fields) must read with defaults and keep version 1.
+await writeFile(
+  groupFile,
+  JSON.stringify({
+    version: 1,
+    updatedAt: Date.now(),
+    groups: [
+      {
+        id: 'grp_legacy',
+        name: '旧群组',
+        members: [{ sessionId: 'ses_a', label: '旧成员', joinedAt: 0 }],
+        messages: [],
+        tasks: [],
+        createdAt: 0,
+        updatedAt: 0,
+      },
+    ],
+  }),
+  'utf8',
+)
+const legacyDocument = await route('groupList')
+const legacyGroup = legacyDocument.groups.find((group) => group.id === 'grp_legacy')
+check('flow: legacy document reads with default flow fields', legacyGroup.phase === 'topic' && legacyGroup.topic === null && legacyGroup.plan === null && legacyGroup.rounds.length === 0 && legacyGroup.log.length === 0)
+check('flow: legacy document keeps version 1', legacyDocument.version === 1)
+
 // Corrupt file is reported and left untouched.
 const brokenText = '{ not valid json'
 await writeFile(groupFile, brokenText, 'utf8')

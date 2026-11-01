@@ -41,6 +41,21 @@ export const GROUP_MAX_FILE_BYTES = 5 * 1024 * 1024
 export const GROUP_MAX_TOOL_MESSAGES = 15
 export const GROUP_MAX_NOTIFY_PER_10MIN = 3
 export const GROUP_STALE_DELIVERY_MS = 24 * 60 * 60 * 1000
+export const GROUP_MAX_TOPIC_TITLE = 200
+export const GROUP_MAX_TOPIC_DETAIL = 2000
+export const GROUP_MAX_PLAN_SUMMARY = 4000
+export const GROUP_MAX_PLAN_SECTIONS = 12
+export const GROUP_MAX_PLAN_CARDS = 20
+export const GROUP_MAX_ROUNDS = 20
+export const GROUP_MAX_FLOW_ROUNDS = 2
+export const GROUP_MAX_FLOW_LOG = 50
+
+/** Delivery purposes; `execution` is gated by the topic flow. */
+const DELIVERY_PURPOSES = new Set(['discussion', 'execution'])
+/** Topic-flow phases (contract v1). */
+const FLOW_PHASES = new Set(['topic', 'discuss', 'plan', 'approve', 'execute', 'closed'])
+/** Plan statuses. */
+const PLAN_STATUSES = new Set(['draft', 'pending', 'approved', 'rejected'])
 
 /** Stable failure carrying a machine-readable code (route and tool callers). */
 export class GroupError extends Error {
@@ -90,6 +105,8 @@ function normalizeMessage(message) {
     mentions: Array.isArray(message.mentions) ? message.mentions.filter((id) => typeof id === 'string') : [],
     memberSessionId: typeof message.memberSessionId === 'string' ? message.memberSessionId : null,
     taskId: typeof message.taskId === 'string' ? message.taskId : null,
+    purpose: DELIVERY_PURPOSES.has(message.purpose) ? message.purpose : 'discussion',
+    planId: typeof message.planId === 'string' ? message.planId : null,
     createdAt: Number(message.createdAt) || Date.now(),
     deliveries: Array.isArray(message.deliveries)
       ? message.deliveries
@@ -118,8 +135,110 @@ function normalizeTask(task) {
     priority: typeof task.priority === 'string' ? task.priority : 'P1',
     state: TASK_STATES.has(task.state) ? task.state : 'pending',
     messageId: typeof task.messageId === 'string' ? task.messageId : null,
+    planId: typeof task.planId === 'string' ? task.planId : null,
+    cardId: typeof task.cardId === 'string' ? task.cardId : null,
     createdAt: Number(task.createdAt) || Date.now(),
     updatedAt: Number(task.updatedAt) || Date.now(),
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Topic-flow normalization (contract v1; additive fields only)
+ * ------------------------------------------------------------------ */
+
+/** Keep one plan section shape. */
+function normalizeSection(section) {
+  return {
+    heading: typeof section?.heading === 'string' ? section.heading.slice(0, 120) : '',
+    body: typeof section?.body === 'string' ? section.body.slice(0, 4000) : '',
+  }
+}
+
+/** Keep one plan task-card shape. */
+function normalizePlanCard(card) {
+  return {
+    id: typeof card?.id === 'string' ? card.id : newRecordId('crd_'),
+    title: typeof card?.title === 'string' ? card.title.slice(0, 200) : '',
+    detail: typeof card?.detail === 'string' ? card.detail.slice(0, 2000) : '',
+    acceptance: Array.isArray(card?.acceptance)
+      ? card.acceptance
+          .filter((line) => typeof line === 'string')
+          .map((line) => line.slice(0, 500))
+          .slice(0, 10)
+      : [],
+    role: typeof card?.role === 'string' ? card.role.slice(0, 60) : null,
+    assigneeSessionId: typeof card?.assigneeSessionId === 'string' ? card.assigneeSessionId : null,
+  }
+}
+
+/** Keep one plan card; unknown fields are dropped. */
+function normalizePlan(plan) {
+  if (plan === null || plan === undefined || typeof plan !== 'object') return null
+  return {
+    id: typeof plan.id === 'string' ? plan.id : newRecordId('pln_'),
+    version: Number.isFinite(Number(plan.version)) ? Number(plan.version) : 1,
+    summary: typeof plan.summary === 'string' ? plan.summary.slice(0, GROUP_MAX_PLAN_SUMMARY) : '',
+    sections: Array.isArray(plan.sections)
+      ? plan.sections.filter((section) => section !== null && typeof section === 'object').map(normalizeSection).slice(0, GROUP_MAX_PLAN_SECTIONS)
+      : [],
+    cards: Array.isArray(plan.cards)
+      ? plan.cards.filter((card) => card !== null && typeof card === 'object').map(normalizePlanCard).slice(0, GROUP_MAX_PLAN_CARDS)
+      : [],
+    status: PLAN_STATUSES.has(plan.status) ? plan.status : 'draft',
+    approvedAt: Number(plan.approvedAt) || 0,
+    approvedBy: typeof plan.approvedBy === 'string' ? plan.approvedBy : null,
+    rejectedAt: Number(plan.rejectedAt) || 0,
+    rejectNote: typeof plan.rejectNote === 'string' ? plan.rejectNote.slice(0, 1000) : '',
+  }
+}
+
+/** Keep one topic shape. */
+function normalizeTopic(topic) {
+  if (topic === null || topic === undefined || typeof topic !== 'object') return null
+  const maxRounds = Number.isFinite(Number(topic.maxRounds)) ? Math.min(GROUP_MAX_FLOW_ROUNDS, Math.max(1, Number(topic.maxRounds))) : GROUP_MAX_FLOW_ROUNDS
+  return {
+    id: typeof topic.id === 'string' ? topic.id : newRecordId('tpc_'),
+    title: typeof topic.title === 'string' ? topic.title.slice(0, GROUP_MAX_TOPIC_TITLE) : '',
+    detail: typeof topic.detail === 'string' ? topic.detail.slice(0, GROUP_MAX_TOPIC_DETAIL) : '',
+    createdAt: Number(topic.createdAt) || Date.now(),
+    roundCount: Number.isFinite(Number(topic.roundCount)) ? Math.max(0, Number(topic.roundCount)) : 0,
+    maxRounds,
+  }
+}
+
+/** Keep one discussion round shape. */
+function normalizeRound(round) {
+  return {
+    id: typeof round?.id === 'string' ? round.id : newRecordId('rnd_'),
+    at: Number(round?.at) || Date.now(),
+    targets: Array.isArray(round?.targets) ? round.targets.filter((id) => typeof id === 'string').slice(0, 8) : [],
+    state: round?.state === 'closed' ? 'closed' : 'open',
+  }
+}
+
+/** Keep one flow log entry. */
+function normalizeLogEntry(entry) {
+  return {
+    at: Number(entry?.at) || Date.now(),
+    action: typeof entry?.action === 'string' ? entry.action.slice(0, 40) : 'unknown',
+    by: entry?.by === 'owner' || entry?.by === 'member' ? entry.by : 'host',
+    sessionId: typeof entry?.sessionId === 'string' ? entry.sessionId : null,
+    note: typeof entry?.note === 'string' ? entry.note.slice(0, 500) : '',
+  }
+}
+
+/** Normalize the additive topic-flow fields on one group. */
+function normalizeFlow(group) {
+  return {
+    phase: FLOW_PHASES.has(group.phase) ? group.phase : 'topic',
+    topic: normalizeTopic(group.topic),
+    plan: normalizePlan(group.plan),
+    rounds: Array.isArray(group.rounds)
+      ? group.rounds.filter((round) => round !== null && typeof round === 'object').map(normalizeRound).slice(-GROUP_MAX_ROUNDS)
+      : [],
+    log: Array.isArray(group.log)
+      ? group.log.filter((entry) => entry !== null && typeof entry === 'object').map(normalizeLogEntry).slice(-GROUP_MAX_FLOW_LOG)
+      : [],
   }
 }
 
@@ -157,6 +276,7 @@ function normalizeGroup(group) {
       ? group.tasks.filter((task) => task !== null && typeof task === 'object' && typeof task.id === 'string').map(normalizeTask)
       : [],
     notifyLog: Array.isArray(group.notifyLog) ? group.notifyLog.filter((time) => Number.isFinite(Number(time))).map(Number) : [],
+    ...normalizeFlow(group),
     createdAt: Number(group.createdAt) || Date.now(),
     updatedAt: Number(group.updatedAt) || Date.now(),
   }
@@ -374,6 +494,60 @@ function findGroup(document, reference) {
   return prefix.length === 1 ? prefix[0] : null
 }
 
+/**
+ * Whether the active topic flow blocks execution-class deliveries (contract v1).
+ * Groups without a topic keep the legacy behaviour: no gate at all.
+ */
+function gateBlocked(group) {
+  return group.topic !== null && group.topic !== undefined && group.phase !== 'execute'
+}
+
+/** Throw unless this delivery purpose is allowed in the current flow phase. */
+function assertFlowGate(group, purpose) {
+  if (purpose === 'execution' && gateBlocked(group)) {
+    throw new GroupError('gate-blocked', '方案未确认：执行类投递被拒绝；请先由项目经理 Agent 提交方案，Owner 确认后再执行')
+  }
+}
+
+/** Normalize a delivery purpose coming from a route body or tool args. */
+function normalizePurpose(value) {
+  return value === 'execution' ? 'execution' : 'discussion'
+}
+
+/** Append one bounded flow log entry. */
+function pushFlowLog(group, entry) {
+  group.log = [...(group.log ?? []), normalizeLogEntry({ at: Date.now(), ...entry })].slice(-GROUP_MAX_FLOW_LOG)
+}
+
+/** Compact topic-flow view for member tools. */
+function flowSummary(group) {
+  const topic = group.topic
+  return {
+    phase: group.phase,
+    topic:
+      topic === null
+        ? null
+        : { id: topic.id, title: topic.title, roundCount: topic.roundCount, maxRounds: topic.maxRounds },
+    rounds: (group.rounds ?? []).slice(-3).map((round) => ({ id: round.id, at: round.at, targets: round.targets.length, state: round.state })),
+    plan:
+      group.plan === null
+        ? null
+        : {
+            id: group.plan.id,
+            version: group.plan.version,
+            status: group.plan.status,
+            cards: group.plan.cards.length,
+            summary: truncateText(group.plan.summary, 600),
+          },
+    can: {
+      discuss: group.phase === 'discuss' || group.phase === 'plan',
+      writePlan: group.phase === 'discuss' || group.phase === 'plan',
+      execute: group.phase === 'execute',
+    },
+    lastLog: (group.log ?? []).slice(-5).map((entry) => ({ at: entry.at, action: entry.action, by: entry.by, note: entry.note })),
+  }
+}
+
 /** Delivery frame shared with the client model. */
 function buildDeliveryFrame(group, message, member) {
   const fromMember = message.memberSessionId !== null && message.memberSessionId !== undefined
@@ -403,6 +577,9 @@ function buildDeliveryFrame(group, message, member) {
       for (const [index, line] of task.acceptance.entries()) lines.push(`${String(index + 1)}. ${line}`)
     }
     lines.push('完成后请回复产物路径与自测/验收结果。')
+  }
+  if (message.purpose === 'discussion') {
+    lines.push('本轮是「讨论」阶段：只给观点、方案建议、风险与工作量，不要改代码、不要开始执行；方案需 Owner 确认后才允许执行。')
   }
   lines.push(
     fromMember
@@ -499,7 +676,7 @@ export function createGroupManager(options) {
 
   /* ---------- delivery ---------- */
 
-  async function deliverOne(root, groupId, messageId, member) {
+  async function deliverOne(root, groupId, messageId, member, purpose = 'discussion') {
     try {
       const sessionController = hostService('sessionController')
       const sessions = hostService('sessions')
@@ -518,6 +695,7 @@ export function createGroupManager(options) {
       const group = document.groups.find((item) => item.id === groupId)
       const message = group?.messages.find((item) => item.id === messageId)
       if (group === undefined || message === undefined) throw new GroupError('not-found', '群组消息不存在')
+      assertFlowGate(group, purpose === 'execution' || message.purpose === 'execution' ? 'execution' : 'discussion')
       const frame = buildDeliveryFrame(group, message, member)
       agent.followup(createUserMessage(frame))
       if (sessions !== null && sessions !== undefined && typeof sessions.flush === 'function') {
@@ -554,9 +732,9 @@ export function createGroupManager(options) {
     }
   }
 
-  async function deliverTargets(root, groupId, messageId, targets) {
+  async function deliverTargets(root, groupId, messageId, targets, purpose = 'discussion') {
     const results = []
-    for (const member of targets) results.push(await deliverOne(root, groupId, messageId, member))
+    for (const member of targets) results.push(await deliverOne(root, groupId, messageId, member, purpose))
     return results
   }
 
@@ -906,6 +1084,8 @@ export function createGroupManager(options) {
     const group = document.groups.find((entry) => entry.id === groupId)
     if (group === undefined) throw new GroupError('not-found', '群组不存在')
     if (group.status === 'paused') throw new GroupError('paused', '群组已暂停')
+    const purpose = normalizePurpose(body.purpose)
+    assertFlowGate(group, purpose)
     const mentions = Array.isArray(body.mentions) ? body.mentions.filter((id) => typeof id === 'string') : []
     const targets = mentions.length > 0 ? group.members.filter((member) => mentions.includes(member.sessionId)) : group.members.slice()
     if (targets.length === 0) throw new GroupError('no-targets', '没有可投递的成员')
@@ -918,6 +1098,7 @@ export function createGroupManager(options) {
       mentions,
       memberSessionId: typeof body.authorSessionId === 'string' ? body.authorSessionId : null,
       taskId: typeof body.taskId === 'string' ? body.taskId : null,
+      purpose,
       createdAt: now,
       deliveries: targets.map((member) => ({ sessionId: member.sessionId, state: 'queued', queuedAt: now })),
     })
@@ -933,6 +1114,7 @@ export function createGroupManager(options) {
       groupId,
       message.id,
       targets.map((member) => ({ ...member })),
+      purpose,
     )
     return { messageId: message.id, deliveries }
   }
@@ -951,6 +1133,7 @@ export function createGroupManager(options) {
     const assignee = findMember(group, assigneeSessionId)
     if (assignee === null) throw new GroupError('not-found', '指派人不是群成员')
     if (group.status === 'paused') throw new GroupError('paused', '群组已暂停')
+    assertFlowGate(group, 'execution')
     const now = Date.now()
     const task = normalizeTask({
       id: newRecordId('tsk_'),
@@ -960,6 +1143,8 @@ export function createGroupManager(options) {
       assigneeSessionId: assignee.sessionId,
       priority: typeof body.priority === 'string' ? body.priority : 'P1',
       state: 'pending',
+      planId: typeof body.planId === 'string' ? body.planId : null,
+      cardId: typeof body.cardId === 'string' ? body.cardId : null,
       createdAt: now,
       updatedAt: now,
     })
@@ -971,6 +1156,7 @@ export function createGroupManager(options) {
       mentions: [assignee.sessionId],
       memberSessionId: typeof body.authorSessionId === 'string' ? body.authorSessionId : null,
       taskId: task.id,
+      purpose: 'execution',
       createdAt: now,
       deliveries: [{ sessionId: assignee.sessionId, state: 'queued', queuedAt: now }],
     })
@@ -984,7 +1170,7 @@ export function createGroupManager(options) {
       trimMessages(nextGroup)
       nextGroup.updatedAt = now
     })
-    const deliveries = await deliverTargets(root, groupId, message.id, [{ sessionId: assignee.sessionId, label: assignee.label, joinedAt: assignee.joinedAt }])
+    const deliveries = await deliverTargets(root, groupId, message.id, [{ sessionId: assignee.sessionId, label: assignee.label, joinedAt: assignee.joinedAt }], 'execution')
     return { taskId: task.id, messageId: message.id, deliveries }
   }
 
@@ -1020,6 +1206,229 @@ export function createGroupManager(options) {
       return task
     })
     return { groupId, task: document.groups.find((entry) => entry.id === groupId)?.tasks.find((entry) => entry.id === taskId) }
+  }
+
+  /* ---------- topic flow (contract v1) ---------- */
+
+  function requireFlowGroup(document, groupId) {
+    const group = document.groups.find((entry) => entry.id === groupId)
+    if (group === undefined) throw new GroupError('not-found', '群组不存在')
+    return group
+  }
+
+  /** Coerce a submitted plan payload into the bounded plan shape. */
+  function buildPlanInput(value) {
+    const source = value !== null && typeof value === 'object' ? value : {}
+    const summary = typeof source.summary === 'string' ? source.summary.trim() : ''
+    const sections = Array.isArray(source.sections)
+      ? source.sections
+          .filter((section) => section !== null && typeof section === 'object' && typeof section.heading === 'string')
+          .map((section) => ({ heading: section.heading, body: typeof section.body === 'string' ? section.body : '' }))
+          .slice(0, GROUP_MAX_PLAN_SECTIONS)
+      : []
+    const cards = Array.isArray(source.cards)
+      ? source.cards
+          .filter((card) => card !== null && typeof card === 'object' && typeof card.title === 'string' && card.title.trim().length > 0)
+          .map((card) => ({
+            title: card.title,
+            detail: typeof card.detail === 'string' ? card.detail : '',
+            acceptance: Array.isArray(card.acceptance) ? card.acceptance : [],
+            role: typeof card.role === 'string' ? card.role : null,
+            assigneeSessionId: typeof card.assigneeSessionId === 'string' ? card.assigneeSessionId : null,
+          }))
+          .slice(0, GROUP_MAX_PLAN_CARDS)
+      : []
+    return { summary, sections, cards }
+  }
+
+  /** topic → discuss: create the topic and open round 1. */
+  async function topicSet(root, body) {
+    const groupId = typeof body.groupId === 'string' ? body.groupId : ''
+    const title = typeof body.title === 'string' ? body.title.trim() : ''
+    if (title.length === 0) throw new GroupError('bad-request', '议题标题不能为空')
+    const maxRounds = Number.isFinite(Number(body.maxRounds))
+      ? Math.min(GROUP_MAX_FLOW_ROUNDS, Math.max(1, Number(body.maxRounds)))
+      : GROUP_MAX_FLOW_ROUNDS
+    const { document } = await mutate(root, (doc) => {
+      const group = requireFlowGroup(doc, groupId)
+      if (group.phase !== 'topic') throw new GroupError('bad-phase', '当前阶段不能新建议题（请先关闭或重开当前议题）')
+      if (group.topic !== null) throw new GroupError('topic-exists', '当前群组已有进行中的议题')
+      const now = Date.now()
+      group.topic = normalizeTopic({
+        id: newRecordId('tpc_'),
+        title,
+        detail: typeof body.detail === 'string' ? body.detail : '',
+        createdAt: now,
+        roundCount: 1,
+        maxRounds,
+      })
+      group.rounds = [...group.rounds, normalizeRound({ id: newRecordId('rnd_'), at: now, targets: group.members.map((member) => member.sessionId), state: 'open' })]
+      group.phase = 'discuss'
+      pushFlowLog(group, { action: 'topic', by: 'owner', note: title })
+      group.updatedAt = now
+    })
+    const group = document.groups.find((entry) => entry.id === groupId)
+    return { groupId, topic: group.topic, phase: group.phase }
+  }
+
+  /** discuss → discuss: open one extra discussion round (bounded by maxRounds). */
+  async function roundOpen(root, body) {
+    const groupId = typeof body.groupId === 'string' ? body.groupId : ''
+    const { document } = await mutate(root, (doc) => {
+      const group = requireFlowGroup(doc, groupId)
+      if (group.phase !== 'discuss') throw new GroupError('bad-phase', '只有讨论阶段可以追加一轮')
+      if (group.topic === null) throw new GroupError('bad-phase', '当前群组还没有议题')
+      if (group.topic.roundCount >= group.topic.maxRounds) {
+        throw new GroupError('round-limit', `讨论轮次已达上限（${String(group.topic.maxRounds)} 轮）`)
+      }
+      group.topic.roundCount += 1
+      group.rounds = [...group.rounds, normalizeRound({ id: newRecordId('rnd_'), at: Date.now(), targets: group.members.map((member) => member.sessionId), state: 'open' })]
+      pushFlowLog(group, { action: 'round', by: 'owner', note: `第 ${String(group.topic.roundCount)} 轮` })
+      group.updatedAt = Date.now()
+    })
+    const group = document.groups.find((entry) => entry.id === groupId)
+    return { groupId, roundCount: group.topic.roundCount, maxRounds: group.topic.maxRounds, round: group.rounds.at(-1) }
+  }
+
+  /** discuss/plan → plan|approve: store the plan card (draft or pending). */
+  async function planSubmit(root, body, options = {}) {
+    const groupId = typeof body.groupId === 'string' ? body.groupId : ''
+    const submit = body.submit === true
+    const input = buildPlanInput(body.plan ?? body)
+    if (input.summary.length === 0 && input.sections.length === 0 && input.cards.length === 0) {
+      throw new GroupError('plan-invalid', '方案内容为空')
+    }
+    if (submit && input.cards.length === 0) throw new GroupError('plan-invalid', '提交待确认的方案至少需要一张任务卡')
+    const { document } = await mutate(root, (doc) => {
+      const group = requireFlowGroup(doc, groupId)
+      if (group.topic === null) throw new GroupError('bad-phase', '请先发起议题')
+      if (group.phase !== 'discuss' && group.phase !== 'plan') throw new GroupError('bad-phase', '当前阶段不能提交方案')
+      if (submit) {
+        for (const card of input.cards) {
+          const assignee = card.assigneeSessionId === null ? null : findMember(group, card.assigneeSessionId)
+          if (assignee === null) throw new GroupError('plan-invalid', `任务卡「${card.title}」需要指派给群成员`)
+          card.assigneeSessionId = assignee.sessionId
+        }
+      }
+      const previous = group.plan
+      group.plan = normalizePlan({
+        id: previous?.id ?? newRecordId('pln_'),
+        version: (previous?.version ?? 0) + 1,
+        summary: input.summary,
+        sections: input.sections,
+        cards: input.cards,
+        status: submit ? 'pending' : 'draft',
+      })
+      group.phase = submit ? 'approve' : 'plan'
+      pushFlowLog(group, {
+        action: 'plan',
+        by: options.by === 'member' ? 'member' : 'owner',
+        sessionId: typeof options.sessionId === 'string' ? options.sessionId : null,
+        note: `v${String(group.plan.version)}${submit ? ' 待确认' : ' 草稿'}`,
+      })
+      group.updatedAt = Date.now()
+    })
+    const group = document.groups.find((entry) => entry.id === groupId)
+    return { groupId, plan: group.plan, phase: group.phase }
+  }
+
+  /** approve → execute: owner approval, then turn the plan cards into delivered task cards. */
+  async function planConfirm(root, body) {
+    const groupId = typeof body.groupId === 'string' ? body.groupId : ''
+    const note = typeof body.note === 'string' ? body.note.trim().slice(0, 1000) : ''
+    const { result } = await mutate(root, (doc) => {
+      const group = requireFlowGroup(doc, groupId)
+      if (group.phase !== 'approve') throw new GroupError('bad-phase', '当前阶段不是待确认')
+      const plan = group.plan
+      if (plan === null) throw new GroupError('plan-invalid', '没有可确认的方案')
+      if (plan.status !== 'pending') throw new GroupError('plan-invalid', '方案状态不是待确认')
+      if (plan.cards.length === 0) throw new GroupError('plan-invalid', '方案没有任务卡，无法执行')
+      plan.status = 'approved'
+      plan.approvedAt = Date.now()
+      plan.approvedBy = 'owner'
+      plan.rejectNote = ''
+      group.phase = 'execute'
+      pushFlowLog(group, { action: 'approve', by: 'owner', note })
+      group.updatedAt = Date.now()
+      return { planId: plan.id, cards: plan.cards.map((card) => ({ ...card })) }
+    })
+    const tasks = []
+    const deliveries = []
+    const failures = []
+    for (const card of result.cards) {
+      try {
+        const created = await createTask(root, {
+          groupId,
+          title: card.title,
+          detail: card.detail,
+          acceptance: card.acceptance,
+          assigneeSessionId: card.assigneeSessionId,
+          planId: result.planId,
+          cardId: card.id,
+        })
+        tasks.push({ taskId: created.taskId, cardId: card.id, assigneeSessionId: card.assigneeSessionId })
+        deliveries.push(...created.deliveries)
+      } catch (error) {
+        failures.push({
+          cardId: card.id,
+          code: error instanceof GroupError ? error.code : 'task-failed',
+          message: error instanceof Error ? error.message : String(error),
+        })
+      }
+    }
+    return { groupId, phase: 'execute', planId: result.planId, tasks, deliveries, failures }
+  }
+
+  /** approve → discuss: owner rejects the plan with a mandatory reason. */
+  async function planReject(root, body) {
+    const groupId = typeof body.groupId === 'string' ? body.groupId : ''
+    const note = typeof body.note === 'string' ? body.note.trim().slice(0, 1000) : ''
+    if (note.length === 0) throw new GroupError('bad-request', '打回方案必须写明原因')
+    const { document } = await mutate(root, (doc) => {
+      const group = requireFlowGroup(doc, groupId)
+      if (group.phase !== 'approve') throw new GroupError('bad-phase', '当前阶段不是待确认')
+      const plan = group.plan
+      if (plan === null) throw new GroupError('plan-invalid', '没有可打回的方案')
+      plan.status = 'rejected'
+      plan.rejectedAt = Date.now()
+      plan.rejectNote = note
+      group.phase = 'discuss'
+      pushFlowLog(group, { action: 'reject', by: 'owner', note })
+      group.updatedAt = Date.now()
+    })
+    const group = document.groups.find((entry) => entry.id === groupId)
+    return { groupId, phase: group.phase, plan: group.plan }
+  }
+
+  /** execute → closed: freeze the topic channel (read-only archive). */
+  async function flowClose(root, body) {
+    const groupId = typeof body.groupId === 'string' ? body.groupId : ''
+    const { document } = await mutate(root, (doc) => {
+      const group = requireFlowGroup(doc, groupId)
+      if (group.phase !== 'execute') throw new GroupError('bad-phase', '只有执行阶段可以关闭议题')
+      group.phase = 'closed'
+      pushFlowLog(group, { action: 'close', by: 'owner' })
+      group.updatedAt = Date.now()
+    })
+    const group = document.groups.find((entry) => entry.id === groupId)
+    return { groupId, phase: group.phase }
+  }
+
+  /** closed → topic: reopen a fresh topic (history stays in log). */
+  async function flowReopen(root, body) {
+    const groupId = typeof body.groupId === 'string' ? body.groupId : ''
+    const { document } = await mutate(root, (doc) => {
+      const group = requireFlowGroup(doc, groupId)
+      if (group.phase !== 'closed') throw new GroupError('bad-phase', '只有已关闭的议题可以重开')
+      group.phase = 'topic'
+      group.topic = null
+      group.plan = null
+      group.rounds = []
+      pushFlowLog(group, { action: 'reopen', by: 'owner' })
+      group.updatedAt = Date.now()
+    })
+    const group = document.groups.find((entry) => entry.id === groupId)
+    return { groupId, phase: group.phase }
   }
 
   /* ---------- tool helpers ---------- */
@@ -1115,6 +1524,8 @@ export function createGroupManager(options) {
     if (text.length === 0) throw new GroupError('bad-request', '消息不能为空')
     const { group } = await requireMember(root, agent.id, args?.group)
     if (group.status === 'paused') throw new GroupError('paused', '群组已暂停')
+    const purpose = normalizePurpose(args?.purpose)
+    assertFlowGate(group, purpose)
     const notify = args?.notify === 'all' || args?.notify === 'mentions' ? args.notify : 'none'
     let targets = []
     if (notify === 'all') {
@@ -1138,6 +1549,7 @@ export function createGroupManager(options) {
       mentions: targets.map((member) => member.sessionId),
       memberSessionId: agent.id,
       taskId: null,
+      purpose,
       createdAt: now,
       deliveries: targets.map((member) => ({ sessionId: member.sessionId, state: 'queued', queuedAt: now })),
     })
@@ -1149,8 +1561,47 @@ export function createGroupManager(options) {
       trimMessages(nextGroup)
       nextGroup.updatedAt = now
     })
-    const deliveries = targets.length > 0 ? await deliverTargets(root, group.id, message.id, targets) : []
+    const deliveries = targets.length > 0 ? await deliverTargets(root, group.id, message.id, targets, purpose) : []
     return { messageId: message.id, groupId: group.id, delivered: deliveries.filter((entry) => entry.state === 'delivered').length, rateLimited }
+  }
+
+  async function toolTopicRead(exec, args) {
+    const agent = toolAgent(exec)
+    const root = toolRoot(agent)
+    const { group } = await requireMember(root, agent.id, args?.group)
+    return {
+      group: { id: group.id, name: group.name, status: group.status },
+      flow: flowSummary(group),
+      me: { sessionId: agent.id, label: memberLabel(group, agent.id) },
+    }
+  }
+
+  async function toolPlanRead(exec, args) {
+    const agent = toolAgent(exec)
+    const root = toolRoot(agent)
+    const { group } = await requireMember(root, agent.id, args?.group)
+    return { group: { id: group.id, name: group.name }, phase: group.phase, topic: group.topic, plan: group.plan }
+  }
+
+  async function toolPlanWrite(exec, args) {
+    const agent = toolAgent(exec)
+    const root = toolRoot(agent)
+    const { group } = await requireMember(root, agent.id, args?.group)
+    const submit = args?.submit === true
+    const result = await planSubmit(
+      root,
+      {
+        groupId: group.id,
+        plan: {
+          summary: typeof args?.summary === 'string' ? args.summary : '',
+          sections: Array.isArray(args?.sections) ? args.sections : [],
+          cards: Array.isArray(args?.cards) ? args.cards : [],
+        },
+        submit,
+      },
+      { by: 'member', sessionId: agent.id },
+    )
+    return { groupId: group.id, plan: result.plan, phase: result.phase }
   }
 
   async function toolHandoff(exec, args) {
@@ -1237,6 +1688,13 @@ export function createGroupManager(options) {
     'groupTaskCreate',
     'groupTaskUpdate',
     'groupReconcile',
+    'groupTopicSet',
+    'groupRoundOpen',
+    'groupPlanSubmit',
+    'groupPlanConfirm',
+    'groupPlanReject',
+    'groupFlowClose',
+    'groupFlowReopen',
   ])
 
   async function handleRoute(op, body) {
@@ -1270,6 +1728,20 @@ export function createGroupManager(options) {
         const recovered = await reconcileRoot(root)
         return { recovered }
       }
+      case 'groupTopicSet':
+        return topicSet(root, body ?? {})
+      case 'groupRoundOpen':
+        return roundOpen(root, body ?? {})
+      case 'groupPlanSubmit':
+        return planSubmit(root, body ?? {})
+      case 'groupPlanConfirm':
+        return planConfirm(root, body ?? {})
+      case 'groupPlanReject':
+        return planReject(root, body ?? {})
+      case 'groupFlowClose':
+        return flowClose(root, body ?? {})
+      case 'groupFlowReopen':
+        return flowReopen(root, body ?? {})
       default:
         throw new GroupError('bad-op', `未知群组操作：${op}`)
     }
@@ -1349,6 +1821,11 @@ export function createGroupManager(options) {
             text: { type: 'string', description: 'Message text (bounded).' },
             notify: { type: 'string', enum: ['none', 'mentions', 'all'], description: 'Who should be woken.' },
             mentions: { type: 'array', items: { type: 'string' }, description: 'Member session ids or unique labels for notify="mentions".' },
+            purpose: {
+              type: 'string',
+              enum: ['discussion', 'execution'],
+              description: 'Delivery purpose. discussion (default) never wakes anyone unless notify is set; execution is rejected while the topic plan is not approved by the Owner.',
+            },
           },
           required: ['group', 'text'],
         },
@@ -1408,6 +1885,75 @@ export function createGroupManager(options) {
         (args, exec) => toolTaskClaim(exec, args),
       ),
     )
+    register(
+      toolDefinition(
+        'group_topic_read',
+        'Read the topic flow of a group I belong to: phase (topic/discuss/plan/approve/execute/closed), topic title, discussion rounds, plan status and which actions I may take. Read-only; use it before planning or discussing.',
+        {
+          type: 'object',
+          additionalProperties: false,
+          properties: { group: { type: 'string', description: 'Group id or unique name (omit for the first group).' } },
+          required: [],
+        },
+        (args, exec) => toolTopicRead(exec, args),
+      ),
+    )
+    register(
+      toolDefinition(
+        'group_plan_read',
+        'Read the current plan card of a group I belong to: summary, sections, task cards and status. Read-only.',
+        {
+          type: 'object',
+          additionalProperties: false,
+          properties: { group: { type: 'string', description: 'Group id or unique name (omit for the first group).' } },
+          required: [],
+        },
+        (args, exec) => toolPlanRead(exec, args),
+      ),
+    )
+    register(
+      toolDefinition(
+        'group_plan_write',
+        'Write or update the plan card of a group I belong to while the topic is in discuss/plan. By default the plan stays a draft; submit=true moves it to the Owner confirmation phase. You can never approve, reject or execute the plan yourself.',
+        {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            group: { type: 'string', description: 'Group id or unique name (omit for the first group).' },
+            summary: { type: 'string', description: 'Plan summary (bounded).' },
+            sections: {
+              type: 'array',
+              description: 'Plan sections (max 12).',
+              items: {
+                type: 'object',
+                additionalProperties: false,
+                properties: { heading: { type: 'string' }, body: { type: 'string' } },
+                required: ['heading'],
+              },
+            },
+            cards: {
+              type: 'array',
+              description: 'Task cards to create after the Owner approves (max 20).',
+              items: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                  title: { type: 'string' },
+                  detail: { type: 'string' },
+                  acceptance: { type: 'array', items: { type: 'string' } },
+                  role: { type: 'string' },
+                  assigneeSessionId: { type: 'string' },
+                },
+                required: ['title'],
+              },
+            },
+            submit: { type: 'boolean', description: 'Move the plan to Owner confirmation (requires at least one card, each assigned to a member).' },
+          },
+          required: ['group'],
+        },
+        (args, exec) => toolPlanWrite(exec, args),
+      ),
+    )
     return () => {
       for (const dispose of disposers.reverse()) {
         try {
@@ -1431,6 +1977,13 @@ export function createGroupManager(options) {
     sendMessage,
     createTask,
     updateTask,
+    topicSet,
+    roundOpen,
+    planSubmit,
+    planConfirm,
+    planReject,
+    flowClose,
+    flowReopen,
   }
 }
 
@@ -1447,4 +2000,11 @@ export const GROUP_ROUTE_OPS = new Set([
   'groupTaskCreate',
   'groupTaskUpdate',
   'groupReconcile',
+  'groupTopicSet',
+  'groupRoundOpen',
+  'groupPlanSubmit',
+  'groupPlanConfirm',
+  'groupPlanReject',
+  'groupFlowClose',
+  'groupFlowReopen',
 ])
