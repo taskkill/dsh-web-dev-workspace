@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.101 — 2026-11-01
+
+### Groups follow the workspace: switch refreshes group data and member candidates
+
+- **Symptom.** Switching the workspace could leave the New group form showing
+  sessions from the previous workspace, and a group load that was still in flight
+  could publish the old workspace's group document after the switch.
+- **Fix.** A workspace change now resets the group document, mentions and member
+  picks synchronously, pins the new root for candidate filtering, asks the client
+  session list to refresh, and discards stale load responses with a request token.
+  The New group form stays open so the refreshed candidate list is visible; an open
+  Groups tab is kept across the switch (other tabs still reset), so the reloaded
+  group list appears in place; picked members that no longer exist are pruned when
+  the session list changes.
+- **Verification.** `npm run check`, `npm run check:json` and `npm test` pass
+  (host smoke 39/39 + group client selftest, now asserting the switch-refresh
+  wiring, + group host selftest). Client-only change: refresh the page; plugin
+  `1.2.91`, root `1.2.101`.
+
 ## 1.2.100 — 2026-11-01
 
 ### Group members panel: wider column, actions no longer wrap

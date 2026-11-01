@@ -9501,6 +9501,7 @@ window.__ModuleLoader__.load({
         const groupsDirReadyRef = useRef(new Set())
         const groupsHostRef = useRef(false)
         const groupsRefreshRef = useRef(0)
+        const groupsLoadTokenRef = useRef(0)
         const [groupsHostMode, setGroupsHostMode] = useState(false)
         const groupsTimelineRef = useRef(null)
         const groupsInputRef = useRef(null)
@@ -9522,23 +9523,47 @@ window.__ModuleLoader__.load({
 
         useEffect(() => {
           disposeGroupCaptures()
+          groupsLoadTokenRef.current += 1
           groupsDocRef.current = null
-          groupsRootRef.current = null
+          groupsRootRef.current = state.root
           groupsVersionRef.current = null
           groupsDirReadyRef.current.clear()
+          groupsHostRef.current = false
+          groupsRefreshRef.current = 0
           setGroupsDoc(null)
           setGroupsActiveId(null)
+          setGroupsHostMode(false)
+          setGroupsError(null)
           setGroupsDraft('')
           setGroupsMentions([])
-          setGroupsError(null)
+          setGroupsMentionOpen(false)
+          setGroupsMentionQuery('')
+          setGroupsNewMembers([])
+          setGroupsNewError(null)
+          setGroupsAddMemberOpen(false)
+          setGroupsTaskOpen(false)
+          setGroupsTaskTitle('')
+          setGroupsTaskAcceptance('')
+          setGroupsTaskAssignee('')
+          setGroupsTaskError(null)
           if (state.root === null) return undefined
           if (isSshRootPath(state.root)) {
             setGroupsError(t('groups.sshUnsupported'))
             return undefined
           }
-          void loadGroups()
+          refreshGroupsSessions()
+          void loadGroups(true)
           return () => disposeGroupCaptures()
         }, [state.root])
+
+        useEffect(() => {
+          if (!groupsNewOpen) return
+          const available = new Set(groupCandidates().map((candidate) => candidate.sessionId))
+          setGroupsNewMembers((current) => {
+            const next = current.filter((sessionId) => available.has(sessionId))
+            return next.length === current.length ? current : next
+          })
+        }, [sessionsSnapshot, state.root, groupsNewOpen])
 
         useEffect(() => {
           if (!groupsHostMode || state.root === null) return undefined
@@ -9601,7 +9626,8 @@ window.__ModuleLoader__.load({
             setGroupsError(t('groups.sshUnsupported'))
             return
           }
-          if (groupsLoading && force !== true) return
+          const token = (groupsLoadTokenRef.current += 1)
+          const stale = () => store.get().root !== root || groupsLoadTokenRef.current !== token
           setGroupsLoading(true)
           setGroupsError(null)
           try {
@@ -9613,7 +9639,9 @@ window.__ModuleLoader__.load({
             } catch (error) {
               if (errorCode(error) !== 'bad-op') throw error
             }
+            if (stale()) return
             if (hostMode) {
+              if (stale()) return
               const parsed = normalizeGroupsDoc(hostValue ?? emptyGroupsDoc())
               groupsHostRef.current = true
               setGroupsHostMode(true)
@@ -9635,6 +9663,7 @@ window.__ModuleLoader__.load({
             } catch (error) {
               if (errorCode(error) !== 'not-found') throw error
             }
+            if (stale()) return
             let parsed = emptyGroupsDoc()
             if (value !== null) {
               let raw = null
@@ -9654,20 +9683,30 @@ window.__ModuleLoader__.load({
               previous !== null && parsed.groups.some((group) => group.id === previous) ? previous : (parsed.groups[0]?.id ?? null),
             )
           } catch (error) {
+            if (stale()) return
             setGroupsError(t('groups.loadFailed', { message: errorText(error) }))
             const empty = emptyGroupsDoc()
             groupsDocRef.current = empty
             setGroupsDoc(empty)
           } finally {
-            setGroupsLoading(false)
+            if (!stale()) setGroupsLoading(false)
+          }
+        }
+
+        function refreshGroupsSessions() {
+          const sessions = ctx.get('sessions')
+          if (sessions !== null && sessions !== undefined && typeof sessions.refresh === 'function') {
+            void sessions.refresh().catch(() => {})
           }
         }
 
         async function refreshGroupsHost() {
           const root = groupsRootRef.current ?? store.get().root
           if (root === null || groupsHostRef.current !== true) return
+          const requestRoot = root
           try {
             const value = await call('groupList', { root })
+            if (store.get().root !== requestRoot || groupsRootRef.current !== requestRoot) return
             const parsed = normalizeGroupsDoc(value ?? emptyGroupsDoc())
             groupsDocRef.current = parsed
             setGroupsDoc(parsed)
@@ -15664,21 +15703,29 @@ ${tail}
         function applyRoot(nextRoot, nextRoots, options = {}) {
           closeAllTerminalSessions()
           const roots = nextRoots ?? store.get().roots
-          store.set((current) => ({
-            ...current,
-            roots,
-            root: nextRoot,
-            rootTitle: roots.find((entry) => entry.path === nextRoot)?.title ?? basename(nextRoot),
-            levels: {},
-            expanded: { '': true },
-            selected: null,
-            tabs: [],
-            active: null,
-            paneView: 'files',
-            startError: null,
-          }))
+          store.set((current) => {
+            // Keep an open Groups page across a workspace switch: the group page
+            // reloads for the new root, so the owner sees the refreshed list
+            // immediately instead of having to reopen the tab.
+            const groupsTab =
+              current.tabs.find((tab) => tab !== null && typeof tab === 'object' && tab.mode === 'groups') ?? null
+            return {
+              ...current,
+              roots,
+              root: nextRoot,
+              rootTitle: roots.find((entry) => entry.path === nextRoot)?.title ?? basename(nextRoot),
+              levels: {},
+              expanded: { '': true },
+              selected: null,
+              tabs: groupsTab === null ? [] : [groupsTab],
+              active: groupsTab === null ? null : groupsTab.path,
+              paneView: 'files',
+              startError: null,
+            }
+          })
           rememberRoot(nextRoot)
-          setCompactView('tree')
+          const keptGroupsTab = store.get().tabs.some((tab) => tab !== null && typeof tab === 'object' && tab.mode === 'groups')
+          setCompactView(keptGroupsTab ? 'editor' : 'tree')
           setSearchResults(null)
           setSearchError(null)
           setMemoryEntries([])
