@@ -2,6 +2,138 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.100 — 2026-11-01
+
+### Group members panel: wider column, actions no longer wrap
+
+- **Symptom.** In the group members card the three row actions (Instruct / Open
+  session / Remove) were laid out beside the member name, so a long session title
+  squeezed them into vertical characters and each label broke across lines.
+- **Fix.** The right group column is wider (300 → 340px; compact 260 → 300px) and
+  each member row now stacks the name/status line above a dedicated actions row.
+  Long titles truncate with an ellipsis instead of competing with the buttons, and
+  action labels stay on one line. The task card keeps the existing single-line
+  actions.
+- **Verification.** `npm run check`, `npm run check:json` and `npm test` pass
+  (host smoke 39/39 + group client selftest + group host selftest). Client-only
+  change: refresh the page; plugin `1.2.91`, root `1.2.100`.
+
+## 1.2.99 — 2026-11-01
+
+### Session groups v1.1: Host-owned delivery, reply capture and member tools (one Harness restart)
+
+- **Host half.** New `groups.js` owns `.dsh/groups.json` for each workspace
+  (atomic write, symlink/out-of-root guards, corrupt documents are reported and
+  never silently cleared). Owner-only route ops cover group/member/task CRUD,
+  sending and an explicit reconcile: `groupList`, `groupGet`, `groupCreate`,
+  `groupUpdate`, `groupDelete`, `groupMemberAdd`, `groupMemberRemove`,
+  `groupSend`, `groupTaskCreate`, `groupTaskUpdate`, `groupReconcile`.
+- **Delivery and capture.** Messages are delivered with
+  `sessionController.resolveAgent` → `agent.followup` → `sessions.flush`;
+  replies are captured from `session/event` by anchoring on the delivered
+  marker and reading assistant output until `turn/end`. A missed reply (page
+  closed, Host restarted) is recovered with `sessionQuery.readSession` on the
+  next access or explicit reconcile, so closing the page no longer loses replies
+  in Host mode.
+- **Member tools.** Six globally registered tools are scoped to the calling
+  Session's membership: `group_list`, `group_inbox`, `group_send` (records by
+  default; wakes members only with `notify: "mentions" | "all"`, capped at three
+  group notifications per 10 minutes), `group_handoff` (one-hop task hand-off
+  with acceptance criteria), `group_task_update` (only the assignee, and only
+  in_progress/review/failed — `done` stays with the owner) and
+  `group_task_claim`. Tools cannot create/delete groups, add/remove members,
+  pause, or approve anything.
+- **Client dual mode.** The group page probes `groupList`; when the Host op
+  exists it switches to Host mode (owner actions go through Host ops and the page
+  refreshes every 3 s), otherwise it keeps the v1.0 browser store/delivery path.
+  **Restart Harness once and refresh the page** to activate Host mode.
+- **Trust framing and mode indicator.** Member-originated deliveries (peer `group_send`
+  or `group_handoff`) are framed as untrusted discussion, not Owner instructions; the
+  group header shows **Host sync** or **Page mode** so the owner can confirm whether the
+  restart activated the Host half.
+- **Verification.** `npm run check`, `npm run check:json` and `npm test` pass
+  (host smoke 39/39 + group client selftest + a new
+  `groups-host-selftest.mjs` covering routes, delivery frames, reply capture,
+  tool permissions, reconcile, corrupt-file handling and static wiring).
+  Plugin `1.2.91`, root `1.2.99`.
+
+## 1.2.98 — 2026-11-01
+
+### Group discussion: relay a reply to the other members, and instruct one member
+
+- **Discuss on demand.** Every member reply now has a **Discuss with others** action.
+  It creates an owner message that quotes that reply (bounded to 1.5 KB), targets the
+  other members with @mentions, and delivers it through the same queue/capture path;
+  their replies come back to the group timeline. It is deliberately **one hop**:
+  the client never auto-forwards a discussion reply on its own, so loops and token
+  spend stay under the owner's control (click again for another round).
+- **Instruct one member.** The member panel row gains **Instruct**: it inserts
+  `@member` into the composer and focuses it, so the owner can address one agent
+  without typing the mention by hand.
+- **Still not agent-initiated.** Members cannot call a tool to speak in the group or
+  hand work to each other yet; that needs the Host half (group tools +
+  `group_send`/`group_inbox` + a Harness restart) and remains the next step. This patch
+  keeps the current client-side delivery/reply-capture model.
+- **Verification.** `npm run check`, `npm run check:json` and `npm test` pass
+  (host smoke 39/39 + session-group client selftest, now asserting the relay and
+  instruct wiring). Refresh the page to load the new client bundle. Plugin `1.2.91`,
+  root `1.2.98`.
+
+## 1.2.97 — 2026-11-01
+
+### Group composer: typing @ opens a member picker
+
+- **Symptom.** Typing `@` in the group composer did nothing; members could only be
+  mentioned by toggling the chips below the input, which is not what the composer
+  hint promised.
+- **Fix.** `@` now opens a filtered member picker above the input: `↑`/`↓` move,
+  `Enter` inserts the highlighted member, `Esc` closes. Selecting inserts
+  `@label ` at the caret and marks that member as mentioned; deleting the text
+  removes the mention again. The chip row now inserts/removes the same label text,
+  so the composer text and the mentioned set stay in sync. The picker also shows
+  running members and a keyboard hint.
+- **Verification.** `npm run check`, `npm run check:json` and `npm test` pass
+  (host smoke 39/39 + the session-group client selftest, which now also covers the
+  mention-token parser and picker wiring). Refresh the page to load the new client
+  bundle. Plugin `1.2.91`, root `1.2.97`.
+
+## 1.2.96 — 2026-11-01
+
+### Session groups (v1.0, client-side MVP): several sessions in one group chat
+
+- **What you get.** A new **Groups** entry (sidebar overflow → Project → Groups, the
+  command palette, or the welcome screen) opens a full-width group page: create a
+  group from sessions in the current workspace, broadcast a message or @mention
+  specific members, watch each delivery arrive, and read replies back in one
+  timeline. A task board lets the owner create a task with acceptance criteria,
+  deliver it to one member, and move it to review/done after the reply. Groups
+  can be paused or deleted without touching the member sessions. Group state
+  lives in `.dsh/groups.json` for the workspace.
+- **How v1.0 delivers and collects replies.** The client retains each member
+  session, sends the framed group message through that session's own
+  `prompt()` (a normal user message carrying a `【群聊「…」· #msg_…】` marker and an
+  untrusted-context warning), watches the retained session's event window for the
+  marker, then captures the assistant text of the matching turn until `turn/end`.
+  That reply is appended to the group timeline; the full reply stays in the
+  member session, and **Open session** jumps back to it. The file is persisted
+  through the existing `read`/`write` workspace ops, so no Host restart is needed
+  for this version.
+- **Honest limits.** This first cut is deliberately client-side: closing the page
+  stops reply capture (delivered messages still run in their sessions), a reload
+  loses in-flight capture state, and there is no Host-side reconcile or
+  background delivery yet. A Host half (session-controller delivery + durable
+  group ownership) is the next step; the group document already carries the
+  deliveries/tasks shape it needs.
+- **Verification.** `npm run check`, `npm run check:json` and `npm test` pass; `npm test` now also runs a new
+  `groups-client-selftest.mjs` that extracts the group helpers and the reply-capture
+  state machine from the client bundle and asserts 30+ behaviours (delivery frames,
+  marker round-trip, turn matching, task review, locale coverage, tab/sidebar wiring). The
+  Host `write`/`read` round-trip for `.dsh/groups.json` was exercised against the
+  running workspace route (write → read → versioned rewrite → cleanup). The
+  served client bundle was re-composed with the new page (refresh the page to
+  load it). GUI click-through on a real browser is the remaining manual check.
+  Plugin `1.2.91`, root `1.2.96`.
+
 ## 1.2.94 — 2026-10-29
 
 ### Pipeline: the design stage's “Start and dispatch” button matched the other stages

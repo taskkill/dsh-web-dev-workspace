@@ -61,6 +61,7 @@ it for you.
   folder; remove stale workspace records from the picker.
 - **Floating DeepSeek chat** — keep the current conversation in a movable,
   resizable, collapsible panel while the file workspace is maximized.
+- **Session groups (v1.2.96, v1.0 client-side)** — open the full-width group page from the sidebar overflow (Project → Groups), the command palette or the welcome screen, add several sessions of the current workspace as members, then broadcast a message or @mention specific members: each target receives a marker-tagged user message in its own session, replies return to one group timeline, and a task board delivers a task card to one member and moves it to review after the reply. Group state lives in `.dsh/groups.json`. From v1.1 the Host half takes over: after **restarting Harness once and refreshing the page**, group delivery/reply capture run on the Host, and member sessions gain `group_list` / `group_inbox` / `group_send` / `group_handoff` / `group_task_*` tools to read the group, speak, hand off work and update their own tasks; before that restart the client falls back to the browser-delivery mode (keep the page open to collect replies).
 - **Agent collaboration** — send a selection to the conversation to explain, fix
   or write tests; nothing is sent until you choose an action.
 - **SSH remote folders** — browse and edit a remote directory over SFTP using the

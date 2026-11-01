@@ -1,0 +1,337 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1024" viewBox="0 0 1440 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Dev Workspace「群组」视图效果图：多个会话组成群聊完成任务</title>
+  <desc id="desc">1440×1024 浅色界面。左侧为项目侧栏（项目分组下的「群组」为当前视图）；主区为群组三栏：左栏群组列表（项目交付 A 组 / 接口重构讨论 / 模型对比实验），中栏群聊时间线（Owner 消息、成员回复、运行中、等待你处理、任务卡、composer），右栏成员状态与任务板。Owner 主持的会议制：发一条消息唤醒被点名或广播的成员会话，成员回复自动回到群聊。</desc>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", sans-serif; }
+    .page-title { font-size: 24px; font-weight: 700; fill: #0f1115; }
+    .page-sub { font-size: 13px; fill: #61666b; }
+    .section-label { font-size: 11px; font-weight: 600; fill: #8a9099; letter-spacing: 0.06em; }
+    .nav { font-size: 13px; fill: #4b5563; }
+    .nav-active { font-size: 13px; font-weight: 600; fill: #1d4ed8; }
+    .h1 { font-size: 16px; font-weight: 700; fill: #0f1115; }
+    .h2 { font-size: 13px; font-weight: 600; fill: #0f1115; }
+    .body { font-size: 12.5px; fill: #0f1115; }
+    .body-s { font-size: 11.5px; fill: #0f1115; }
+    .meta { font-size: 11px; fill: #61666b; }
+    .faint { font-size: 10.5px; fill: #8a9099; }
+    .name { font-size: 14px; font-weight: 600; fill: #0f1115; }
+    .link { font-size: 11px; fill: #2563eb; }
+    .link-s { font-size: 10.5px; fill: #2563eb; }
+    .btn-p { font-size: 13px; font-weight: 600; fill: #ffffff; }
+    .btn-s { font-size: 12px; fill: #0f1115; }
+    .chip { font-size: 11px; font-weight: 600; }
+    .status-ok { font-size: 11px; font-weight: 600; fill: #15803d; }
+    .status-warn { font-size: 11px; font-weight: 600; fill: #b45309; }
+    .status-idle { font-size: 11px; font-weight: 600; fill: #61666b; }
+    .task-title { font-size: 12.5px; font-weight: 600; fill: #0f1115; }
+    .composer-hint { font-size: 10.5px; fill: #8a9099; }
+  </style>
+
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="10" flood-color="#0f1115" flood-opacity="0.06"/>
+    </filter>
+    <filter id="shadow-soft" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#0f1115" flood-opacity="0.04"/>
+    </filter>
+    <clipPath id="frame-clip"><rect x="24" y="24" width="1392" height="976" rx="12"/></clipPath>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#2563eb"/>
+    </marker>
+  </defs>
+
+  <rect width="1440" height="1024" fill="#eceff3"/>
+  <g clip-path="url(#frame-clip)">
+    <rect x="24" y="24" width="1392" height="976" fill="#ffffff"/>
+
+    <!-- top bar -->
+    <rect x="24" y="24" width="1392" height="56" fill="#ffffff"/>
+    <line x1="24" y1="80" x2="1416" y2="80" stroke="#e3e6ea" stroke-width="1"/>
+    <text x="44" y="58" class="h2" style="font-size:13px;">Dev Workspace</text>
+    <rect x="150" y="42" width="430" height="28" rx="6" fill="#f2f4f7"/>
+    <text x="162" y="60" class="meta" style="font-family:'SFMono-Regular',Consolas,monospace;font-size:11px;">/data/dsh/home/dsh-web-powerfilebrowser/dsh-web-filebrowser</text>
+    <circle cx="1252" cy="56" r="4" fill="#16a34a"/>
+    <text x="1262" y="60" class="meta">1 个成员运行中</text>
+    <circle cx="1376" cy="56" r="14" fill="#e8efff"/>
+    <text x="1376" y="60.5" class="chip" fill="#1d4ed8" text-anchor="middle">O</text>
+
+    <!-- plugin sidebar -->
+    <rect x="24" y="80" width="260" height="920" fill="#fbfcfd"/>
+    <line x1="284" y1="80" x2="284" y2="1000" stroke="#e3e6ea" stroke-width="1"/>
+
+    <!-- project chip -->
+    <text x="44" y="112" class="h2">dsh-web-filebrowser</text>
+    <text x="44" y="130" class="faint">main · v1.2.94 · 工作区</text>
+
+    <!-- top level nav -->
+    <rect x="40" y="150" width="228" height="32" rx="6" fill="transparent"/>
+    <rect x="52" y="158" width="16" height="16" rx="3" fill="none" stroke="#61666b" stroke-width="1.4"/>
+    <text x="78" y="171" class="nav">工作台</text>
+    <rect x="52" y="190" width="16" height="16" rx="3" fill="none" stroke="#61666b" stroke-width="1.4"/>
+    <text x="78" y="203" class="nav">文件</text>
+    <circle cx="60" cy="227" r="7" fill="none" stroke="#61666b" stroke-width="1.4"/>
+    <line x1="65" y1="232" x2="71" y2="238" stroke="#61666b" stroke-width="1.4"/>
+    <text x="78" y="235" class="nav">搜索</text>
+
+    <!-- 项目 group -->
+    <text x="44" y="264" class="section-label">项目</text>
+    <rect x="52" y="276" width="16" height="16" rx="3" fill="none" stroke="#61666b" stroke-width="1.4"/>
+    <path d="M55 280h10M55 283h10M55 286h7" stroke="#61666b" stroke-width="1.3"/>
+    <text x="78" y="289" class="nav">待办</text>
+    <rect x="52" y="308" width="16" height="16" rx="3" fill="none" stroke="#61666b" stroke-width="1.4"/>
+    <path d="M56 312l4 4 4-4M60 316v8" stroke="#61666b" stroke-width="1.3"/>
+    <text x="78" y="321" class="nav">流水线</text>
+    <rect x="52" y="340" width="16" height="16" rx="3" fill="none" stroke="#61666b" stroke-width="1.4"/>
+    <path d="M56 344h8M56 348h8M56 352h5" stroke="#61666b" stroke-width="1.3"/>
+    <text x="78" y="353" class="nav">验收</text>
+
+    <!-- group view active -->
+    <rect x="40" y="372" width="228" height="32" rx="6" fill="#e8eeff"/>
+    <rect x="40" y="377" width="3" height="22" rx="1.5" fill="#2563eb"/>
+    <circle cx="60" cy="388" r="8" fill="none" stroke="#1d4ed8" stroke-width="1.6"/>
+    <circle cx="56.5" cy="385" r="2.2" fill="#1d4ed8"/>
+    <circle cx="63.5" cy="385" r="2.2" fill="#1d4ed8"/>
+    <circle cx="56.5" cy="392" r="2.2" fill="#1d4ed8"/>
+    <circle cx="63.5" cy="392" r="2.2" fill="#1d4ed8"/>
+    <text x="78" y="393" class="nav-active">群组</text>
+    <rect x="226" y="380" width="30" height="18" rx="9" fill="#2563eb"/>
+    <text x="241" y="393" class="chip" fill="#ffffff" text-anchor="middle" style="font-size:10px;">2</text>
+
+    <!-- 开发 group -->
+    <text x="44" y="428" class="section-label">开发</text>
+    <rect x="52" y="440" width="16" height="16" rx="3" fill="none" stroke="#61666b" stroke-width="1.4"/>
+    <path d="M56 448l3 3-3 3M64 454h4" stroke="#61666b" stroke-width="1.3"/>
+    <text x="78" y="453" class="nav">任务</text>
+    <circle cx="60" cy="491" r="7" fill="none" stroke="#61666b" stroke-width="1.4"/>
+    <path d="M60 487v8M57 495l3 4 3-4" stroke="#61666b" stroke-width="1.3"/>
+    <text x="78" y="495" class="nav">Git</text>
+    <rect x="52" y="508" width="16" height="16" rx="3" fill="none" stroke="#61666b" stroke-width="1.4"/>
+    <path d="M56 516h8M60 512v8" stroke="#61666b" stroke-width="1.3"/>
+    <text x="78" y="521" class="nav">记忆</text>
+    <rect x="52" y="540" width="16" height="16" rx="3" fill="none" stroke="#61666b" stroke-width="1.4"/>
+    <path d="M55 544h12M55 548h12M55 552h8" stroke="#61666b" stroke-width="1.3"/>
+    <text x="78" y="553" class="nav">备注</text>
+
+    <!-- sidebar footer -->
+    <line x1="44" y1="936" x2="264" y2="936" stroke="#e3e6ea" stroke-width="1"/>
+    <text x="44" y="962" class="faint">群组：3 个 · 1 个进行中</text>
+    <text x="44" y="982" class="faint">Owner 主持 · 成员为工作区会话</text>
+
+    <!-- main header -->
+    <text x="308" y="118" class="page-title">群组</text>
+    <text x="308" y="142" class="page-sub">把多个会话组成群聊，一起完成任务 · 成员各自保留上下文，Owner 主持每一轮</text>
+    <rect x="1150" y="96" width="122" height="34" rx="8" fill="#2563eb"/>
+    <text x="1211" y="118" class="btn-p" text-anchor="middle">＋ 新建群组</text>
+    <rect x="1284" y="96" width="108" height="34" rx="8" fill="#ffffff" stroke="#c9ced6"/>
+    <text x="1338" y="118" class="btn-s" text-anchor="middle">添加成员</text>
+    <line x1="284" y1="160" x2="1416" y2="160" stroke="#e3e6ea" stroke-width="1"/>
+
+    <!-- ===================== left groups column ===================== -->
+    <rect x="308" y="176" width="280" height="808" rx="10" fill="#ffffff" stroke="#e3e6ea" filter="url(#shadow-soft)"/>
+    <text x="324" y="204" class="h2">我的群组</text>
+    <text x="388" y="204" class="meta">· 3</text>
+
+    <!-- group item 1 (active) -->
+    <rect x="320" y="216" width="256" height="98" rx="8" fill="#eef4ff" stroke="#bfd6ff"/>
+    <text x="334" y="242" class="name">项目交付 A 组</text>
+    <rect x="482" y="227" width="80" height="22" rx="11" fill="#e7f8ee"/>
+    <circle cx="494" cy="238" r="3" fill="#16a34a"/>
+    <text x="502" y="242" class="status-ok">进行中</text>
+    <text x="334" y="264" class="meta">4 成员 · 2 待你处理</text>
+    <text x="334" y="286" class="faint">最近：全栈开发 14:18 已回复</text>
+    <text x="334" y="302" class="faint">目标：登录页改版交付到可验收</text>
+
+    <!-- group item 2 -->
+    <rect x="320" y="326" width="256" height="86" rx="8" fill="#ffffff" stroke="#e3e6ea"/>
+    <text x="334" y="352" class="name" style="font-size:13px;">接口重构讨论</text>
+    <rect x="496" y="337" width="66" height="22" rx="11" fill="#fff7e6"/>
+    <circle cx="508" cy="348" r="3" fill="#d97706"/>
+    <text x="516" y="352" class="status-warn" style="font-size:10.5px;">已暂停</text>
+    <text x="334" y="373" class="meta">3 成员 · 最后活动 2 小时前</text>
+    <text x="334" y="393" class="faint">最近：架构师 12:40 已回复</text>
+
+    <!-- group item 3 -->
+    <rect x="320" y="424" width="256" height="86" rx="8" fill="#ffffff" stroke="#e3e6ea"/>
+    <text x="334" y="450" class="name" style="font-size:13px;">模型对比实验</text>
+    <rect x="496" y="435" width="66" height="22" rx="11" fill="#f2f4f7"/>
+    <text x="529" y="450" class="status-idle" style="font-size:10.5px;" text-anchor="middle">已归档</text>
+    <text x="334" y="471" class="meta">2 成员 · 2026-10-28 创建</text>
+    <text x="334" y="491" class="faint">任务：三个模型各写一版方案</text>
+
+    <!-- new group -->
+    <rect x="320" y="524" width="256" height="42" rx="8" fill="#fbfcfd" stroke="#c9ced6" stroke-dasharray="4 3"/>
+    <text x="448" y="550" class="link" text-anchor="middle" style="font-size:12px;">＋ 新建群组</text>
+
+    <!-- hint card -->
+    <rect x="320" y="582" width="256" height="132" rx="8" fill="#f7f8fa" stroke="#e3e6ea"/>
+    <text x="336" y="606" class="h2" style="font-size:12px;">群组小提示</text>
+    <text x="336" y="628" class="meta">· 成员是当前工作区里的会话，</text>
+    <text x="336" y="646" class="meta">  各自保留自己的上下文。</text>
+    <text x="336" y="666" class="meta">· 群聊只共享消息与任务，不共享</text>
+    <text x="336" y="684" class="meta">  完整会话历史。</text>
+    <text x="336" y="704" class="meta">· 成员回复会自动回到群聊。</text>
+    <text x="336" y="730" class="faint">未受信任内容只作背景参考。</text>
+
+    <text x="324" y="952" class="faint">每次发送前会提示将唤醒几个会话。</text>
+
+    <!-- ===================== center timeline column ===================== -->
+    <rect x="600" y="176" width="496" height="808" rx="10" fill="#ffffff" stroke="#e3e6ea" filter="url(#shadow-soft)"/>
+    <line x1="600" y1="236" x2="1096" y2="236" stroke="#e3e6ea" stroke-width="1"/>
+
+    <!-- group header -->
+    <text x="620" y="204" class="h1">项目交付 A 组</text>
+    <circle cx="726" cy="199" r="4" fill="#16a34a"/>
+    <text x="736" y="203" class="status-ok">进行中</text>
+    <text x="620" y="224" class="meta">4 个会话 · Owner 主持 · 建群 2026-11-01 09:12</text>
+    <rect x="984" y="186" width="50" height="30" rx="6" fill="#ffffff" stroke="#c9ced6"/>
+    <text x="1009" y="206" class="btn-s" text-anchor="middle">暂停</text>
+    <rect x="1042" y="186" width="38" height="30" rx="6" fill="#ffffff" stroke="#c9ced6"/>
+    <text x="1061" y="206" class="btn-s" text-anchor="middle" style="font-size:14px;">⋯</text>
+
+    <!-- system event -->
+    <rect x="688" y="250" width="320" height="24" rx="12" fill="#f2f4f7"/>
+    <text x="848" y="266" class="faint" text-anchor="middle">群组成立 · 4 个会话加入 · 09:12</text>
+
+    <!-- owner message -->
+    <rect x="616" y="286" width="464" height="108" rx="10" fill="#eef4ff" stroke="#bfd6ff"/>
+    <text x="632" y="310" class="chip" fill="#1d4ed8">Owner</text>
+    <text x="680" y="310" class="faint">09:15 · 第 3 轮</text>
+    <text x="632" y="332" class="body">把登录页「记住我」改为默认开启；测试会话补一条迁移</text>
+    <text x="632" y="350" class="body">用例，其他成员先按原计划推进。</text>
+    <text x="632" y="378" class="meta">已投递 4/4 · 1 运行中 · 2 已回复</text>
+    <text x="1064" y="378" class="link" text-anchor="end">取消本轮</text>
+
+    <!-- member reply: product -->
+    <rect x="660" y="406" width="420" height="116" rx="10" fill="#ffffff" stroke="#e3e6ea"/>
+    <text x="676" y="430" class="body-s" style="font-weight:600;">产品经理 · 会话「登录页改版」</text>
+    <text x="1064" y="430" class="faint" text-anchor="end">09:18</text>
+    <text x="676" y="452" class="body">建议先确认旧会话兼容范围：rememberMe 默认值在</text>
+    <text x="676" y="470" class="body">v1 旧会话上可能需要迁移，我先出了范围清单：</text>
+    <text x="676" y="490" class="body-s" style="color:#2563eb;">→ docs/scope-login.md（3 类场景）</text>
+    <rect x="676" y="499" width="54" height="20" rx="10" fill="#e7f8ee"/>
+    <text x="703" y="513" class="status-ok" text-anchor="middle" style="font-size:10.5px;">已回复</text>
+    <text x="1064" y="513" class="link" text-anchor="end">查看会话 ↗</text>
+
+    <!-- member reply: dev running -->
+    <rect x="660" y="534" width="420" height="76" rx="10" fill="#ffffff" stroke="#e3e6ea"/>
+    <text x="676" y="558" class="body-s" style="font-weight:600;">全栈开发 · 会话「登录重构」</text>
+    <rect x="986" y="545" width="76" height="22" rx="11" fill="#e7f8ee"/>
+    <circle cx="998" cy="556" r="3" fill="#16a34a"/>
+    <text x="1006" y="560" class="status-ok" style="font-size:10.5px;">运行中</text>
+    <text x="676" y="582" class="body">已收到，正在改 rememberMe 默认值并补迁移分支…</text>
+    <text x="676" y="600" class="faint">已投递 12:03 · 本轮预计 3 分钟</text>
+
+    <!-- member waiting -->
+    <rect x="660" y="622" width="420" height="88" rx="10" fill="#fffbeb" stroke="#fde68a"/>
+    <text x="676" y="646" class="body-s" style="font-weight:600;">测试工程师 · 会话「登录回归」</text>
+    <rect x="950" y="633" width="112" height="22" rx="11" fill="#fff7e6"/>
+    <circle cx="962" cy="644" r="3" fill="#d97706"/>
+    <text x="970" y="648" class="status-warn" style="font-size:10.5px;">等待你处理</text>
+    <text x="676" y="670" class="body">需要确认是否覆盖旧登录用例后才能继续回归。</text>
+    <rect x="676" y="680" width="62" height="24" rx="6" fill="#2563eb"/>
+    <text x="707" y="696" class="chip" fill="#ffffff" text-anchor="middle" style="font-size:11px;">去处理</text>
+    <text x="1064" y="696" class="link" text-anchor="end">查看会话 ↗</text>
+
+    <!-- owner message with mention -->
+    <rect x="616" y="722" width="464" height="92" rx="10" fill="#eef4ff" stroke="#bfd6ff"/>
+    <text x="632" y="746" class="chip" fill="#1d4ed8">Owner</text>
+    <text x="680" y="746" class="faint">09:31 · @测试工程师</text>
+    <text x="632" y="768" class="body">@测试工程师 覆盖旧用例，同时补一条迁移用例；其他</text>
+    <text x="632" y="786" class="body">成员先按原计划推进。</text>
+    <text x="632" y="806" class="meta">定向投递 1/1 · 已送达</text>
+
+    <!-- composer -->
+    <line x1="600" y1="836" x2="1096" y2="836" stroke="#e3e6ea" stroke-width="1"/>
+    <rect x="616" y="852" width="464" height="68" rx="8" fill="#ffffff" stroke="#c9ced6"/>
+    <text x="632" y="876" class="meta" style="color:#8a9099;">发消息给群组…  输入 @ 可点名成员</text>
+    <text x="632" y="896" class="composer-hint">广播给 4 个成员 · 发送后唤醒成员会话</text>
+    <text x="1064" y="896" class="composer-hint" text-anchor="end">Enter 发送一轮</text>
+    <rect x="616" y="930" width="74" height="32" rx="8" fill="#ffffff" stroke="#c9ced6"/>
+    <text x="653" y="951" class="btn-s" text-anchor="middle">暂停</text>
+    <rect x="700" y="930" width="88" height="32" rx="8" fill="#ffffff" stroke="#c9ced6"/>
+    <text x="744" y="951" class="btn-s" text-anchor="middle">仅记录</text>
+    <rect x="944" y="930" width="136" height="32" rx="8" fill="#2563eb"/>
+    <text x="1012" y="951" class="btn-p" text-anchor="middle">发送一轮</text>
+    <text x="632" y="972" class="faint">本轮预算：最多 8 个目标 · 超时 10 分钟</text>
+
+    <!-- ===================== right column: members ===================== -->
+    <rect x="1112" y="176" width="280" height="270" rx="10" fill="#ffffff" stroke="#e3e6ea" filter="url(#shadow-soft)"/>
+    <text x="1128" y="204" class="h2">成员</text>
+    <text x="1160" y="204" class="meta">· 4</text>
+    <text x="1376" y="204" class="link" text-anchor="end">＋ 添加</text>
+
+    <!-- member rows -->
+    <circle cx="1128" cy="234" r="4" fill="#9aa1a9"/>
+    <text x="1144" y="232" class="body-s" style="font-weight:600;">产品经理</text>
+    <text x="1144" y="249" class="meta">会话「登录页改版」· 空闲</text>
+    <text x="1376" y="240" class="link-s" text-anchor="end">打开 ↗</text>
+    <line x1="1128" y1="262" x2="1376" y2="262" stroke="#f0f2f5" stroke-width="1"/>
+
+    <circle cx="1128" cy="286" r="4" fill="#16a34a"/>
+    <text x="1144" y="284" class="body-s" style="font-weight:600;">全栈开发</text>
+    <text x="1144" y="301" class="meta">会话「登录重构」· 运行中</text>
+    <text x="1376" y="292" class="link-s" text-anchor="end">打开 ↗</text>
+    <line x1="1128" y1="314" x2="1376" y2="314" stroke="#f0f2f5" stroke-width="1"/>
+
+    <circle cx="1128" cy="338" r="4" fill="#d97706"/>
+    <text x="1144" y="336" class="body-s" style="font-weight:600;">测试工程师</text>
+    <text x="1144" y="353" class="meta">会话「登录回归」· 等待你处理</text>
+    <text x="1376" y="344" class="link-s" text-anchor="end">去处理 ↗</text>
+    <line x1="1128" y1="366" x2="1376" y2="366" stroke="#f0f2f5" stroke-width="1"/>
+
+    <circle cx="1128" cy="390" r="4" fill="#9aa1a9"/>
+    <text x="1144" y="388" class="body-s" style="font-weight:600;">架构师</text>
+    <text x="1144" y="405" class="meta">会话「接口设计评审」· 空闲</text>
+    <text x="1376" y="396" class="link-s" text-anchor="end">打开 ↗</text>
+
+    <rect x="1128" y="418" width="248" height="16" rx="4" fill="#f7f8fa"/>
+    <text x="1252" y="430" class="faint" text-anchor="middle">成员回复自动回收，不复制会话历史</text>
+
+    <!-- ===================== right column: tasks ===================== -->
+    <rect x="1112" y="462" width="280" height="522" rx="10" fill="#ffffff" stroke="#e3e6ea" filter="url(#shadow-soft)"/>
+    <text x="1128" y="490" class="h2">任务板</text>
+    <text x="1176" y="490" class="meta">· 3</text>
+    <text x="1376" y="490" class="link" text-anchor="end">＋ 新建</text>
+
+    <!-- task 1 -->
+    <rect x="1128" y="502" width="248" height="88" rx="8" fill="#fbfcfd" stroke="#e3e6ea"/>
+    <text x="1144" y="526" class="task-title">登录页记住我默认开启</text>
+    <rect x="1296" y="511" width="64" height="20" rx="10" fill="#e7f8ee"/>
+    <text x="1328" y="525" class="status-ok" text-anchor="middle" style="font-size:10.5px;">进行中</text>
+    <text x="1144" y="545" class="meta">全栈开发 · P1 · 已投递</text>
+    <rect x="1144" y="558" width="216" height="4" rx="2" fill="#e3e6ea"/>
+    <rect x="1144" y="558" width="130" height="4" rx="2" fill="#2563eb"/>
+    <text x="1144" y="578" class="faint">关联：开发实现 · 验收 2 条</text>
+
+    <!-- task 2 -->
+    <rect x="1128" y="600" width="248" height="88" rx="8" fill="#fbfcfd" stroke="#e3e6ea"/>
+    <text x="1144" y="624" class="task-title">迁移用例补充</text>
+    <rect x="1296" y="609" width="64" height="20" rx="10" fill="#fff7e6"/>
+    <text x="1328" y="623" class="status-warn" text-anchor="middle" style="font-size:10.5px;">待确认</text>
+    <text x="1144" y="643" class="meta">测试工程师 · P0 · 已回复</text>
+    <rect x="1144" y="656" width="216" height="4" rx="2" fill="#e3e6ea"/>
+    <rect x="1144" y="656" width="216" height="4" rx="2" fill="#16a34a"/>
+    <text x="1144" y="676" class="faint">等待 Owner 确认 · 回复见时间线</text>
+
+    <!-- task 3 -->
+    <rect x="1128" y="698" width="248" height="88" rx="8" fill="#fbfcfd" stroke="#e3e6ea"/>
+    <text x="1144" y="722" class="task-title">更新登录说明文档</text>
+    <rect x="1296" y="707" width="64" height="20" rx="10" fill="#eef2f6"/>
+    <text x="1328" y="721" class="status-idle" text-anchor="middle" style="font-size:10.5px;">已完成</text>
+    <text x="1144" y="741" class="meta">架构师 · P2 · 产物已回填</text>
+    <rect x="1144" y="754" width="216" height="4" rx="2" fill="#e3e6ea"/>
+    <rect x="1144" y="754" width="216" height="4" rx="2" fill="#8a9099"/>
+    <text x="1144" y="774" class="faint">docs/login.md · 2026-11-01</text>
+
+    <!-- new task -->
+    <rect x="1128" y="796" width="248" height="40" rx="8" fill="#fbfcfd" stroke="#c9ced6" stroke-dasharray="4 3"/>
+    <text x="1252" y="821" class="link" text-anchor="middle" style="font-size:12px;">＋ 新建任务</text>
+
+    <text x="1128" y="868" class="faint">任务卡投递到成员会话；</text>
+    <text x="1128" y="886" class="faint">回复自动回到群聊。</text>
+    <text x="1128" y="906" class="faint">完成需 Owner 确认或验收证据。</text>
+
+    <rect x="1128" y="930" width="248" height="40" rx="8" fill="#f2f4f7"/>
+    <text x="1252" y="955" class="faint" text-anchor="middle">群组不改变流水线 / 审批闸门</text>
+  </g>
+</svg>

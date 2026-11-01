@@ -27,6 +27,7 @@ import * as assignments from './assignments.js'
 import * as acceptance from './acceptance.js'
 import * as agentTools from './agent-tools.js'
 import * as delivery from './delivery.js'
+import * as groups from './groups.js'
 import * as memory from './memory.js'
 import * as pipeline from './pipeline.js'
 import * as review from './review.js'
@@ -168,6 +169,11 @@ export function apply(ctx) {
   // Long-lived managers are created before the browser route effect so the
   // model tools (task runner, preview shares, workspace status) and the
   // browser routes share exactly one instance per plugin lifetime.
+  const groupManager = groups.createGroupManager({
+    ctx,
+    resolveRoot: (hostCtx, requested) => resolveRoot(hostCtx, requested),
+    logger: console,
+  })
   const services = {
     ctx,
     resolveRoot: (requested) => resolveRoot(ctx, requested),
@@ -183,6 +189,7 @@ export function apply(ctx) {
   }
   // Cross-session memory is optional: a deployment without the tools and
   // system-prompt services keeps the file browser fully usable.
+  ctx.effect(() => groupManager.listenSessionEvents(), 'dsh-web-filebrowser: session group capture')
   ctx.inject(['tools', 'systemPrompt'], (toolsCtx) => {
     toolsCtx.effect(() => memory.registerMemoryTools(toolsCtx), 'dsh-web-filebrowser: workspace memory tools')
     toolsCtx.effect(() => memory.registerMemoryPrompt(toolsCtx), 'dsh-web-filebrowser: workspace memory prompt')
@@ -196,6 +203,7 @@ export function apply(ctx) {
     toolsCtx.effect(() => workspaceState.registerWorkspaceStateTools(toolsCtx, services), 'dsh-web-filebrowser: workspace status tool')
     toolsCtx.effect(() => workspaceState.registerWorkspaceStatePrompt(toolsCtx, services), 'dsh-web-filebrowser: workspace status prompt')
     toolsCtx.effect(() => delivery.registerDeliveryTools(toolsCtx), 'dsh-web-filebrowser: delivery tools')
+    toolsCtx.effect(() => groupManager.registerTools(toolsCtx), 'dsh-web-filebrowser: session group tools')
   })
   ctx.effect(() => {
     let disposed = false
@@ -221,7 +229,7 @@ export function apply(ctx) {
         },
       )
     }
-    register(ROUTE, ['GET', 'POST'], (request) => handleRequest(ctx, request), 'its API route')
+    register(ROUTE, ['GET', 'POST'], (request) => handleRequest(ctx, request, groupManager), 'its API route')
     register(LEGACY_ROUTE, ['GET', 'POST'], (request) => handleRequest(ctx, request), 'its legacy API route')
     register(ROUTE_SSH_UPLOAD, ['POST'], (request) => handleSshUpload(request), 'the SSH upload route')
     register(LEGACY_ROUTE_SSH_UPLOAD, ['POST'], (request) => handleSshUpload(request), 'the legacy SSH upload route')
@@ -252,7 +260,7 @@ export const inject = ['connection']
  * @param request - incoming request.
  * @returns JSON or binary response.
  */
-async function handleRequest(ctx, request) {
+async function handleRequest(ctx, request, groupManager) {
   try {
     if (request.method === 'GET') return await handleGet(ctx, request)
     if (request.method !== 'POST') return json({ ok: false, error: failure('bad-method', '仅支持 GET 与 POST') }, 405)
@@ -269,7 +277,7 @@ async function handleRequest(ctx, request) {
       const password = typeof body.password === 'string' && body.password.length > 0 ? body.password : undefined
       return json({ ok: true, value: await ssh.test(typeof body.spec === 'string' ? body.spec : '', password) })
     }
-    const value = await dispatch(ctx, body.op, body)
+    const value = await dispatch(ctx, body.op, body, groupManager)
     return json({ ok: true, value })
   } catch (error) {
     if (error instanceof SideError) {
@@ -290,7 +298,7 @@ async function handleRequest(ctx, request) {
  * @param body - request body.
  * @returns operation value.
  */
-async function dispatch(ctx, op, body) {
+async function dispatch(ctx, op, body, groupManager) {
   switch (op) {
     case 'roots':
       return listRoots(ctx)
@@ -429,6 +437,7 @@ async function dispatch(ctx, op, body) {
     case 'update':
       return updatePlugin()
     default:
+      if (groupManager !== undefined && groups.GROUP_ROUTE_OPS.has(op)) return groupManager.handleRoute(op, body)
       throw new SideError('bad-op', `未知操作：${op}`)
   }
 }

@@ -19,6 +19,7 @@
     "terminal.js",
     "acceptance.js",
     "assignments.js",
+    "groups.js",
     "delivery.js",
     "pipeline.js",
     "preview.js",
