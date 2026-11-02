@@ -1632,6 +1632,9 @@ window.__ModuleLoader__.load({
       'groups.namePlaceholder': '例如：项目交付 A 组',
       'groups.goalPlaceholder': '这个群要一起完成什么？（可选）',
       'groups.chooseMembers': '选择成员会话（至少 1 个）',
+      'groups.candidatesFrom': '当前工作区「{name}」· {count} 个会话',
+      'groups.workspaceLoading': '正在读取工作区会话…',
+      'groups.notWorkspace': '当前目录不是 Harness 工作区，无法选择成员会话',
       'groups.create': '创建群组',
       'groups.createHint': '成员是当前工作区里的会话；每个会话保留自己的上下文，群聊只共享消息与任务。',
       'groups.noCandidate': '当前工作区没有可用会话（请先在 Harness 中创建会话）',
@@ -3172,6 +3175,9 @@ window.__ModuleLoader__.load({
       'groups.namePlaceholder': 'e.g. Project delivery A',
       'groups.goalPlaceholder': 'What should this group finish together? (optional)',
       'groups.chooseMembers': 'Choose member sessions (at least 1)',
+      'groups.candidatesFrom': 'Workspace “{name}” · {count} sessions',
+      'groups.workspaceLoading': 'Loading workspace sessions…',
+      'groups.notWorkspace': 'This directory is not a Harness Workspace, so member sessions are unavailable',
       'groups.create': 'Create group',
       'groups.createHint': 'Members are sessions in this workspace; each keeps its own context, and the group shares only messages and tasks.',
       'groups.noCandidate': 'No eligible sessions in this workspace yet (create a session in Harness first)',
@@ -9576,6 +9582,11 @@ window.__ModuleLoader__.load({
       return { version: GROUPS_VERSION, updatedAt: Number(value.updatedAt) || 0, groups: cleaned }
     }
 
+    function sameWorkspaceRoot(left, right) {
+      const normalize = (value) => String(value ?? '').replace(/\\/gu, '/').replace(/\/+$/u, '')
+      return normalize(left) === normalize(right)
+    }
+
     function groupsPathWithin(cwd, root) {
       if (typeof cwd !== 'string' || typeof root !== 'string' || root.length === 0) return false
       const normalize = (value) => value.replace(/\\/gu, '/').replace(/\/+$/u, '')
@@ -9694,10 +9705,8 @@ window.__ModuleLoader__.load({
         const inSidebarTab = typeof props?.useTabInfo === 'function'
         const inlineChatSlot = inSidebarTab ? CHAT_SIDEBAR_INLINE_SLOT : CHAT_INLINE_SLOT
         const workspaceSnapshot =
-          typeof props?.useWorkspaces === 'function'
-            ? props.useWorkspaces((snapshot) => snapshot.items)
-            : EMPTY_WORKSPACES
-        const workspaceItems = Array.isArray(workspaceSnapshot) ? workspaceSnapshot : EMPTY_WORKSPACES
+          typeof props?.useWorkspaces === 'function' ? props.useWorkspaces((snapshot) => snapshot) : null
+        const workspaceItems = Array.isArray(workspaceSnapshot?.items) ? workspaceSnapshot.items : EMPTY_WORKSPACES
         const sessionsSnapshot =
           typeof props?.useSessions === 'function' ? props.useSessions((snapshot) => snapshot) : null
         const [draft, setDraft] = useState(null)
@@ -9946,16 +9955,34 @@ window.__ModuleLoader__.load({
           return doc.groups.find((group) => group.id === groupsActiveId) ?? doc.groups[0] ?? null
         }
 
+        function groupWorkspaceInfo() {
+          const root = groupsRootRef.current ?? store.get().root
+          if (root === null) return { root: null, workspace: undefined }
+          return { root, workspace: workspaceItems.find((item) => sameWorkspaceRoot(item.path, root)) }
+        }
+
         function groupCandidates() {
           const root = groupsRootRef.current ?? store.get().root
           const snapshot = sessionsSnapshot
           if (root === null || snapshot === null || !Array.isArray(snapshot.ids)) return []
+          const workspace = workspaceItems.find((item) => sameWorkspaceRoot(item.path, root))
+          const archived = new Set(Array.isArray(workspaceSnapshot?.archivedSessionIds) ? workspaceSnapshot.archivedSessionIds : [])
+          // Wait for the Workspace list instead of falling back to a cwd prefix:
+          // the plugin root may be a parent of several registered Workspaces, and
+          // a prefix match would offer their sessions (and archived sessions) as
+          // group members even though Harness never shows them in this Workspace.
+          if (workspace === undefined && workspaceItems.length === 0) return []
+          const memberIds = workspace === undefined ? null : new Set(workspace.sessionIds)
           const result = []
           for (const sessionId of snapshot.ids) {
+            if (archived.has(sessionId)) continue
+            if (memberIds !== null && !memberIds.has(sessionId)) continue
             const row = snapshot.byId?.[sessionId]
-            if (row === null || row === undefined || row.origin === 'subagent') continue
-            const cwd = typeof row.cwd === 'string' ? row.cwd : ''
-            if (!groupsPathWithin(cwd, root)) continue
+            if (row === null || row === undefined || row.origin === 'subagent' || row.parentId !== undefined || row.blank === true) continue
+            if (memberIds === null) {
+              const cwd = typeof row.cwd === 'string' ? row.cwd : ''
+              if (!groupsPathWithin(cwd, root)) continue
+            }
             result.push({
               sessionId,
               label: typeof row.displayTitle === 'string' && row.displayTitle.trim().length > 0 ? row.displayTitle.trim() : sessionId.slice(0, 12),
@@ -21591,6 +21618,15 @@ ${tail}
                   { type: 'button', className: 'ds-linkbtn ds-grp-pickteam', onClick: pickGroupsTeam },
                   t('groups.flow.pickTeam'),
                 ),
+              ),
+              h(
+                'div',
+                { className: 'ds-grp-form-meta' },
+                workspaceItems.length === 0
+                  ? t('groups.workspaceLoading')
+                  : groupWorkspaceInfo().workspace === undefined
+                    ? t('groups.notWorkspace')
+                    : t('groups.candidatesFrom', { name: groupWorkspaceInfo().workspace.title, count: String(candidates.length) }),
               ),
               h(
                 'div',
@@ -33451,6 +33487,7 @@ h(
 .ds-grp-form { display: flex; flex-direction: column; gap: 6px; padding: 9px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 9px; background: var(--dsw-alias-bg-layer-2); }
 .ds-grp-form-title { font-size: 12px; font-weight: 650; color: var(--dsw-alias-label-primary); }
 .ds-grp-form-label { font-size: 11px; color: var(--dsw-alias-label-secondary); }
+.ds-grp-form-meta { margin: -2px 0 2px; font-size: 10.5px; color: var(--dsw-alias-label-caption); }
 .ds-grp-field { width: 100%; padding: 6px 8px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 7px; background: var(--dsw-alias-bg-base); color: var(--dsw-alias-label-primary); font: inherit; font-size: 12px; }
 .ds-grp-field:focus { outline: none; border-color: var(--dsw-alias-brand-primary); }
 .ds-grp-field-area { min-height: 62px; resize: vertical; line-height: 1.45; }

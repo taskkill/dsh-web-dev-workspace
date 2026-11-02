@@ -332,6 +332,7 @@ check('command palette entry', source.includes("{ id: 'groups', label: t('groups
 check('group tab factory', source.includes("const path = 'groups:home'") && source.includes("mode: 'groups'"))
 check('mention picker wiring', source.includes("className: 'ds-grp-mention-pop'") && source.includes('groupMentionToken(value, event.target.selectionStart') && source.includes('insertGroupMention(member)'))
 check('workspace switch refreshes groups', source.includes('groupsLoadTokenRef.current += 1') && source.includes('function refreshGroupsSessions()') && source.includes('sessions.refresh()') && source.includes('setGroupsNewMembers([])'))
+check('candidates follow the Harness Workspace', source.includes('workspace.sessionIds') && source.includes('archivedSessionIds') && source.includes('row.parentId !== undefined') && source.includes('row.blank === true'))
 check('open Groups tab survives a workspace switch', source.includes('Keep an open Groups page across a workspace switch') && source.includes('tabs: groupsTab === null ? [] : [groupsTab]'))
 check('discussion relay wiring', source.includes('relayGroupReply(group.id, message.id)') && source.includes("t('groups.relayDiscuss')"))
 check('member instruct wiring', source.includes('commandGroupMember(member)') && source.includes("t('groups.commandMember')"))

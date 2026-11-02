@@ -2,6 +2,32 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.103 — 2026-11-02
+
+### Group member candidates now follow the Harness Workspace (foreign/archived sessions removed)
+
+- **Symptom.** The New group member list showed sessions such as several repeated
+  “beidiao” entries that the Harness sidebar did not show in this Workspace.
+- **Cause.** Candidates were filtered by a `cwd` prefix under the plugin's current
+  root. When that root is a parent of several registered Workspaces, the prefix
+  also matched sessions belonging to those other Workspaces; child/subagent
+  Sessions (shown under their parent, not as top-level rows), archived Sessions
+  (hidden by default) and blank Sessions could slip in as well.
+- **Fix.** Candidates now come from the Harness Workspace projection: the current
+  Workspace row's accounted `sessionIds` (`items[].sessionIds`), minus the global
+  archived set, subagent Sessions and blank Sessions. The `cwd` fallback only
+  applies when the Workspace row is unavailable (e.g. the Workspace list is still
+  loading). The same scoped list feeds the New group form and the one-click OPC
+  team picker (`按 OPC 团队一键选择`).
+- **Why some sessions may still be “invisible” in Harness.** The sidebar only shows
+  the first batch of a Workspace (use **Show more**) and hides archived Sessions
+  by default; archived ones are now excluded from candidates, and folded ones are
+  legitimate members that “Show more” reveals.
+- **Verification.** `npm run check`, `npm run check:json` and `npm test` pass
+  (host smoke 39/39 + group client selftest, now asserting the Workspace-scoped
+  candidate wiring, + group host selftest). Client-only change: refresh the page;
+  plugin `1.2.92`, root `1.2.103`.
+
 ## 1.2.102 — 2026-11-01
 
 ### 群组议题流程：议题 → 讨论 → 方案 → Owner 确认 → 执行（Host 半需重启一次 Harness）
