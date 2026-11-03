@@ -40,6 +40,16 @@
 
 **快速模式**（`gateMode=fast`）：四个中间阶段（product/development/testing/acceptance）提交后自动通过并推进；**design（设计确认）、approval（人工确认）与 release（发布）永远是人工闸门**，快速模式也不会自动通过它们。设计阶段必须由你看过截图 / HTML 渲染预览并点通过后，开发阶段才能启动；普通模式（normal）下每个阶段都停在「待评审」等你点。
 
+**证据闸门（v1.2.105）**：testing 阶段提交时，验收清单里**任何 `pass` 但没有任何证据的验收项**会让提交直接失败并列出这些项——阶段保持 `active`，补 `acceptance_evidence_add`（或把证据路径写进 `acceptance_update` 的 note，路径会被自动识别）后再提交即可，不用浪费你一轮评审。其它阶段的产物问题仍只是非阻断 `warnings`（这是既定行为，不改成阻断）。
+
+**规则版本戳（v1.2.105）**：每次提交会把当时的「角色手册 + 注入规则」推算成 12 位版本号写进 `mandate.version`（存于 `.dsh/pipeline.json`，旧文档没有该字段则视为不 stale）。手册或注入规则改动后，已提交/已通过但版本不同的阶段显示 `stale: true`，并在 `pipeline_status` 与阶段提示里标 `rules-updated, recheck`，提示先复核结论再继续推进；重新提交即写入当前版本。面板徽标沿用现有渲染，暂未单独加视觉元素。
+
+**质量锚点（v1.2.106，省 token 不省质量）**：系统提示瘦身只删「在各阶段提示里已有副本」的内容，纪律本身没有丢——`pipeline_start_stage` 的结果会明确要求先取 `pipeline_stage_prompt`，而 `scripts/selftest/docs-spec.mjs` 用关键词锚点逐关校验角色提示仍包含调研（≥3 来源 / web_search / 借鉴决策表）、设计（4.5:1 / 44×44 / 八态 / 360-768-1280 / ARIA / 自检评分 / before-after）、工程（许可证矩阵 / SPDX / GPL / AGPL / CVE / npm audit / engineering-research.md）、测试（正常异常边界回归 / 复现步骤）与复核（三项专业质量复核 / UI 变更证据 / 建议打回 / 重跑）的硬要求。任何一次裁剪把纪律删掉，测试就红，而不是质量悄悄下降。
+
+**反复与停滞（v1.2.107）**：① 同一阶段被打回 **3 次**即升级——阶段 note 与后续阶段提示会写「请 Owner 决定方向（换方案 / 调整范围 / 终止），不要继续自动重试」，`pipeline_status` 对应行标 `⚠ rejected 3x`，避免「打回→修→再打回」无限烧 token；② `active` 阶段超过 **6 小时**没有任何文档更新视为停滞，只在 `workspace_status` 的 warnings 与工作区简报里加一行（健康时不加字，符合「安静优先」）；阈值是常量，改判定改 `STALLED_STAGE_MS`。
+
+**UI 变更证据（v1.2.107）**：design / testing / acceptance 三关的角色提示统一要求「同一场景、同一视口（360/768/1280）、同一主题」的 **before / after** 对比截图，并标注基线版本与改动版本；只有 after 算不完整，改动后旧截图视为过期，acceptance 复核把缺失列为阻断项（对应开源参考里最硬的一条交付规则）。
+
 ## 3. 一次完整交付怎么走
 
 > **触发范围**：本节的七阶段流程只用于从工作台 / 流水线面板发起的交付需求；在对话框里直接提出的需求按 Harness 默认方式直接完成（不建流水线、不写验收清单、不派角色队友），除非 Owner 明确要求走流水线。
@@ -80,7 +90,7 @@
 
 | 数据 | 位置 | 说明 |
 |---|---|---|
-| 流水线状态 | `.dsh/pipeline.json` | 需求、七阶段状态、摘要、产物、发布记录；原子写、按工作区隔离 |
+| 流水线状态 | `.dsh/pipeline.json` | 需求、七阶段状态、摘要、产物、发布记录；原子写、按工作区隔离。每阶段另存 `mandate`（提交时的规则版本戳） |
 | 验收清单 | `.dsh/acceptance.json` | 产品经理写、测试回填、项目经理 Agent 复核、你评审 |
 | 阶段文档 | `docs/pipeline/*.md` | 需求分析、设计说明、测试报告、**验收复核报告**、发布记录（建议路径，可在产物里引用任意文件） |
 | 设计资源/证据 | `.dsh/evidence/`、`.dsh/pipeline/design/` | 截图/设计稿/证据；`.dsh/` 默认不进 Git |
@@ -122,3 +132,19 @@
 - 任务/环境工具只接受 `task_detect` 的白名单命令，不提供任意 shell；`http_probe` 只允许 loopback。
 - 每个阶段建议用独立子代理或会话执行，避免上下文互相污染；角色提示词已包含边界，但最终约束靠工具与你的评审。
 - 自动化程度取决于团队编排：本仓库提供状态机与闸门，具体「谁来做」由 Lead 用原生团队工具决定。
+
+## 8. 不采纳的设计（Rejected concepts）
+
+对照 [dsh-superagent-prototype](https://github.com/deepseek-ai/dsh-superagent-prototype) 后的取舍，完整分析见 [SUPERAGENT_BORROWING.md](proposals/SUPERAGENT_BORROWING.md)。写下来是为了下次不再重新讨论：
+
+| 不采纳 | 理由 |
+|---|---|
+| 自建 Executor / 每个工作项一个 DSH 会话的执行器 | 与 Harness 原生 Agent Teams、会话面板重复；插件只做状态机 + 闸门 + 产物 |
+| SQLite 状态库 + 迁移体系 | 现有 `.dsh/*.json` 原子写已够，且保持「可读可 diff」 |
+| inbound Source（监听 GitHub / 飞书自动接单） | 不是本插件职责；需求由 Owner 在工作台下发 |
+| 面板改成六个 tab（Source / Trigger / Eval / Execution …） | 现有「待你处理 / 项目状态 / 团队与指派 / 流程」已回答「现在要我做什么」 |
+| admission 三格矩阵（列名 × 是否点名 × 接收范围） | 单 Owner 场景过度设计；我们需要的是「阶段 × 谁能批」 |
+| 把「何时可以合并」写进授权规则 | 他们的文档自己也把它归为 agent 指令而非 Policy |
+| 把详细的研究/设计/许可证纪律堆进系统提示 | 每轮都付 token；写进 `pipeline_stage_prompt` 的角色提示（按需读取）即可 |
+| 新增模型工具来做「待人工决定」 | 每个常驻工具 schema 都是每轮 token；工作台「待你处理」已用既有状态派生 |
+

@@ -33,9 +33,10 @@
  * `.dsh/.gitignore` keeps the state out of Git by default.
  */
 
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { promises as fsp } from 'node:fs'
 import path from 'node:path'
+import { readAcceptance } from './acceptance.js'
 import { resolveAgentWorkspace } from './memory.js'
 import { captureStageBaseline } from './review.js'
 import { isSshRoot } from './ssh.js'
@@ -196,23 +197,15 @@ const STAGE_STATUS_MARKS = {
 /** Model-facing guidance folded into the system prompt for workspace sessions. */
 export const PIPELINE_SECTION = `## 交付流水线（七阶段 + 双复核）
 
-**触发条件（先判断，避免无谓的开销）**：只有从 Dev Workspace「工作台」发起的交付需求才走本七阶段流程——即当前对话里出现工作台生成的提交提示（如「需求收件箱已提交：…」「请按 OPC 一人公司流程处理这条需求」「需求已更新（第 N 轮…）」），或 Owner 在对话中明确要求走交付流水线。**用户在对话框（聊天）里直接提出的需求，按 DeepSeek Harness 默认方式直接完成**：不调用 pipeline_* 工具、不创建或改写 \`.dsh/pipeline.json\`、不写验收清单、不为它派角色队友。拿不准时先用一句话问 Owner「要不要按七阶段流水线交付」，不要默认启动。
+**触发条件**：只有从 Dev Workspace「工作台」发起的交付才走本流程（对话里出现「需求收件箱已提交 / 请按 OPC 流程处理 / 需求已更新（第 N 轮）」），或 Owner 明确要求。对话框（聊天）里直接提的需求按 Harness 默认方式直接完成：不调用 pipeline_* 工具、不写验收清单、不派角色队友；拿不准先问一句「要不要按七阶段流水线交付」。
 
-**会话与成本（每个交付一个新会话）**：工作台的「交给产品经理 / 开工 / 启动并派发 / 发起变更」只把提示发到**当前对话**，所以新轮需求或新项目应先建议 Owner 在对话面板「新建对话」再录入，同一需求内的小修留在原会话；大规模检索、构建日志、批量验证交给 \`subagent\` / \`spawn_teammate\`（fresh）执行，主会话只收结论与文件路径；交付状态以 \`.dsh/\` 与 \`docs/\` 落盘为准，不依赖对话记忆；上下文变长时建议 \`/compact\` 或收尾开新会话。
+**七阶段**：product → design → development → testing → acceptance（AI 复核，只给放行/打回建议）→ approval（Owner 人工确认）→ release。状态 pending/active/review/approved/failed；除 product 外每关要求上一关 approved，一个工作区同时只有一个 active 阶段。
 
-本工作区把交付过程保存在 \`.dsh/pipeline.json\`，阶段顺序固定为七关：产品经理（需求分析）→ UI 设计师（UI 设计）→ 全栈开发（开发实现）→ 测试工程师（测试验收）→ 项目经理 Agent（验收复核）→ 项目经理（人工确认）→ 运维（发布上线）。阶段状态为 pending / active / review / approved / failed。product 阶段开始前必须先有需求标题与详情；除 product 外，每个阶段开始前要求上一阶段 approved；提交评审后阶段通常变为 review，只有项目经理（owner）在 Dev Workspace 面板上 approve 后下一阶段才能开始，被 reject 会变成 failed，可修复后用 pipeline_start_stage 重新开始。
+**闸门**：提交用 \`pipeline_submit_stage\`，只有 Owner 在面板能审批——模型没有审批工具，不能自己审批，也不能编造审批结果。**设计确认（design）、人工确认（approval）与发布（release）永远是人工闸门**；快速模式（gateMode=fast）会放行四个中间阶段（product/development/testing/acceptance），但 design 提交后必须把截图或渲染预览交给 Owner 看，确认前 \`pipeline_start_stage('development')\` 会被拒绝。
 
-双复核（acceptance + approval）：第 5 关「验收复核」由项目经理 Agent 做项目级复核——需求覆盖、验收清单与证据、测试报告与复测、Git 变更与已审、DoD——产出 docs/pipeline/acceptance-review.md 并提交「建议放行 / 建议打回」；它只是建议，不能替代第 6 关 Owner 的人工确认。第 6 关「人工确认」是人工闸门：模型只负责用 pipeline_start_stage 启动并提醒 Owner 审批，绝不允许自己审批；第 7 关 release 必须在 approval approved 之后才能开始。
+**取用方式**：当前状态用 \`pipeline_status\`；进入某一关前**必须**先用 \`pipeline_stage_prompt\` 取该角色的边界、交付物与沟通纪律（角色细节都在那里，不在本提示里）；派队友用 \`pipeline_dispatch\`。手册见 docs/AGENT_TEAM.md 与 docs/PLAYBOOK.md。
 
-如果 Owner 开启了「快速模式」（gateMode=fast），四个中间阶段（product/development/testing/acceptance）提交后会被自动通过：pipeline_submit_stage 的结果会带 autoApproved=true 与 nextStageId，此时不要等待人工审批，直接对 nextStageId 取 pipeline_stage_prompt、pipeline_start_stage 并继续工作。**设计确认（design）、人工确认（approval）与发布（release）永远是人工闸门**：design 提交后停在 review，必须等 Owner 在 Dev Workspace 面板看过设计稿（截图 / HTML 渲染预览）并 approve，确认前 pipeline_start_stage('development') 会被 Host 拒绝。任何模式下模型都没有审批工具。
-
-设计确认纪律：design 阶段提交后，Lead 必须把设计产物以 Owner 能直接看的形式呈现——截图用 present / 图片查看器给 Owner 看，HTML 高保真稿让 Owner 在面板或预览弹层里看**渲染结果**；不要把 HTML 源码贴给 Owner，也不要用「打开源码」代替看设计稿。未得到 Owner 明确确认前，不得启动 development。设计阶段至少交付一张可直接查看的截图（PNG/JPG/SVG/WebP），HTML 稿只能作为可预览补充。
-
-调研与借鉴纪律（团队能力纪律，先调研 → 再借鉴 → 后实现）：product 用 web_search / web_fetch 检索 ≥3 个来源（URL + 访问日期 + 关键结论）并写借鉴决策表；design 先调研 ≥2 个参考，按 4/8px、对比度 4.5:1 / 3:1、44×44、八态状态矩阵、360/768/1280、150–300ms、ARIA 交付并自检评分 ≥4 + 至少一轮迭代；development 先检索 GitHub ≥2 个活跃候选，按许可证矩阵决定借鉴方式（GPL / AGPL / 无许可证禁止复制代码），产出 docs/pipeline/engineering-research.md 并保证安全与性能；acceptance 复核上述证据，缺失即建议打回。来源必须可追溯，不伪造、不复制第三方代码。
-
-工具用法：用 \`pipeline_status\` 查看需求、七个阶段、当前阶段与发布记录；进入某个阶段前先用 \`pipeline_stage_prompt\` 取该角色的中文提示词（需求、上游摘要与产物、本角色只做什么/不做什么、交付物要求、闸门规则），按提示词工作；用 \`pipeline_set_requirement\` 写入需求；用 \`pipeline_start_stage\` 开始阶段；完成后用 \`pipeline_submit_stage\` 提交 summary 与 artifacts 等待项目经理审批（返回的 warnings 只提示缺失/空产物，不阻断提交）；需求需要追加或修订时用 \`pipeline_update_requirement\`；要把角色派给队友时用 \`pipeline_dispatch\` 取 spawn/teamTask 参数。不要编造审批结果，也不要在闸门未通过时开始下一阶段。验收标准请配合 \`acceptance_add\` / \`acceptance_update\` 维护，交付前逐项核对。
-
-真正的多角色执行由 Lead 用 Harness 原生团队工具（\`spawn_teammate\` / \`team_task_*\`）组织：本插件只负责流水线状态与人工验收闸门，不替代团队通信。流水线状态只保存在本地工作区，SSH 远程工作区暂不支持。`
+**会话与成本**：工作台的「开工 / 派发」只把提示发到当前对话，因此每个新交付建议新建对话；大规模检索、构建日志与批量验证交给 subagent 或队友，主会话只收结论与文件路径；上下文变长时 /compact 或收尾开新对话；交付状态以 .dsh/ 与 docs/ 落盘为准，不依赖对话记忆。`
 
 /** A structured, caller-facing failure with a stable machine code. */
 export class PipelineError extends Error {
@@ -245,6 +238,7 @@ export function emptyPipeline() {
       note: '',
       artifacts: [],
       reviews: [],
+      mandate: null,
     })),
     releases: [],
     settings: { gateMode: 'normal' },
@@ -420,6 +414,26 @@ function normalizeStoredStage(value, definition) {
     note: typeof source.note === 'string' ? source.note.trim().slice(0, PIPELINE_MAX_NOTE) : '',
     artifacts: normalizeStoredArtifacts(source.artifacts),
     reviews: normalizeStoredReviews(source.reviews),
+    mandate: normalizeStoredMandate(source.mandate),
+  }
+}
+
+/**
+ * Normalize the authorization stamp written at submission time.
+ *
+ * The stamp is the small "why may this work be done, and how far" record:
+ * which rule version (role guide + injected pipeline rules) accepted the stage
+ * and the scope it was accepted for. Older documents have no stamp, so `null`
+ * means "submitted before v1.2.105" rather than "invalid".
+ */
+function normalizeStoredMandate(value) {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return null
+  const version = typeof value.version === 'string' ? value.version.trim().slice(0, 32) : ''
+  if (version.length === 0) return null
+  return {
+    version,
+    scope: typeof value.scope === 'string' ? value.scope.trim().slice(0, 32) : '',
+    at: timestampValue(value.at),
   }
 }
 
@@ -884,9 +898,107 @@ async function collectArtifactWarnings(root, artifacts, definition) {
   return warnings
 }
 
+/**
+ * Short id of the rules one stage runs under: the role guide (mission,
+ * boundaries, deliverables) plus the injected pipeline rules. It is written into
+ * the stage's mandate at submission time so a later guide edit is detectable
+ * instead of silently changing what an already-approved stage was approved
+ * under. Empty for an unknown stage id.
+ */
+function stageRuleVersion(stageId) {
+  const guide = STAGE_GUIDES[stageId]
+  if (guide === undefined) return ''
+  return createHash('sha1')
+    .update(`${stageId}\u0000${JSON.stringify(guide)}\u0000${PIPELINE_SECTION}`)
+    .digest('hex')
+    .slice(0, 12)
+}
+
+/**
+ * Whether a submitted stage was accepted under older rules than today's.
+ *
+ * Only review/approved/failed stages carry a meaningful stamp; a pending or
+ * active stage is simply about to run under the current rules. Documents
+ * written before v1.2.105 have no mandate and are reported as not stale (no
+ * false alarm on upgrade).
+ */
+function stageRuleStale(stage, definition) {
+  if (stage.mandate === null) return false
+  if (!['review', 'approved', 'failed'].includes(stage.status)) return false
+  return stage.mandate.version !== stageRuleVersion(definition.id)
+}
+
+/** How long an active stage may go without any document update before it counts as stalled. */
+const STALLED_STAGE_MS = 6 * 60 * 60 * 1000
+
+/** Rejections after which the agent must stop auto-retrying and ask the owner. */
+const STAGE_REJECT_LIMIT = 3
+
+/** Number of reject decisions recorded on one stage. */
+function stageRejectCount(stage) {
+  const reviews = Array.isArray(stage.reviews) ? stage.reviews : []
+  let rejects = 0
+  for (const review of reviews) {
+    if (review !== null && typeof review === 'object' && review.decision === 'reject') rejects += 1
+  }
+  return rejects
+}
+
+/**
+ * Describe the active stage when it has had no document update for a while.
+ *
+ * Returns `null` in the healthy case so callers can add no text at all — the
+ * "quiet by default" rule: a stalled stage is worth one line, a fresh one costs
+ * nothing. `lastAt` prefers the newest of the stage start and the document
+ * update, because a rejection/approval of another stage also proves activity.
+ *
+ * @param doc - normalized pipeline document.
+ * @param now - current timestamp (injectable for tests).
+ * @returns `{ stageId, hours, lastAt }` or `null`.
+ */
+export function describeStalledStage(doc, now = Date.now()) {
+  const stages = Array.isArray(doc?.stages) ? doc.stages : []
+  const stage = stages.find(
+    (candidate) => candidate !== null && typeof candidate === 'object' && candidate.status === 'active',
+  )
+  if (stage === undefined) return null
+  const lastAt = Math.max(timestampValue(stage.startedAt), timestampValue(doc.updatedAt))
+  if (lastAt <= 0) return null
+  const elapsed = now - lastAt
+  if (elapsed < STALLED_STAGE_MS) return null
+  return {
+    stageId: typeof stage.id === 'string' ? stage.id : '',
+    hours: Math.floor(elapsed / 3_600_000),
+    lastAt,
+  }
+}
+
+/**
+ * Guard against "passed without proof" in the testing stage.
+ *
+ * A pass verdict with neither attached evidence nor an explanatory note is the
+ * cheapest way to make a delivery look finished, so the submit call fails early
+ * with the exact items and the two ways to fix them. The check reads the
+ * structured checklist (`.dsh/acceptance.json`) and adds no model round-trip.
+ */
+async function assertAcceptanceEvidence(root) {
+  const doc = await readAcceptance(root)
+  const items = Array.isArray(doc.items) ? doc.items : []
+  const bare = items.filter((item) => item.status === 'pass' && item.evidence.length === 0)
+  if (bare.length === 0) return
+  const titles = bare
+    .slice(0, 5)
+    .map((item) => `「${item.title}」`)
+    .join('、')
+  const more = bare.length > 5 ? ` 等 ${String(bare.length)} 项` : ''
+  throw new PipelineError(
+    'evidence-missing',
+    `以下验收项标记为 pass 但没有证据：${titles}${more}。请先用 acceptance_evidence_add 追加证据（截图/日志/报告/链接），或在 acceptance_update 的 note 写明验证方式；证据会从 note 中的路径自动识别`,
+  )
+}
+
 /** Validate the shape of one release record. */
-function validateReleaseInput(input) {
-  const source = input !== null && typeof input === 'object' ? input : {}
+function validateReleaseInput(input) {  const source = input !== null && typeof input === 'object' ? input : {}
   const environment = typeof source.environment === 'string' ? source.environment.trim() : ''
   if (environment.length === 0) throw new PipelineError('bad-request', '发布记录缺少 environment（发布环境）')
   if (environment.length > PIPELINE_MAX_ENVIRONMENT) {
@@ -941,6 +1053,8 @@ function publicStage(stage, definition) {
           actor: review.actor,
         }))
       : [],
+    // True when this stage's mandate was granted under older role rules.
+    stale: stageRuleStale(stage, definition),
   }
 }
 
@@ -1159,7 +1273,20 @@ export async function submitStage(root, input) {
       )
     }
     const warnings = await collectArtifactWarnings(workspace, artifacts, definition)
+    // A pass verdict without proof is rejected before the owner ever sees it:
+    // fixing it costs the agent one tool call, reviewing it costs a human round-trip.
+    if (definition.id === 'testing') await assertAcceptanceEvidence(workspace)
     const now = Date.now()
+    // Stamp the rules this submission was accepted under (see stageRuleVersion).
+    stage.mandate = { version: stageRuleVersion(definition.id), scope: definition.id, at: now }
+    if (stageRejectCount(stage) >= STAGE_REJECT_LIMIT) {
+      // The submit tool has no free-form warning channel (warnings carry a fixed
+      // code enum), so the escalation rides on the owner-visible stage note.
+      stage.note = appendStageNote(
+        stage.note,
+        `已打回 ${String(stageRejectCount(stage))} 次：建议 Owner 决定方向，不要继续自动重试`,
+      )
+    }
     // Fast mode auto-approves the four intermediate stages (product /
     // development / testing / acceptance). Design, approval and release stay
     // manual: the owner must see the design mockups (screenshots / previewable
@@ -1251,6 +1378,17 @@ export async function reviewStage(root, input) {
     }
     const actor = input?.actor === 'system' ? 'system' : 'owner'
     stage.reviews = [...(stage.reviews ?? []), { at: now, decision, note, actor }].slice(-PIPELINE_MAX_REVIEWS)
+    if (decision === 'reject') {
+      const rejects = stageRejectCount(stage)
+      if (rejects >= STAGE_REJECT_LIMIT) {
+        // Stop the reject → fix → reject loop from burning tokens: after the
+        // third rejection the owner, not the agent, picks the direction.
+        stage.note = appendStageNote(
+          stage.note,
+          `已打回 ${String(rejects)} 次：请 Owner 决定方向（换方案 / 调整范围 / 终止），不要继续自动重试`,
+        )
+      }
+    }
     doc.updatedAt = now
     await writePipeline(workspace, doc)
     return publicStage(stage, definition)
@@ -1474,11 +1612,15 @@ function promptStageState(doc, definition) {
     (candidate) => candidate !== null && typeof candidate === 'object' && candidate.id === definition.id,
   )
   const value = source !== null && typeof source === 'object' ? source : {}
+  const status = PIPELINE_STATUSES.includes(value.status) ? value.status : 'pending'
+  const mandate = normalizeStoredMandate(value.mandate)
   return {
-    status: PIPELINE_STATUSES.includes(value.status) ? value.status : 'pending',
+    status,
     summary: typeof value.summary === 'string' ? value.summary.trim().slice(0, PIPELINE_MAX_SUMMARY) : '',
     note: typeof value.note === 'string' ? value.note.trim().slice(0, PIPELINE_MAX_NOTE) : '',
     artifacts: normalizeStoredArtifacts(value.artifacts),
+    stale: stageRuleStale({ status, mandate }, definition),
+    rejects: stageRejectCount(value),
   }
 }
 
@@ -1521,6 +1663,7 @@ const STAGE_GUIDES = {
       '视觉一致性：组件/术语/间距/圆角来自同一 token 与现有组件库；一屏一个主行动，层级清晰。',
       '可用性走查：按 Nielsen 10 启发式逐项检查并记录发现/修正。',
       '交付证据：至少一张可直接查看的截图（PNG/JPG/SVG/WebP，关键页面/状态各一份）；HTML 高保真稿必须可预览，且不能替代截图。',
+      '改动类需求（UI 变更）：在同一场景、同一视口（360/768/1280）与主题下提供 before / after 对比截图，标注基线版本与改动版本；只有 after 视为不完整证据，无法取真实基线时诚实说明缺口，不要用旧截图冒充。',
       '自检与迭代：五维自检评分（视觉层级/清晰度/一致性/反馈/可访问性）每维 ≥3、均分 ≥4，must 项一票否决；至少一轮「渲染→检查→修正」并记录前后差异。',
     ],
     doesNot: [
@@ -1528,6 +1671,7 @@ const STAGE_GUIDES = {
       '不硬编码颜色/间距；不新增设计系统或运行时依赖；不复制受版权保护的文案、商标与界面素材。',
       '不只画 happy path：不得省略空/加载/错误/禁用等状态；不得只写文字描述而不给高保真稿。',
       '不只交 HTML 源码而不给截图；不把源码当设计稿交给 Owner 评审。',
+      '不把「只有 after」当成完整 UI 证据；不拿改动前的旧截图冒充基线，也不隐瞒缺失的基线。',
       '不把未渲染、未自检的稿提交评审；不自批、不改需求范围与验收标准。',
     ],
     deliverables: [
@@ -1568,6 +1712,7 @@ const STAGE_GUIDES = {
     does: [
       '基于需求与验收项编写测试用例（正常、异常、边界、回归），并在任务面板执行测试命令完成验证。',
       '用 acceptance_update 把每项验收结果回填为 pass / fail / blocked，note 写证据或失败原因；失败项必须给出可复现步骤。',
+      'UI 变更回归：核对 before / after 对比截图是否同场景、同视口、同主题，基线是否真实；改动之后旧截图视为过期，要求重拍后再判 pass。',
       '产出测试报告（例如 docs/test-report.md）；提交评审时在 summary 写结论（通过数 / 失败数 / 阻塞项），在 artifacts 列出报告与用例路径。',
     ],
     doesNot: [
@@ -1591,6 +1736,7 @@ const STAGE_GUIDES = {
       '复核调研与借鉴（新增）：需求是否含 ≥3 来源（URL + 访问日期 + 关键结论）、借鉴决策表、已验证模式/创新假设；缺失或伪造来源即阻断，建议回退 product。',
       '复核设计质量（新增）：设计是否含自检评分（每维 ≥3、均分 ≥4 / must 一票否决）、八态状态矩阵、对比度实测（正文 4.5:1 / 大字 3:1）、44×44、360/768/1280、至少一轮「渲染→检查→修正」迭代记录；缺失即阻断，建议回退 design。',
       '复核工程调研与许可证（新增）：涉及实现时是否含 docs/pipeline/engineering-research.md（≥2 候选、许可证矩阵、来源 URL + commit、安全/性能结论）；纯文档/无实现轮写 N/A + 理由；缺失、复制 GPL/AGPL/无许可证代码即阻断，建议回退 development。',
+      '复核 UI 变更证据（新增）：是否提供同场景、同视口、同主题的 before / after 对比，基线是否可信（不是改动前旧截图冒充），改动后证据是否已刷新；缺失或只有 after 即列为阻断。',
       '产出 docs/pipeline/acceptance-review.md：① 基线与复核人；② 需求覆盖表；③ 验收清单逐项核对表 + 统计；④ 复测记录（命令/退出码/耗时）；⑤ 变更与审阅；⑥ DoD 检查；⑦ 专业质量复核（调研/设计质量/工程与许可证，含 N/A 理由）；⑧ 放行建议（建议放行 / 建议打回 + 阻断项 + 建议回退阶段）。',
       '需要时为关键验收项用 acceptance_evidence_add 追加证据路径（只追加，不改进度与历史）。',
       '发现阻断问题时，在提交评审的 summary 中明确写「建议打回」、阻断项、复现步骤与建议回退阶段（development 或 testing），供 Owner 在面板决定。',
@@ -1708,6 +1854,11 @@ export function buildStagePrompt(doc, stageId) {
     )
   }
   lines.push('- 阶段开始后状态为 active；提交评审后变为 review；只有项目经理在面板上 approve，下一阶段才能开始。')
+  if (stage.rejects >= STAGE_REJECT_LIMIT) {
+    lines.push(
+      `- 本阶段已被打回 ${String(stage.rejects)} 次：不要继续自动重试。先向 Owner 说明方案冲突、已尝试过的方案与建议方向，等 Owner 决定后再动手。`,
+    )
+  }
   lines.push('', '### 上游阶段（摘要与产物）')
   if (definition.index === 0) {
     lines.push('- 本阶段是流水线起点，没有上游阶段。')
@@ -1721,6 +1872,20 @@ export function buildStagePrompt(doc, stageId) {
   lines.push('', '### 本阶段只做什么', ...guide.does.map((entry) => `- ${entry}`))
   lines.push('', '### 本阶段不做什么', ...guide.doesNot.map((entry) => `- ${entry}`))
   lines.push('', '### 交付物要求', ...guide.deliverables.map((entry) => `- ${entry}`))
+  if (stage.stale) {
+    lines.push('', '### 规则已更新')
+    lines.push(
+      '- 本阶段是在旧版角色规则下提交 / 通过的；继续推进前先复核结论是否仍成立，必要时重新提交本阶段（重新提交会写入当前规则版本）。',
+    )
+  }
+  lines.push(
+    '',
+    '### 沟通纪律（省 Owner 的注意力）',
+    '- 静默工作：进度、草稿、重试与修复过程留在文档与记录里，不逐条汇报。',
+    '- 只在三种情况下开口：结果可看可用（附真实链接或路径）；必须 Owner 做的决定 / 授权；确定做不完（说清原因与最小所需动作）。',
+    '- 提交评审的 summary 只写结论 + 证据位置 + 遗留风险，不写过程流水账；过程与细节写进 docs/pipeline/。',
+    '- 「已提交 / 已创建」不等于 ready：没自检、没复测、没证据就不要提交评审。',
+  )
   if (definition.id === 'release') {
     const approvalPosition = PIPELINE_STAGES.findIndex((candidate) => candidate.id === 'approval')
     const approval = promptStageState(source, PIPELINE_STAGES[approvalPosition])
@@ -1856,6 +2021,10 @@ const STAGE_SCHEMA = {
     note: { type: 'string' },
     artifacts: { type: 'array', items: ARTIFACT_SCHEMA },
     reviews: { type: 'array', items: REVIEW_SCHEMA },
+    stale: {
+      type: 'boolean',
+      description: 'True when the stage was submitted/approved under older role rules than the current ones.',
+    },
   },
   required: [
     'id',
@@ -1870,6 +2039,7 @@ const STAGE_SCHEMA = {
     'note',
     'artifacts',
     'reviews',
+    'stale',
   ],
 }
 
@@ -1949,7 +2119,10 @@ function renderPipelineStatus(value) {
         ? ''
         : ` — ${stage.summary.slice(0, STATUS_SUMMARY_EXCERPT_CHARS).replaceAll(/\r?\n/gu, ' ')}${stage.summary.length > STATUS_SUMMARY_EXCERPT_CHARS ? '…' : ''}`
     const artifacts = stage.artifacts.length === 0 ? '' : ` [${String(stage.artifacts.length)} artifact(s)]`
-    const line = `- ${String(position + 1)}. ${stage.title} (${stage.roleTitle}): ${STAGE_STATUS_MARKS[stage.status]}${summary}${artifacts}`
+    const staleMark = stage.stale === true ? ' ⚠ rules-updated, recheck' : ''
+    const rejects = stage.reviews.filter((review) => review.decision === 'reject').length
+    const rejectMark = rejects >= STAGE_REJECT_LIMIT ? ` ⚠ rejected ${String(rejects)}x, owner decision needed` : ''
+    const line = `- ${String(position + 1)}. ${stage.title} (${stage.roleTitle}): ${STAGE_STATUS_MARKS[stage.status]}${staleMark}${rejectMark}${summary}${artifacts}`
     if (lines.length > 2 && used + line.length > STATUS_RENDER_MAX_CHARS) break
     lines.push(line)
     used += line.length + 1
@@ -2009,6 +2182,7 @@ function stageFromResult(value) {
     note: typeof stage.note === 'string' ? stage.note : '',
     artifacts: normalizeStoredArtifacts(stage.artifacts),
     reviews: normalizeStoredReviews(stage.reviews),
+    stale: stage.stale === true,
   }
 }
 
@@ -2326,7 +2500,7 @@ export function registerPipelineTools(ctx) {
       const nextTool =
         stage.id === 'approval'
           ? 'Ask the project manager to approve this human gate in the Dev Workspace panel; the model must not approve it.'
-          : 'Do the stage work, then call pipeline_submit_stage to request review.'
+          : 'Call pipeline_stage_prompt for this stage before doing any work: it carries the role boundaries, the research/design/license/evidence discipline and the deliverables. Then do the stage work and call pipeline_submit_stage to request review.'
       return { stage, nextTool, scope: root }
     },
   })

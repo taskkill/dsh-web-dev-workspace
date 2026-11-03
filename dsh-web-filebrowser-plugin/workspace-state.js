@@ -17,7 +17,7 @@ import { promises as fsp, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { listAcceptance } from './acceptance.js'
 import { resolveAgentWorkspace } from './memory.js'
-import { listPipeline } from './pipeline.js'
+import { describeStalledStage, listPipeline } from './pipeline.js'
 import { isSshRoot } from './ssh.js'
 
 /** Hard cap for the workspace_status tool value (bytes of JSON). */
@@ -335,6 +335,9 @@ function readPipelineSummarySync(root) {
     total: stages.length > 0 ? stages.length : 6,
     gateMode: settings.gateMode === 'fast' ? 'fast' : 'normal',
     round: Number.isInteger(doc.round) && doc.round > 0 ? doc.round : 1,
+    // Null in the healthy case: callers add no text, so a fresh project costs
+    // nothing in the injected briefing.
+    stalled: describeStalledStage(doc, Date.now()),
   }
 }
 
@@ -388,6 +391,11 @@ function buildPromptBriefing(ctx, assembly, services) {
     lines.push(
       `- 阶段：${current.id.length > 0 ? current.id : '全部完成'}（${current.status}）；已通过 ${String(pipelineState.approved)}/${String(pipelineState.total)}；门模式：${pipelineState.gateMode}`,
     )
+    if (pipelineState.stalled !== null) {
+      lines.push(
+        `- ⚠ 停滞：第 ${pipelineState.stalled.stageId.length > 0 ? pipelineState.stalled.stageId : '?'} 关已 ${String(pipelineState.stalled.hours)}h 无更新；先确认是否卡住，或提醒 Owner 介入。`,
+      )
+    }
   }
   if (acceptanceState !== null) {
     lines.push(
@@ -435,6 +443,10 @@ async function buildStatus(root, services) {
         status: stage.status,
         role: stage.role,
       })),
+    }
+    const stalled = describeStalledStage(snapshot.doc, Date.now())
+    if (stalled !== null) {
+      warnings.push(`stalled stage ${stalled.stageId}: no update for ${String(stalled.hours)}h`)
     }
   } catch (error) {
     warnings.push(`pipeline unavailable: ${errorMessage(error)}`)

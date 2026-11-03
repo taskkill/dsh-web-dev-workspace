@@ -954,22 +954,144 @@ try {
     for (const marker of ['复核调研与借鉴', '复核设计质量', '复核工程调研与许可证']) {
       assert.ok(prompts.acceptance.includes(marker), `acceptance prompt missing ${marker}`)
     }
-    // Injected system-prompt section: the team capability discipline is searchable.
-    const sectionKeys = [
-      '调研与借鉴纪律',
-      '调研',
-      '借鉴',
-      'web_search',
-      'web_fetch',
-      '许可证',
-      '安全',
-      '对比度',
-      '状态矩阵',
-      '44×44',
-      'engineering-research.md',
-    ]
-    const sectionMissing = sectionKeys.filter((key) => !pipeline.PIPELINE_SECTION.includes(key))
-    assert.deepEqual(sectionMissing, [], `PIPELINE_SECTION missing: ${sectionMissing.join(', ')}`)
+    // Injected system-prompt section: it no longer duplicates the discipline text
+    // (that costs ~1.9k tokens on every request); it points at the role prompt
+    // that carries it, and the token-budget decision is stated explicitly.
+    assert.ok(
+      pipeline.PIPELINE_SECTION.includes('pipeline_stage_prompt'),
+      'PIPELINE_SECTION must point at pipeline_stage_prompt for role detail',
+    )
+    assert.ok(
+      pipeline.PIPELINE_SECTION.includes('角色细节') || pipeline.PIPELINE_SECTION.includes('不在本提示里'),
+      'PIPELINE_SECTION must say the role detail lives in the stage prompt, not the system prompt',
+    )
+    assert.ok(pipeline.PIPELINE_SECTION.includes('会话与成本'), 'PIPELINE_SECTION must keep the cost rule')
+    assert.ok(
+      pipeline.PIPELINE_SECTION.length < 1400,
+      `PIPELINE_SECTION must stay small (token budget), got ${String(pipeline.PIPELINE_SECTION.length)} chars`,
+    )
+  })
+
+  await test('v1.2.105 testing stage rejects a pass verdict without evidence (early failure, no owner round-trip)', async () => {
+    const root = await workspace('evidence-guard')
+    await pipeline.setRequirement(root, { title: '证据守卫', detail: '无证据的 pass 不许提交' })
+    const item = await acceptance.addAcceptance(root, { title: '登录可用', requirement: '可以登录' })
+    await acceptance.updateAcceptance(root, { id: item.id, status: 'pass', note: '' })
+    await approveStage(root, 'product')
+    await approveStage(root, 'design')
+    await approveStage(root, 'development')
+    await pipeline.startStage(root, 'testing')
+    await assert.rejects(
+      pipeline.submitStage(root, { stageId: 'testing', summary: '测试通过' }),
+      (error) => {
+        assert.equal(error.code, 'evidence-missing')
+        assert.ok(error.message.includes('登录可用'), `error should name the bare item: ${error.message}`)
+        assert.ok(error.message.includes('acceptance_evidence_add'), 'error should name the fix')
+        return true
+      },
+    )
+    // The stage stays active, so the agent fixes it with one call instead of a
+    // wasted owner review round.
+    const listed = await pipeline.listPipeline(root)
+    assert.equal(listed.stages.find((stage) => stage.id === 'testing').status, 'active')
+    await fsp.mkdir(path.join(root, 'docs/pipeline'), { recursive: true })
+    await fsp.writeFile(path.join(root, 'docs/pipeline/test-report.md'), '# report\n', 'utf8')
+    await acceptance.addAcceptanceEvidence(root, { id: item.id, path: 'docs/pipeline/test-report.md' })
+    const submitted = await pipeline.submitStage(root, {
+      stageId: 'testing',
+      summary: '测试通过',
+      artifacts: [{ path: 'docs/pipeline/test-report.md', label: '测试报告' }],
+    })
+    assert.equal(submitted.status, 'review')
+    // Non-testing stages keep the historical non-blocking behaviour.
+    assert.ok(Array.isArray(submitted.warnings))
+  })
+
+  await test('v1.2.105 stages record the rule version they were accepted under and flag stale ones', async () => {
+    const root = await workspace('mandate')
+    await pipeline.setRequirement(root, { title: '授权戳', detail: '记录规则版本' })
+    await pipeline.startStage(root, 'product')
+    const submitted = await pipeline.submitStage(root, { stageId: 'product', summary: '需求完成' })
+    assert.equal(typeof submitted.stale, 'boolean')
+    assert.equal(submitted.stale, false)
+    const doc = await pipeline.readPipeline(root)
+    const stage = doc.stages.find((candidate) => candidate.id === 'product')
+    assert.equal(typeof stage.mandate.version, 'string')
+    assert.equal(stage.mandate.version.length, 12)
+    assert.equal(stage.mandate.scope, 'product')
+    // Simulate a role-rule edit: hand-edit the stamp to an older version id.
+    const file = pipeline.pipelineFile(root)
+    const raw = JSON.parse(await fsp.readFile(file, 'utf8'))
+    raw.stages.find((candidate) => candidate.id === 'product').mandate.version = 'deadbeef0000'
+    await fsp.writeFile(file, JSON.stringify(raw), 'utf8')
+    const listed = await pipeline.listPipeline(root)
+    const staleStage = listed.stages.find((candidate) => candidate.id === 'product')
+    assert.equal(staleStage.stale, true)
+    const prompt = pipeline.buildStagePrompt(await pipeline.readPipeline(root), 'product')
+    assert.ok(prompt.includes('规则已更新'), 'a stale stage prompt must ask for a re-check')
+    // A document written before the stamp existed must not look stale.
+    const legacyRoot = await workspace('mandate-legacy')
+    await pipeline.setRequirement(legacyRoot, { title: '旧文档', detail: '没有授权戳' })
+    await pipeline.startStage(legacyRoot, 'product')
+    await pipeline.submitStage(legacyRoot, { stageId: 'product', summary: '需求完成' })
+    const legacyFile = pipeline.pipelineFile(legacyRoot)
+    const legacyRaw = JSON.parse(await fsp.readFile(legacyFile, 'utf8'))
+    for (const candidate of legacyRaw.stages) delete candidate.mandate
+    await fsp.writeFile(legacyFile, JSON.stringify(legacyRaw), 'utf8')
+    const legacyListed = await pipeline.listPipeline(legacyRoot)
+    for (const candidate of legacyListed.stages) assert.equal(candidate.stale, false)
+  })
+
+  await test('v1.2.107 third rejection escalates to the owner instead of another auto-retry', async () => {
+    const root = await workspace('reject-limit')
+    await pipeline.setRequirement(root, { title: '驳回上限', detail: '3 次打回后交 Owner 决定方向' })
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      await pipeline.startStage(root, 'product')
+      await pipeline.submitStage(root, { stageId: 'product', summary: `第 ${String(attempt)} 次提交` })
+      await pipeline.reviewStage(root, { stageId: 'product', decision: 'reject', note: `第 ${String(attempt)} 次打回` })
+    }
+    const doc = await pipeline.readPipeline(root)
+    const stage = doc.stages.find((candidate) => candidate.id === 'product')
+    assert.ok(stage.note.includes('已打回 3 次'), `stage note must record the escalation: ${stage.note}`)
+    assert.equal(stage.status, 'failed')
+    const prompt = pipeline.buildStagePrompt(doc, 'product')
+    assert.ok(prompt.includes('已被打回 3 次'), 'stage prompt must stop the automatic retry loop')
+    assert.ok(prompt.includes('等 Owner 决定'), 'stage prompt must hand the direction to the owner')
+    await pipeline.startStage(root, 'product')
+    const submitted = await pipeline.submitStage(root, { stageId: 'product', summary: '第 4 次提交' })
+    assert.ok(submitted.note.includes('建议 Owner 决定方向'), `submitted note: ${submitted.note}`)
+  })
+
+  await test('v1.2.107 stalls are reported only when an active stage stops moving', async () => {
+    const now = Date.now()
+    const root = await workspace('stalled')
+    const raw = rawPipelineDocument(STAGE_ORDER, { product: 'active' }, { title: '停滞样本' })
+    raw.updatedAt = now - 7 * 60 * 60 * 1000
+    raw.stages[0].startedAt = raw.updatedAt
+    await writeRawPipeline(root, raw)
+    const doc = await pipeline.readPipeline(root)
+    const stalled = pipeline.describeStalledStage(doc, now)
+    assert.ok(stalled !== null, 'a seven-hour-idle active stage must count as stalled')
+    assert.equal(stalled.stageId, 'product')
+    assert.ok(stalled.hours >= 7, `hours should reflect the idle time: ${JSON.stringify(stalled)}`)
+    const host = makeHost()
+    const dispose = workspaceState.registerWorkspaceStatePrompt(host.ctx, {})
+    const entry = host.contexts.find((context) => context.name === 'dsh-web-filebrowser:workspace-state')
+    assert.ok(entry !== undefined)
+    const text = entry.text({ agent: { id: 'qa', session: { meta: { cwd: root } } } })
+    assert.ok(text.includes('停滞'), `stalled briefing must say so: ${text}`)
+    dispose()
+    const fresh = await workspace('stalled-fresh')
+    await pipeline.setRequirement(fresh, { title: '正常样本', detail: '刚开工' })
+    await pipeline.startStage(fresh, 'product')
+    assert.equal(pipeline.describeStalledStage(await pipeline.readPipeline(fresh)), null)
+    const freshHost = makeHost()
+    const disposeFresh = workspaceState.registerWorkspaceStatePrompt(freshHost.ctx, {})
+    const freshText = freshHost.contexts
+      .find((context) => context.name === 'dsh-web-filebrowser:workspace-state')
+      .text({ agent: { id: 'qa', session: { meta: { cwd: fresh } } } })
+    assert.equal(freshText.includes('停滞'), false, 'a fresh stage must not add stall text')
+    disposeFresh()
   })
 
   await test('change scopes can redo requirement/design only across seven stages', async () => {

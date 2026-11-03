@@ -2,6 +2,47 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.107 — 2026-11-03
+
+### 第二批借鉴：驳回升级、停滞检测、UI 变更 before/after 证据
+
+- **Why.** 延续「零新增模型工具、常驻 token 增量 0、不推倒重来」的筛选标准，做第二批对照借鉴（[SUPERAGENT_BORROWING.md](docs/proposals/SUPERAGENT_BORROWING.md)）：① 别为小问题无限烧 token（对应他们「重试 3 次 / 每个自动评审者最多 3 轮」）；② 该说话时才说话（对应「健康状态不占空间 / 连续 3 次失败才报问题」）；③ 把最硬的交付证据规则补上（对应 `team/delivery.md` 的 before+after）。
+- **A 驳回升级.** 同一阶段被打回 3 次即升级：`reviewStage` 第 3 次 reject 与之后每次 `submitStage` 都会把「请 Owner 决定方向（换方案 / 调整范围 / 终止），不要继续自动重试」写进阶段 note；`buildStagePrompt` 追加同义提醒；`pipeline_status` 该行标 `⚠ rejected 3x, owner decision needed`。阈值 `STAGE_REJECT_LIMIT`。
+- **B 停滞检测.** `describeStalledStage()`（`STALLED_STAGE_MS = 6h`）：`active` 阶段超过 6 小时无任何文档更新才算停滞，只在 `workspace_status` 的 warnings 与工作区简报里追加一行；**健康时零输出**，不占常驻 token。
+- **C UI 变更证据.** design / testing / acceptance 角色提示新增「同场景 / 同视口 / 同主题的 before + after 对比，标注基线版本与改动版本；只有 after 算不完整；改动后旧截图过期」；docs-spec 的 `QUALITY_ANCHORS` 增加 `before / after` 与 `复核 UI 变更证据` 锚点，防止以后被删。
+- **Verification.** `npm run check` / `npm run check:json` / `npm test` 全绿：host smoke **43/43**（新增 2 条 v1.2.107 用例）、群组自测、docs spec **7/7**。Plugin `1.2.95`, root `1.2.107`。Host 半改动需重启一次 Harness。
+
+## 1.2.106 — 2026-11-03
+
+### 省 token 不省质量：质量锚点测试 + 阶段启动必须取角色提示
+
+- **Why.** v1.2.105 把约 1.9k 字符的纪律细则从「每轮注入的系统提示」移到「按需读取的角色提示」。这只有在两件事成立时才安全：① 细则确实在角色提示里且以后不会被顺手删掉；② agent 在开工前真的会去取它。本版把这两条变成机器可验证的约束。
+- **Added（质量锚点测试）.** `scripts/selftest/docs-spec.mjs` 新增 `QUALITY_ANCHORS`：逐关校验 `buildStagePrompt` 仍包含 product（调研 / ≥3 / web_search / 借鉴决策表 / 反抄袭 / 验收标准）、design（4.5:1 / 3:1 / 44×44 / 状态矩阵 / 360-768-1280 / 150–300ms / ARIA / 自检评分）、development（许可证 / SPDX / GPL / AGPL / 无许可证 / engineering-research.md / npm audit / CVE）、testing（正常异常边界回归 / 复现步骤）、acceptance（三项专业质量复核 / 建议打回 / 重跑）。缺失即失败；注释写明「不要靠删锚点修绿，而是把文字补回去」。
+- **Changed（阶段启动提示）.** `pipeline_start_stage` 返回文案改为 `Call pipeline_stage_prompt for this stage before doing any work: it carries the role boundaries, the research/design/license/evidence discipline and the deliverables.`——这是工具结果（每阶段一次），不是系统提示（每轮一次），零常驻成本；docs spec 用正则守住这句。
+- **Changed（系统提示指针）.** 流水线段取用方式升级为「进入某一关前**必须**先用 `pipeline_stage_prompt`」，只多 6 个字符。
+- **Verification.** `npm run check` / `npm run check:json` / `npm test` 全绿；docs spec 5 → **7/7**（新增质量锚点、阶段启动指引），host smoke 41/41。Plugin `1.2.94`, root `1.2.106`。Host 半改动需重启一次 Harness。
+
+## 1.2.105 — 2026-11-03
+
+### 智能体团队首批借鉴：证据闸门、规则版本戳、沟通纪律与系统提示瘦身
+
+- **Why.** 对照调研（[SUPERAGENT_BORROWING.md](docs/proposals/SUPERAGENT_BORROWING.md)）挑出「零新增模型工具、零系统提示膨胀」的首批改进：证据可核对、授权可追溯、沟通省注意力、注入提示省 token。按「不推倒重来 + 不为小问题烧 token」的原则只动 4 个文件。
+- **T1 系统提示瘦身.** 注入的流水线系统提示段 2946 → 1012 字符（每请求省约 1.3k token）；研究/设计/许可证等纪律明细只在 `pipeline_stage_prompt` 返回的角色提示里（按需读取，不进每轮上下文）。
+- **T2 沟通纪律.** 每个阶段的角色提示新增「沟通纪律（省 Owner 的注意力）」：静默工作；只在「结果可用 / 必须 Owner 决定 / 确定做不完」时开口；summary 只写结论 + 证据位置 + 风险；「已提交」不等于 ready。
+- **T3 证据闸门.** `pipeline_submit_stage(testing)` 读取 `.dsh/acceptance.json`：任何 `pass` 但无证据的验收项直接失败（`evidence-missing`，列出前 5 项 + 两种修复方式），阶段保持 `active` 以便一次调用补齐；其它阶段的 artifact warnings 仍不阻断（既有契约不变）。
+- **T4 规则版本戳.** 提交时把「角色手册 + 注入规则」算成 12 位 `mandate.version` 写入 `.dsh/pipeline.json`；规则改动后已提交/已通过的旧阶段标记 `stale: true`（`pipeline_status` 显示 `⚠ rules-updated`，阶段提示要求先复核再推进）；旧文档无该字段视为不 stale，不做迁移。
+- **T5 文档守卫.** 新增 `scripts/selftest/docs-spec.mjs` 并接入 `npm test`：校验工具表与注册工具一致、七阶段与人工闸门齐全、`STAGE_HANDBOOKS` 路径存在、保留 Rejected concepts、注入提示在字符预算内（1400）。`docs/AGENT_TEAM.md` 补 §2 的 v1.2.105 规则与 §8 不采纳清单。
+- **Verification.** `npm run check` / `npm run check:json` / `npm test` 全绿（host smoke 41/41，含 2 条新用例；docs spec 5/5）。无新增模型工具、客户端无改动；Host 半改动需重启一次 Harness 生效。Plugin `1.2.93`, root `1.2.105`.
+
+## 1.2.104 — 2026-11-03
+
+### 文档：dsh-superagent-prototype 对照调研与借鉴清单（仅文档，无代码改动）
+
+- **Why.** 判断 `deepseek-ai/dsh-superagent-prototype` 的智能体团队设计是否与本插件七阶段双复核同路，并沉淀可执行的改进项。
+- **Added.** `docs/proposals/SUPERAGENT_BORROWING.md`：六个维度对照表、他们更硬的三块（授权模型 / 执行生命周期 / 注意力经济学）、我们更强不该推倒的四点、14 条借鉴决策表、P0/P1/P2 落地清单（含落点文件、成本与验收方式）、6 条明确不做（Rejected concepts）、来源与访问日期（2026-11-03）。
+- **核心结论.** 同源不同分工：他们是「准入授权 + 可恢复执行」，我们是「交付流程 + 验收证据」；值得直接借的是授权数据化（Mandate）、阶段能力宿主强制、结构化 Attention、证据硬规则、沟通经济学、执行可靠性（P0 约 1.5–2 人日）；不借自建 Executor/SQLite/六 tab 面板与全量提示词覆盖。
+- **Verification.** `npm run check:json` pass；未改插件代码，插件版本仍为 1.2.92；root `1.2.104`。
+
 ## 1.2.103 — 2026-11-02
 
 ### Group member candidates now follow the Harness Workspace (foreign/archived sessions removed)
