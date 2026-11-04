@@ -474,8 +474,9 @@ window.__ModuleLoader__.load({
       'workbench.addFiles': '添加附件',
       'workbench.removeFile': '移除',
       'workbench.intakeMode': '自动推进（中间阶段自动通过，只在最终确认与发布找我）',
+      'workbench.gateModeLabel': '我的确认方式',
       'workbench.submitIntake': '交给产品经理',
-      'workbench.intakeHint': '提交后：产品经理梳理可落地方案 → 设计/开发/测试自动推进 → 你只需在工作台确认与验收。新一轮需求建议先新建对话——开工提示只会发到当前对话。',
+      'workbench.intakeHint': '提交后：产品经理梳理可落地方案 → 设计/开发/测试自动推进 → 按你选的确认方式推进：逐阶段确认 / 自动推进（只在三处人工闸门找你）/ 全自动（跳过全部确认，你全程不参与）。新一轮需求建议先新建对话——开工提示只会发到当前对话。',
       'workbench.intakeDone': '已提交，正在交给产品经理梳理。',
       'workbench.reset': '重置数据',
       'workbench.resetTitle': '重置工作区数据',
@@ -829,7 +830,7 @@ window.__ModuleLoader__.load({
       'side.acceptanceCount': '验收 · 不通过 {fail} · 缺证据 {gap}',
       'side.pipeline': '流水线',
       'pipeline.title': '交付流水线',
-      'pipeline.hint': '需求由你下发；产品经理→UI 设计→开发→测试→AI 验收复核→你确认→运维发布（双复核）。每个阶段的角色边界写在派发提示词里，评审由你在面板上把关。',
+      'pipeline.hint': '需求由你下发；产品经理→UI 设计→开发→测试→AI 验收复核→你确认→运维发布（双复核）。每个阶段的角色边界写在派发提示词里；闸门按你在需求提交时选的确认方式执行（逐阶段确认 / 自动推进 / 全自动）。',
       'pipeline.roleHint': '真正的多角色执行由 Lead 用 spawn_teammate / team_task_* 组织；本面板只维护阶段状态、产物与人工闸门。',
       'pipeline.requirementTitle': '需求标题',
       'pipeline.requirementDetail': '需求描述',
@@ -843,6 +844,15 @@ window.__ModuleLoader__.load({
       'pipeline.bannerHint': '你只需要点通过 / 打回，其余交给团队。批准后会自动进入下一阶段。',
       'pipeline.fastMode': '快速模式',
       'pipeline.fastHint': '快速模式：product/development/testing/acceptance 提交后自动通过；design/approval/release 始终需要 Owner 确认。',
+      'pipeline.autoMode': '全自动模式',
+      'pipeline.gateModeLabel': '确认方式',
+      'pipeline.gate.normal': '逐阶段确认',
+      'pipeline.gate.fast': '自动推进',
+      'pipeline.gate.auto': '全自动',
+      'pipeline.gateHint.normal': '逐阶段确认：每个阶段提交后都停下，等你在面板通过或打回。',
+      'pipeline.gateHint.fast': '自动推进：product/development/testing/acceptance 提交后自动通过；design/approval/release 仍等你确认。',
+      'pipeline.gateHint.auto': '全自动：你已预授权跳过全部人工确认（含设计确认与发布前确认），从需求一路自动到发布，全程不找你；自动通过会记录在阶段备注里。',
+      'pipeline.gateSaveFailed': '切换确认方式失败：{message}',
       'pipeline.fastSaveFailed': '切换快速模式失败：{message}',
       'pipeline.editRequirement': '编辑需求',
       'pipeline.cancelEdit': '取消',
@@ -2017,8 +2027,9 @@ window.__ModuleLoader__.load({
       'workbench.addFiles': 'Add files',
       'workbench.removeFile': 'Remove',
       'workbench.intakeMode': 'Auto-advance (intermediate stages pass automatically; only final sign-off and release need you)',
+      'workbench.gateModeLabel': 'My confirmation mode',
       'workbench.submitIntake': 'Hand to the product manager',
-      'workbench.intakeHint': 'After submitting: the product manager turns it into a plan, design/dev/test advance automatically, and you only confirm and accept in the Workbench. Start a new requirement in a new conversation — kickoff prompts only go to the current one.',
+      'workbench.intakeHint': 'After submitting: the product manager turns it into a plan and design/dev/test advance automatically, then your chosen gate mode applies — stage-by-stage, auto-advance (only the three human gates ask you), or full-auto (skip every confirmation and let it run end to end without you). Start a new requirement in a new conversation — kickoff prompts only go to the current one.',
       'workbench.intakeDone': 'Submitted; handing it to the product manager.',
       'workbench.reset': 'Reset data',
       'workbench.resetTitle': 'Reset workspace data',
@@ -2372,7 +2383,7 @@ window.__ModuleLoader__.load({
       'side.acceptanceCount': 'Acceptance · {fail} failed · {gap} no evidence',
       'side.pipeline': 'Pipeline',
       'pipeline.title': 'Delivery pipeline',
-      'pipeline.hint': 'You issue the requirement; product → design → development → testing → AI acceptance review → your sign-off → ops release (dual review). Role boundaries live in the dispatched prompts; every gate is yours to approve.',
+      'pipeline.hint': 'You issue the requirement; product → design → development → testing → AI acceptance review → your sign-off → ops release (dual review). Role boundaries live in the dispatched prompts; the gates follow the confirmation mode you pick when submitting the requirement (every stage / auto-advance / full auto).',
       'pipeline.roleHint': 'The Lead runs the actual multi-role work with spawn_teammate / team_task_*; this board only tracks stages, artefacts and the human gate.',
       'pipeline.requirementTitle': 'Requirement title',
       'pipeline.requirementDetail': 'Requirement detail',
@@ -2386,6 +2397,15 @@ window.__ModuleLoader__.load({
       'pipeline.bannerHint': 'You only approve or send back; the team handles the rest. Approval auto-advances to the next stage.',
       'pipeline.fastMode': 'Fast mode',
       'pipeline.fastHint': 'Fast mode: product/development/testing/acceptance auto-approve on submit; design, approval and release always need the owner’s confirmation.',
+      'pipeline.autoMode': 'Full-auto mode',
+      'pipeline.gateModeLabel': 'Confirmation mode',
+      'pipeline.gate.normal': 'Every stage',
+      'pipeline.gate.fast': 'Auto-advance',
+      'pipeline.gate.auto': 'Full auto',
+      'pipeline.gateHint.normal': 'Every stage stops in review until you approve or send it back in the panel.',
+      'pipeline.gateHint.fast': 'Auto-advance: product/development/testing/acceptance auto-approve on submit; design, approval and release still wait for you.',
+      'pipeline.gateHint.auto': 'Full auto: you pre-authorize skipping every human gate (design confirmation and pre-release sign-off included), so the flow runs from requirement to release without you; each auto-approval is recorded on the stage note.',
+      'pipeline.gateSaveFailed': 'Could not switch the confirmation mode: {message}',
       'pipeline.fastSaveFailed': 'Could not switch fast mode: {message}',
       'pipeline.editRequirement': 'Edit requirement',
       'pipeline.cancelEdit': 'Cancel',
@@ -10971,6 +10991,9 @@ window.__ModuleLoader__.load({
         const [requirementBusy, setRequirementBusy] = useState(false)
         const [redoOpen, setRedoOpen] = useState(false)
         const [requirementScope, setRequirementScope] = useState('full')
+        // Gate mode picked while publishing a requirement revision: applies to
+        // the whole pipeline for this round (auto = run to release without me).
+        const [requirementGateMode, setRequirementGateMode] = useState('fast')
         const [workbenchError, setWorkbenchError] = useState(null)
         const [workbenchUpdatedAt, setWorkbenchUpdatedAt] = useState(0)
         // Workbench agent assignments (v1.2.75 MVP): dispatch-board state.
@@ -13894,12 +13917,12 @@ ${tail}
               for (const item of uploaded) lines.push('- ' + item.path + '（' + item.name + '）')
             }
             await call('write', { root, path: directory + '/intake.md', content: lines.join('\n') })
-            if (intakeMode === 'fast') {
-              try {
-                await call('pipelineSetMode', { root, mode: 'fast' })
-              } catch {
-                /* older Host without fast mode */
-              }
+            try {
+              // The intake checkbox is the owner's pre-authorization: persist the
+              // chosen gate mode before handing the requirement to the agent.
+              await call('pipelineSetMode', { root, mode: intakeMode })
+            } catch {
+              /* older Host without the auto mode */
             }
             await sendPromptText(buildIntakePrompt(directory, intakeMode))
             setWorkbenchDraft('')
@@ -13915,16 +13938,25 @@ ${tail}
 
         /** Prompt that makes the Lead orchestrate a whole delivery from one intake. */
         function buildIntakePrompt(directory, mode) {
+          const auto = mode === 'auto'
           return [
             '需求收件箱已提交：\`' + directory + '/\`',
             '',
             '请按 OPC 一人公司流程处理这条需求（你是 Lead：负责编排、派发与提交，不能代替 Owner 审批）：',
             '1) 让「产品经理」角色梳理需求：读取 \`' + directory + '/intake.md\` 与附件（截图用 read_image 查看），产出可落地的 \`docs/pipeline/requirements.md\`（目标用户/场景/范围 做什么不做什么/约束/验收标准/风险），并用 acceptance_add 建立验收项（结论式 title + 验证条件 + category 分组）；',
             '2) 调用 pipeline_set_requirement 写入需求标题与详情，然后 pipeline_start_stage({stageId:"product"}) 并 pipeline_submit_stage 提交；',
-            '3) 之后继续编排 design / development / testing / acceptance：按 pipeline_stage_prompt 派发给对应角色（acceptance 是「验收复核」，派给项目经理 Agent），提交后快速模式会自动通过并继续；',
-            '4) 到 approval 闸门停下，提示 Owner 在工作台确认；AI 复核报告是人工确认的输入，不能替代 Owner 确认；release 阶段等 Owner 批准后再由运维执行。',
+            auto
+              ? '3) 之后继续编排 design / development / testing / acceptance / approval / release：按 pipeline_stage_prompt 派发给对应角色（acceptance 是「验收复核」，派给项目经理 Agent），每个阶段提交后 Host 会以 Owner 的预授权自动通过，你直接进入下一阶段，不要停下等 Owner；approval 阶段启动后直接 pipeline_submit_stage 提交即可（Host 自动通过），release 阶段执行部署并用 pipeline_record_release 记录环境与链接后提交；'
+              : '3) 之后继续编排 design / development / testing / acceptance：按 pipeline_stage_prompt 派发给对应角色（acceptance 是「验收复核」，派给项目经理 Agent），提交后快速模式会自动通过并继续；',
+            auto
+              ? '4) 全程 Owner 不参与：不要停下来等审批，也不要自称审批；每个阶段的证据（设计截图、测试报告、验收复核报告、发布记录）仍必须真实交付，全部 7 关完成后一次性汇报结果、发布环境与链接。'
+              : '4) 到 approval 闸门停下，提示 Owner 在工作台确认；AI 复核报告是人工确认的输入，不能替代 Owner 确认；release 阶段等 Owner 批准后再由运维执行。',
             '',
-            mode === 'fast' ? '快速模式已开启：product/development/testing/acceptance 提交后自动通过；design 提交后停在 review 等 Owner 确认设计稿，approval 与 release 也必须 Owner 确认，不要跳过。' : '当前为逐阶段审批模式：每个阶段提交后停下等 Owner 审批。',
+            auto
+              ? '全自动模式已开启：Owner 在需求提交时勾选「全自动、全程不参与」，预授权跳过全部人工确认（含设计确认与发布前确认）；全部阶段提交后自动通过，从需求一路执行到发布，完成后再汇报。'
+              : mode === 'fast'
+                ? '快速模式已开启：product/development/testing/acceptance 提交后自动通过；design 提交后停在 review 等 Owner 确认设计稿，approval 与 release 也必须 Owner 确认，不要跳过。'
+                : '当前为逐阶段审批模式：每个阶段提交后停下等 Owner 审批。',
           ].join('\n')
         }
 
@@ -13933,6 +13965,11 @@ ${tail}
           setRequirementPanelOpen(true)
           setRequirementMode(typeof mode === 'string' ? mode : complete ? 'change' : 'append')
           setRequirementScope('full')
+          const storedMode =
+            pipelineDoc !== null && typeof pipelineDoc === 'object' && pipelineDoc.settings !== null && typeof pipelineDoc.settings === 'object'
+              ? pipelineDoc.settings.gateMode
+              : null
+          setRequirementGateMode(storedMode === 'normal' || storedMode === 'fast' || storedMode === 'auto' ? storedMode : intakeMode)
           setRequirementTitleDraft(pipelineTitleDraft.length > 0 ? pipelineTitleDraft : '')
           setRequirementDetailDraft('')
           setWorkbenchError(null)
@@ -13952,7 +13989,23 @@ ${tail}
             '2) 用 acceptance_add / acceptance_update 补充或调整验收项（新增项写清验证条件）；',
             '3) 若当前进行中的阶段产出与新需求冲突，说明需要打回哪一关并等 Owner 决定，不要自行跳阶段或审批；',
             '4) 若只是补充说明且不影响当前阶段，明确说明无需重做。',
+            '',
+            '本次确认方式：' +
+              (requirementGateMode === 'auto'
+                ? '全自动（Owner 已预授权跳过全部人工确认）——阶段提交后由 Host 自动通过，请从需求一路推进到发布，不要停下等 Owner；仍要交付各关证据。'
+                : requirementGateMode === 'fast'
+                  ? '自动推进——product/development/testing/acceptance 提交后自动通过；design/approval/release 仍需 Owner 确认。'
+                  : '逐阶段确认——每个阶段提交后停下，等 Owner 在面板通过。'),
           ].join('\n')
+        }
+
+        /** Persist the confirmation mode picked in the requirement panel (older Hosts coerce it). */
+        async function applyRequirementGateMode(root) {
+          try {
+            await call('pipelineSetMode', { root, mode: requirementGateMode })
+          } catch {
+            /* older Host without the auto mode */
+          }
         }
 
         /** Persist a requirement append/edit/change and notify the product manager. */
@@ -13967,6 +14020,8 @@ ${tail}
           setRequirementBusy(true)
           setWorkbenchError(null)
           try {
+            // The revision's checkbox decides whether the owner keeps the gates;
+            // persist it only after the requirement mutation succeeds.
             if (requirementMode === 'change') {
               const value = await call('pipelineStartChange', {
                 root,
@@ -13974,6 +14029,7 @@ ${tail}
                 detail,
                 scope: requirementScope,
               })
+              await applyRequirementGateMode(root)
               const round = value !== null && typeof value === 'object' && Number.isInteger(value.round) ? value.round : 2
               setRequirementPanelOpen(false)
               setRequirementDetailDraft('')
@@ -13996,6 +14052,7 @@ ${tail}
                 ...(requirementMode === 'replace' && title.length > 0 ? { title } : {}),
                 detail,
               })
+              await applyRequirementGateMode(root)
               setRequirementPanelOpen(false)
               setRequirementDetailDraft('')
               await loadPipeline({ silent: true })
@@ -14089,17 +14146,18 @@ ${tail}
           }
         }
 
-        /** Toggle the owner's gate mode (normal: every stage; fast: intermediate auto-approve). */
+        /** Toggle the owner's gate mode (normal: every stage; fast: intermediate auto; auto: skip every gate). */
         async function setPipelineGateMode(mode) {
           const targetRoot = store.get().root
           if (targetRoot === null) return
+          const normalized = mode === 'fast' ? 'fast' : mode === 'auto' ? 'auto' : 'normal'
           setPipelineBusy(true)
           setPipelineError(null)
           try {
-            await call('pipelineSetMode', { root: targetRoot, mode: mode === 'fast' ? 'fast' : 'normal' })
+            await call('pipelineSetMode', { root: targetRoot, mode: normalized })
             await loadPipeline({ silent: true })
           } catch (error) {
-            setPipelineError(t('pipeline.fastSaveFailed', { message: pipelineErrorText(error) }))
+            setPipelineError(t('pipeline.gateSaveFailed', { message: pipelineErrorText(error) }))
           } finally {
             setPipelineBusy(false)
           }
@@ -22148,6 +22206,29 @@ ${tail}
           )
         }
 
+        /** Render the three-way gate-mode picker shared by intake, requirement and pipeline panels. */
+        function renderGateModePicker(current, onChange, disabled) {
+          return h(
+            'div',
+            { className: 'ds-gatemode-picker', role: 'group', 'aria-label': t('pipeline.gateModeLabel') },
+            ['normal', 'fast', 'auto'].map((mode) =>
+              h(
+                'button',
+                {
+                  key: mode,
+                  type: 'button',
+                  className: 'ds-gatemode-option',
+                  'data-active': current === mode ? 'true' : undefined,
+                  title: t('pipeline.gateHint.' + mode),
+                  disabled: disabled === true,
+                  onClick: () => onChange(mode),
+                },
+                t('pipeline.gate.' + mode),
+              ),
+            ),
+          )
+        }
+
         /** Render the owner workbench: gates first, then project, acceptance/delivery and work in flight. */
         function renderWorkbenchPage() {
           const doc = pipelineDoc !== null && typeof pipelineDoc === 'object' ? pipelineDoc : null
@@ -22155,7 +22236,9 @@ ${tail}
           const requirement = doc !== null && doc.requirement !== null && typeof doc.requirement === 'object' ? doc.requirement : {}
           const requirementTitle = typeof requirement.title === 'string' ? requirement.title.trim() : ''
           const round = doc !== null && Number.isInteger(doc.round) && doc.round > 0 ? doc.round : 1
-          const fastMode = doc !== null && doc.settings !== null && typeof doc.settings === 'object' && doc.settings.gateMode === 'fast'
+          const storedGateMode =
+            doc !== null && doc.settings !== null && typeof doc.settings === 'object' ? doc.settings.gateMode : null
+          const gateMode = storedGateMode === 'fast' || storedGateMode === 'auto' ? storedGateMode : 'normal'
           const done = stages.filter((stage) => stage !== null && typeof stage === 'object' && stage.status === 'approved').length
           const total = stages.length === 0 ? 7 : stages.length
           const roundScope = doc !== null && typeof doc.roundScope === 'string' && doc.roundScope.length > 0 ? doc.roundScope : 'full'
@@ -22184,7 +22267,11 @@ ${tail}
             null
           const reviewStage =
             stages.find((stage) => stage !== null && typeof stage === 'object' && stage.status === 'review') ??
-            stages.find((stage) => stage !== null && typeof stage === 'object' && stage.id === 'approval' && stage.status === 'active') ??
+            (gateMode === 'auto'
+              ? null
+              : stages.find(
+                  (stage) => stage !== null && typeof stage === 'object' && stage.id === 'approval' && stage.status === 'active',
+                )) ??
             null
           const reviewIndex = reviewStage === null ? -1 : stages.findIndex((stage) => stage !== null && typeof stage === 'object' && stage.id === reviewStage.id)
           const items = Array.isArray(acceptanceItems) ? acceptanceItems : []
@@ -22308,6 +22395,13 @@ ${tail}
                       h('div', { className: 'ds-hint ds-wb-hint' }, t('workbench.reqScope.' + requirementScope + 'Hint')),
                     )
                   : null,
+                h(
+                  'div',
+                  { className: 'ds-wb-gatemode', title: t('pipeline.gateHint.' + requirementGateMode) },
+                  h('span', { className: 'ds-wb-gatemode-label' }, t('pipeline.gateModeLabel')),
+                  renderGateModePicker(requirementGateMode, setRequirementGateMode, requirementBusy),
+                ),
+                h('div', { className: 'ds-hint ds-wb-hint' }, t('pipeline.gateHint.' + requirementGateMode)),
                 requirementMode === 'append'
                   ? null
                   : h('input', {
@@ -22557,15 +22651,10 @@ ${tail}
                     'div',
                     { className: 'ds-wb-actions ds-wb-status-actions' },
                     h(
-                      'label',
-                      { className: 'ds-pipe-fast ds-wb-fast', title: t('pipeline.fastHint') },
-                      h('input', {
-                        type: 'checkbox',
-                        checked: fastMode,
-                        disabled: pipelineBusy,
-                        onChange: (event) => void setPipelineGateMode(event.target.checked ? 'fast' : 'normal'),
-                      }),
-                      h('span', null, t('pipeline.fastMode')),
+                      'div',
+                      { className: 'ds-wb-gatemode', title: t('pipeline.gateHint.' + gateMode) },
+                      h('span', { className: 'ds-wb-gatemode-label' }, t('workbench.gateModeLabel')),
+                      renderGateModePicker(gateMode, (mode) => void setPipelineGateMode(mode), pipelineBusy),
                     ),
                     h('span', { className: 'ds-spacer' }),
                     current !== null && current.status === 'active'
@@ -22641,15 +22730,12 @@ ${tail}
                         ),
                   ),
                   h(
-                    'label',
-                    { className: 'ds-wb-mode' },
-                    h('input', {
-                      type: 'checkbox',
-                      checked: intakeMode === 'fast',
-                      onChange: (event) => setIntakeMode(event.target.checked ? 'fast' : 'normal'),
-                    }),
-                    h('span', null, t('workbench.intakeMode')),
+                    'div',
+                    { className: 'ds-wb-gatemode', title: t('pipeline.gateHint.' + intakeMode) },
+                    h('span', { className: 'ds-wb-gatemode-label' }, t('workbench.gateModeLabel')),
+                    renderGateModePicker(intakeMode, setIntakeMode, workbenchKickoffBusy),
                   ),
+                  h('div', { className: 'ds-hint ds-wb-hint' }, t('pipeline.gateHint.' + intakeMode)),
                   h(
                     'div',
                     { className: 'ds-wb-actions' },
@@ -24218,7 +24304,11 @@ ${tail}
                       null,
                       t('workbench.hero.remaining', { done: String(railDone), total: String(total), left: String(railLeft) }),
                     ),
-                fastMode ? h('span', { className: 'ds-wb-hero-chip' }, t('pipeline.fastMode')) : null,
+                gateMode === 'fast'
+                  ? h('span', { className: 'ds-wb-hero-chip' }, t('pipeline.fastMode'))
+                  : gateMode === 'auto'
+                    ? h('span', { className: 'ds-wb-hero-chip' }, t('pipeline.autoMode'))
+                    : null,
               ),
               h(
                 'ol',
@@ -24454,7 +24544,11 @@ ${tail}
                   { className: 'ds-wb-head-title-row' },
                   h('h1', { className: 'ds-wb-head-title' }, t('workbench.title')),
                   hasProject ? h('span', { className: 'ds-wb-head-chip', 'data-tone': 'brand' }, t('pipeline.round', { round: String(round) })) : null,
-                  fastMode ? h('span', { className: 'ds-wb-head-chip', 'data-tone': 'ok' }, t('pipeline.fastMode')) : null,
+                  gateMode === 'fast'
+                    ? h('span', { className: 'ds-wb-head-chip', 'data-tone': 'ok' }, t('pipeline.fastMode'))
+                    : gateMode === 'auto'
+                      ? h('span', { className: 'ds-wb-head-chip', 'data-tone': 'ok' }, t('pipeline.autoMode'))
+                      : null,
                   hasProject
                     ? h('span', { className: 'ds-wb-head-chip', 'data-tone': 'muted' }, t('workbench.hero.progress', { done: String(done), total: String(total) }))
                     : null,
@@ -24563,6 +24657,9 @@ ${tail}
           const requirementReady = requirementTitle.trim().length > 0 && requirementDetail.trim().length > 0
           const releases = doc !== null && Array.isArray(doc.releases) ? doc.releases : []
           const round = doc !== null && Number.isInteger(doc.round) && doc.round > 0 ? doc.round : 1
+          const storedPanelGateMode =
+            doc !== null && doc.settings !== null && typeof doc.settings === 'object' ? doc.settings.gateMode : null
+          const gateMode = storedPanelGateMode === 'fast' || storedPanelGateMode === 'auto' ? storedPanelGateMode : 'normal'
           const changes = doc !== null && Array.isArray(doc.changes) ? doc.changes : []
           const history = doc !== null && Array.isArray(doc.history) ? doc.history : []
           const reviewStage = stages.find((stage) => stage !== null && typeof stage === 'object' && stage.status === 'review') ?? null
@@ -24570,7 +24667,7 @@ ${tail}
           const ownerGateStage =
             reviewStage !== null
               ? reviewStage
-              : activeStage !== null && activeStage.id === 'approval'
+              : gateMode !== 'auto' && activeStage !== null && activeStage.id === 'approval'
                 ? activeStage
                 : null
           const actionableStage =
@@ -24904,15 +25001,10 @@ ${tail}
               h('span', { className: 'ds-spacer' }),
               pipelineBusy ? h('span', { className: 'ds-pipe-waiting' }, t('acceptance.saving')) : null,
               h(
-                'label',
-                { className: 'ds-pipe-fast', title: t('pipeline.fastHint') },
-                h('input', {
-                  type: 'checkbox',
-                  checked: doc !== null && doc.settings !== null && typeof doc.settings === 'object' && doc.settings.gateMode === 'fast',
-                  disabled: pipelineBusy,
-                  onChange: (event) => void setPipelineGateMode(event.target.checked ? 'fast' : 'normal'),
-                }),
-                h('span', null, t('pipeline.fastMode')),
+                'div',
+                { className: 'ds-pipe-gatemode', title: t('pipeline.gateHint.' + gateMode) },
+                h('span', { className: 'ds-pipe-gatemode-label' }, t('pipeline.gateModeLabel')),
+                renderGateModePicker(gateMode, (mode) => void setPipelineGateMode(mode), pipelineBusy),
               ),
               h(
                 'button',
@@ -24920,6 +25012,7 @@ ${tail}
                 t('action.refresh'),
               ),
             ),
+            gateMode === 'auto' ? h('div', { className: 'ds-hint ds-pipe-gate-hint' }, t('pipeline.gateHint.auto')) : null,
             pipelineError === null ? null : h('div', { className: 'ds-errorline' }, pipelineError),
             reviewStage !== null || activeStage !== null || actionableStage !== null
               ? h(
@@ -30441,6 +30534,15 @@ h(
 .ds-pipe-history { margin-top: 6px; }
 .ds-pipe-fast { display: inline-flex; align-items: center; gap: 4px; color: var(--dsw-alias-label-secondary); font-size: 9.5px; cursor: pointer; }
 .ds-pipe-fast input { margin: 0; }
+.ds-gatemode-picker { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.ds-gatemode-option { height: 22px; padding: 0 8px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 11px; background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-secondary); font-size: 10px; cursor: pointer; }
+.ds-gatemode-option[data-active="true"] { border-color: var(--dsw-alias-brand-primary); background: color-mix(in srgb, var(--dsw-alias-brand-primary) 8%, var(--dsw-alias-bg-layer-1)); color: var(--dsw-alias-label-primary); font-weight: 600; }
+.ds-gatemode-option:disabled { opacity: 0.55; cursor: default; }
+.ds-wb-gatemode { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 9px; }
+.ds-wb-gatemode-label { color: var(--dsw-alias-label-secondary); font-size: 10px; }
+.ds-pipe-gatemode { display: inline-flex; align-items: center; gap: 5px; }
+.ds-pipe-gatemode-label { color: var(--dsw-alias-label-caption); font-size: 9.5px; }
+.ds-pipe-gate-hint { margin: 0 8px 6px; }
 .ds-pipe-heading { font-weight: 600; font-size: 11px; color: var(--dsw-alias-label-primary); }
 .ds-pipe-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 6px 8px 12px; }
 .ds-pipe-group-title { color: var(--dsw-alias-label-caption); font-size: 9.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 3px; }

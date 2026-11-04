@@ -17,7 +17,7 @@ import { promises as fsp, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { listAcceptance } from './acceptance.js'
 import { resolveAgentWorkspace } from './memory.js'
-import { describeStalledStage, listPipeline } from './pipeline.js'
+import { describeStalledStage, gateModeOf, listPipeline } from './pipeline.js'
 import { isSshRoot } from './ssh.js'
 
 /** Hard cap for the workspace_status tool value (bytes of JSON). */
@@ -151,7 +151,7 @@ export function registerWorkspaceStateTools(ctx, services = {}) {
                 currentStageId: { type: 'string' },
                 status: { type: 'string', description: 'Current stage status, or unknown when unreadable.' },
                 counts: STAGE_COUNTS_SCHEMA,
-                gateMode: { type: 'string', description: 'normal or fast.' },
+                gateMode: { type: 'string', description: 'normal, fast or auto.' },
                 round: { type: 'integer' },
                 stages: { type: 'array', items: STAGE_ROW_SCHEMA },
               },
@@ -326,14 +326,13 @@ function readPipelineSummarySync(root) {
     if (status === 'approved') approved += 1
     else if (current === null) current = { id: typeof stage.id === 'string' ? stage.id : '', status }
   }
-  const settings = doc.settings !== null && typeof doc.settings === 'object' ? doc.settings : {}
   return {
     title,
     hasDetail: typeof requirement.detail === 'string' && requirement.detail.trim().length > 0,
     current: current ?? { id: '', status: stages.length > 0 ? 'complete' : 'pending' },
     approved,
     total: stages.length > 0 ? stages.length : 6,
-    gateMode: settings.gateMode === 'fast' ? 'fast' : 'normal',
+    gateMode: gateModeOf(doc),
     round: Number.isInteger(doc.round) && doc.round > 0 ? doc.round : 1,
     // Null in the healthy case: callers add no text, so a fresh project costs
     // nothing in the injected briefing.
@@ -435,7 +434,7 @@ async function buildStatus(root, services) {
       currentStageId: snapshot.currentStageId ?? '',
       status: snapshot.currentStage === null ? 'complete' : snapshot.currentStage.status,
       counts: snapshot.counts,
-      gateMode: snapshot.doc.settings?.gateMode === 'fast' ? 'fast' : 'normal',
+      gateMode: gateModeOf(snapshot.doc),
       round: snapshot.round ?? 1,
       stages: snapshot.stages.map((stage) => ({
         id: stage.id,

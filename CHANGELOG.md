@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here.
 
+## 1.2.108 — 2026-11-04
+
+### 确认方式由你勾选：新增全自动（auto）一条龙，从需求直达发布
+
+- **Why.** 需求提交和调整时只有「快速模式」一个勾选，且 design/approval/release 三关永远要 Owner 点。需要一种「我勾了就别再找我」的模式：需求 → 设计 → 开发 → 测试 → 验收复核 → 人工确认 → 发布全部自动推进，Owner 全程不参与。
+- **Host（pipeline.js / index.js / workspace-state.js）.** `PIPELINE_GATE_MODES` 增加 `auto`：`gateMode=auto` 时 `submitStage` 对**所有**阶段（含 design/approval/release）写入 `approved` 并返回 `autoApproved: true, nextStageId, gateMode`，阶段 note 记「全自动模式：Owner 预授权跳过人工确认，自动通过」留痕；`setGateMode` 校验三种模式；`pipeline_submit_stage` 输出新增 `gateMode`；`pipeline_start_stage` 在 auto 下对 approval 直接提示「启动后提交即可自动通过」；阶段角色提示新增「本阶段闸门模式」并按模式改写 design/approval/development 的闸门段（auto 下不再要求停下等 Owner，mission/doesNot 中的「永远人工」表述同步改写）；`PIPELINE_SECTION` 闸门段补充 auto 语义（仍在 1400 字符预算内）；`workspace_status`/工作区简报的 gateMode 透传 auto。顺带修掉 auto 下最后一关提交时 `nextStageId` 读 `undefined.id` 崩溃（`PIPELINE_STAGES[index+1] ?? null`）。
+- **Client（client.js）.** 工作台需求录入卡、需求调整面板、流水线面板三处统一换成三档「确认方式」选择器（逐阶段确认 / 自动推进 / 全自动），带当前模式说明；提交需求（`submitIntake`）与提交调整（`submitRequirementChange`）时先把所选模式写入 `pipelineSetMode`，再把模式说明写进发给 agent 的提示：全自动下明确「Owner 不参与、提交即自动通过、一路做到发布，不要停下等审批，证据仍要齐全」；`buildRequirementPrompt` 同样带上确认方式。工作台/流水线状态徽标、`pipeline.hint` 与中英文案同步更新；auto 下工作台与流水线不再把 active 的 approval 当成待你审批的闸门，流水线面板显示全自动提示。
+- **Docs.** `docs/AGENT_TEAM.md` §2 增「全自动模式」段与工具表说明；`docs/PLAYBOOK.md` 极简用法改为三档确认方式并说明全自动可全程不参与；中英文 README 增功能条目。
+- **Verification.** `npm run check` / `npm run check:json` / `npm test` 全绿；host smoke 新增 auto 全链路用例（7 关全部 autoApproved、complete、note 留痕、阶段提示不再要求等待、非法模式拒绝）。Plugin `1.2.96`, root `1.2.108`。Host 半改动需重启一次 Harness 生效。
+
 ## 1.2.107 — 2026-11-03
 
 ### 第二批借鉴：驳回升级、停滞检测、UI 变更 before/after 证据

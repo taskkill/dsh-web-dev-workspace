@@ -36,9 +36,11 @@
 
 状态：`pending`（待开始）→ `active`（进行中）→ `review`（待评审）→ `approved`（已通过）｜`failed`（已打回，可重新派发）。
 
-**双复核模式**：第 5 关由 AI 项目经理 Agent 复核，结论是「建议放行 / 建议打回」；第 6 关由你确认。两道关都过才允许发布；Agent 没有审批工具，第 6 关只能你点。
+**双复核模式**：第 5 关由 AI 项目经理 Agent 复核，结论是「建议放行 / 建议打回」；第 6 关由你确认。两道关都过才允许发布；Agent 没有审批工具，normal/fast 下第 6 关只能你点（全自动模式下由 Host 按你在需求提交时的预授权记录自动通过）。
 
 **快速模式**（`gateMode=fast`）：四个中间阶段（product/development/testing/acceptance）提交后自动通过并推进；**design（设计确认）、approval（人工确认）与 release（发布）永远是人工闸门**，快速模式也不会自动通过它们。设计阶段必须由你看过截图 / HTML 渲染预览并点通过后，开发阶段才能启动；普通模式（normal）下每个阶段都停在「待评审」等你点。
+
+**全自动模式（v1.2.108，`gateMode=auto`）**：你在「需求录入 / 需求调整」面板勾选 **全自动** 后，相当于一次性预授权跳过全部人工确认——design、approval、release 也由 Host 在提交时自动通过，agent 从需求一路执行到发布，全程不找你。每次自动通过都会在阶段 note 写入「全自动模式：Owner 预授权跳过人工确认，自动通过」留痕；面板仍可随时把确认方式切回逐阶段 / 自动推进（`pipelineSetMode`），已自动通过的阶段不受影响。质量要求不降：设计截图、测试报告、验收复核报告与发布记录仍是提交证据。三种确认方式在工作台「需求录入」「需求调整」和流水线面板三处都可切换。
 
 **证据闸门（v1.2.105）**：testing 阶段提交时，验收清单里**任何 `pass` 但没有任何证据的验收项**会让提交直接失败并列出这些项——阶段保持 `active`，补 `acceptance_evidence_add`（或把证据路径写进 `acceptance_update` 的 note，路径会被自动识别）后再提交即可，不用浪费你一轮评审。其它阶段的产物问题仍只是非阻断 `warnings`（这是既定行为，不改成阻断）。
 
@@ -72,7 +74,7 @@
 - **Lead 组织团队**：`spawn_teammate({ name, description, prompt })`，把阶段的角色提示词作为初始任务；同一工作区共享文件系统，产物直接落盘。`pipeline_dispatch({stageId})` 会直接返回可用的 spawn / teamTask 参数。
 - **拆任务与依赖**：`team_task_create` + `blocked_by` 表达「设计完成才能开发」等顺序；`team_task_update` 认领/完成。
 - **推进与等待**：`send_message` 或等 `wait_agent`；成员状态用 `list_agents`。
-- **验收与闸门**：只有人（你）能在流水线面板点「通过」；agent 侧只允许 `pipeline_submit_stage` 提交。项目经理 Agent 只给放行建议，不审批。
+- **验收与闸门**：normal/fast 下只有人（你）能在流水线面板点「通过」；agent 侧只允许 `pipeline_submit_stage` 提交。全自动模式下 Host 按你的预授权把提交记为自动通过（note 留痕）；项目经理 Agent 只给放行建议，不审批。
 - **边界落点**：角色提示词里写清「只做什么/不做什么/交付物/工具」；测试阶段回填 `acceptance_*`；验收复核阶段只读验收结论并补证据；运维阶段只读验收结论，不重复实现审批。
 
 ### 工作台「团队与指派」（v1.2.75）
@@ -108,8 +110,8 @@
 | `pipeline_update_requirement({mode, detail, title?, type?})` | 追加/修订需求并写入修订记录（append / replace / refine / edit） |
 | `pipeline_dispatch({stageId})` | 返回该阶段角色提示词 + 可直接用于 `spawn_teammate` / `team_task_create` 的参数（不实际启动） |
 | `pipeline_start_stage({stageId})` | 标记阶段开始（顺序校验；一般由面板触发） |
-| `pipeline_submit_stage({stageId, summary, artifacts})` | 提交本阶段评审（唯一正常的「完成」动作）；返回非阻断的产物 `warnings[]` |
-| `pipeline_record_release({environment, url, notes})` | 运维在发布阶段实际发布后，记录环境、链接与说明（不会自己发布） |
+| `pipeline_submit_stage({stageId, summary, artifacts})` | 提交本阶段评审（唯一正常的「完成」动作）；返回非阻断的产物 `warnings[]`。快速模式自动通过中间阶段；全自动模式（owner 勾选）连 design/approval/release 一起自动通过，两种模式都返回 `autoApproved: true, nextStageId, gateMode` |
+| `pipeline_record_release({environment, url, notes})` | 运维在发布阶段实际发布后，记录环境、链接与说明（不会自己发布）；normal/fast 需 approval 已由 owner 通过，auto 由 owner 预授权自动通过 |
 | `workspace_status({})` | 一次读取需求/七阶段/验收计数/运行中任务/项目文档（≤4KB）；systemPrompt 另有 ≤600 字简报 |
 | `task_detect / task_run / task_output / task_stop / task_list` | 用与面板相同的任务运行器跑 build/test/lint；只接受 detect 白名单命令；运行记录落 `.dsh/runs.json` |
 | `env_ports / preview_share / preview_list / preview_close / http_probe` | 查端口、创建/关闭预览分享链接、探测 loopback 服务 |

@@ -546,6 +546,58 @@ try {
     assert.deepEqual(pipeline.PIPELINE_MANUAL_GATE_STAGES, ['design', 'approval', 'release'])
   })
 
+  await test('auto mode (owner opted out) runs every gate from requirement to release unattended', async () => {
+    const root = await workspace('auto-mode')
+    await pipeline.setRequirement(root, { title: '全自动一条龙', detail: 'Owner 勾选全自动，从需求直接到发布，全程不参与' })
+    assert.deepEqual(await pipeline.setGateMode(root, 'auto'), { gateMode: 'auto' })
+    let listed = await pipeline.listPipeline(root)
+    assert.equal(listed.doc.settings.gateMode, 'auto')
+    const chain = pipeline.PIPELINE_STAGES.map((stage) => stage.id)
+    for (const [index, stageId] of chain.entries()) {
+      await pipeline.startStage(root, stageId)
+      const submitted = await pipeline.submitStage(root, { stageId, summary: `${stageId} 完成` })
+      assert.equal(submitted.autoApproved, true, `${stageId} should auto-approve in auto mode`)
+      assert.equal(submitted.stage.status, 'approved')
+      assert.equal(submitted.gateMode, 'auto')
+      assert.ok(
+        submitted.stage.note.includes('全自动模式'),
+        `auto-approved ${stageId} should record the owner pre-authorization, got: ${submitted.stage.note}`,
+      )
+      assert.equal(submitted.nextStageId, chain[index + 1] ?? '', `${stageId} next stage mismatch`)
+    }
+    listed = await pipeline.listPipeline(root)
+    assert.equal(listed.complete, true)
+    assert.equal(listed.counts.approved, 7)
+    // The stage prompts must not keep telling the agent to wait for the owner.
+    const designPrompt = pipeline.buildStagePrompt(listed.doc, 'design')
+    assert.ok(designPrompt.includes('全自动模式'), 'design prompt should carry the gate mode')
+    assert.ok(designPrompt.includes('自动通过'), 'design prompt should say the submission auto-approves')
+    const approvalPrompt = pipeline.buildStagePrompt(listed.doc, 'approval')
+    assert.ok(approvalPrompt.includes('pipeline_submit_stage'), 'auto approval stage must be submittable')
+    assert.ok(!approvalPrompt.includes('本阶段不需要（也不允许）模型代替提交'), 'auto approval prompt must not forbid submitting')
+    // Tool contract: start/submit expose the full-auto behavior and gateMode field.
+    const autoRoot = await workspace('auto-mode-tool')
+    await pipeline.setRequirement(autoRoot, { title: '全自动工具链路', detail: 'tool-level auto run' })
+    await pipeline.setGateMode(autoRoot, 'auto')
+    const host = makeHost()
+    pipeline.registerPipelineTools(host.ctx)
+    const exec = execFor({ id: 'lead', session: { meta: { cwd: autoRoot } } }, signal)
+    const startTool = host.tools.find((definition) => definition.name === 'pipeline_start_stage')
+    const started = await startTool.execute({ stageId: 'product' }, exec)
+    assert.ok(started.nextTool.includes('full-auto'), `auto start guidance: ${started.nextTool}`)
+    const submitTool = host.tools.find((definition) => definition.name === 'pipeline_submit_stage')
+    assert.deepEqual(submitTool.output.schema.properties.gateMode.enum, ['normal', 'fast', 'auto'])
+    const submittedTool = await submitTool.execute({ stageId: 'product', summary: 'product 完成' }, exec)
+    assert.equal(submittedTool.autoApproved, true)
+    assert.equal(submittedTool.gateMode, 'auto')
+    assert.equal(submittedTool.nextStageId, 'design')
+    const rendered = submitTool.output.render({}, submittedTool)[0].text
+    assert.ok(rendered.includes('full-auto'), `auto submit result should name the mode: ${rendered}`)
+    // Unknown modes are rejected; auto persists back to normal when toggled.
+    await assert.rejects(pipeline.setGateMode(root, 'turbo'), (error) => error.code === 'bad-request')
+    assert.deepEqual(await pipeline.setGateMode(root, 'normal'), { gateMode: 'normal' })
+  })
+
   await test('design without a screenshot warns with the design-no-image code and no misleading HTML wording', async () => {
     const root = await workspace('design-warning')
     await pipeline.setRequirement(root, { title: '设计截图提醒', detail: 'HTML 不能替代截图' })

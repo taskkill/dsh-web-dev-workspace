@@ -71,15 +71,32 @@ export const PIPELINE_STAGES = [
 /** Accepted stage statuses; only `pending` and `failed` can be started. */
 export const PIPELINE_STATUSES = ['pending', 'active', 'review', 'approved', 'failed']
 
-/** Gate modes: normal asks the owner for every stage; fast auto-approves intermediate ones. */
-export const PIPELINE_GATE_MODES = ['normal', 'fast']
+/**
+ * Gate modes chosen by the owner when the requirement is submitted:
+ * `normal` asks the owner for every stage; `fast` auto-approves the intermediate
+ * stages only; `auto` is the one-stop mode — the owner's checkbox pre-authorizes
+ * skipping every human gate, so the agent runs from requirement to release
+ * without an owner round-trip.
+ */
+export const PIPELINE_GATE_MODES = ['normal', 'fast', 'auto']
 
 /**
  * Stages fast mode never auto-approves: `design` is the owner's design-review
  * gate (the owner must see the mockups before implementation starts),
  * `approval` is the owner's sign-off and `release` is a published action.
+ * `auto` mode bypasses them too: the owner explicitly pre-authorized skipping
+ * every gate, and each auto-approval is recorded on the stage note.
  */
 export const PIPELINE_MANUAL_GATE_STAGES = ['design', 'approval', 'release']
+
+/** Normalize a stored gate mode, falling back to `normal` for unknown values. */
+export function gateModeOf(doc) {
+  const settings =
+    doc !== null && typeof doc === 'object' && doc.settings !== null && typeof doc.settings === 'object'
+      ? doc.settings
+      : {}
+  return PIPELINE_GATE_MODES.includes(settings.gateMode) ? settings.gateMode : 'normal'
+}
 
 /** Scope of a change round: full pipeline, requirement/design, code/config, or release. */
 export const PIPELINE_CHANGE_SCOPES = ['full', 'product-design', 'product', 'design', 'development', 'release']
@@ -201,7 +218,7 @@ export const PIPELINE_SECTION = `## 交付流水线（七阶段 + 双复核）
 
 **七阶段**：product → design → development → testing → acceptance（AI 复核，只给放行/打回建议）→ approval（Owner 人工确认）→ release。状态 pending/active/review/approved/failed；除 product 外每关要求上一关 approved，一个工作区同时只有一个 active 阶段。
 
-**闸门**：提交用 \`pipeline_submit_stage\`，只有 Owner 在面板能审批——模型没有审批工具，不能自己审批，也不能编造审批结果。**设计确认（design）、人工确认（approval）与发布（release）永远是人工闸门**；快速模式（gateMode=fast）会放行四个中间阶段（product/development/testing/acceptance），但 design 提交后必须把截图或渲染预览交给 Owner 看，确认前 \`pipeline_start_stage('development')\` 会被拒绝。
+**闸门**：提交用 \`pipeline_submit_stage\`，只有 Owner 能审批——模型没有审批工具，不能自己审批或编造结果。**设计确认（design）、人工确认（approval）与发布（release）在 normal/fast 下永远是人工闸门**：逐阶段确认每关都停，快速模式只放行四个中间阶段；**全自动模式（auto）由 Owner 在需求提交时勾选预授权跳过全部人工确认**，提交即自动通过，agent 要从需求一路执行到发布、不要停下等审批（仍须按各关交付证据）。
 
 **取用方式**：当前状态用 \`pipeline_status\`；进入某一关前**必须**先用 \`pipeline_stage_prompt\` 取该角色的边界、交付物与沟通纪律（角色细节都在那里，不在本提示里）；派队友用 \`pipeline_dispatch\`。手册见 docs/AGENT_TEAM.md 与 docs/PLAYBOOK.md。
 
@@ -1156,20 +1173,27 @@ export async function setRequirement(root, input) {
 }
 
 /**
- * Set the pipeline gate mode. `fast` lets the owner pre-authorize the four
- * intermediate stages (product/development/testing/acceptance): submitting one
- * of them approves it automatically and reports the next stage id, so the agent
- * can continue without a human round-trip. Design, approval and release always
- * stay manual: the owner reviews the design mockups before implementation and
- * signs off the final delivery.
+ * Set the pipeline gate mode. The owner picks it when submitting the requirement
+ * (workbench intake / revision checkbox), and it applies to every later gate in
+ * that workspace:
+ * - `normal`: every stage waits for the owner's review.
+ * - `fast`: the four intermediate stages (product/development/testing/acceptance)
+ *   auto-approve on submit and report the next stage id, so the agent can
+ *   continue without a human round-trip. Design, approval and release stay
+ *   manual: the owner reviews the design mockups before implementation and signs
+ *   off the final delivery.
+ * - `auto`: one-stop mode. The owner pre-authorized skipping every human gate,
+ *   so design, approval and release auto-approve too; the agent runs the seven
+ *   stages from requirement to release without waiting for the owner. The
+ *   pre-authorization is recorded on each auto-approved stage's note.
  *
  * @param root - absolute workspace root.
- * @param mode - 'normal' | 'fast'.
+ * @param mode - 'normal' | 'fast' | 'auto'.
  * @returns the stored settings.
  */
 export async function setGateMode(root, mode) {
   if (!PIPELINE_GATE_MODES.includes(mode)) {
-    throw new PipelineError('bad-request', 'gateMode 必须是 normal 或 fast')
+    throw new PipelineError('bad-request', 'gateMode 必须是 normal、fast 或 auto')
   }
   const workspace = assertRoot(root)
   return withMutationLock(workspace, async () => {
@@ -1291,27 +1315,37 @@ export async function submitStage(root, input) {
     // development / testing / acceptance). Design, approval and release stay
     // manual: the owner must see the design mockups (screenshots / previewable
     // HTML) and confirm them before any implementation starts.
-    const fastApproval =
-      doc.settings?.gateMode === 'fast' && !PIPELINE_MANUAL_GATE_STAGES.includes(definition.id)
-    if (fastApproval) {
-      // The owner pre-authorized intermediate stages in fast mode: record the
-      // summary and approve, then tell the caller which stage comes next so the
-      // agent can continue without a human round-trip.
+    //
+    // Auto mode (the owner ticked "run it end to end without me" in the workbench)
+    // auto-approves every gate, including design, approval and release. The
+    // checkbox is the owner's pre-authorization; the stage note keeps each
+    // auto-approval auditable and distinguishes it from a real panel approval.
+    const gateMode = gateModeOf(doc)
+    const autoApproval =
+      gateMode === 'auto' || (gateMode === 'fast' && !PIPELINE_MANUAL_GATE_STAGES.includes(definition.id))
+    if (autoApproval) {
+      // The owner pre-authorized the gate: record the summary and approve, then
+      // tell the caller which stage comes next so the agent can continue without
+      // a human round-trip.
       stage.status = 'approved'
       stage.summary = summary
       stage.artifacts = artifacts
       stage.submittedAt = now
       stage.reviewedAt = now
-      stage.note = appendStageNote(stage.note, '快速模式：Owner 预授权自动通过')
+      stage.note = appendStageNote(
+        stage.note,
+        gateMode === 'auto' ? '全自动模式：Owner 预授权跳过人工确认，自动通过' : '快速模式：Owner 预授权自动通过',
+      )
       doc.updatedAt = now
       await writePipeline(workspace, doc)
       const index = PIPELINE_STAGES.findIndex((candidate) => candidate.id === definition.id)
-      const next = index >= 0 ? PIPELINE_STAGES[index + 1] : null
+      const next = index >= 0 ? (PIPELINE_STAGES[index + 1] ?? null) : null
       return {
         stage: publicStage(stage, definition),
         autoApproved: true,
         nextStageId: next === null ? '' : next.id,
         warnings,
+        gateMode,
       }
     }
     stage.status = 'review'
@@ -1320,14 +1354,14 @@ export async function submitStage(root, input) {
     stage.submittedAt = now
     stage.reviewedAt = 0
     if (definition.id === 'design') {
-      // The design stage is an owner review gate even in fast mode: keep the
+      // The design stage is an owner review gate in normal/fast mode: keep the
       // panel note explicit so the owner knows why the flow is paused and what
       // to look at before approving.
       stage.note = appendStageNote(stage.note, '设计确认闸门：Owner 查看截图 / HTML 预览并确认后才进入开发')
     }
     doc.updatedAt = now
     await writePipeline(workspace, doc)
-    return { ...publicStage(stage, definition), warnings }
+    return { ...publicStage(stage, definition), warnings, gateMode }
   })
 }
 
@@ -1802,6 +1836,41 @@ function promptUpstreamBlock(definition, state, position) {
   return lines
 }
 
+/** Short gate-mode description injected at the top of every stage prompt. */
+const GATE_MODE_PROMPT_LABELS = {
+  normal: '逐阶段确认（每关提交后停下，等 Owner 在面板通过）',
+  fast: '快速模式（中间阶段自动通过；design / approval / release 仍要 Owner 确认）',
+  auto: '全自动模式（Owner 已预授权跳过全部人工确认；提交后自动通过，不要停下等审批）',
+}
+
+/**
+ * Mission text for one stage under the current gate mode. Full-auto mode means
+ * no owner waits at the design/approval gates, so the guide's "manual gate"
+ * wording would otherwise contradict the mode line.
+ */
+function stageMission(definition, gateMode) {
+  const mission = STAGE_GUIDES[definition.id].mission
+  if (gateMode !== 'auto') return mission
+  if (definition.id === 'approval') {
+    return '全自动模式下的审批占位阶段：Owner 已在需求提交时勾选「全自动、全程不参与」，预授权跳过人工确认；启动后直接提交，Host 自动通过并解锁发布。'
+  }
+  if (definition.id === 'design') {
+    return mission.replace('设计稿是 Owner 的人工确认闸门：', '全自动模式下 Owner 已预授权跳过设计确认：')
+  }
+  return mission
+}
+
+/** Replace the guide's blanket "never auto-approve" line in full-auto mode. */
+function gateAwareDoesNot(definition, gateMode) {
+  const entries = STAGE_GUIDES[definition.id].doesNot
+  if (gateMode !== 'auto' || definition.id !== 'approval') return entries
+  return entries.map((entry) =>
+    entry.includes('任何模式下都不自动通过')
+      ? '全自动模式下 approval/release 由 Owner 预授权自动通过；模型仍不能自称审批（自动通过记录由 Host 写入）'
+      : entry,
+  )
+}
+
 /**
  * Build the Chinese role prompt for one delivery stage.
  *
@@ -1826,11 +1895,13 @@ export function buildStagePrompt(doc, stageId) {
     detail: typeof requirementSource.detail === 'string' ? requirementSource.detail.trim() : '',
   }
   const stage = promptStageState(source, definition)
+  const gateMode = gateModeOf(source)
   const lines = [
     `## 交付流水线 · 第 ${String(definition.index + 1)}/${String(PIPELINE_STAGES.length)} 阶段：${definition.title}（${definition.roleTitle}）`,
     '',
     `你在本次交付中负责「${definition.roleTitle}」环节。当前阶段状态：${STAGE_STATUS_LABELS[stage.status]}。`,
-    `本阶段使命：${guide.mission}`,
+    `本阶段闸门模式：${GATE_MODE_PROMPT_LABELS[gateMode]}`,
+    `本阶段使命：${stageMission(definition, gateMode)}`,
     '',
     '### 需求',
     `- 标题：${requirement.title.length === 0 ? '（尚未设置）' : requirement.title}`,
@@ -1853,7 +1924,11 @@ export function buildStagePrompt(doc, stageId) {
       `- 上一阶段「${previousDefinition.title}」（${previousDefinition.roleTitle}）必须已经 approved；当前状态：${STAGE_STATUS_LABELS[previous.status]}。`,
     )
   }
-  lines.push('- 阶段开始后状态为 active；提交评审后变为 review；只有项目经理在面板上 approve，下一阶段才能开始。')
+  lines.push(
+    gateMode === 'auto'
+      ? '- 阶段开始后状态为 active；提交评审后由 Host 自动通过（Owner 已预授权全自动模式），你可以直接进入下一阶段，不需要等人工审批。'
+      : '- 阶段开始后状态为 active；提交评审后变为 review；只有项目经理在面板上 approve，下一阶段才能开始。',
+  )
   if (stage.rejects >= STAGE_REJECT_LIMIT) {
     lines.push(
       `- 本阶段已被打回 ${String(stage.rejects)} 次：不要继续自动重试。先向 Owner 说明方案冲突、已尝试过的方案与建议方向，等 Owner 决定后再动手。`,
@@ -1870,7 +1945,7 @@ export function buildStagePrompt(doc, stageId) {
     }
   }
   lines.push('', '### 本阶段只做什么', ...guide.does.map((entry) => `- ${entry}`))
-  lines.push('', '### 本阶段不做什么', ...guide.doesNot.map((entry) => `- ${entry}`))
+  lines.push('', '### 本阶段不做什么', ...gateAwareDoesNot(definition, gateMode).map((entry) => `- ${entry}`))
   lines.push('', '### 交付物要求', ...guide.deliverables.map((entry) => `- ${entry}`))
   if (stage.stale) {
     lines.push('', '### 规则已更新')
@@ -1919,29 +1994,47 @@ export function buildStagePrompt(doc, stageId) {
     }
   }
   if (definition.id === 'design') {
-    lines.push('', '### 设计确认（Owner 人工闸门）')
-    lines.push(
-      '- 设计阶段即使在快速模式也不会自动通过：pipeline_submit_stage 后阶段停在 review，必须等 Owner 在 Dev Workspace 面板查看设计稿并 approve；Owner 确认前 pipeline_start_stage("development") 会被 Host 拒绝。',
-    )
-    lines.push(
-      '- 提交的 artifacts 必须包含至少一张可直接查看的截图（PNG/JPG/SVG/WebP/GIF）；HTML 高保真稿只能作为可预览补充，不能替代截图（缺少截图时提交结果会带 design-no-image warning）。',
-    )
-    lines.push(
-      '- 提交后必须把设计稿给 Owner 看：截图用 present / 图片查看器展示，HTML 提示 Owner 在面板或预览弹层看渲染结果；不要贴 HTML 源码，也不要用「打开源码」代替看设计稿。未得到 Owner 明确确认前不得开始开发。',
-    )
+    if (gateMode === 'auto') {
+      lines.push('', '### 设计确认（全自动模式）')
+      lines.push(
+        '- 全自动模式：Owner 已在需求提交时勾选「全自动、全程不参与」，预授权跳过设计确认；pipeline_submit_stage 后 Host 自动通过并解锁开发，不要停下等 Owner。',
+      )
+      lines.push(
+        '- 质量要求不因无人确认而降低：提交的 artifacts 仍必须包含至少一张可直接查看的截图（PNG/JPG/SVG/WebP/GIF）；HTML 高保真稿只能作为可预览补充，不能替代截图（缺少截图时提交结果会带 design-no-image warning）。',
+      )
+    } else {
+      lines.push('', '### 设计确认（Owner 人工闸门）')
+      lines.push(
+        '- 设计阶段即使在快速模式也不会自动通过：pipeline_submit_stage 后阶段停在 review，必须等 Owner 在 Dev Workspace 面板查看设计稿并 approve；Owner 确认前 pipeline_start_stage("development") 会被 Host 拒绝。',
+      )
+      lines.push(
+        '- 提交的 artifacts 必须包含至少一张可直接查看的截图（PNG/JPG/SVG/WebP/GIF）；HTML 高保真稿只能作为可预览补充，不能替代截图（缺少截图时提交结果会带 design-no-image warning）。',
+      )
+      lines.push(
+        '- 提交后必须把设计稿给 Owner 看：截图用 present / 图片查看器展示，HTML 提示 Owner 在面板或预览弹层看渲染结果；不要贴 HTML 源码，也不要用「打开源码」代替看设计稿。未得到 Owner 明确确认前不得开始开发。',
+      )
+    }
   }
   if (definition.id === 'development') {
     lines.push('', '### 上游设计确认')
     lines.push(
-      '- 开工前 design 必须已经 approved（Owner 已在面板确认设计稿）；若 design 仍为 review / failed，必须停下等 Owner 确认，不得自行开始开发。',
+      gateMode === 'auto'
+        ? '- 开工前 design 必须已经 approved（全自动模式下由 Host 预授权自动通过）；若 design 仍为 review / failed（例如模式切换前的提交），不要自行审批或跳过，先向 Owner 说明。'
+        : '- 开工前 design 必须已经 approved（Owner 已在面板确认设计稿）；若 design 仍为 review / failed，必须停下等 Owner 确认，不得自行开始开发。',
     )
   }
   lines.push('', '### 提交与闸门（必须遵守）')
   lines.push('1. 先用 `pipeline_stage_prompt` 读取本阶段提示（也就是本段文字），按角色边界执行。')
   if (definition.id === 'approval') {
-    lines.push(
-      '2. approval 是人工闸门，位于 AI 验收复核（acceptance）之后：用 `pipeline_start_stage` 启动后，由项目经理（Owner）阅读 acceptance 复核报告与关键证据，直接在 Dev Workspace 面板上 approve 或 reject；其余阶段的完成必须调用 `pipeline_submit_stage` 提交评审，而本阶段不需要（也不允许）模型代替提交或审批。',
-    )
+    if (gateMode === 'auto') {
+      lines.push(
+        '2. 全自动模式下 approval 是记录用的阶段：用 `pipeline_start_stage` 启动后，直接调用 `pipeline_submit_stage({ stageId: "approval", summary: "全自动模式：Owner 预授权跳过人工确认" })`，Host 会自动通过并解锁发布。不要停下等 Owner，也不要声称自己审批了——通过记录由 Host 以 Owner 的预授权写入。',
+      )
+    } else {
+      lines.push(
+        '2. approval 是人工闸门，位于 AI 验收复核（acceptance）之后：用 `pipeline_start_stage` 启动后，由项目经理（Owner）阅读 acceptance 复核报告与关键证据，直接在 Dev Workspace 面板上 approve 或 reject；其余阶段的完成必须调用 `pipeline_submit_stage` 提交评审，而本阶段不需要（也不允许）模型代替提交或审批。',
+      )
+    }
   } else if (definition.id === 'acceptance') {
     lines.push(
       `2. 完成后必须调用 \`pipeline_submit_stage({ stageId: "acceptance", summary: "<建议放行/建议打回 + 阻断项数量 + 复测结果>", artifacts: [{ path: "docs/pipeline/acceptance-review.md", label: "验收复核报告" }, ...关键证据] })\` 提交评审。summary 最多 ${String(PIPELINE_MAX_SUMMARY)} 字符；artifacts 最多 ${String(PIPELINE_MAX_ARTIFACTS)} 个，每个 path 最多 ${String(PIPELINE_MAX_PATH)} 字符；Host 会检查产物是否存在/非空并返回 warnings（只提示，不阻断提交）。`,
@@ -1952,7 +2045,9 @@ export function buildStagePrompt(doc, stageId) {
     )
   }
   lines.push(
-    '3. 提交后阶段进入 review（待审批）；你必须等待项目经理在 Dev Workspace 面板上 approve。**你不能自己审批，必须等项目经理在面板上通过**，也不要跳过闸门直接开始下一阶段。',
+    gateMode === 'auto'
+      ? '3. 提交后由 Host 以 Owner 的预授权自动通过（全自动模式），返回 nextStageId 后直接继续下一阶段；不要停下等 Owner，也不要跳过质量要求——没有人工复核时证据更要完整。'
+      : '3. 提交后阶段进入 review（待审批）；你必须等待项目经理在 Dev Workspace 面板上 approve。**你不能自己审批，必须等项目经理在面板上通过**，也不要跳过闸门直接开始下一阶段。',
   )
   lines.push(
     '4. 阶段被 reject 会变成 failed：按驳回备注修复，再用 `pipeline_start_stage` 重新开始本阶段，并重新提交评审。',
@@ -2165,7 +2260,7 @@ function requiredString(value, name) {
   return value
 }
 
-/** Project one stage tool result (normal or fast-mode shape) onto STAGE_SCHEMA. */
+/** Project one stage tool result (normal, fast or full-auto shape) onto STAGE_SCHEMA. */
 function stageFromResult(value) {
   const source = value !== null && typeof value === 'object' && value.stage !== undefined ? value.stage : value
   const stage = source !== null && typeof source === 'object' ? source : {}
@@ -2217,7 +2312,9 @@ function buildDispatchPrompt(doc, definition, root, handbooks) {
     '1. `spawn_teammate({ name, description, prompt })`：把本 prompt 作为队友的初始任务；也可以直接使用返回的 `spawn` 字段。',
     '2. `team_task_create({ subject, description })` 并用 `team_task_update` 认领：适合把本阶段拆成多个可并行任务；可以直接使用返回的 `teamTask` 字段。',
     '',
-    '闸门提醒：队友完成后只能调用 `pipeline_submit_stage` 提交评审；只有项目经理（Owner）能在 Dev Workspace 面板通过或打回，模型不能自批，也不要在闸门未通过时开始下一阶段。',
+    gateModeOf(doc) === 'auto'
+      ? '闸门提醒：Owner 已在需求提交时勾选全自动模式（预授权跳过全部人工确认）。队友完成后调用 `pipeline_submit_stage` 提交，Host 会自动通过并返回 nextStageId，由 Lead 继续下一阶段；不要停下等 Owner，也不要自称审批。'
+      : '闸门提醒：队友完成后只能调用 `pipeline_submit_stage` 提交评审；只有项目经理（Owner）能在 Dev Workspace 面板通过或打回，模型不能自批，也不要在闸门未通过时开始下一阶段。',
     '',
   )
   return lines.join('\n')
@@ -2243,7 +2340,7 @@ export function registerPipelineTools(ctx) {
   register({
     name: 'pipeline_status',
     description:
-      'Read the seven-stage delivery pipeline stored in .dsh/pipeline.json: the requirement, every stage (status, summary, artifacts), the current stage and the recorded releases. The seven stages are product → design → development → testing → acceptance (AI project-manager acceptance review) → approval (owner sign-off) → release; acceptance + approval form the dual-review model. The design stage is always an owner review gate: when it is in review, the owner must look at the design screenshots / HTML preview and approve before development can start. Only relevant for workbench-initiated deliveries (or when the owner explicitly asks for the pipeline); a chat-typed requirement uses the default Harness flow. Use it before deciding which role should act next. This module only owns pipeline state and the human approval gates; multi-role execution is organized by the Lead with the Harness team tools (spawn_teammate / team_task_*).',
+      'Read the seven-stage delivery pipeline stored in .dsh/pipeline.json: the requirement, every stage (status, summary, artifacts), the current stage and the recorded releases. The seven stages are product → design → development → testing → acceptance (AI project-manager acceptance review) → approval (owner sign-off) → release; acceptance + approval form the dual-review model. The gate mode comes from the owner\'s requirement-intake choice: normal waits at every stage, fast auto-approves the four intermediate stages but keeps design/approval/release manual, and auto means the owner pre-authorized skipping every human gate, so submissions auto-approve and the agent must continue from requirement to release without waiting. Only relevant for workbench-initiated deliveries (or when the owner explicitly asks for the pipeline); a chat-typed requirement uses the default Harness flow. Use it before deciding which role should act next. This module only owns pipeline state and the human approval gates; multi-role execution is organized by the Lead with the Harness team tools (spawn_teammate / team_task_*).',
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -2464,7 +2561,7 @@ export function registerPipelineTools(ctx) {
   register({
     name: 'pipeline_start_stage',
     description:
-      'Only for workbench-initiated delivery requirements (or when the owner explicitly asks for the pipeline); do not start stages for chat-typed requests that should finish in the default Harness flow. Start one delivery stage (status becomes active). The product stage needs a requirement title and detail; every other stage needs the previous stage approved. Starting development is rejected while the design stage is not approved: the owner must confirm the design mockups (screenshots / HTML preview) first. Release can never start before the approval (owner sign-off) stage is approved, and approval itself needs the acceptance (AI review) stage approved. A failed stage can be restarted after fixing the rejection note. Starting a stage does not approve it: only the project manager approves in the browser panel.',
+      'Only for workbench-initiated delivery requirements (or when the owner explicitly asks for the pipeline); do not start stages for chat-typed requests that should finish in the default Harness flow. Start one delivery stage (status becomes active). The product stage needs a requirement title and detail; every other stage needs the previous stage approved. In normal/fast mode, starting development is rejected while the design stage is not approved: the owner must confirm the design mockups (screenshots / HTML preview) first; in auto mode (the owner pre-authorized skipping every human gate) the design stage auto-approves on submit instead. Release can never start before the approval (owner sign-off) stage is approved, and approval itself needs the acceptance (AI review) stage approved; in auto mode the approval stage is still started and submitted so the Host can record the pre-authorized auto-approval. A failed stage can be restarted after fixing the rejection note. Starting a stage does not approve it: normal/fast gates are approved by the project manager in the browser panel; auto gates are approved by the Host under the owner\'s pre-authorization.',
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -2497,10 +2594,15 @@ export function registerPipelineTools(ctx) {
       const root = toolWorkspace(ctx, exec)
       const stage = await startStage(root, requiredString(args?.stageId, 'stageId'))
       exec.signal.throwIfAborted()
+      const gateMode = gateModeOf(await readPipeline(root))
       const nextTool =
-        stage.id === 'approval'
-          ? 'Ask the project manager to approve this human gate in the Dev Workspace panel; the model must not approve it.'
-          : 'Call pipeline_stage_prompt for this stage before doing any work: it carries the role boundaries, the research/design/license/evidence discipline and the deliverables. Then do the stage work and call pipeline_submit_stage to request review.'
+        gateMode === 'auto'
+          ? stage.id === 'approval'
+            ? 'Full-auto mode: the owner pre-authorized skipping every human gate. Submit this stage with pipeline_submit_stage({ stageId: "approval", summary: "全自动模式：Owner 预授权跳过人工确认" }); the Host auto-approves it and unlocks release. Do not wait for the owner.'
+            : 'Call pipeline_stage_prompt for this stage before doing any work: it carries the role boundaries, the research/design/license/evidence discipline and the deliverables. Then do the stage work and call pipeline_submit_stage; in full-auto mode the submission auto-approves (the owner pre-authorized skipping every gate), so continue to the next stage without waiting for the owner.'
+          : stage.id === 'approval'
+            ? 'Ask the project manager to approve this human gate in the Dev Workspace panel; the model must not approve it.'
+            : 'Call pipeline_stage_prompt for this stage before doing any work: it carries the role boundaries, the research/design/license/evidence discipline and the deliverables. Then do the stage work and call pipeline_submit_stage to request review.'
       return { stage, nextTool, scope: root }
     },
   })
@@ -2508,7 +2610,7 @@ export function registerPipelineTools(ctx) {
   register({
     name: 'pipeline_dispatch',
     description:
-      'Only for workbench-initiated delivery requirements (or when the owner explicitly asks for the pipeline); a chat-typed request is done directly without spawning role agents. Build the dispatch payload for one delivery stage: the full role prompt (requirement, upstream artifacts, "only do / never do", deliverables and gate rules) plus ready-to-use spawn_teammate and team_task_create arguments and the workspace-relative role handbooks. The seven stages are product → design → development → testing → acceptance (AI project-manager acceptance review) → approval (owner sign-off) → release. It does not start the stage and does not spawn anyone: call pipeline_start_stage first when needed, then pass spawn.{name,description,prompt} to spawn_teammate or teamTask.{subject,description} to team_task_create. The dispatched teammate submits with pipeline_submit_stage; only the owner approves.',
+      'Only for workbench-initiated delivery requirements (or when the owner explicitly asks for the pipeline); a chat-typed request is done directly without spawning role agents. Build the dispatch payload for one delivery stage: the full role prompt (requirement, upstream artifacts, "only do / never do", deliverables and gate rules) plus ready-to-use spawn_teammate and team_task_create arguments and the workspace-relative role handbooks. The seven stages are product → design → development → testing → acceptance (AI project-manager acceptance review) → approval (owner sign-off) → release. It does not start the stage and does not spawn anyone: call pipeline_start_stage first when needed, then pass spawn.{name,description,prompt} to spawn_teammate or teamTask.{subject,description} to team_task_create. The dispatched teammate submits with pipeline_submit_stage; the owner approves in normal/fast mode, while auto mode records the owner\'s pre-authorized auto-approval.',
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -2588,7 +2690,7 @@ export function registerPipelineTools(ctx) {
   register({
     name: 'pipeline_submit_stage',
     description:
-      'Submit the active stage for review with a summary and artifacts. Normally the stage moves to review and waits for the project manager (owner) to approve or reject it in the Dev Workspace panel — the model cannot approve its own work; the acceptance stage only submits the AI review report and recommendation. In fast mode the four intermediate stages (product/development/testing/acceptance) are auto-approved by the owner\'s pre-authorization; the result then reports autoApproved and nextStageId and you should continue with that stage. The design stage is never auto-approved: submitting it returns review, so present the design screenshots / HTML preview to the owner and wait for the owner to confirm the design before starting development. The approval (owner sign-off) and release gates always stay manual in both modes. Artifacts are workspace-relative paths with optional labels; the Host checks each one (workspace containment, existence, non-empty) and returns non-blocking warnings.',
+      'Submit the active stage for review with a summary and artifacts. Normally the stage moves to review and waits for the project manager (owner) to approve or reject it in the Dev Workspace panel — the model cannot approve its own work; the acceptance stage only submits the AI review report and recommendation. In fast mode the four intermediate stages (product/development/testing/acceptance) are auto-approved by the owner\'s pre-authorization; the result then reports autoApproved and nextStageId and you should continue with that stage. In auto mode (the owner ticked "run it end to end without me" at requirement intake) every gate auto-approves, including design, approval and release: submit each stage and continue immediately until the pipeline is complete, without waiting for the owner. In normal/fast mode the design stage is never auto-approved: submitting it returns review, so present the design screenshots / HTML preview to the owner and wait for the owner to confirm the design before starting development. Artifacts are workspace-relative paths with optional labels; the Host checks each one (workspace containment, existence, non-empty) and returns non-blocking warnings.',
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -2618,6 +2720,7 @@ export function registerPipelineTools(ctx) {
           stage: STAGE_SCHEMA,
           autoApproved: { type: 'boolean' },
           nextStageId: { type: 'string' },
+          gateMode: { type: 'string', enum: PIPELINE_GATE_MODES },
           warnings: {
             type: 'array',
             items: WARNING_SCHEMA,
@@ -2625,20 +2728,24 @@ export function registerPipelineTools(ctx) {
           },
           scope: { type: 'string' },
         },
-        required: ['stage', 'autoApproved', 'nextStageId', 'warnings', 'scope'],
+        required: ['stage', 'autoApproved', 'nextStageId', 'gateMode', 'warnings', 'scope'],
       },
-      render: (_args, value) => [
-        {
-          type: 'text',
-          text:
-            (value.autoApproved === true
-              ? `Stage "${value.stage.id}" was auto-approved by the owner's fast mode (summary and artifacts recorded). Continue with the next stage "${value.nextStageId}": call pipeline_stage_prompt({stageId:"${value.nextStageId}"}), then pipeline_start_stage({stageId:"${value.nextStageId}"}) and do the work. The design, human approval and release gates remain manual.`
-              : value.stage.id === 'design'
-                ? `Submitted the design stage for review (${String(value.stage.artifacts.length)} artifact(s)). The design stage never auto-approves: present the design screenshots (present tool / image viewer) or tell the owner to preview the HTML in the Dev Workspace panel, then STOP and wait for the owner to confirm the design. Do not paste HTML source to the owner and do not start development before the design is approved.`
-                : `Submitted stage "${value.stage.id}" for review (${String(value.stage.artifacts.length)} artifact(s)). Waiting for the project manager to approve it in the Dev Workspace panel; the model must not approve its own work.`) +
-            renderWarnings(value.warnings),
-        },
-      ],
+      render: (_args, value) => {
+        const next = value.nextStageId
+        const continueText =
+          next.length === 0
+            ? 'All seven stages are approved — the pipeline is complete; report the release environment, smoke-verification result and link to the owner.'
+            : `Continue with the next stage "${next}": call pipeline_stage_prompt({stageId:"${next}"}), then pipeline_start_stage({stageId:"${next}"}) and do the work.`
+        const text =
+          value.autoApproved === true
+            ? value.gateMode === 'auto'
+              ? `Stage "${value.stage.id}" was auto-approved by the owner's full-auto mode (owner pre-authorized skipping every human gate; summary, artifacts and the auto-approval note recorded). ${continueText}`
+              : `Stage "${value.stage.id}" was auto-approved by the owner's fast mode (summary and artifacts recorded). ${continueText} The design, human approval and release gates remain manual.`
+            : value.stage.id === 'design'
+              ? `Submitted the design stage for review (${String(value.stage.artifacts.length)} artifact(s)). The design stage never auto-approves in normal/fast mode: present the design screenshots (present tool / image viewer) or tell the owner to preview the HTML in the Dev Workspace panel, then STOP and wait for the owner to confirm the design. Do not paste HTML source to the owner and do not start development before the design is approved.`
+              : `Submitted stage "${value.stage.id}" for review (${String(value.stage.artifacts.length)} artifact(s)). Waiting for the project manager to approve it in the Dev Workspace panel; the model must not approve its own work.`
+        return [{ type: 'text', text: text + renderWarnings(value.warnings) }]
+      },
     },
     async execute(args, exec) {
       exec.signal.throwIfAborted()
@@ -2650,23 +2757,32 @@ export function registerPipelineTools(ctx) {
       })
       exec.signal.throwIfAborted()
       const warnings = Array.isArray(result?.warnings) ? result.warnings : []
+      const gateMode = gateModeOf({ settings: { gateMode: result?.gateMode } })
       if (result !== null && typeof result === 'object' && result.autoApproved === true) {
         return {
           stage: stageFromResult(result.stage),
           autoApproved: true,
           nextStageId: result.nextStageId,
+          gateMode,
           warnings,
           scope: root,
         }
       }
-      return { stage: stageFromResult(result), autoApproved: false, nextStageId: '', warnings, scope: root }
+      return {
+        stage: stageFromResult(result),
+        autoApproved: false,
+        nextStageId: '',
+        gateMode,
+        warnings,
+        scope: root,
+      }
     },
   })
 
   register({
     name: 'pipeline_record_release',
     description:
-      'Record one release you actually performed (environment, public URL and notes) on the release stage. Only use it after the project manager has approved the human approval gate; it appends to the pipeline release history and is shown in the Dev Workspace pipeline panel. It never publishes anything by itself.',
+      'Record one release you actually performed (environment, public URL and notes) on the release stage. Only use it after the approval gate is approved — by the owner in normal/fast mode, or by the Host under the owner\'s pre-authorization in auto mode; it appends to the pipeline release history and is shown in the Dev Workspace pipeline panel. It never publishes anything by itself.',
     parameters: {
       type: 'object',
       additionalProperties: false,

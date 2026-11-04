@@ -1367,7 +1367,8 @@ async function pipelineStartChange(ctx, body) {
 /** Set the owner's gate mode for the delivery pipeline. */
 async function pipelineSetMode(ctx, body) {
   const root = await pipelineRoot(ctx, body.root)
-  return pipeline.setGateMode(root, body.mode === 'fast' ? 'fast' : 'normal')
+  const mode = body.mode === 'auto' ? 'auto' : body.mode === 'fast' ? 'fast' : 'normal'
+  return pipeline.setGateMode(root, mode)
 }
 
 /** Record a release performed by the ops agent or the owner. */
